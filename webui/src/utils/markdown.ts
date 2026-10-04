@@ -11,6 +11,61 @@ export interface MarkdownOptions {
     onCodeBlock?: (lang: string, code: string) => string;
 }
 
+/**
+ * Render one fenced code block: language chip + working copy button + body.
+ *
+ * This is the `onCodeBlock` implementation hosts pass into `renderMarkdown`.
+ * The copy button carries `data-md-copy` and the raw source in `data-md-code`
+ * so a delegated click handler on the host can copy without inline JS (which
+ * would be an XSS vector through `unsafeHTML`).
+ *
+ * Honesty: this adds a language chip and a copy affordance. It does NOT claim
+ * token-level syntax highlighting — no highlighter ships in this bundle
+ * (SOMA-01-UIUX-001 UI-X-04 honesty notes).
+ */
+export function renderCodeBlock(lang: string, code: string): string {
+    const label = lang || 'text';
+    // data-md-code holds the escaped source; the click handler decodes textContent.
+    return (
+        `<div class="md-codeblock-wrap">` +
+        `<div class="md-codeblock-bar">` +
+        `<span class="md-codeblock-lang">${escapeHtml(label)}</span>` +
+        `<button type="button" class="md-copy-btn" data-md-copy title="Copy code">Copy</button>` +
+        `</div>` +
+        `<pre class="md-pre"><code class="md-codeblock" data-md-code>${escapeHtml(code)}</code></pre>` +
+        `</div>`
+    );
+}
+
+/**
+ * Attach a delegated copy handler to a container that holds `renderCodeBlock`
+ * output. Returns a cleanup function. Uses textContent of the paired
+ * `[data-md-code]` node — never reads the HTML — so copied output is the real
+ * source, not the escaped markup.
+ */
+export function bindCodeCopy(container: HTMLElement): () => void {
+    const onClick = (event: Event) => {
+        const target = event.target as HTMLElement | null;
+        const btn = target?.closest?.('[data-md-copy]') as HTMLElement | null;
+        if (!btn || !container.contains(btn)) return;
+        const wrap = btn.closest('.md-codeblock-wrap');
+        const codeEl = wrap?.querySelector('[data-md-code]');
+        const text = codeEl?.textContent ?? '';
+        if (!text) return;
+        void navigator.clipboard.writeText(text).then(() => {
+            const prev = btn.textContent;
+            btn.textContent = 'Copied';
+            setTimeout(() => {
+                btn.textContent = prev;
+            }, 1500);
+        }).catch((err) => {
+            console.warn('[Markdown] clipboard write failed', err);
+        });
+    };
+    container.addEventListener('click', onClick);
+    return () => container.removeEventListener('click', onClick);
+}
+
 function escapeHtml(value: string): string {
     return value
         .replace(/&/g, '&amp;')

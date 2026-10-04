@@ -35,31 +35,25 @@ test('Login and chat via browser', async ({ page }) => {
     console.log('After login:', page.url());
     await page.screenshot({ path: 'test-results/login-result.png', fullPage: true });
 
-    // 6. Check result
-    if (!page.url().includes('/login')) {
-        console.log('LOGIN SUCCESS - on chat page');
-        await page.waitForTimeout(5000);
-        await page.screenshot({ path: 'test-results/chat-page.png', fullPage: true });
+    // 6. Real assertions — these can fail. `expect(true).toBe(true)` was a
+    // placeholder that could never fail, which is a lie dressed as a test.
+    await expect(page).not.toHaveURL(/\/login/, { timeout: 15000 });
 
-        // Try to send a message
-        const textarea = page.locator('textarea').first();
-        if (await textarea.count() > 0) {
-            await textarea.click();
-            await page.keyboard.type('What model are you?', { delay: 20 });
-            await page.keyboard.press('Enter');
-            console.log('Message sent');
-            await page.waitForTimeout(15000);
-            await page.screenshot({ path: 'test-results/chat-response.png', fullPage: true });
-        }
-    } else {
-        console.log('STILL ON LOGIN - checking errors');
-        // Check for any visible error text
-        const allText = await page.textContent('body');
-        if (allText) {
-            const lines = allText.split('\n').filter(l => l.trim()).slice(0, 20);
-            lines.forEach(l => console.log('  ', l.trim()));
-        }
-    }
+    const chatSurface = page.locator('saas-chat, saas-chat-workspace, .chat-workspace').first();
+    await expect(chatSurface).toBeVisible({ timeout: 20000 });
 
-    expect(true).toBe(true);
+    await page.screenshot({ path: 'test-results/chat-page.png', fullPage: true });
+
+    // Send a message and require a visible reply, not just a screenshot.
+    const textarea = page.locator('textarea').first();
+    await expect(textarea).toBeVisible({ timeout: 15000 });
+    await textarea.click();
+    await textarea.fill('Reply with exactly: BROWSER-OK');
+    await textarea.press('Enter');
+
+    await expect(
+        page.locator('saas-message, .message, .assistant').last()
+    ).toContainText(/BROWSER-OK/i, { timeout: 45000 });
+
+    await page.screenshot({ path: 'test-results/chat-response.png', fullPage: true });
 });

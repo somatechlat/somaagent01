@@ -6,7 +6,7 @@
  *           user card (/auth/me), nav to Memory / Models / Channels / Settings
  *   Center — topbar (title, model, pause/stop/reset), message stream + tool
  *           timeline, welcome empty state, composer
- *   Right  — canvas rail: Memory / Files / Channel panels (real APIs)
+ *   Right  — the one surface registry (`saas-right-panel`, UI-X-01…08)
  *
  * Transport: WebSocket /ws/v2/chat/:id + REST /chat/conversations*.
  * Dark-first, AAAS token palette. No mocks, no placeholders.
@@ -24,6 +24,7 @@ import '../components/saas-message.js';
 import '../components/saas-tool-timeline.js';
 import '../components/saas-chat-topbar.js';
 import '../components/saas-composer.js';
+import '../components/saas-right-panel.js';
 
 export interface ChatMessage {
     id: string;
@@ -62,25 +63,7 @@ interface ToolCallPayload {
     status?: string;
 }
 
-interface MemoryItem {
-    id: string;
-    type: string;
-    content: string;
-    summary?: string;
-    tags?: string[];
-    score?: number;
-    timestamp?: string;
-}
-
-interface ChannelItem {
-    id: string;
-    kind: string;
-    status: string;
-    capsule_id?: string | null;
-}
-
 type AgentMode = 'STD' | 'TRN' | 'ADM' | 'DEV' | 'RO' | 'DGR';
-type CanvasTab = 'memory' | 'files' | 'channel';
 
 const ICON = (name: string, size = 20) =>
     html`<span class="material-symbols-outlined" style="font-size:${size}px" aria-hidden="true">${name}</span>`;
@@ -820,179 +803,13 @@ export class SaasChat extends LitElement {
             min-width: 0;
         }
 
-        .canvas-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 14px;
-            font-weight: 600;
-            font-size: 13px;
-            border-bottom: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            text-transform: capitalize;
-            flex-shrink: 0;
-        }
-
-        .canvas-header .icon-btn {
-            width: 28px;
-            height: 28px;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--aaas-text-muted, #999999);
-        }
-
-        .canvas-header .icon-btn:hover {
-            background: var(--aaas-bg-hover, #141414);
-            color: var(--aaas-text-primary, #ffffff);
-        }
-
-        .canvas-body {
-            padding: 12px;
-            overflow: auto;
+        /* The registry owns its own rail + content chrome. */
+        .canvas-panel saas-right-panel {
             flex: 1;
             min-height: 0;
-        }
-
-        .canvas-hint {
-            font-size: 12px;
-            color: var(--aaas-text-muted, #999999);
-            line-height: 1.55;
-            padding: 4px 2px 12px;
-        }
-
-        .canvas-search {
-            width: 100%;
-            padding: 7px 10px;
-            border-radius: var(--aaas-radius-md, 8px);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            background: var(--aaas-bg-card, #1e1e1e);
-            color: var(--aaas-text-primary, #ffffff);
-            font-size: 12px;
-            outline: none;
-            margin-bottom: 10px;
-        }
-
-        .canvas-search:focus {
-            border-color: var(--aaas-border-medium, rgba(255,255,255,0.16));
-        }
-
-        .memory-card {
-            padding: 10px;
-            border-radius: var(--aaas-radius-md, 8px);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            background: var(--aaas-bg-card, #1e1e1e);
-            margin-bottom: 8px;
-        }
-
-        .memory-card .type {
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: var(--aaas-accent, #e8e4dc);
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .memory-card .content {
-            font-size: 12px;
-            line-height: 1.5;
-            color: var(--aaas-text-secondary, #a1a1a1);
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        .memory-card .tags {
             display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            margin-top: 6px;
         }
 
-        .tag-chip {
-            font-size: 10px;
-            padding: 1px 7px;
-            border-radius: 9999px;
-            background: var(--aaas-bg-void, #f5f5f5);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            color: var(--aaas-text-muted, #999999);
-        }
-
-        .file-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 10px;
-            border-radius: var(--aaas-radius-md, 8px);
-            margin-bottom: 4px;
-            font-size: 12px;
-            color: var(--aaas-text-secondary, #a1a1a1);
-        }
-
-        .file-row:hover {
-            background: var(--aaas-bg-hover, #141414);
-        }
-
-        .file-row .material-symbols-outlined {
-            font-size: 16px;
-            color: var(--aaas-text-muted, #999999);
-        }
-
-        .file-row .fname {
-            flex: 1;
-            min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .file-row .fsize {
-            font-size: 10px;
-            color: var(--aaas-text-muted, #999999);
-            flex-shrink: 0;
-        }
-
-        .channel-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px;
-            border-radius: var(--aaas-radius-md, 8px);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            background: var(--aaas-bg-card, #1e1e1e);
-            margin-bottom: 8px;
-            font-size: 12px;
-        }
-
-        .channel-kind {
-            text-transform: capitalize;
-            flex: 1;
-            color: var(--aaas-text-primary, #ffffff);
-            font-weight: 500;
-        }
-
-        .status-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            flex-shrink: 0;
-            background: var(--aaas-text-muted, #999999);
-        }
-
-        .status-dot.ok { background: var(--aaas-success, #22c55e); }
-        .status-dot.err { background: var(--aaas-danger, #ef4444); }
-        .status-dot.warn { background: var(--aaas-warning, #f59e0b); }
-
-        .panel-skeleton .srow {
-            height: 56px;
-            border-radius: var(--aaas-radius-md, 8px);
-            background: linear-gradient(90deg, var(--aaas-bg-hover, #141414) 25%, var(--aaas-bg-active, #1a1a1a) 50%, var(--aaas-bg-hover, #141414) 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.4s ease-in-out infinite;
-            margin-bottom: 8px;
-        }
 
         /* Agent selector */
         .agent-select {
@@ -1008,14 +825,12 @@ export class SaasChat extends LitElement {
 
         /* Scrollbars */
         .conversations-section::-webkit-scrollbar,
-        .messages::-webkit-scrollbar,
-        .canvas-body::-webkit-scrollbar {
+        .messages::-webkit-scrollbar {
             width: 6px;
         }
 
         .conversations-section::-webkit-scrollbar-thumb,
-        .messages::-webkit-scrollbar-thumb,
-        .canvas-body::-webkit-scrollbar-thumb {
+        .messages::-webkit-scrollbar-thumb {
             background: var(--aaas-border-light, rgba(255,255,255,0.08));
             border-radius: 3px;
         }
@@ -1058,17 +873,9 @@ export class SaasChat extends LitElement {
     @state() private _userRole = 'Member';
     @state() private _userInitials = 'U';
     @state() private _showRightPanel = false;
-    @state() private _rightPanelTab: CanvasTab = 'memory';
     @state() private _convFilter = '';
     @state() private _renamingId = '';
     @state() private _renameDraft = '';
-
-    @state() private _memories: MemoryItem[] = [];
-    @state() private _memoryLoading = false;
-    @state() private _memoryQuery = '';
-
-    @state() private _channels: ChannelItem[] = [];
-    @state() private _channelsLoading = false;
 
     @query('.messages') private _messagesContainer!: HTMLElement;
     @query('.rename-input') private _renameInput!: HTMLInputElement;
@@ -1324,137 +1131,11 @@ export class SaasChat extends LitElement {
     }
 
     // ==========================================================================
-    // RIGHT CANVAS PANELS
+    // RIGHT RAIL — the single surface registry (UI-X-01…08)
     // ==========================================================================
 
-    private _openRightPanel(tab: CanvasTab) {
-        if (this._showRightPanel && this._rightPanelTab === tab) {
-            this._showRightPanel = false;
-            return;
-        }
-        this._rightPanelTab = tab;
-        this._showRightPanel = true;
-        if (tab === 'memory') void this._loadMemories();
-        if (tab === 'channel') void this._loadChannels();
-    }
-
-    private async _loadMemories() {
-        this._memoryLoading = true;
-        try {
-            const response = (await apiClient.get('/memory/')) as {
-                memories?: Array<{
-                    text?: string;
-                    content?: string | Record<string, unknown>;
-                    coord?: string;
-                    score?: number;
-                    created_at?: string;
-                    kind?: string;
-                }>;
-                total?: number;
-            };
-            const hits = Array.isArray(response?.memories) ? response.memories : [];
-            this._memories = hits.map((raw, index) => {
-                const payload = typeof raw.content === 'object' && raw.content !== null ? raw.content : null;
-                const text =
-                    raw.text ||
-                    (typeof raw.content === 'string' ? raw.content : '') ||
-                    (payload ? String((payload as Record<string, unknown>).text ?? '') : '');
-                return {
-                    id: raw.coord || `mem-${index}`,
-                    type: String(raw.kind || 'episodic'),
-                    content: text,
-                    score: typeof raw.score === 'number' ? raw.score : 0,
-                    timestamp: raw.created_at || new Date().toISOString(),
-                } as MemoryItem;
-            });
-        } catch {
-            this._memories = [];
-        } finally {
-            this._memoryLoading = false;
-        }
-    }
-
-    private async _searchMemories() {
-        const q = this._memoryQuery.trim();
-        if (!q) {
-            await this._loadMemories();
-            return;
-        }
-        this._memoryLoading = true;
-        try {
-            const response = (await apiClient.post('/memory/recall', {
-                query: q,
-                top_k: 20,
-            })) as {
-                memories?: Array<{
-                    text?: string;
-                    content?: string | Record<string, unknown>;
-                    coord?: string;
-                    score?: number;
-                    created_at?: string;
-                    kind?: string;
-                }>;
-            };
-            const hits = Array.isArray(response?.memories) ? response.memories : [];
-            this._memories = hits.map((raw, index) => {
-                const payload = typeof raw.content === 'object' && raw.content !== null ? raw.content : null;
-                const text =
-                    raw.text ||
-                    (typeof raw.content === 'string' ? raw.content : '') ||
-                    (payload ? String((payload as Record<string, unknown>).text ?? '') : '');
-                return {
-                    id: raw.coord || `mem-${index}`,
-                    type: String(raw.kind || 'episodic'),
-                    content: text,
-                    score: typeof raw.score === 'number' ? raw.score : 0,
-                    timestamp: raw.created_at || new Date().toISOString(),
-                } as MemoryItem;
-            });
-        } catch {
-            this._memories = [];
-        } finally {
-            this._memoryLoading = false;
-        }
-    }
-
-    private async _loadChannels() {
-        this._channelsLoading = true;
-        const normalize = (response: unknown): ChannelItem[] => {
-            if (Array.isArray(response)) return response as ChannelItem[];
-            const obj = response as { channels?: ChannelItem[] } | null;
-            if (obj && Array.isArray(obj.channels)) return obj.channels;
-            return [];
-        };
-        try {
-            // Prefer the settings namespace; fall back to the bridges endpoint
-            // that saas-settings-channels uses.
-            try {
-                const response = await apiClient.get('/bridges/channels');
-                this._channels = normalize(response);
-            } catch {
-                const response = await apiClient.get('/bridges/channels');
-                this._channels = normalize(response);
-            }
-        } catch {
-            // Fail closed to an empty state — never invent channel data.
-            this._channels = [];
-        } finally {
-            this._channelsLoading = false;
-        }
-    }
-
-    private _conversationFiles(): { name: string; type?: string; size?: number }[] {
-        const seen = new Set<string>();
-        const files: { name: string; type?: string; size?: number }[] = [];
-        for (const msg of this._messages) {
-            for (const a of msg.attachments ?? []) {
-                if (!seen.has(a.name)) {
-                    seen.add(a.name);
-                    files.push(a);
-                }
-            }
-        }
-        return files;
+    private _toggleRightPanel() {
+        this._showRightPanel = !this._showRightPanel;
     }
 
     // ==========================================================================
@@ -1802,9 +1483,11 @@ export class SaasChat extends LitElement {
         switch (action) {
             case 'pause':
                 this._paused = true;
+                this._sendChatControl('chat.pause');
                 break;
             case 'resume':
                 this._paused = false;
+                this._sendChatControl('chat.resume');
                 break;
             case 'stop':
                 this._stopTurn();
@@ -1813,19 +1496,42 @@ export class SaasChat extends LitElement {
                 void this._resetChat();
                 break;
             case 'nudge':
-                if (this._wsClient?.connected && this._activeConversationId) {
-                    this._wsClient.send({
-                        type: 'chat.nudge',
-                        payload: { conversation_id: this._activeConversationId },
-                    });
-                }
+                this._sendChatControl('chat.nudge');
                 break;
             default:
                 break;
         }
     }
 
+    /**
+     * Forward a chat control to the gateway over the live WebSocket.
+     *
+     * The gateway already implements `chat.pause` / `chat.resume` /
+     * `chat.nudge` / `chat.stop` / `chat.reset`
+     * (`services/gateway/consumers/chat.py`, `CONTROL_MSG_TYPES`). A control
+     * that only mutates local state is a lie: the turn keeps running on the
+     * server while the UI pretends it stopped. Every control MUST reach the
+     * transport.
+     *
+     * Fails loud when there is no socket: the user is told the control could
+     * not be applied, rather than being shown a state the server never heard.
+     */
+    private _sendChatControl(type: 'chat.pause' | 'chat.resume' | 'chat.nudge' | 'chat.stop' | 'chat.reset') {
+        if (!this._wsClient?.connected) {
+            this._pushInlineError(`Cannot send ${type} — WebSocket disconnected`);
+            return;
+        }
+        this._wsClient.send({
+            type,
+            payload: { conversation_id: this._activeConversationId || undefined },
+        });
+    }
+
     private _stopTurn() {
+        // Tell the gateway first: cancelling only the local buffer leaves the
+        // model turn running server-side. `chat.stop` is fail-closed on the
+        // server (no-op when idle) so this is safe to send even when unsure.
+        this._sendChatControl('chat.stop');
         if (!this._isStreaming) return;
         this._turnStopped = true;
         this._paused = false;
@@ -1834,6 +1540,9 @@ export class SaasChat extends LitElement {
 
     private async _resetChat() {
         this._stopTurn();
+        // Clear the server-side conversation stream state too, not just the
+        // local transcript (`chat.reset` in the gateway control handler).
+        this._sendChatControl('chat.reset');
         this._messages = [];
         this._streamContent = '';
         this._activeTools = [];
@@ -2043,7 +1752,16 @@ export class SaasChat extends LitElement {
         window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: path } }));
     }
 
-    private _logout() {
+    private async _logout() {
+        // SECURITY: the session lives in httpOnly cookies. Clearing storage
+        // does not end it — `checkAuth()` reads the cookie and would sign the
+        // user straight back in. POST /auth/logout first so the server deletes
+        // the cookies, then clear client residue and leave.
+        try {
+            await apiClient.logout();
+        } catch (err) {
+            console.error('[SaasChat] server logout failed', err);
+        }
         localStorage.removeItem('saas_auth_token');
         localStorage.removeItem('saas_user');
         localStorage.removeItem('saas_keycloak_token');
@@ -2458,178 +2176,37 @@ export class SaasChat extends LitElement {
         `;
     }
 
-    /* ---------- RIGHT CANVAS ---------- */
+    /* ---------- RIGHT RAIL (UI-X-01…08) ---------- */
 
+    /**
+     * The chat view does NOT own a second rail. All eight right-rail surfaces
+     * (Files, Tools, Browser, Editor, Debug, Capsule, Brain, Desktop) live in
+     * the one typed registry at `saas-right-panel`. The previous
+     * memory|files|channel rail here was a competing, partial surface set and
+     * has been deleted (SOMA-01-UIUX-001 §6, REQ-UIX-020).
+     */
     private _renderCanvas() {
         return html`
-            <aside class="right-canvas ${this._showRightPanel ? 'open' : ''}" aria-label="Workspace canvas">
+            <aside class="right-canvas ${this._showRightPanel ? 'open' : ''}" aria-label="Surface rail">
                 <div class="canvas-rail">
                     <button
-                        class="rail-btn ${this._rightPanelTab === 'memory' && this._showRightPanel ? 'active' : ''}"
-                        title="Memory"
-                        aria-label="Memory panel"
-                        @click=${() => this._openRightPanel('memory')}
+                        class="rail-btn ${this._showRightPanel ? 'active' : ''}"
+                        title="Surfaces"
+                        aria-label="Toggle surface rail"
+                        aria-pressed=${this._showRightPanel ? 'true' : 'false'}
+                        @click=${this._toggleRightPanel}
                     >
-                        ${ICON('psychology', 20)}
-                    </button>
-                    <button
-                        class="rail-btn ${this._rightPanelTab === 'files' && this._showRightPanel ? 'active' : ''}"
-                        title="Files"
-                        aria-label="Files panel"
-                        @click=${() => this._openRightPanel('files')}
-                    >
-                        ${ICON('folder', 20)}
-                    </button>
-                    <button
-                        class="rail-btn ${this._rightPanelTab === 'channel' && this._showRightPanel ? 'active' : ''}"
-                        title="Channel"
-                        aria-label="Channel panel"
-                        @click=${() => this._openRightPanel('channel')}
-                    >
-                        ${ICON('forum', 20)}
+                        ${ICON('dock_to_right', 20)}
                     </button>
                 </div>
                 ${this._showRightPanel
                     ? html`
                           <div class="canvas-panel">
-                              <div class="canvas-header">
-                                  <span>${this._rightPanelTab}</span>
-                                  <button
-                                      class="icon-btn"
-                                      title="Close panel"
-                                      aria-label="Close panel"
-                                      @click=${() => (this._showRightPanel = false)}
-                                  >
-                                      ${ICON('close', 16)}
-                                  </button>
-                              </div>
-                              <div class="canvas-body">
-                                  ${this._rightPanelTab === 'memory'
-                                      ? this._renderMemoryPanel()
-                                      : nothing}
-                                  ${this._rightPanelTab === 'files' ? this._renderFilesPanel() : nothing}
-                                  ${this._rightPanelTab === 'channel'
-                                      ? this._renderChannelPanel()
-                                      : nothing}
-                              </div>
+                              <saas-right-panel></saas-right-panel>
                           </div>
                       `
                     : nothing}
             </aside>
-        `;
-    }
-
-    private _renderMemoryPanel() {
-        return html`
-            <input
-                class="canvas-search"
-                type="search"
-                placeholder="Search memories…"
-                aria-label="Search memories"
-                .value=${this._memoryQuery}
-                @input=${(e: Event) => {
-                    this._memoryQuery = (e.target as HTMLInputElement).value;
-                }}
-                @keydown=${(e: KeyboardEvent) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        void this._searchMemories();
-                    }
-                }}
-            />
-            <div class="canvas-hint">
-                Cognitive memory (Brain + SFM).
-                <button
-                    style="color:var(--aaas-info,#3b82f6);background:none;border:none;padding:0;cursor:pointer;text-decoration:underline;font:inherit"
-                    @click=${() => this._navigate('/memory')}
-                >
-                    Open full dashboard
-                </button>
-            </div>
-            ${this._memoryLoading
-                ? html`
-                      <div class="panel-skeleton" aria-hidden="true">
-                          <div class="srow"></div>
-                          <div class="srow"></div>
-                          <div class="srow"></div>
-                      </div>
-                  `
-                : this._memories.length === 0
-                    ? html`<div class="canvas-hint">No memories yet.</div>`
-                    : this._memories.slice(0, 20).map(
-                          (m) => html`
-                              <div class="memory-card">
-                                  <div class="type">${m.type || 'memory'}</div>
-                                  <div class="content">${m.summary || m.content}</div>
-                                  ${m.tags && m.tags.length > 0
-                                      ? html`
-                                            <div class="tags">
-                                                ${m.tags.slice(0, 4).map((t) => html`<span class="tag-chip">${t}</span>`)}
-                                            </div>
-                                        `
-                                      : nothing}
-                              </div>
-                          `,
-                      )}
-        `;
-    }
-
-    private _renderFilesPanel() {
-        const files = this._conversationFiles();
-        return html`
-            <div class="canvas-hint">
-                Attachments and workdir files for this conversation.
-            </div>
-            ${files.length === 0
-                ? html`<div class="canvas-hint">No files attached to this conversation yet.</div>`
-                : files.map(
-                      (f) => html`
-                          <div class="file-row">
-                              ${ICON('draft', 16)}
-                              <span class="fname" title=${f.name}>${f.name}</span>
-                              <span class="fsize">${f.size ? `${Math.max(1, Math.round(f.size / 1024))} KB` : ''}</span>
-                          </div>
-                      `,
-                  )}
-        `;
-    }
-
-    private _renderChannelPanel() {
-        return html`
-            <div class="canvas-hint">
-                WhatsApp / Telegram Capsule channels.
-                <button
-                    style="color:var(--aaas-info,#3b82f6);background:none;border:none;padding:0;cursor:pointer;text-decoration:underline;font:inherit"
-                    @click=${() => this._navigate('/settings/channels')}
-                >
-                    Configure
-                </button>
-            </div>
-            ${this._channelsLoading
-                ? html`
-                      <div class="panel-skeleton" aria-hidden="true">
-                          <div class="srow"></div>
-                          <div class="srow"></div>
-                      </div>
-                  `
-                : this._channels.length === 0
-                    ? html`<div class="canvas-hint">No channels configured.</div>`
-                    : this._channels.map((c) => {
-                          const status = (c.status ?? '').toLowerCase();
-                          const dotClass =
-                              status === 'ok' || status === 'connected' || status === 'active'
-                                  ? 'ok'
-                                  : status === 'error' || status === 'failed'
-                                      ? 'err'
-                                      : 'warn';
-                          return html`
-                              <div class="channel-row">
-                                  <span class="status-dot ${dotClass}" title=${c.status}></span>
-                                  <span class="channel-kind">${c.kind}</span>
-                                  <span style="color:var(--aaas-text-muted,#6b6b6b);font-size:11px">${c.status}</span>
-                              </div>
-                          `;
-                      })}
         `;
     }
 

@@ -24,6 +24,61 @@ export interface WebSocketConfig {
 
 export type EventHandler = (data: unknown) => void;
 
+/**
+ * One frame this client actually sent or received.
+ * Consumed by the Debug surface (UI-X-05) as a real WS frame log.
+ */
+export interface WsFrame {
+    id: number;
+    dir: 'in' | 'out';
+    type: string;
+    payload: unknown;
+    ts: number;
+}
+
+/** Ring-buffer cap. Oldest entries drop once exceeded. */
+export const WS_FRAME_LOG_LIMIT = 200;
+
+/** Module-level ring buffer of real frames (newest at the end). */
+export const wsFrameLog: WsFrame[] = [];
+
+export type WsFrameListener = () => void;
+
+const _frameListeners = new Set<WsFrameListener>();
+let _nextFrameId = 1;
+
+/**
+ * Subscribe to frame-buffer updates. Returns an unsubscribe function.
+ */
+export function onWsFrame(listener: WsFrameListener): () => void {
+    _frameListeners.add(listener);
+    return () => {
+        _frameListeners.delete(listener);
+    };
+}
+
+function _frameType(message: unknown): string {
+    if (
+        message !== null &&
+        typeof message === 'object' &&
+        'type' in message &&
+        typeof (message as { type: unknown }).type === 'string'
+    ) {
+        return (message as { type: string }).type;
+    }
+    return 'unknown';
+}
+
+function _pushFrame(dir: 'in' | 'out', type: string, payload: unknown): void {
+    wsFrameLog.push({ id: _nextFrameId++, dir, type, payload, ts: Date.now() });
+    if (wsFrameLog.length > WS_FRAME_LOG_LIMIT) {
+        wsFrameLog.splice(0, wsFrameLog.length - WS_FRAME_LOG_LIMIT);
+    }
+    for (const listener of _frameListeners) {
+        listener();
+    }
+}
+
 export class WebSocketClient {
     private config: WebSocketConfig;
     private ws: WebSocket | null = null;
@@ -116,7 +171,9 @@ export class WebSocketClient {
             return;
         }
 
-        this.ws!.send(JSON.stringify(message));
+        const raw = JSON.stringify(message);
+        _pushFrame('out', _frameType(message), message);
+        this.ws!.send(raw);
     }
 
     /**
@@ -152,6 +209,7 @@ export class WebSocketClient {
         this.ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
+                _pushFrame('in', _frameType(data), data);
                 this._handleMessage(data);
             } catch {
                 console.warn('[WebSocket] Invalid message format');

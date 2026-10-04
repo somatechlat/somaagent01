@@ -136,6 +136,34 @@ export class ApiClient {
     delete<T>(path: string): Promise<T> {
         return this.request<T>('DELETE', path);
     }
+
+    /**
+     * End the session on the server.
+     *
+     * SECURITY: the auth session lives in httpOnly cookies (`access_token`,
+     * `refresh_token`, `session_id`) set by `admin/auth/api.py`. Clearing
+     * localStorage does not touch them, so a "logout" that only clears storage
+     * leaves the session alive — `checkAuth()` reads the cookie and the user is
+     * still signed in. This must POST /auth/logout so the server deletes the
+     * cookies before any client-side cleanup or redirect.
+     *
+     * Deliberately single-attempt and non-retrying: logout is a terminal
+     * action, and a retry storm against a dead API cannot resurrect a cookie
+     * that was already cleared. Failures are surfaced to the caller so the
+     * view can decide, but never silently ignored by this layer.
+     */
+    async logout(): Promise<void> {
+        const url = `${this.config.baseUrl}/auth/logout`;
+        try {
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+            });
+        } catch (error) {
+            throw new ApiError(0, error instanceof Error ? error.message : 'Logout request failed');
+        }
+    }
 }
 
 /**

@@ -25,7 +25,14 @@ export class SaasChatTopbar extends LitElement {
      * healthy chat stays visually quiet (no permanent green/red pill).
      */
     @property({ type: String, attribute: 'connection-status' }) connectionStatus: ConnectionStatus = 'ok';
-    @property({ type: String }) nudgeTitle = 'Nudge requires orchestrator interrupt (not yet available on the gateway)';
+    /**
+     * Nudge IS wired: the topbar dispatches `saas-chat-control` with
+     * `action: 'nudge'`, and the chat view forwards it as a `chat.nudge` WS
+     * frame which the gateway handles (`services/gateway/consumers/chat.py`
+     * `MSG_CHAT_NUDGE` → `chat.nudged`). This title must describe that
+     * behaviour, not claim the gateway lacks it.
+     */
+    @property({ type: String }) nudgeTitle = 'Nudge — ask the agent to continue the current turn';
 
     static styles = css`
         :host {

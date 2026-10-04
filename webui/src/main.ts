@@ -20,6 +20,7 @@ import './styles/material-symbols.css';
 
 // Theme: light default + dark toggle (localStorage)
 import './services/theme-boot.js';
+import { apiClient } from './services/api-client.js';
 
 // Routing logic
 const app = document.getElementById('app');
@@ -250,6 +251,14 @@ if (app) {
         }
 
         if (path === '/logout') {
+            // SECURITY: the session lives in httpOnly cookies, so clearing
+            // localStorage alone does not end it. Call the real logout first
+            // (deletes the cookies), then clear client residue and leave.
+            try {
+                await apiClient.logout();
+            } catch (err) {
+                console.error('[SaaS] server logout failed', err);
+            }
             localStorage.removeItem('saas_auth_token');
             localStorage.removeItem('saas_user');
             window.location.href = '/login';
@@ -309,9 +318,35 @@ if (app) {
         }
 
         if (path === '/themes') {
-            // Note: Themes view might not exist yet, redirecting to settings
-            window.history.replaceState(null, '', '/settings');
-            renderRoute();
+            // Skins/theming is specified in SOMA-UI-SKINS-001 but NOT implemented:
+            // appearance is compiled into component styles and the only runtime
+            // control is light/dark polarity (services/theme-boot.ts). The old
+            // behaviour silently redirected to /settings, which is not a themes
+            // surface either. Per REQ-UIX-020: present-but-disabled with the
+            // blocking reason — never a fake destination, never an omission.
+            const notice = document.createElement('div');
+            notice.setAttribute('data-surface', 'themes');
+            notice.setAttribute('data-can-edit', 'false');
+            notice.style.cssText =
+                'max-width:640px;margin:15vh auto;padding:32px;text-align:center;' +
+                'font-family:system-ui,sans-serif;color:#1a1a1a;';
+            notice.innerHTML =
+                '<h1 style="font-size:20px;margin:0 0 12px;">Skins</h1>' +
+                '<p style="margin:0 0 8px;line-height:1.5;color:#444;">' +
+                'This surface is not available on this deployment.</p>' +
+                '<p disabled title="Blocked: skins are specified but not implemented." ' +
+                'style="margin:0 0 16px;line-height:1.5;color:#666;">' +
+                'Blocking reason: Capsule-owned skins are specified in SOMA-UI-SKINS-001 ' +
+                'and not implemented yet. Appearance is compiled into component styles. ' +
+                'The only appearance control available today is light / dark polarity.</p>' +
+                '<button type="button" data-can-edit="true" ' +
+                'style="padding:8px 16px;border:1px solid #ccc;border-radius:8px;background:#fff;cursor:pointer;">' +
+                'Toggle light / dark</button>';
+            const btn = notice.querySelector('button');
+            btn?.addEventListener('click', () => {
+                void import('./services/theme-boot.js').then((m) => m.toggleTheme());
+            });
+            app.appendChild(notice);
             return;
         }
 

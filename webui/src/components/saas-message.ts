@@ -11,7 +11,7 @@ import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import type { ToolCallStep } from './saas-tool-timeline.js';
-import { renderMarkdown, formatTime, formatBytes } from '../utils/markdown.js';
+import { renderMarkdown, renderCodeBlock, bindCodeCopy, formatTime, formatBytes } from '../utils/markdown.js';
 import './saas-tool-timeline.js';
 
 export type MessageRole = 'user' | 'assistant' | 'system';
@@ -159,6 +159,54 @@ export class SaasMessage extends LitElement {
             border: 1px solid var(--aaas-border-color, rgba(255,255,255,0.06));
             border-radius: var(--aaas-radius-md, 8px);
             overflow-x: auto;
+        }
+
+        /* Code block chrome produced by renderCodeBlock (onCodeBlock hook). */
+        .text :deep(.md-codeblock-wrap) {
+            margin: 0 0 0.7em;
+            border: 1px solid var(--aaas-border-color, rgba(255,255,255,0.06));
+            border-radius: var(--aaas-radius-md, 8px);
+            overflow: hidden;
+            background: var(--aaas-bg-void, #f5f5f5);
+        }
+
+        .text :deep(.md-codeblock-bar) {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 4px 10px;
+            background: var(--aaas-bg-hover, rgba(0,0,0,0.12));
+            border-bottom: 1px solid var(--aaas-border-color, rgba(255,255,255,0.06));
+        }
+
+        .text :deep(.md-codeblock-lang) {
+            font-family: var(--aaas-font-mono, 'JetBrains Mono', monospace);
+            font-size: 11px;
+            letter-spacing: 0.03em;
+            color: var(--aaas-text-secondary, #a1a1a1);
+        }
+
+        .text :deep(.md-copy-btn) {
+            border: 1px solid var(--aaas-border-color, rgba(255,255,255,0.10));
+            background: transparent;
+            color: var(--aaas-text-secondary, #a1a1a1);
+            font-size: 11px;
+            line-height: 1;
+            padding: 3px 8px;
+            border-radius: var(--aaas-radius-sm, 4px);
+            cursor: pointer;
+        }
+
+        .text :deep(.md-copy-btn:hover) {
+            background: var(--aaas-bg-active, rgba(0,0,0,0.18));
+            color: var(--aaas-text-main, #e2e8f0);
+        }
+
+        .text :deep(.md-codeblock-wrap .md-pre) {
+            margin: 0;
+            border: 0;
+            border-radius: 0;
         }
 
         .text :deep(.md-codeblock) {
@@ -381,10 +429,27 @@ export class SaasMessage extends LitElement {
     protected willUpdate(changed: PropertyValues) {
         if (changed.has('text') || changed.has('messageRole')) {
             // User bubbles stay plain text — no markdown surface for user input.
+            // Assistant bubbles render through the onCodeBlock hook so every
+            // fenced block gets a language chip and a working copy button.
             this._renderedHtml = this.messageRole === 'user'
                 ? ''
-                : renderMarkdown(this.text);
+                : renderMarkdown(this.text, { onCodeBlock: renderCodeBlock });
         }
+    }
+
+    private _unbindCodeCopy: (() => void) | null = null;
+
+    override connectedCallback() {
+        super.connectedCallback();
+        // Delegated copy: markdown HTML is injected via unsafeHTML, so the
+        // button cannot carry a Lit listener. Bind one handler on the host.
+        this._unbindCodeCopy = bindCodeCopy(this);
+    }
+
+    override disconnectedCallback() {
+        this._unbindCodeCopy?.();
+        this._unbindCodeCopy = null;
+        super.disconnectedCallback();
     }
 
     private async _copy() {

@@ -1,6 +1,6 @@
 /**
  * SomaAgent01 — Composer "+" Menu
- * Attachments (composerStore), Memory, Skills, Clear, Export
+ * Attachments (composerStore), Memory Context, Clear, Export
  */
 
 import { LitElement, html, css, nothing } from 'lit';
@@ -149,10 +149,14 @@ export class SaasComposerMenu extends LitElement {
                     <span class="material-symbols-outlined icon">psychology</span>
                     <span>Memory Context</span>
                 </button>
-                <button type="button" class="menu-item" role="menuitem" @click=${() => this._navigate('/settings')}>
-                    <span class="material-symbols-outlined icon">interests</span>
-                    <span>Skills</span>
-                </button>
+                <!--
+                    Skills was a misroute: it sent people to /settings, which is
+                    not a skills surface. There is no skills registry API in this
+                    deployment (no /skills router in admin/api.py) and no screen
+                    in SOMA-01-UIUX-001, so a picker here would be fabricated.
+                    composerStore.activeSkills has no server-backed catalog to
+                    read, so the entry is removed rather than shipped as a lie.
+                -->
                 <div class="menu-divider"></div>
                 <button type="button" class="menu-item" role="menuitem" @click=${this._clearChat}>
                     <span class="material-symbols-outlined icon">delete_sweep</span>

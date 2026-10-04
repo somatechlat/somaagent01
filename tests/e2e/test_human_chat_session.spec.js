@@ -147,4 +147,127 @@ test.describe('A person uses the agent', () => {
 
     expect(logoutResp, 'logout must call POST /auth/logout, not just clear storage').not.toBeNull();
   });
+
+  test('the settings panel tells the truth about what this role may edit', async ({ page }) => {
+    await page.goto(`${UI}/login`);
+    await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
+    await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
+    await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
+    await expect(page.locator('saas-chat, saas-chat-workspace').first()).toBeVisible({
+      timeout: 30000,
+    });
+
+    // The server is the authority on what this principal may do. Settings must
+    // agree with it — never with a role name hardcoded in the client.
+    const me = await page.evaluate(async () => {
+      const r = await fetch('/api/v2/auth/me', { credentials: 'include' });
+      return r.ok ? r.json() : null;
+    });
+    expect(me, 'GET /api/v2/auth/me must answer for a signed-in user').not.toBeNull();
+    const perms = Array.isArray(me.permissions) ? me.permissions : [];
+    // settings:write / settings:edit alias to system:configure in the catalog
+    // (admin/core/authz.py ACTION_ALIASES).
+    const mayEdit =
+      perms.includes('system:configure') ||
+      perms.includes('settings:write') ||
+      perms.includes('settings:edit');
+    const role = me.role || (Array.isArray(me.roles) ? me.roles.join(',') : 'unknown');
+
+    await page.goto(`${UI}/settings`);
+    const host = page.locator('saas-settings').first();
+    await expect(host).toBeVisible({ timeout: 20000 });
+
+    // 1. The screen must expose its editability, and it must match the server.
+    await expect(host).toHaveAttribute(
+      'data-can-edit',
+      mayEdit ? 'true' : 'false',
+      { timeout: 10000 }
+    );
+
+    // 2. Walk every settings tab and check every control this role touches.
+    //    Editable       -> live (unless a real precondition is unmet, and then
+    //                      the title states that precondition).
+    //    Not editable   -> disabled AND carrying a visible blocking reason.
+    //    Dead-with-no-reason is the failure this test exists to catch.
+    const tabs = ['Agent', 'External', 'Connectivity', 'System'];
+    const seenControls = new Set();
+
+    for (const label of tabs) {
+      await page.locator('saas-settings .tab-item', { hasText: label }).first().click();
+
+      const controls = host.locator('[data-control]');
+      const count = await controls.count();
+
+      // A tab must render real content — an empty tab is an omission.
+      const tabText = (await host.locator('main').first().innerText()) || '';
+      expect(tabText.trim().length, `settings tab "${label}" must render content`).toBeGreaterThan(0);
+
+      for (let i = 0; i < count; i++) {
+        const ctl = controls.nth(i);
+        const name = (await ctl.getAttribute('data-control')) || `#${i}`;
+        const isDisabled = await ctl.isDisabled();
+        const title = ((await ctl.getAttribute('title')) || '').trim();
+        seenControls.add(name);
+
+        if (mayEdit) {
+          // Admin path. The controls this role owns must actually be live.
+          // Save is the one honest exception: it sits disabled until something
+          // is dirty. A disabled control still owes the user its reason.
+          const owned = [
+            'feature-flag-memory',
+            'feature-flag-tools',
+            'feature-flag-voice',
+            'feature-flag-mcp',
+            'secret-input',
+          ];
+          if (owned.includes(name)) {
+            expect(
+              isDisabled,
+              `role ${role} may edit, so "${name}" must be enabled`
+            ).toBe(false);
+          } else if (isDisabled) {
+            expect(
+              title.length,
+              `role ${role} may edit, so a disabled "${name}" must state why`
+            ).toBeGreaterThan(0);
+          }
+        } else {
+          // Read-only role: every control must be off and must say why.
+          expect(
+            isDisabled,
+            `role ${role} may not edit settings, so "${name}" must be disabled`
+          ).toBe(true);
+          expect(
+            title.length,
+            `role ${role}: disabled "${name}" must carry a blocking reason in title`
+          ).toBeGreaterThan(0);
+          expect(
+            title.toLowerCase(),
+            `"${name}" must not use the banned placeholder phrase`
+          ).not.toContain('coming soon');
+        }
+      }
+
+      // When the role cannot edit, the tab must also print a visible reason —
+      // not just silently grey things out.
+      if (!mayEdit && count > 0) {
+        const reason = host.locator('.disabled-reason').first();
+        await expect(reason, `tab "${label}" must print a blocking reason`).toBeVisible();
+        const reasonText = ((await reason.textContent()) || '').trim();
+        expect(reasonText.length).toBeGreaterThan(0);
+        expect(reasonText.toLowerCase()).not.toContain('coming soon');
+      }
+    }
+
+    // 3. Honesty: the settings screen must never invent key material or models.
+    const bodyText = (await host.innerText()) || '';
+    for (const lie of ['sk-****', 'sk-ant-****', 'localhost:9696', 'gpt-4-turbo', 'claude-3-haiku']) {
+      expect(bodyText, `settings must not fabricate "${lie}"`).not.toContain(lie);
+    }
+
+    // 4. The walk must actually have seen controls, otherwise this would pass
+    //    on an empty page.
+    expect(seenControls.size, 'settings must expose data-control hooks').toBeGreaterThan(0);
+    expect(seenControls.has('save'), 'the save control must be wired').toBe(true);
+  });
 });

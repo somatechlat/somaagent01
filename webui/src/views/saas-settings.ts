@@ -7,12 +7,17 @@
  * - Django Ninja API integration
  * - Minimal white/black design per UI_STYLE_GUIDE.md
  * - NO EMOJIS - Google Material Symbols only
- * 
+ *
+ * Every control on this screen is either wired to a real API or is absent.
+ * A disabled control carries its blocking reason in a title attribute and in
+ * a visible inline element (SOMA-01-UIUX-001.md §2.3). Secrets are write-only:
+ * this screen never renders a key value or fragment.
+ *
  * Settings Tabs:
- * - Agent: Chat/Utility/Browser/Embedding Model settings, Memory/SomaBrain
- * - External: API Keys, MCP Client/Server, A2A
- * - Connectivity: Voice/Speech, Proxy, SSE
- * - System: Feature Flags, Auth, Backup, Secrets
+ * - Agent: Models hub (→ /settings/models)
+ * - External: Vault-backed provider keys, MCP client flag
+ * - Connectivity: Voice feature flag
+ * - System: Feature flags, config export
  */
 
 import { LitElement, html, css } from 'lit';
@@ -20,13 +25,6 @@ import { customElement, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
 
 type SettingsTab = 'agent' | 'external' | 'connectivity' | 'system';
-
-interface ModelConfig {
-    provider: string;
-    model: string;
-    contextWindow: number;
-    maxTokens: number;
-}
 
 interface BackendFlag {
     key: string;
@@ -46,6 +44,30 @@ interface BackendFlagsResponse {
     total: number;
 }
 
+interface AuthMe {
+    id: string;
+    tenant_id?: string;
+    username?: string;
+    email?: string;
+    name?: string;
+    role?: string;
+    roles?: string[];
+    permissions?: string[];
+}
+
+/** Write-only Vault key status. Never carries key material. */
+interface SecretProviderStatus {
+    provider: string;
+    configured: boolean;
+}
+
+interface SecretKeyWriteResult {
+    provider: string;
+    configured: boolean;
+    saved: boolean;
+    detail: string;
+}
+
 /** Frontend toggle name → backend flag name (/api/v2/config/flags). */
 const FEATURE_FLAG_KEYS = {
     voiceEnabled: 'voice',
@@ -53,6 +75,21 @@ const FEATURE_FLAG_KEYS = {
     toolsEnabled: 'tools',
     mcpEnabled: 'mcp',
 } as const;
+
+/**
+ * Legacy action names that the catalog maps onto a catalog permission.
+ * Mirrors ACTION_ALIASES in admin/core/authz.py — a translation table, not a
+ * second vocabulary. An action grants exactly what its target grants.
+ */
+const ACTION_ALIASES: Record<string, string> = {
+    'settings:read': 'system:view',
+    'settings:write': 'system:configure',
+    'settings:edit': 'system:configure',
+};
+
+/** Blocking reason shown whenever a control is disabled for lack of permission. */
+const DISABLED_REASON =
+    'Requires system:configure. Your role cannot change platform settings.';
 
 @customElement('saas-settings')
 export class SaasSettings extends LitElement {
@@ -191,11 +228,32 @@ export class SaasSettings extends LitElement {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 16px;
         }
 
         .header-title {
             font-size: 18px;
             font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .save-status {
+            font-size: 12px;
+            max-width: 360px;
+            text-align: right;
+        }
+
+        .save-status.ok {
+            color: #047857;
+        }
+
+        .save-status.error {
+            color: #b91c1c;
         }
 
         .save-btn {
@@ -304,19 +362,6 @@ export class SaasSettings extends LitElement {
             margin-top: 6px;
         }
 
-        /* Grid for model settings */
-        .settings-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-        }
-
-        @media (max-width: 800px) {
-            .settings-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
         /* Toggle Switch */
         .toggle-row {
             display: flex;
@@ -384,6 +429,11 @@ export class SaasSettings extends LitElement {
             transform: translateX(20px);
         }
 
+        .toggle-switch input:disabled + .toggle-slider {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
         /* API Key Row */
         .api-key-row {
             display: flex;
@@ -443,6 +493,55 @@ export class SaasSettings extends LitElement {
             border-color: var(--saas-border-medium, #ccc);
         }
 
+        .api-key-action:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Provider key write rows */
+        .provider-key-row {
+            display: grid;
+            grid-template-columns: 180px 1fr auto auto;
+            gap: 12px;
+            align-items: end;
+            padding: 12px;
+            background: var(--saas-bg-hover, #fafafa);
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .provider-key-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .provider-key-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding-bottom: 8px;
+        }
+
+        .provider-key-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .provider-key-state {
+            font-size: 12px;
+            color: var(--saas-text-secondary, #666);
+        }
+
+        .provider-key-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        @media (max-width: 900px) {
+            .provider-key-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
         /* Add button */
         .add-btn {
             display: flex;
@@ -465,29 +564,39 @@ export class SaasSettings extends LitElement {
             color: var(--saas-text-primary, #1a1a1a);
         }
 
-        /* Danger zone */
-        .danger-zone {
-            border-color: var(--saas-status-danger, #ef4444);
+        /* Permission blocking reason (SOMA-01-UIUX-001.md §2.3) */
+        .disabled-reason {
+            font-size: 12px;
+            color: var(--saas-status-danger, #b91c1c);
+            margin: 12px 0 0 0;
         }
 
-        .danger-zone .section-title {
-            color: var(--saas-status-danger, #ef4444);
-        }
-
-        .danger-btn {
-            padding: 10px 20px;
+        /* Flash message (same pattern as saas-settings-models.ts) */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+            padding: 12px 18px;
             border-radius: 8px;
-            background: var(--saas-status-danger, #ef4444);
-            color: white;
-            border: none;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.1s ease;
+            font-size: 13px;
+            background: #1a1a1a;
+            color: #fff;
+            max-width: 420px;
         }
 
-        .danger-btn:hover {
-            background: #dc2626;
+        .toast.error {
+            background: #b91c1c;
+        }
+
+        .toast.ok {
+            background: #047857;
+        }
+
+        .honest-note {
+            font-size: 13px;
+            color: var(--saas-text-secondary, #666);
+            margin: 16px 0 0 0;
         }
     `;
 
@@ -495,22 +604,12 @@ export class SaasSettings extends LitElement {
     @state() private _isDirty = false;
     @state() private _isSaving = false;
 
-    // Agent settings state
-    @state() private _chatModel: ModelConfig = {
-        provider: 'openai',
-        model: 'gpt-4-turbo',
-        contextWindow: 128000,
-        maxTokens: 4096,
-    };
+    /** Identity from GET /api/v2/auth/me. */
+    @state() private _role = '';
+    @state() private _roles: string[] = [];
+    @state() private _permissions: string[] = [];
 
-    @state() private _utilityModel: ModelConfig = {
-        provider: 'anthropic',
-        model: 'claude-3-haiku',
-        contextWindow: 200000,
-        maxTokens: 2048,
-    };
-
-    // Feature flags state
+    // Feature flags state (mirrors /api/v2/config/flags; upserted on save)
     @state() private _featureFlags: FeatureFlags = {
         voiceEnabled: true,
         memoryEnabled: true,
@@ -518,12 +617,39 @@ export class SaasSettings extends LitElement {
         mcpEnabled: false,
     };
 
+    /** Vault-backed provider key status. Write-only: never holds key material. */
+    @state() private _secretProviders: SecretProviderStatus[] = [];
+    @state() private _secretDrafts: Record<string, string> = {};
+    @state() private _secretsLoaded = false;
+
+    @state() private _message: { kind: 'ok' | 'error'; text: string } | null = null;
+    @state() private _saveStatus: { kind: 'ok' | 'error'; text: string } | null = null;
+
     private _tabs: { id: SettingsTab; label: string; icon: string }[] = [
         { id: 'agent', label: 'Agent', icon: 'smart_toy' },
         { id: 'external', label: 'External', icon: 'key' },
         { id: 'connectivity', label: 'Connectivity', icon: 'cable' },
         { id: 'system', label: 'System', icon: 'settings' },
     ];
+
+    /**
+     * True iff the caller holds system:configure.
+     *
+     * Read from the returned permission list, never guessed from the role name.
+     * Legacy action names are resolved through the catalog translation table
+     * (admin/core/authz.py ACTION_ALIASES) so an old grant means exactly what
+     * its catalog target means, nothing more.
+     */
+    private get _canEditSettings(): boolean {
+        return this._permissions.some((p) => {
+            const resolved = ACTION_ALIASES[p] ?? p;
+            return resolved === 'system:configure';
+        });
+    }
+
+    override willUpdate() {
+        this.setAttribute('data-can-edit', this._canEditSettings ? 'true' : 'false');
+    }
 
     render() {
         return html`
@@ -536,7 +662,7 @@ export class SaasSettings extends LitElement {
 
                 <div class="tab-list">
                     ${this._tabs.map(tab => html`
-                        <button 
+                        <button
                             class="tab-item ${this._activeTab === tab.id ? 'active' : ''}"
                             @click=${() => this._setTab(tab.id)}
                         >
@@ -552,24 +678,49 @@ export class SaasSettings extends LitElement {
             </aside>
 
             <!-- Main Content -->
-            <main class="main">
+            <main class="main" data-can-edit=${this._canEditSettings ? 'true' : 'false'}>
                 <header class="header">
                     <h2 class="header-title">${this._getTabTitle()}</h2>
-                    <button 
-                        class="save-btn" 
-                        ?disabled=${!this._isDirty || this._isSaving}
-                        @click=${this._saveSettings}
-                    >
-                        <span class="material-symbols-outlined">save</span>
-                        ${this._isSaving ? 'Saving...' : 'Save Changes'}
-                    </button>
+                    <div class="header-actions">
+                        ${this._saveStatus
+                            ? html`<div class="save-status ${this._saveStatus.kind}" role="status">${this._saveStatus.text}</div>`
+                            : null}
+                        ${!this._canEditSettings
+                            ? html`<div class="disabled-reason" style="margin: 0; max-width: 280px; text-align: right;" role="status">${DISABLED_REASON}</div>`
+                            : null}
+                        <button
+                            class="save-btn"
+                            data-control="save"
+                            title=${!this._canEditSettings
+                                ? DISABLED_REASON
+                                : this._isSaving
+                                    ? 'Saving…'
+                                    : this._isDirty
+                                        ? 'Save Changes'
+                                        : 'No unsaved changes'}
+                            ?disabled=${!this._canEditSettings || !this._isDirty || this._isSaving}
+                            @click=${this._saveSettings}
+                        >
+                            <span class="material-symbols-outlined">save</span>
+                            ${this._isSaving ? 'Saving...' : 'Save Changes'}
+                        </button>
+                    </div>
                 </header>
 
                 <div class="content">
                     ${this._renderTabContent()}
                 </div>
             </main>
+
+            ${this._message
+                ? html`<div class="toast ${this._message.kind}" role="status">${this._message.text}</div>`
+                : null}
         `;
+    }
+
+    private _renderDisabledReason() {
+        if (this._canEditSettings) return null;
+        return html`<p class="disabled-reason">${DISABLED_REASON}</p>`;
     }
 
     private _renderTabContent() {
@@ -587,7 +738,7 @@ export class SaasSettings extends LitElement {
 
     private _renderAgentTab() {
         return html`
-            <!-- Models hub card → full Models settings screen (C5 / MD-01…MD-06) -->
+            <!-- Models hub card → full Models settings screen (real route) -->
             <div class="section" style="cursor: pointer;" @click=${() => this._openModels()}>
                 <h3 class="section-title">
                     <span class="material-symbols-outlined">smart_toy</span>
@@ -610,30 +761,14 @@ export class SaasSettings extends LitElement {
                     <span class="api-key-name">Keys</span>
                     <span class="api-key-value">Vault-backed, write-only (never echoed)</span>
                 </div>
-                <button class="add-btn" style="margin-top: 16px;" @click=${(e: Event) => { e.stopPropagation(); this._openModels(); }}>
+                <button
+                    class="add-btn"
+                    style="margin-top: 16px;"
+                    @click=${(e: Event) => { e.stopPropagation(); this._openModels(); }}
+                >
                     <span class="material-symbols-outlined">settings_suggest</span>
                     Open Models Settings
                 </button>
-            </div>
-
-            <!-- Memory Settings -->
-            <div class="section">
-                <h3 class="section-title">
-                    <span class="material-symbols-outlined">psychology</span>
-                    Memory / SomaBrain
-                </h3>
-                <p class="section-desc">Configure agent memory and knowledge base.</p>
-
-                <div class="settings-grid">
-                    <div class="form-group">
-                        <label class="form-label">SomaBrain URL</label>
-                        <input type="text" class="form-input" value="http://localhost:9696" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Collection</label>
-                        <input type="text" class="form-input" value="default">
-                    </div>
-                </div>
             </div>
         `;
     }
@@ -644,37 +779,79 @@ export class SaasSettings extends LitElement {
 
     private _renderExternalTab() {
         return html`
-            <!-- API Keys -->
+            <!-- Provider API keys — real Vault status, write-only -->
             <div class="section">
                 <h3 class="section-title">
                     <span class="material-symbols-outlined">vpn_key</span>
                     API Keys
                 </h3>
-                <p class="section-desc">Manage external service credentials.</p>
-                
-                <div class="api-key-row">
-                    <span class="api-key-name">OpenAI</span>
-                    <span class="api-key-value">sk-****...****aBcD</span>
-                    <span class="api-key-status active">Active</span>
-                    <button class="api-key-action">Edit</button>
-                </div>
-                <div class="api-key-row">
-                    <span class="api-key-name">Anthropic</span>
-                    <span class="api-key-value">sk-ant-****...****xYz</span>
-                    <span class="api-key-status active">Active</span>
-                    <button class="api-key-action">Edit</button>
-                </div>
-                <div class="api-key-row">
-                    <span class="api-key-name">Serper (Search)</span>
-                    <span class="api-key-value">—</span>
-                    <span class="api-key-status missing">Missing</span>
-                    <button class="api-key-action">Add</button>
-                </div>
+                <p class="section-desc">
+                    API keys are stored in Vault and never read back. Rotate in Vault.
+                </p>
 
-                <button class="add-btn">
-                    <span class="material-symbols-outlined">add</span>
-                    Add API Key
-                </button>
+                ${this._secretProviders.length === 0
+                    ? html`<p class="honest-note">No secret providers are registered with this deployment.</p>`
+                    : this._secretProviders.map(p => {
+                        const draft = this._secretDrafts[p.provider] ?? '';
+                        return html`
+                            <div class="provider-key-row">
+                                <div class="provider-key-meta">
+                                    <span class="provider-key-name">${p.provider}</span>
+                                    <span class="provider-key-state">
+                                        ${p.configured
+                                            ? 'Stored in Vault (write-only, never echoed)'
+                                            : 'Not configured'}
+                                    </span>
+                                </div>
+                                <div>
+                                    <label class="form-label" for=${'secret-' + p.provider}>API key (write-only)</label>
+                                    <input
+                                        id=${'secret-' + p.provider}
+                                        class="form-input"
+                                        type="password"
+                                        autocomplete="new-password"
+                                        data-control="secret-input"
+                                        placeholder=${p.configured
+                                            ? 'Stored in Vault. Enter a new value only to rotate.'
+                                            : 'Paste API key'}
+                                        .value=${draft}
+                                        title=${this._canEditSettings
+                                            ? 'Write-only. The value is never echoed back.'
+                                            : DISABLED_REASON}
+                                        ?disabled=${!this._canEditSettings}
+                                        @input=${(e: Event) => {
+                                            const v = (e.target as HTMLInputElement).value;
+                                            this._secretDrafts = { ...this._secretDrafts, [p.provider]: v };
+                                        }}
+                                    />
+                                </div>
+                                <div class="provider-key-actions">
+                                    <button
+                                        class="api-key-action"
+                                        data-control="secret-save"
+                                        title=${!this._canEditSettings
+                                            ? DISABLED_REASON
+                                            : draft.trim()
+                                                ? 'Save key to Vault'
+                                                : 'Enter an API key first'}
+                                        ?disabled=${!this._canEditSettings || !draft.trim()}
+                                        @click=${() => this._saveSecretKey(p.provider)}
+                                    >Save key</button>
+                                    <button
+                                        class="api-key-action"
+                                        data-control="secret-delete"
+                                        title=${this._canEditSettings
+                                            ? (p.configured ? 'Delete key from Vault' : 'No key is stored for this provider')
+                                            : DISABLED_REASON}
+                                        ?disabled=${!this._canEditSettings || !p.configured}
+                                        @click=${() => this._deleteSecretKey(p.provider)}
+                                    >Delete key</button>
+                                </div>
+                            </div>
+                        `;
+                    })}
+
+                ${this._renderDisabledReason()}
             </div>
 
             <!-- MCP Configuration -->
@@ -691,15 +868,34 @@ export class SaasSettings extends LitElement {
                         <div class="toggle-desc">Connect to external MCP servers</div>
                     </div>
                     <label class="toggle-switch">
-                        <input type="checkbox" .checked=${this._featureFlags.mcpEnabled}
+                        <input
+                            type="checkbox"
+                            data-control="feature-flag-mcp"
+                            .checked=${this._featureFlags.mcpEnabled}
+                            title=${this._canEditSettings ? 'MCP Client' : DISABLED_REASON}
+                            ?disabled=${!this._canEditSettings}
                             @change=${() => this._toggleFlag('mcpEnabled')}>
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
 
-                <button class="add-btn" style="margin-top: 16px;">
-                    <span class="material-symbols-outlined">add</span>
-                    Add MCP Server
+                ${this._renderDisabledReason()}
+
+                <p class="honest-note">No MCP server registry is exposed by this deployment.</p>
+            </div>
+
+            <!-- The real full surface for providers, keys and slots -->
+            <div class="section">
+                <h3 class="section-title">
+                    <span class="material-symbols-outlined">settings_suggest</span>
+                    Providers
+                </h3>
+                <p class="section-desc">
+                    Models, provider keys, slots and presets are managed on the Models settings screen.
+                </p>
+                <button class="add-btn" @click=${() => this._openModels()}>
+                    <span class="material-symbols-outlined">open_in_new</span>
+                    Manage providers, keys and slots
                 </button>
             </div>
         `;
@@ -721,48 +917,18 @@ export class SaasSettings extends LitElement {
                         <div class="toggle-desc">Enable voice input and output</div>
                     </div>
                     <label class="toggle-switch">
-                        <input type="checkbox" .checked=${this._featureFlags.voiceEnabled}
+                        <input
+                            type="checkbox"
+                            data-control="feature-flag-voice"
+                            .checked=${this._featureFlags.voiceEnabled}
+                            title=${this._canEditSettings ? 'Voice Features' : DISABLED_REASON}
+                            ?disabled=${!this._canEditSettings}
                             @change=${() => this._toggleFlag('voiceEnabled')}>
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
 
-                <div class="settings-grid" style="margin-top: 20px;">
-                    <div class="form-group">
-                        <label class="form-label">STT Provider</label>
-                        <select class="form-select">
-                            <option value="whisper">Whisper (Local)</option>
-                            <option value="deepgram">Deepgram</option>
-                            <option value="google">Google Speech</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">TTS Provider</label>
-                        <select class="form-select">
-                            <option value="kokoro">Kokoro (Local)</option>
-                            <option value="elevenlabs">ElevenLabs</option>
-                            <option value="openai">OpenAI TTS</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Proxy Settings -->
-            <div class="section">
-                <h3 class="section-title">
-                    <span class="material-symbols-outlined">router</span>
-                    Proxy / Network
-                </h3>
-                <p class="section-desc">Network and proxy configuration.</p>
-
-                <div class="form-group">
-                    <label class="form-label">HTTP Proxy</label>
-                    <input type="text" class="form-input" placeholder="http://proxy.example.com:8080">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">HTTPS Proxy</label>
-                    <input type="text" class="form-input" placeholder="https://proxy.example.com:8080">
-                </div>
+                ${this._renderDisabledReason()}
             </div>
         `;
     }
@@ -783,7 +949,12 @@ export class SaasSettings extends LitElement {
                         <div class="toggle-desc">Enable SomaBrain memory integration</div>
                     </div>
                     <label class="toggle-switch">
-                        <input type="checkbox" .checked=${this._featureFlags.memoryEnabled}
+                        <input
+                            type="checkbox"
+                            data-control="feature-flag-memory"
+                            .checked=${this._featureFlags.memoryEnabled}
+                            title=${this._canEditSettings ? 'Memory' : DISABLED_REASON}
+                            ?disabled=${!this._canEditSettings}
                             @change=${() => this._toggleFlag('memoryEnabled')}>
                         <span class="toggle-slider"></span>
                     </label>
@@ -795,7 +966,12 @@ export class SaasSettings extends LitElement {
                         <div class="toggle-desc">Enable tool execution</div>
                     </div>
                     <label class="toggle-switch">
-                        <input type="checkbox" .checked=${this._featureFlags.toolsEnabled}
+                        <input
+                            type="checkbox"
+                            data-control="feature-flag-tools"
+                            .checked=${this._featureFlags.toolsEnabled}
+                            title=${this._canEditSettings ? 'Tools' : DISABLED_REASON}
+                            ?disabled=${!this._canEditSettings}
                             @change=${() => this._toggleFlag('toolsEnabled')}>
                         <span class="toggle-slider"></span>
                     </label>
@@ -807,44 +983,38 @@ export class SaasSettings extends LitElement {
                         <div class="toggle-desc">Enable voice interaction</div>
                     </div>
                     <label class="toggle-switch">
-                        <input type="checkbox" .checked=${this._featureFlags.voiceEnabled}
+                        <input
+                            type="checkbox"
+                            data-control="feature-flag-voice"
+                            .checked=${this._featureFlags.voiceEnabled}
+                            title=${this._canEditSettings ? 'Voice' : DISABLED_REASON}
+                            ?disabled=${!this._canEditSettings}
                             @change=${() => this._toggleFlag('voiceEnabled')}>
                         <span class="toggle-slider"></span>
                     </label>
                 </div>
+
+                ${this._renderDisabledReason()}
             </div>
 
-            <!-- Backup & Restore -->
+            <!-- Export -->
             <div class="section">
                 <h3 class="section-title">
                     <span class="material-symbols-outlined">backup</span>
-                    Backup & Restore
+                    Backup
                 </h3>
-                <p class="section-desc">Export and import agent configuration.</p>
+                <p class="section-desc">
+                    Export the feature flags loaded from the server and provider key status
+                    (configured booleans only — never key material).
+                </p>
 
-                <div style="display: flex; gap: 12px;">
-                    <button class="api-key-action" @click=${this._exportConfig}>
-                        <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle; margin-right: 4px;">download</span>
-                        Export Config
-                    </button>
-                    <button class="api-key-action">
-                        <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle; margin-right: 4px;">upload</span>
-                        Import Config
-                    </button>
-                </div>
-            </div>
-
-            <!-- Danger Zone -->
-            <div class="section danger-zone">
-                <h3 class="section-title">
-                    <span class="material-symbols-outlined">warning</span>
-                    Danger Zone
-                </h3>
-                <p class="section-desc">Irreversible actions. Proceed with caution.</p>
-
-                <button class="danger-btn">
-                    <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; margin-right: 6px;">delete_forever</span>
-                    Reset All Settings
+                <button
+                    class="api-key-action"
+                    data-control="export-config"
+                    @click=${this._exportConfig}
+                >
+                    <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle; margin-right: 4px;">download</span>
+                    Export Config
                 </button>
             </div>
         `;
@@ -860,7 +1030,27 @@ export class SaasSettings extends LitElement {
     }
 
     override async firstUpdated() {
-        await this._loadFeatureFlags();
+        await Promise.all([
+            this._loadIdentity(),
+            this._loadFeatureFlags(),
+            this._loadSecretProviders(),
+        ]);
+    }
+
+    /** Resolve the caller's real permissions from GET /api/v2/auth/me. */
+    private async _loadIdentity() {
+        try {
+            const me = await apiClient.get<AuthMe>('/auth/me');
+            this._role = me.role ?? '';
+            this._roles = me.roles ?? [];
+            this._permissions = me.permissions ?? [];
+        } catch (error) {
+            // Fail closed: without a permission list nothing is editable.
+            this._role = '';
+            this._roles = [];
+            this._permissions = [];
+            this._flash('error', `Failed to load your permissions: ${error instanceof Error ? error.message : error}`);
+        }
     }
 
     /** Load persisted feature flags so the toggles show real state. */
@@ -875,35 +1065,54 @@ export class SaasSettings extends LitElement {
                 mcpEnabled: byKey.get(FEATURE_FLAG_KEYS.mcpEnabled) ?? this._featureFlags.mcpEnabled,
             };
         } catch (error) {
-            console.error('Failed to load feature flags:', error);
+            this._flash('error', `Failed to load feature flags: ${error instanceof Error ? error.message : error}`);
         }
     }
 
-    private _updateChatModel(field: keyof ModelConfig, value: string | number) {
-        this._chatModel = { ...this._chatModel, [field]: value };
-        this._isDirty = true;
+    /**
+     * Load write-only Vault key status. The API returns provider + configured
+     * only — never a key value or fragment.
+     */
+    private async _loadSecretProviders() {
+        try {
+            const rows = await apiClient.get<SecretProviderStatus[]>('/secrets/providers');
+            this._secretProviders = rows ?? [];
+            this._secretsLoaded = true;
+        } catch (error) {
+            this._secretProviders = [];
+            this._secretsLoaded = false;
+            this._flash('error', `Failed to load secret providers: ${error instanceof Error ? error.message : error}`);
+        }
     }
 
-    private _updateUtilityModel(field: keyof ModelConfig, value: string | number) {
-        this._utilityModel = { ...this._utilityModel, [field]: value };
-        this._isDirty = true;
+    private _flash(kind: 'ok' | 'error', text: string) {
+        this._message = { kind, text };
+        window.setTimeout(() => {
+            if (this._message?.text === text) this._message = null;
+        }, 5000);
     }
 
     private _toggleFlag(flag: keyof typeof this._featureFlags) {
+        if (!this._canEditSettings) return;
         this._featureFlags = {
             ...this._featureFlags,
             [flag]: !this._featureFlags[flag]
         };
         this._isDirty = true;
+        this._saveStatus = null;
     }
 
     private async _saveSettings() {
+        if (!this._canEditSettings) return;
         this._isSaving = true;
+        this._saveStatus = null;
         try {
             await this._saveFeatureFlags();
             this._isDirty = false;
+            this._saveStatus = { kind: 'ok', text: 'Settings saved.' };
         } catch (error) {
-            console.error('Failed to save settings:', error);
+            const text = error instanceof Error ? error.message : String(error);
+            this._saveStatus = { kind: 'error', text: `Failed to save settings: ${text}` };
         } finally {
             this._isSaving = false;
         }
@@ -935,13 +1144,67 @@ export class SaasSettings extends LitElement {
         await Promise.all(jobs);
     }
 
+    /** Write-only key save. The draft is cleared after a successful write. */
+    private async _saveSecretKey(provider: string) {
+        if (!this._canEditSettings) return;
+        const draft = (this._secretDrafts[provider] ?? '').trim();
+        if (!draft) {
+            this._flash('error', 'API key is required (write-only — it will not be shown again)');
+            return;
+        }
+        try {
+            const res = await apiClient.put<SecretKeyWriteResult>(
+                `/secrets/providers/${provider}`,
+                { api_key: draft }
+            );
+            if (!res.saved) {
+                this._flash('error', `Key not saved for ${provider}: ${res.detail}`);
+                return;
+            }
+            this._secretDrafts = { ...this._secretDrafts, [provider]: '' };
+            this._flash('ok', res.detail
+                ? `Key for ${provider} saved (${res.detail}). Stored in Vault, never echoed.`
+                : `Key for ${provider} saved. Stored in Vault, never echoed.`);
+            await this._loadSecretProviders();
+        } catch (error) {
+            this._flash('error', `Save key failed: ${error instanceof Error ? error.message : error}`);
+        }
+    }
+
+    private async _deleteSecretKey(provider: string) {
+        if (!this._canEditSettings) return;
+        try {
+            const res = await apiClient.delete<SecretKeyWriteResult>(`/secrets/providers/${provider}`);
+            this._flash('ok', res.detail
+                ? `Key for ${provider} removed from Vault (${res.detail}).`
+                : `Key for ${provider} removed from Vault.`);
+            await this._loadSecretProviders();
+        } catch (error) {
+            this._flash('error', `Delete key failed: ${error instanceof Error ? error.message : error}`);
+        }
+    }
+
+    /**
+     * Export only real state: feature flags as loaded from the server, plus the
+     * configured booleans for secret providers when those were loaded. Never a
+     * key value, never a key fragment, never a fabricated model id.
+     */
     private _exportConfig() {
-        const config = {
-            chatModel: this._chatModel,
-            utilityModel: this._utilityModel,
-            featureFlags: this._featureFlags,
+        const config: Record<string, unknown> = {
+            featureFlags: {
+                [FEATURE_FLAG_KEYS.voiceEnabled]: this._featureFlags.voiceEnabled,
+                [FEATURE_FLAG_KEYS.memoryEnabled]: this._featureFlags.memoryEnabled,
+                [FEATURE_FLAG_KEYS.toolsEnabled]: this._featureFlags.toolsEnabled,
+                [FEATURE_FLAG_KEYS.mcpEnabled]: this._featureFlags.mcpEnabled,
+            },
             exportedAt: new Date().toISOString(),
         };
+        if (this._secretsLoaded) {
+            config.secretProviders = this._secretProviders.map(p => ({
+                provider: p.provider,
+                configured: p.configured,
+            }));
+        }
         const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
