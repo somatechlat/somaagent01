@@ -24,15 +24,17 @@ AGENT_DIR="$ROOT/somaAgent01/infra/standalone"
 BRAIN_DIR="$ROOT/somabrain/infra/standalone"
 SFM_DIR="$ROOT/somafractalmemory/infra/standalone"
 
-# Service DNS names on soma-stack-net (set by each stack's container_name)
-BRAIN_URL="http://somabrain_standalone_app:30101"
-SFM_URL="http://somafractalmemory-standalone-api:10101"
+# Service DNS names on soma-stack-net. The brain is addressed by its RFC 1035
+# alias `somabrain` (an underscore name is rejected by Django host_validation_re
+# as HTTP_HOST before any route runs). REQUIRED — a default is a hardcoded value.
+BRAIN_URL="${SOMABRAIN_URL:?set SOMABRAIN_URL to the brain service URL on soma-stack-net}"
+SFM_URL="${SOMAFRACTALMEMORY_URL:?set SOMAFRACTALMEMORY_URL to the SFM service URL on soma-stack-net}"
 
-# Host ports published by each stack (agent 20xxx, brain 30xxx, sfm 10xxx)
-UI_URL="http://localhost:20080"
-API_URL="http://localhost:20020"
-BRAIN_HOST_URL="http://localhost:30101"
-SFM_HOST_URL="http://localhost:10101"
+# Host-bound probe URLs (operator status only). REQUIRED — no localhost default.
+UI_URL="${SA01_WEBUI_HOST_URL:?set SA01_WEBUI_HOST_URL}"
+API_URL="${SA01_API_HOST_URL:?set SA01_API_HOST_URL}"
+BRAIN_HOST_URL="${SOMABRAIN_HOST_URL:?set SOMABRAIN_HOST_URL}"
+SFM_HOST_URL="${SOMAFRACTALMEMORY_HOST_URL:?set SOMAFRACTALMEMORY_HOST_URL}"
 
 log()  { printf '\033[1;36m▸ %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m✓ %s\033[0m\n' "$*"; }
@@ -44,37 +46,12 @@ require_env_file() {
   [[ -f "$f" ]] || die "$service needs $f (copy the .env.example and fill it in)"
 }
 
-# Read one KEY=value from an env file without echoing the value. Used to hand a
-# store's bearer token to the agent so all three stacks agree on one secret per
-# store, with the secret never appearing in a committed file (INVARIANTS §6).
-read_env_var() {
-  local file="$1" key="$2"
-  [[ -f "$file" ]] || return 1
-  local line
-  line="$(grep -E "^${key}=" "$file" | tail -n 1)" || return 1
-  [[ -n "$line" ]] || return 1
-  local val="${line#*=}"
-  val="${val%$'\r'}"
-  val="${val#\"}"; val="${val%\"}"
-  val="${val#\'}"; val="${val%\'}"
-  [[ -n "$val" ]] || return 1
-  printf '%s' "$val"
-}
-
-# Export the store bearer tokens the agent needs. Prefers values already in the
-# environment, falls back to each store's own .env.
-export_store_tokens() {
-  if [[ -z "${SOMA_API_TOKEN:-}" ]]; then
-    SOMA_API_TOKEN="$(read_env_var "$SFM_DIR/.env" SOMA_API_TOKEN)" \
-      || die "SOMA_API_TOKEN not set and not found in $SFM_DIR/.env"
-  fi
-  if [[ -z "${SOMABRAIN_MEMORY_HTTP_TOKEN:-}" ]]; then
-    SOMABRAIN_MEMORY_HTTP_TOKEN="$(read_env_var "$BRAIN_DIR/.env" SOMABRAIN_MEMORY_HTTP_TOKEN)" \
-      || die "SOMABRAIN_MEMORY_HTTP_TOKEN not set and not found in $BRAIN_DIR/.env"
-  fi
-  export SOMA_API_TOKEN SOMABRAIN_MEMORY_HTTP_TOKEN
-  ok "store bearer tokens resolved (values not printed)"
-}
+# Store bearer tokens (somabrain_memory_http_token, soma_api_token) are NOT
+# read from .env and NOT exported into the compose environment (Rule 164). They
+# live in Vault at secret/agent/credentials/, seeded once from the agent's
+# t=0 material by init_vault.py. A token in ENV is visible in `ps`, in
+# /proc/*/environ and in every crash dump — exporting one to "share" it between
+# stacks is exactly the two-independent-values failure this design forbids.
 
 wait_http() {
   local name="$1" url="$2" timeout="${3:-180}" waited=0
@@ -120,7 +97,6 @@ cmd_up() {
   require_env_file "$SFM_DIR/.env"   "SomaFractalMemory"
   require_env_file "$BRAIN_DIR/.env" "SomaBrain"
   require_env_file "$AGENT_DIR/.env" "SomaAgent01"
-  export_store_tokens
 
   if docker network inspect "$NETWORK" >/dev/null 2>&1; then
     ok "network $NETWORK already exists"

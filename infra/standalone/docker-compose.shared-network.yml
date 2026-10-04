@@ -12,14 +12,19 @@ services:
     networks:
       - soma-stack-net
     environment:
-      # Real triad endpoints — service DNS on soma-stack-net (VIBE Rule 91: no localhost)
-      SOMABRAIN_URL: "${SOMABRAIN_URL:-http://somabrain_standalone_app:30101}"
-      SOMAFRACTALMEMORY_URL: "${SOMAFRACTALMEMORY_URL:-http://somafractalmemory-standalone-api:10101}"
-      # Store bearer tokens. REQUIRED — ARCHITECTURE-INVARIANTS §6: never bake a
-      # credential into the image or a committed file. up-cluster.sh exports these
-      # from each store's own .env so the three stacks share one secret per store.
-      SOMA_API_TOKEN: "${SOMA_API_TOKEN:?set SOMA_API_TOKEN to the SomaFractalMemory bearer token}"
-      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN:?set SOMABRAIN_MEMORY_HTTP_TOKEN to the SomaBrain bearer token}"
+      # Real triad endpoints — service DNS on soma-stack-net (VIBE Rule 91: no
+      # localhost, no default, no underscore host). Required topology only:
+      # the value comes from .env / the operator, never from a hardcoded default.
+      # Peers address the brain as the RFC 1035 alias `somabrain` (see the
+      # brain's docker-compose.shared-network.yml aliases).
+      SOMABRAIN_URL: "${SOMABRAIN_URL:?set SOMABRAIN_URL}"
+      SOMAFRACTALMEMORY_URL: "${SOMAFRACTALMEMORY_URL:?set SOMAFRACTALMEMORY_URL}"
+      # Store bearer tokens are NOT environment variables (Rule 164). The agent
+      # reads somabrain_memory_http_token and soma_api_token from Vault at
+      # secret/agent/credentials/ via UnifiedSecretManager.get_credential().
+      # They are seeded once by init_vault.py from ./secrets/ (t=0 material).
+      # Passing a token value through ENV is a secret in `ps`, in
+      # /proc/*/environ and in every crash dump.
     extra_hosts: [] # shared network provides DNS
 
   somaagent_vault:
