@@ -431,13 +431,14 @@ class V3ChatOrchestrator:
             result.phase_completed = 3
 
             # Phase 4: Permission Check (UnifiedGate + PermissionChecker)
+            # Roles come from the authenticated principal (ChatTurn.roles).
+            # None means "not on the turn" and falls back to membership;
+            # an empty list is still "no roles" and still denies.
             perm = await self._permission_checker.check(
                 user_id=turn.user_id,
                 permission="resource:chat_send",
                 tenant_id=tenant_id,
-                # None means resolve them; [] is a positive claim that the
-                # subject holds no role at all.
-                roles=list(turn.roles) if turn.roles else None,
+                roles=turn.roles,
             )
             if not perm.allowed:
                 result.response = get_message(ErrorCode.DEGRADED_PERMISSION_DENIED)
@@ -445,7 +446,11 @@ class V3ChatOrchestrator:
                 return result
 
             gate_ok = await self._unified_gate.check(
-                capsule, action="resource:chat_send", user_id=turn.user_id, tenant_id=tenant_id
+                capsule,
+                action="resource:chat_send",
+                user_id=turn.user_id,
+                tenant_id=tenant_id,
+                roles=turn.roles,
             )
             if not gate_ok:
                 result.response = get_message(ErrorCode.DEGRADED_GATE_DENIED)
@@ -803,12 +808,14 @@ class V3ChatOrchestrator:
                         user_id=turn.user_id,
                         permission="resource:chat_send",
                         tenant_id=tenant_id,
+                        roles=turn.roles,
                     ),
                     self._unified_gate.check(
                         capsule,
                         action="resource:chat_send",
                         user_id=turn.user_id,
                         tenant_id=tenant_id,
+                        roles=turn.roles,
                     ),
                 ),
                 timeout=2.0,
@@ -1031,7 +1038,7 @@ class V3ChatOrchestrator:
         self._metrics.record_turn_complete(
             turn_id=str(getattr(turn, "conversation_id", "") or ""),
             tokens_in=0,
-            tokens_out=token_count if "token_count" in dir() else 0,
+            tokens_out=0,
             model=str(getattr(model, "name", "") or ""),
             provider=str(getattr(model, "provider", "") or ""),
         )
