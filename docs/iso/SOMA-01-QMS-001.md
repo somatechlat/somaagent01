@@ -6,8 +6,8 @@
 |---|---|
 | Document Title | SomaAgent01 Quality Manual |
 | Document Identifier | SOMA-01-QMS-001 |
-| Version | 2.2.1 |
-| Date | 2026-09-28 |
+| Version | 2.2.2 |
+| Date | 2026-10-03 |
 | Status | Draft |
 | Author | SomaTech Engineering |
 | Approver | — |
@@ -26,6 +26,8 @@
 | 2.1.1 | 2026-09-27 | SomaTech Engineering | §7 registers SOMA-01-UIUX-005 (Settings Parity Matrix) |
 | 2.2.0 | 2026-09-28 | SomaTech Engineering | §7 extended to register the full UI/UX suite: SOMA-01-UIUX-001…004 and the three design controls SOMA-UI-MOCKUPS-001, SOMA-UI-IDREG-001, SOMA-UI-TEMPLATE-001. |
 | 2.2.1 | 2026-09-28 | SomaTech Engineering | §7 extended to register the seven ISO-series documents that were in `docs/iso/` but absent from the matrix: SOMA-01-SRS-001, SOMA-01-SDP-001, SOMA-01-VV-001, SOMA-01-OPS-001, SOMA-01-RELEASE-001, SOMA-01-AAAS-001, SOMA-01-COMPAT-001. Closes check rule C-10. |
+| 2.2.2 | 2026-10-03 | SomaTech Engineering | §7 registers SOMA-UI-SKINS-001 (Capsule Skins — Theming Framework Specification). |
+| 2.2.3 | 2026-10-03 | SomaTech Engineering | §7 registers SOMA-STD-CONFIG-001 (Configuration and Service Endpoint Resolution). |
 
 ---
 
@@ -115,6 +117,7 @@ All development on SomaAgent01 shall adhere to the VIBE (Verification, Integrati
 | Control | Implementation | Status |
 |---------|---------------|--------|
 | Coding standards | VIBE rules (`docs/standards/SOMA-STD-CODING-001.md`) | Implemented |
+| Configuration / endpoints | `docs/standards/SOMA-STD-CONFIG-001.md` | Implemented |
 | Django purity | Prohibition lists (SQLAlchemy, FastAPI, React, Qdrant) | Implemented |
 | Architecture review | ARCH document; check before coding | Implemented |
 | Type checking | Pyright configuration (`pyrightconfig.json`) | Implemented (1,402 errors remain) |
@@ -236,6 +239,7 @@ All development on SomaAgent01 shall adhere to the VIBE (Verification, Integrati
 | User Interface Mockups Index | SOMA-UI-MOCKUPS-001 | ISO 9001:2015 clause 7.5 | Controlled index of the ASCII wireframe annexes |
 | Screen Identifier Allocation | SOMA-UI-IDREG-001 | ISO 9001:2015 clause 7.5 | Authoritative UI sub-identifier allocation |
 | House ISO Template | SOMA-UI-TEMPLATE-001 | ISO 9001:2015 clause 7.5 | Binding authoring template and honesty rules for the UI/UX suite |
+| Capsule Skins — Theming Framework Specification | SOMA-UI-SKINS-001 | ISO 9001:2015 clause 7.5 | Feature specification for Capsule-owned theming and skinning |
 | Software Requirements Specification | SOMA-01-SRS-001 | ISO 9001:2015 | Normative software requirements for somaAgent01 |
 | Software Development Plan | SOMA-01-SDP-001 | ISO/IEC 12207:2017 | Lifecycle, engineering and support process plan |
 | Verification and Validation Plan | SOMA-01-VV-001 | ISO 9001:2015 | V&V strategy, acceptance criteria and evidence |
@@ -245,6 +249,7 @@ All development on SomaAgent01 shall adhere to the VIBE (Verification, Integrati
 | Deployment Model Specification | SOMA-01-DEPLOY-001 | ISO/IEC 27001:2022; ISO/IEC 42001:2023 | Standalone and Enterprise deployment models, identity sources, RBAC |
 | Cognitive Triad Compatibility Matrix | SOMA-01-COMPAT-001 | ISO 9001:2015 | Supported version combinations across the triad |
 | Standards Register — Normative and Applied External Standards | SOMA-01-STD-001 | ISO 9001:2015 clause 7.5; ISO/IEC 27001:2022; ISO/IEC 42001:2023 | Single register of every external standard cited or implemented, organised by standards body |
+| Configuration and Service Endpoint Resolution | SOMA-STD-CONFIG-001 | ISO 9001:2015 clause 7.5; ISO/IEC 27001:2022 A.8.9 | Four-step configuration pattern, resolution chain, fail-closed endpoints |
 
 ---
 

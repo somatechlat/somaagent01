@@ -14,7 +14,7 @@
 | Classification | Internal |
 | ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
 | Next Review | 2026-12-27 |
-| Related | `SOMA-01-QMS-001.md`, `SOMA-A0-PARITY-001.md`, `docs/standards/SOMA-STD-CODING-001.md` |
+| Related | `SOMA-01-QMS-001.md`, `SOMA-A0-PARITY-001.md`, `docs/standards/SOMA-STD-CODING-001.md`, `docs/standards/SOMA-STD-CONFIG-001.md` |
 | Source of truth | This document, `docs/iso/DOCUMENT-REGISTER.md`, `scripts/check_docs.py` |
 | Audience | All engineering contributors and any agent acting on this repository |
 
@@ -35,6 +35,7 @@
 | N-3 | SOMA-A0-PARITY-001 | Feature-clone-not-code-clone, Plan Gate, error-honesty rules |
 | N-4 | PLAN-TRIAD-SEAMLESS | W5-3 requires Approver and Next Review on ISO documents |
 | N-5 | docs/standards/SOMA-STD-CODING-001.md | Standing engineering rules that reference this procedure |
+| N-5b | docs/standards/SOMA-STD-CONFIG-001.md | Configuration and service endpoint resolution standard |
 
 ---
 
@@ -331,6 +332,7 @@ A feature with no test is `NOT YET`, not omitted.
 |---|---|
 | `SOMA-01-QMS-001` §7 | Suite registry. This procedure is registered there. §7 and `DOCUMENT-REGISTER.md` **SHALL** agree (REQ-DOCS-009). |
 | `docs/standards/SOMA-STD-CODING-001.md` | Carries the standing day-to-day rule. It **SHALL** reference this procedure rather than restate it. |
+| `docs/standards/SOMA-STD-CONFIG-001.md` | Carries the configuration / endpoint resolution rule. It **SHALL** reference this procedure rather than restate it. |
 | `SOMA-A0-PARITY-001` | Supplies the error-honesty and Plan Gate rules that this procedure makes checkable (REQ-DOCS-012, REQ-DOCS-015). |
 
 `SOMA-STD-CODING-001.md` historically described documentation as *"ISO-style Documenter (clarity, not enforcement)"*. That statement is superseded: documentation control is now **enforced** by REQ-DOCS-001 through REQ-DOCS-015 and `scripts/check_docs.py`.

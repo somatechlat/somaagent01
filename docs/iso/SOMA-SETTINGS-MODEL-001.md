@@ -6,7 +6,7 @@
 |---|---|
 | Document Title | Soma Settings Model and Configuration Inventory |
 | Document Identifier | SOMA-SETTINGS-MODEL-001 |
-| Version | 1.0.0 |
+| Version | 1.0.1 |
 | Date | 2026-09-27 |
 | Status | Draft |
 | Author | SomaTech Engineering |
@@ -14,7 +14,7 @@
 | Classification | Internal |
 | ISO Reference | ISO/IEC 25010 (quality model, category lens) · ISO/IEC 27001:2022 (A.8.9 configuration management) · ISO 9001:2015 (documented information) |
 | Next Review | 2026-12-27 |
-| Related | `SOMA-01-DOCS-001.md`, `SOMA-01-SEC-001.md`, `SOMA-01-ARCH-001.md`, `SOMA-A0-PARITY-001.md`, `docs/standards/SOMA-STD-CODING-001.md` |
+| Related | `SOMA-01-DOCS-001.md`, `SOMA-01-SEC-001.md`, `SOMA-01-ARCH-001.md`, `SOMA-A0-PARITY-001.md`, `docs/standards/SOMA-STD-CODING-001.md`, `docs/standards/SOMA-STD-CONFIG-001.md` |
 | Source of truth | This document for the settings *model*; code paths cited per row for *live values* |
 | Audience | All engineering contributors, operators, and any agent acting on somaAgent01 / somabrain / somafractalmemory |
 
@@ -23,12 +23,14 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-27 | SomaTech Engineering | Initial issue. Normative authority model, category taxonomy, full settings inventory, Capsule/Constitution binding rules, env-vs-Vault rules, conformance checklist, drift register. |
+| 1.0.1 | 2026-10-03 | SomaTech Engineering | Cross-reference SOMA-STD-CONFIG-001 (endpoint resolution, anti-patterns). Service URLs registered through KEY_CATEGORY; schema defaults empty for deployment URLs. |
 
 ## Normative References
 
 | ID | Reference | Role |
 |---|---|---|
 | N-1 | `docs/standards/SOMA-STD-CODING-001.md` | Standing engineering rules: no hardcoded product behavior, Vault for secrets, fail-closed |
+| N-1b | `docs/standards/SOMA-STD-CONFIG-001.md` | Configuration and service endpoint resolution: four-step pattern, fail-closed URLs, vendor protocol constants |
 | N-2 | `SOMA-01-DOCS-001` | Document control and traceability procedure |
 | N-3 | `SOMA-01-SEC-001` | Security requirements; secret custody |
 | N-4 | `SOMA-01-ARCH-001` | System architecture; memory seam |
