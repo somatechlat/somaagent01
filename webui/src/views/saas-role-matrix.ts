@@ -9,7 +9,7 @@
  */
 
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
 import '../components/saas-sidebar.js';
 
@@ -27,11 +27,19 @@ const PROVISIONED_ROLES = new Set(['sysadmin', 'agent_owner']);
 export class SaasRoleMatrix extends LitElement {
     static styles = css`
         :host {
-            display: flex;
-            height: 100vh;
+            display: block;
             background: var(--saas-bg-page, #f5f5f5);
             font-family: var(--saas-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
             color: var(--saas-text-primary, #1a1a1a);
+        }
+        :host(:not([embedded])) {
+            display: flex;
+            height: 100vh;
+        }
+        .embedded-bar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 12px;
         }
         * { box-sizing: border-box; }
         .material-symbols-outlined {
@@ -85,6 +93,9 @@ export class SaasRoleMatrix extends LitElement {
         .role-col-locked { opacity: 0.7; }
         .muted { color: var(--saas-text-muted, #999); font-size: 12px; }
     `;
+
+    /** True when this is a pane inside the Roles screen (UI-S-23), not a page. */
+    @property({ type: Boolean }) embedded = false;
 
     @state() private roles: RoleOut[] = [];
     /** permission name -> set of role ids that grant it */
@@ -202,9 +213,103 @@ export class SaasRoleMatrix extends LitElement {
     }
 
     render() {
+        const actions = html`
+            <div>
+                <button class="btn" ?disabled=${!this.dirty} @click=${() => this.revert()}>
+                    <span class="material-symbols-outlined">undo</span> Revert
+                </button>
+                <button
+                    class="btn primary"
+                    ?disabled=${!this.dirty || this.saving || !this.canAssignRoles}
+                    title=${this.canAssignRoles ? 'Save role grants' : 'Requires org:assign_roles'}
+                    @click=${() => this.save()}
+                >
+                    <span class="material-symbols-outlined">${this.saving ? 'hourglass_empty' : 'save'}</span>
+                    ${this.saving ? 'Saving…' : 'Save Changes'}
+                </button>
+            </div>
+        `;
+
+        const matrix = html`
+            ${this.error ? html`<div class="error-banner">${this.error}</div>` : nothing}
+            ${!this.canAssignRoles
+                ? html`<div class="notice">
+                    You don't have access to change role grants. Requires the
+                    <strong>org:assign_roles</strong> permission. The matrix below is read-only.
+                </div>`
+                : nothing}
+
+            <div class="content">
+                ${this.loading
+                    ? html`<div class="loading">Loading role matrix…</div>`
+                    : this.roles.length === 0
+                        ? html`<div class="loading">No roles are configured on this deployment.</div>`
+                        : html`
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Permission</th>
+                                        ${this.roles.map(role => html`
+                                            <th class=${PROVISIONED_ROLES.has(role.id) ? 'role-col-locked' : ''}>
+                                                ${role.name || role.id}
+                                                ${PROVISIONED_ROLES.has(role.id)
+                                                    ? html`<div class="muted">locked</div>`
+                                                    : html`<div class="muted">${role.id}</div>`}
+                                            </th>
+                                        `)}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${Array.from(this.byCategory().entries()).map(([cat, perms]) => html`
+                                        <tr class="category-row">
+                                            <td colspan=${this.roles.length + 1}>${cat}</td>
+                                        </tr>
+                                        ${perms.map(perm => html`
+                                            <tr>
+                                                <td>
+                                                    <span class="perm-name">${perm}</span>
+                                                </td>
+                                                ${this.roles.map(role => {
+                                                    const on = (this.grants.get(perm) || new Set()).has(role.id);
+                                                    const locked = this.isLocked(role.id);
+                                                    return html`
+                                                        <td class="toggle-cell">
+                                                            <span
+                                                                class="toggle ${on ? 'active' : ''} ${locked ? 'locked' : ''}"
+                                                                title=${locked
+                                                                    ? (PROVISIONED_ROLES.has(role.id)
+                                                                        ? 'Provisioned role — locked'
+                                                                        : 'Requires org:assign_roles')
+                                                                    : (on ? 'Revoke' : 'Grant')}
+                                                                @click=${() => this.toggle(role.id, perm)}
+                                                            ></span>
+                                                        </td>
+                                                    `;
+                                                })}
+                                            </tr>
+                                        `)}
+                                    `)}
+                                </tbody>
+                            </table>
+                            <p class="muted" style="margin-top: 12px;">
+                                ${this.allPermissions.length} permissions carried by
+                                ${this.roles.length} roles. Verb names are whatever the
+                                catalog attached to each role — this UI does not invent verbs.
+                            </p>
+                        `}
+            </div>
+        `;
+
+        if (this.embedded) {
+            return html`
+                <div class="embedded-bar">${actions}</div>
+                ${matrix}
+            `;
+        }
+
         return html`
             <aside class="sidebar">
-                <saas-sidebar active-route="/platform/role-matrix"></saas-sidebar>
+                <saas-sidebar active-route="/platform/roles"></saas-sidebar>
             </aside>
             <main class="main">
                 <header class="header">
@@ -215,89 +320,9 @@ export class SaasRoleMatrix extends LitElement {
                             Saving requires <code>org:assign_roles</code>.
                         </p>
                     </div>
-                    <div>
-                        <button class="btn" ?disabled=${!this.dirty} @click=${() => this.revert()}>
-                            <span class="material-symbols-outlined">undo</span> Revert
-                        </button>
-                        <button
-                            class="btn primary"
-                            ?disabled=${!this.dirty || this.saving || !this.canAssignRoles}
-                            title=${this.canAssignRoles ? 'Save role grants' : 'Requires org:assign_roles'}
-                            @click=${() => this.save()}
-                        >
-                            <span class="material-symbols-outlined">${this.saving ? 'hourglass_empty' : 'save'}</span>
-                            ${this.saving ? 'Saving…' : 'Save Changes'}
-                        </button>
-                    </div>
+                    ${actions}
                 </header>
-
-                ${this.error ? html`<div class="error-banner">${this.error}</div>` : nothing}
-                ${!this.canAssignRoles
-                    ? html`<div class="notice">
-                        You don't have access to change role grants. Requires the
-                        <strong>org:assign_roles</strong> permission. The matrix below is read-only.
-                    </div>`
-                    : nothing}
-
-                <div class="content">
-                    ${this.loading
-                        ? html`<div class="loading">Loading role matrix…</div>`
-                        : this.roles.length === 0
-                            ? html`<div class="loading">No roles are configured on this deployment.</div>`
-                            : html`
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Permission</th>
-                                            ${this.roles.map(role => html`
-                                                <th class=${PROVISIONED_ROLES.has(role.id) ? 'role-col-locked' : ''}>
-                                                    ${role.name || role.id}
-                                                    ${PROVISIONED_ROLES.has(role.id)
-                                                        ? html`<div class="muted">locked</div>`
-                                                        : html`<div class="muted">${role.id}</div>`}
-                                                </th>
-                                            `)}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${Array.from(this.byCategory().entries()).map(([cat, perms]) => html`
-                                            <tr class="category-row">
-                                                <td colspan=${this.roles.length + 1}>${cat}</td>
-                                            </tr>
-                                            ${perms.map(perm => html`
-                                                <tr>
-                                                    <td>
-                                                        <span class="perm-name">${perm}</span>
-                                                    </td>
-                                                    ${this.roles.map(role => {
-                                                        const on = (this.grants.get(perm) || new Set()).has(role.id);
-                                                        const locked = this.isLocked(role.id);
-                                                        return html`
-                                                            <td class="toggle-cell">
-                                                                <span
-                                                                    class="toggle ${on ? 'active' : ''} ${locked ? 'locked' : ''}"
-                                                                    title=${locked
-                                                                        ? (PROVISIONED_ROLES.has(role.id)
-                                                                            ? 'Provisioned role — locked'
-                                                                            : 'Requires org:assign_roles')
-                                                                        : (on ? 'Revoke' : 'Grant')}
-                                                                    @click=${() => this.toggle(role.id, perm)}
-                                                                ></span>
-                                                            </td>
-                                                        `;
-                                                    })}
-                                                </tr>
-                                            `)}
-                                        `)}
-                                    </tbody>
-                                </table>
-                                <p class="muted" style="margin-top: 12px;">
-                                    ${this.allPermissions.length} permissions carried by
-                                    ${this.roles.length} roles. Verb names are whatever the
-                                    catalog attached to each role — this UI does not invent verbs.
-                                </p>
-                            `}
-                </div>
+                ${matrix}
             </main>
         `;
     }

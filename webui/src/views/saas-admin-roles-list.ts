@@ -13,6 +13,7 @@ import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
 import '../components/saas-status-badge.js';
+import './saas-role-matrix.js';
 
 interface RoleRow {
     id: string;
@@ -110,7 +111,7 @@ export class SaasAdminRolesList extends LitElement {
             <div class="notice">
                 Editing what a role grants requires <strong>org:assign_roles</strong>.
                 ${this._canAssignRoles
-                    ? html`You hold that permission. Open the <a class="link" href="/platform/role-matrix" @click=${this._goMatrix}>permission matrix</a> to change grants.`
+                    ? html`You hold that permission — use the permission matrix below to change grants.`
                     : html`You do not hold it, so grants are read-only here.`}
                 Provisioned roles (<code>sysadmin</code>, <code>agent_owner</code>) are locked:
                 they are established at install, never assigned from inside an organization.
@@ -157,7 +158,7 @@ export class SaasAdminRolesList extends LitElement {
                                             <td>${r.description || '—'}</td>
                                             <td>
                                                 <div class="actions">
-                                                    <a class="link" href="/platform/role-matrix" @click=${this._goMatrix}>Matrix</a>
+                                                    <a class="link" href="#permission-matrix">Matrix</a>
                                                 </div>
                                             </td>
                                         </tr>
@@ -166,13 +167,16 @@ export class SaasAdminRolesList extends LitElement {
                             </tbody>
                         </table>
                     `}
+
+            <section id="permission-matrix" aria-label="Permission matrix">
+                <h2 style="font-size: 16px; margin: 28px 0 8px;">Permission matrix</h2>
+                <p class="subtitle" style="margin-bottom: 12px;">
+                    Secondary pane of this screen (UI-S-23). Role → permission grants.
+                </p>
+                <saas-role-matrix embedded></saas-role-matrix>
+            </section>
         `;
     }
-
-    private _goMatrix = (e: Event) => {
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/platform/role-matrix' } }));
-    };
 }
 
 declare global {

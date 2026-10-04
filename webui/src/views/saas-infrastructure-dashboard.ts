@@ -10,7 +10,7 @@
  */
 
 import { LitElement, html, css, nothing } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import {
   InfraDashboardController,
   type InfrastructureHealth,
@@ -35,7 +35,8 @@ export class SaasInfrastructureDashboard extends LitElement {
   @state() history: HistoryRecord[] = [];
   @state() loading = true;
   @state() error = '';
-  @state() activeTab: 'health' | 'ratelimits' | 'degradation' = 'health';
+  /** Public so the router can open this dashboard on a named tab. */
+  @property({ type: String }) activeTab: 'health' | 'ratelimits' | 'degradation' = 'health';
   @state() refreshing = false;
   @state() lastRefresh: Date | null = null;
 

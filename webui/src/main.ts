@@ -113,10 +113,12 @@ if (app) {
             return;
         }
 
-        // Rate Limits Dashboard
+        // Rate Limits live on the Infrastructure dashboard (one surface).
         if (path === '/platform/infrastructure/redis/ratelimits' || path === '/platform/ratelimits') {
-            await import('./views/saas-rate-limits.js');
-            app.appendChild(document.createElement('saas-rate-limits'));
+            await import('./views/saas-infrastructure-dashboard.js');
+            const el = document.createElement('saas-infrastructure-dashboard') as HTMLElement & { activeTab?: string };
+            el.activeTab = 'ratelimits';
+            app.appendChild(el);
             return;
         }
 
@@ -127,16 +129,13 @@ if (app) {
             return;
         }
 
-        // One roles list + one permission matrix (the old permissions screen is folded in).
-        if (path === '/platform/roles') {
+        // One roles screen: the catalogue plus the permission matrix as a
+        // secondary pane (UI-S-23). Old matrix/permissions URLs land here.
+        if (path === '/platform/roles'
+            || path === '/platform/role-matrix'
+            || path === '/saas/permissions' || path === '/platform/permissions') {
             await import('./views/saas-admin-roles-list.js');
             app.appendChild(document.createElement('saas-admin-roles-list'));
-            return;
-        }
-        if (path === '/platform/role-matrix'
-            || path === '/saas/permissions' || path === '/platform/permissions') {
-            await import('./views/saas-role-matrix.js');
-            app.appendChild(document.createElement('saas-role-matrix'));
             return;
         }
 
@@ -245,10 +244,11 @@ if (app) {
             return;
         }
 
-        // Onboarding Wizard (invitation acceptance)
+        // Onboarding is the public register flow (one screen). Invite links
+        // land there; there is no separate invitation router on this deployment.
         if (path.startsWith('/onboarding') || path.startsWith('/invite/')) {
-            await import('./views/saas-onboarding.js');
-            app.appendChild(document.createElement('saas-onboarding'));
+            window.history.replaceState(null, '', '/register');
+            renderRoute();
             return;
         }
 
@@ -289,9 +289,10 @@ if (app) {
             return;
         }
 
+        // Workspace is the chat chrome (one chat surface).
         if (path === '/workspace') {
-            await import('./views/saas-workspace.js');
-            app.appendChild(document.createElement('saas-workspace'));
+            await import('./views/saas-chat.js');
+            app.appendChild(document.createElement('saas-chat'));
             return;
         }
 

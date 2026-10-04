@@ -14,20 +14,17 @@ export { SaasCognitivePanel } from './saas-cognitive-panel.js';
 
 // Admin Views
 export { SaasAdminRolesList } from './saas-admin-roles-list.js';
-export { SaasAdminApiKeys } from './saas-admin-api-keys.js';
 export { SaasRoleMatrix } from './saas-role-matrix.js';
+export { SaasAdminApiKeys } from './saas-admin-api-keys.js';
 
 // Other
 export { SaasAuditDashboard } from './saas-audit-dashboard.js';
 export { SaasIntegrationsDashboard } from './saas-integrations-dashboard.js';
 export { SaasMfaSetup } from './saas-mfa-setup.js';
 export { SaasMultimodalSettings } from './saas-multimodal-settings.js';
-export { SaasOnboarding } from './saas-onboarding.js';
 export { SaasPersonalProfile } from './saas-personal-profile.js';
 export { SaasPlatformProfile } from './saas-platform-profile.js';
-export { SaasRateLimits } from './saas-rate-limits.js';
 export { SaasVoiceChat } from './saas-voice-chat.js';
-export { SaasWorkspace } from './saas-workspace.js';
 export { SaasVoicePersonas } from './saas-voice-personas.js';
 export { SaasVoiceSessions } from './saas-voice-sessions.js';
 export { SaasInfrastructureDashboard } from './saas-infrastructure-dashboard.js';
