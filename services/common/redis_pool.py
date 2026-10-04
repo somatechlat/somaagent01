@@ -55,21 +55,26 @@ def _redact(url: str) -> str:
 
 
 def get_redis_url() -> str:
-    """Get Redis URL from environment with sensible default."""
-    url = os.environ.get("SA01_REDIS_URL", "")
-    if not url:
-        # Prefer centralized SettingsRegistry when available
-        try:
-            from config.settings_registry import SettingsRegistry
+    """Resolve the Redis URL, or refuse.
 
-            settings = SettingsRegistry.get()
-            return settings.redis_url
-        except Exception:
-            # Fallback for bootstrap contexts where SettingsRegistry isn't loaded
-            host = os.environ.get("REDIS_HOST", "localhost")
-            port = os.environ.get("REDIS_PORT", "6379")
-            db = os.environ.get("REDIS_DB", "0")
-            url = f"redis://{host}:{port}/{db}"
+    Order: the configured URL (``SA01_REDIS_URL``), then the deployment
+    topology in ``SettingsRegistry``. There is no third reconstruction from
+    ``REDIS_HOST``/``REDIS_PORT`` with a localhost default — that path
+    invented a broker nobody chose (VIBE Rule 91).
+    """
+    url = (os.environ.get("SA01_REDIS_URL") or "").strip()
+    if url:
+        return url
+    from config.settings_registry import SettingsRegistry
+
+    settings = SettingsRegistry.get()
+    url = (settings.redis_url or "").strip()
+    if not url:
+        raise RuntimeError(
+            "Redis is not configured. Set SA01_REDIS_URL or the redis_* "
+            "topology for this deployment mode (config/settings_registry.py). "
+            "There is no default broker."
+        )
     return url
 
 

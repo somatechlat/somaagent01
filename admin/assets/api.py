@@ -52,7 +52,9 @@ def require_tenant(actor: Any, attr: str = "effective_tenant_id") -> str:
 # CONFIGURATION
 # =============================================================================
 
-STORAGE_BACKEND = getattr(settings, "ASSET_STORAGE_BACKEND", "local")  # local, s3
+from admin.core.helpers.settings import get_settings as _get_settings_model
+
+STORAGE_BACKEND = _get_settings_model().asset_storage_backend  # local, s3
 MAX_ASSET_SIZE = 50 * 1024 * 1024  # 50MB
 
 

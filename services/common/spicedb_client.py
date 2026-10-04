@@ -109,7 +109,7 @@ class SpiceDBClient:
                 # credential — host and port are topology and may fall back to
                 # ENV, but the token must come from Vault or be absent.
                 self.host = host or os.environ.get("SPICEDB_HOST")
-                self.port = port or int(os.environ.get("SPICEDB_PORT", "50051"))
+                self.port = port or int(os.environ["SPICEDB_PORT"]) if os.environ.get("SPICEDB_PORT") else None
                 try:
                     from services.common.unified_secret_manager import get_secret_manager
 
@@ -122,7 +122,9 @@ class SpiceDBClient:
         # Vault key arrives as None; that must become "no credential" and never
         # be handed to grpc as a null token.
         self.host = self.host if isinstance(self.host, str) else ""
-        self.port = int(self.port) if isinstance(self.port, int) else 50051
+        if self.port is not None:
+            self.port = int(self.port)
+        # None means "unconfigured". Callers refuse; nothing invents a port.
         self.token = self.token if isinstance(self.token, str) else ""
         self.insecure = bool(self.insecure)
 

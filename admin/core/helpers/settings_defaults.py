@@ -368,7 +368,7 @@ def get_default_settings(agent_id: str = "default"):
         # RFC settings. Topology only — the RFC password is a credential and
         # resolves from Vault at use (`runtime._get_rfc_password`), never here.
         rfc_auto_docker=_env_or_db_bool("SA01_RFC_AUTO_DOCKER", agent_id, "rfc_auto_docker", True),
-        rfc_url=_env_or_db("SA01_RFC_URL", agent_id, "rfc_url", "localhost"),
+        rfc_url=_env_or_db("SA01_RFC_URL", agent_id, "rfc_url", ""),
         rfc_port_http=_env_or_db_int("SA01_RFC_PORT_HTTP", agent_id, "rfc_port_http", 55080),
         rfc_port_ssh=_env_or_db_int("SA01_RFC_PORT_SSH", agent_id, "rfc_port_ssh", 55022),
         shell_interface=(

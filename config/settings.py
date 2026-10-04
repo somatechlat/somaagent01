@@ -23,7 +23,11 @@ if not SECRET_KEY:
         "It is never generated, never defaulted and never read from ENV."
     )
 DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() == "true"
-ALLOWED_HOSTS = os.environ.get("SA01_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in (os.environ.get("SA01_ALLOWED_HOSTS") or "").split(",")
+    if h.strip()
+]
 
 # Deployment mode
 SA01_DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "STANDALONE")
@@ -189,9 +193,11 @@ AGENTIQ_AUTONOMY_LEVEL = int(os.environ.get("AGENTIQ_AUTONOMY_LEVEL", "5"))
 AGENTIQ_RESOURCE_BUDGET = float(os.environ.get("AGENTIQ_RESOURCE_BUDGET", "0.10"))
 
 # Redis
-REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.environ.get("REDIS_PORT", "20379"))
-SA01_REDIS_URL = os.environ.get("SA01_REDIS_URL", f"redis://{REDIS_HOST}:{REDIS_PORT}/0")
+REDIS_HOST = os.environ.get("REDIS_HOST") or None
+REDIS_PORT = int(os.environ["REDIS_PORT"]) if os.environ.get("REDIS_PORT") else None
+# Empty when unconfigured. A URL is an operator parameter; call sites use
+# require_setting("SA01_REDIS_URL") and refuse rather than invent a broker.
+SA01_REDIS_URL = os.environ.get("SA01_REDIS_URL") or ""
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -223,8 +229,16 @@ INSTALLED_APPS = [
 ]
 
 # Database credentials MUST come from Vault - zero hardcoded passwords (VIBE 164)
-_db_name = os.environ.get("TEST_DB_NAME", "somaagent")
-_db_user = os.environ.get("TEST_DB_USER", "somaagent")
+# Topology is bootstrap: POSTGRES_HOST / POSTGRES_PORT / POSTGRES_DB /
+# POSTGRES_USER (SOMA-STD-CONFIG-001). There is no TEST_DB_* second
+# vocabulary and no default name, user, host or port.
+_db_name = os.environ.get("POSTGRES_DB")
+_db_user = os.environ.get("POSTGRES_USER")
+if not _db_name or not _db_user:
+    raise RuntimeError(
+        "POSTGRES_DB and POSTGRES_USER are required bootstrap topology. "
+        "There is no default database name or user."
+    )
 # No ephemeral fallback. A generated password is a fake: no database accepts
 # it, so every connection fails later and far from the real cause. Fail here,
 # naming the Vault path, instead.
@@ -235,8 +249,13 @@ if not _db_password:
         "Set it in Vault at secret/agent/credentials/test_db_password. "
         "It is never generated and never read from ENV."
     )
-_db_host = os.environ.get("TEST_DB_HOST", "localhost")
-_db_port = os.environ.get("TEST_DB_PORT", "63932")
+_db_host = os.environ.get("POSTGRES_HOST")
+_db_port = os.environ.get("POSTGRES_PORT")
+if not _db_host or not _db_port:
+    raise RuntimeError(
+        "POSTGRES_HOST and POSTGRES_PORT are required bootstrap topology. "
+        "There is no default database host."
+    )
 
 DATABASES = {
     "default": {

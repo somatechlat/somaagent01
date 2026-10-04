@@ -128,6 +128,12 @@ async def get_temporal_client():
 
     async with _TEMPORAL_LOCK:
         if _TEMPORAL_CLIENT is None:
-            host = get_settings().temporal_host or "temporal:7233"
+            host = (get_settings().temporal_host or "").strip()
+            if not host:
+                raise RuntimeError(
+                    "temporal_host is not configured for this deployment mode. "
+                    "Set it in config/settings_registry.py topology or via "
+                    "InfrastructureConfig. There is no default scheduler."
+                )
             _TEMPORAL_CLIENT = await Client.connect(host)
         return _TEMPORAL_CLIENT

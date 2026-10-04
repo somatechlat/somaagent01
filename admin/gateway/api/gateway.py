@@ -289,5 +289,9 @@ async def get_av_status(request: HttpRequest) -> dict:
     """
     await authorize(request, action="system:view", resource="gateway")
 
-    av_enabled = getattr(settings, "AV_SCAN_ENABLED", False)
+    from admin.core.helpers.settings import get_settings
+
+    av_enabled = bool(
+        getattr(settings, "AV_SCAN_ENABLED", None) or get_settings().av_scan_enabled
+    )
     return {"av_enabled": av_enabled, "status": "operational" if av_enabled else "disabled"}

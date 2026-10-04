@@ -144,7 +144,12 @@ async def check_keycloak() -> ServiceHealth:
 
 async def check_kafka() -> ServiceHealth:
     """Check Kafka message broker health."""
-    kafka_hosts = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", None)
+    from admin.core.helpers.service_urls import require_setting
+
+    try:
+        kafka_hosts = require_setting("KAFKA_BOOTSTRAP_SERVERS")
+    except Exception:
+        kafka_hosts = None
     if not kafka_hosts:
         return ServiceHealth(
             name="Kafka",

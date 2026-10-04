@@ -16,7 +16,7 @@ from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
-from admin.core.helpers.service_urls import require_service_url
+from admin.core.helpers.service_urls import require_service_url, require_setting
 from services.common.authorization import authorize
 
 router = Router(tags=["quality"])
@@ -356,7 +356,7 @@ Respond with ONLY a JSON object in this format:
                 llm_url,
                 json={
                     "messages": [{"role": "user", "content": prompt}],
-                    "model": getattr(settings, "QUALITY_EVAL_MODEL", "gpt-4o-mini"),
+                    "model": require_setting("QUALITY_EVAL_MODEL"),
                     "max_tokens": 100,
                 },
                 headers={"Authorization": f"Bearer {llm_api_key}"},

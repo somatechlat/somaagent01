@@ -69,7 +69,12 @@ class A2AWorkflow:
 async def main() -> None:
     """Execute main."""
 
-    temporal_host = os.environ.get("SA01_TEMPORAL_HOST", "temporal:7233")
+    temporal_host = (os.environ.get("SA01_TEMPORAL_HOST") or "").strip()
+    if not temporal_host:
+        raise RuntimeError(
+            "SA01_TEMPORAL_HOST is not configured. It is deployment "
+            "topology (operator parameter); there is no default scheduler."
+        )
     task_queue = os.environ.get("SA01_TEMPORAL_A2A_QUEUE", "a2a")
     # outbox_flush removed - feature never implemented
     client = await Client.connect(temporal_host)

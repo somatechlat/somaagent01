@@ -29,9 +29,14 @@ from services.common.authorization import authorize
 router = Router(tags=["sessions"])
 logger = logging.getLogger(__name__)
 
-# SSE configuration - centralized
-SSE_POLL_INTERVAL = float(getattr(settings, "SSE_POLL_INTERVAL", 2.0))
-SSE_KEEPALIVE_INTERVAL = float(getattr(settings, "SSE_KEEPALIVE_INTERVAL", 10.0))
+# SSE cadence resolves through the settings chain (Capsule > AgentSetting >
+# InfrastructureConfig > SettingsModel). No getattr fallback: a missing value
+# is a refusal, not an invented interval.
+from admin.core.helpers.settings import get_settings as _get_settings_model
+
+_SETTINGS = _get_settings_model()
+SSE_POLL_INTERVAL = float(_SETTINGS.sse_poll_interval_s)
+SSE_KEEPALIVE_INTERVAL = float(_SETTINGS.sse_keepalive_interval_s)
 
 
 class SessionSummary(BaseModel):

@@ -140,7 +140,7 @@ class SettingsModel(BaseModel):
     # RFC / Docker tunnel defaults. Topology only — the RFC password is a
     # credential and is read from Vault at use by `runtime._get_rfc_password`.
     rfc_auto_docker: bool = Field(default_factory=lambda: _dj("RFC_AUTO_DOCKER", True))
-    rfc_url: str = Field(default_factory=lambda: str(_dj("RFC_URL", "localhost")))
+    rfc_url: str = Field(default_factory=lambda: str(_dj("RFC_URL", "")))
     rfc_port_http: int = Field(default_factory=lambda: int(_dj("RFC_PORT_HTTP", 55080)))
     rfc_port_ssh: int = Field(default_factory=lambda: int(_dj("RFC_PORT_SSH", 55022)))
 
@@ -207,6 +207,7 @@ class SettingsModel(BaseModel):
     service_kafka_bootstrap_servers: str = Field(
         default_factory=lambda: str(_dj("KAFKA_BOOTSTRAP_SERVERS", ""))
     )
+    service_router_url: str = Field(default_factory=lambda: str(_dj("ROUTER_URL", "")))
     service_smtp_host: str = Field(default_factory=lambda: str(_dj("SMTP_HOST", "")))
     service_smtp_port: str = Field(default_factory=lambda: str(_dj("SMTP_PORT", "")))
 
@@ -252,6 +253,36 @@ class SettingsModel(BaseModel):
     )
     tool_approval_timeout_s: float = Field(
         default_factory=lambda: float(_dj("TOOL_APPROVAL_TIMEOUT_S", 120.0))
+    )
+
+    # SSE stream cadence. Poll and keepalive are behaviour an administrator
+    # tunes; they were module literals with a getattr fallback.
+    sse_poll_interval_s: float = Field(
+        default_factory=lambda: float(_dj("SSE_POLL_INTERVAL", 2.0))
+    )
+    sse_keepalive_interval_s: float = Field(
+        default_factory=lambda: float(_dj("SSE_KEEPALIVE_INTERVAL", 10.0))
+    )
+
+    # Object storage. Region and bucket are deployment parameters; the asset
+    # layer was reading them with invented defaults.
+    aws_region: str = Field(default_factory=lambda: str(_dj("AWS_REGION", "")))
+    aws_s3_bucket: str = Field(default_factory=lambda: str(_dj("AWS_S3_BUCKET", "")))
+    asset_storage_backend: str = Field(
+        default_factory=lambda: str(_dj("ASSET_STORAGE_BACKEND", "local"))
+    )
+
+    # Quality evaluation model slot (which model grades an asset).
+    quality_eval_model: str = Field(
+        default_factory=lambda: str(_dj("QUALITY_EVAL_MODEL", ""))
+    )
+
+    # Feature toggles. Default is OFF: an unconfigured deployment does not
+    # silently run virus scanning or confidence aggregation.
+    av_scan_enabled: bool = Field(default_factory=lambda: bool(_dj("AV_SCAN_ENABLED", False)))
+    confidence_enabled: bool = Field(default_factory=lambda: bool(_dj("CONFIDENCE_ENABLED", False)))
+    confidence_aggregation: str = Field(
+        default_factory=lambda: str(_dj("CONFIDENCE_AGGREGATION", "average"))
     )
 
     # WebSocket stream coalescing. Tokens are buffered and flushed together;

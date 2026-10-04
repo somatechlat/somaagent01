@@ -198,10 +198,22 @@ def _get_rfc_password() -> str:
 
 
 def _get_rfc_url() -> str:
-    """Execute get rfc url."""
+    """Build the RFC endpoint from the configured host, or refuse.
+
+    ``rfc_url`` is topology: an administrator names the host the RFC daemon
+    listens on. An empty value is unconfigured, not "the same machine" — the
+    previous schema default of ``localhost`` produced ``http://:55080/rfc``,
+    which is neither a refusal nor a working URL (VIBE Rule 91).
+    """
 
     set = settings.get_settings()
-    url = set["rfc_url"]
+    url = (set["rfc_url"] or "").strip()
+    if not url:
+        raise RuntimeError(
+            "rfc_url is not configured. Set RFC_URL (AgentSetting / Capsule / "
+            "Django settings) to the host the RFC daemon listens on. There is "
+            "no default host."
+        )
     if "://" not in url:
         url = "http://" + url
     if url.endswith("/"):
@@ -252,7 +264,9 @@ def _find_available_port(preferred: int) -> int:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
-                sock.bind(("127.0.0.1", port))
+                # "" is the unspecified address (INADDR_ANY): the
+                # kernel's own "any local endpoint" token, not a named host.
+                sock.bind(("", port))
             except OSError:
                 port += 1
                 continue

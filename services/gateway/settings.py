@@ -47,13 +47,11 @@ DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 if DEBUG and not IS_DEV_ENV:
     raise ValueError("DEBUG=true is only allowed in local/dev environments")
 
-allowed_hosts_env = os.environ.get("SA01_ALLOWED_HOSTS", "")
-if allowed_hosts_env:
-    ALLOWED_HOSTS = [h.strip() for h in allowed_hosts_env.split(",") if h.strip()]
-elif IS_DEV_ENV:
-    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
-else:
-    raise ValueError("Missing required environment variable: SA01_ALLOWED_HOSTS")
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in (os.environ.get("SA01_ALLOWED_HOSTS") or "").split(",")
+    if h.strip()
+]
 
 # Default security posture for non-debug operation
 SESSION_COOKIE_SECURE = not DEBUG
@@ -201,10 +199,13 @@ AAAS_DEFAULT_STORAGE_GB = float(os.environ.get("AAAS_DEFAULT_STORAGE_GB", "50.0"
 REDIS_URL = get_required_env("SA01_REDIS_URL", "Redis connection for caching and channels")
 
 # Temporal
-TEMPORAL_HOST = os.environ.get("SA01_TEMPORAL_HOST", "localhost:7233")
-TEMPORAL_NAMESPACE = os.environ.get("SA01_TEMPORAL_NAMESPACE", "default")
-TEMPORAL_CONVERSATION_QUEUE = os.environ.get("SA01_TEMPORAL_CONVERSATION_QUEUE", "conversation")
-TEMPORAL_A2A_QUEUE = os.environ.get("SA01_TEMPORAL_A2A_QUEUE", "a2a")
+# Empty when unconfigured — require_setting("temporal_host") refuses rather
+# than guess a scheduler. Namespace/queue names are schema identifiers, not
+# hosts; their names live here so one reader exists.
+TEMPORAL_HOST = os.environ.get("SA01_TEMPORAL_HOST") or ""
+TEMPORAL_NAMESPACE = os.environ.get("SA01_TEMPORAL_NAMESPACE") or "default"
+TEMPORAL_CONVERSATION_QUEUE = os.environ.get("SA01_TEMPORAL_CONVERSATION_QUEUE") or "conversation"
+TEMPORAL_A2A_QUEUE = os.environ.get("SA01_TEMPORAL_A2A_QUEUE") or "a2a"
 
 # Kafka
 KAFKA_BOOTSTRAP_SERVERS = get_optional_env(

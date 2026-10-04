@@ -65,7 +65,7 @@ def get_default_model() -> str:
 
     Per
     """
-    model = getattr(settings, "AAAS_DEFAULT_CHAT_MODEL", os.environ.get("SA01_LLM_MODEL"))
+    model = getattr(settings, "AAAS_DEFAULT_CHAT_MODEL", None)
     if not model:
         # Fallback to a safe string during migrations/setup if needed,
         # but do NOT block module import.
@@ -76,19 +76,23 @@ def get_default_model() -> str:
 def get_multimodal_enabled() -> bool:
     """Retrieve multimodal enabled."""
 
-    return getattr(settings, "SA01_ENABLE_MULTIMODAL_CAPABILITIES", False)
+    return bool(getattr(settings, "SA01_ENABLE_MULTIMODAL_CAPABILITIES", False))
 
 
 def get_confidence_enabled() -> bool:
     """Retrieve confidence enabled."""
 
-    return getattr(settings, "CONFIDENCE_ENABLED", False)
+    from admin.core.helpers.settings import get_settings
+
+    return bool(getattr(settings, "CONFIDENCE_ENABLED", None) or get_settings().confidence_enabled)
 
 
 def get_confidence_aggregation() -> str:
     """Retrieve confidence aggregation."""
 
-    return getattr(settings, "CONFIDENCE_AGGREGATION", "average")
+    from admin.core.helpers.settings import get_settings
+
+    return str(getattr(settings, "CONFIDENCE_AGGREGATION", None) or get_settings().confidence_aggregation)
 
 
 def _multimodal_instructions() -> str:

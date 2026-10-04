@@ -98,11 +98,16 @@ services:
       # and are read there by services/gateway/settings.py. They are deliberately
       # NOT passed here.
       - SOMABRAIN_ENABLED=true
-      # Service DNS on the shared triad cluster, same way SomaBrain already
-      # reaches SomaFractalMemory. No host.docker.internal guess.
-      - SOMABRAIN_URL=${SOMABRAIN_URL:-http://somabrain-somabrain_standalone_app-1:30101}
-      - SOMAFRACTALMEMORY_URL=${SOMAFRACTALMEMORY_URL:-http://somafractalmemory-standalone-api:10101}
-      - MEM_EMBED_DIM=${MEM_EMBED_DIM:-768}
+      # Service endpoints are OPERATOR PARAMETERS, not an ENV contract: the
+      # runtime resolves them through InfrastructureConfig (Capsule >
+      # AgentSetting > InfrastructureConfig > SettingsModel) via
+      # require_service_url. They are passed here only so the process has a
+      # first value before the admin UI exists, and each is REQUIRED — there is
+      # no default host, because a default is a hardcoded value an operator
+      # cannot see and an auditor cannot audit.
+      - SOMABRAIN_URL=${SOMABRAIN_URL:?set SOMABRAIN_URL}
+      - SOMAFRACTALMEMORY_URL=${SOMAFRACTALMEMORY_URL:?set SOMAFRACTALMEMORY_URL}
+      - MEM_EMBED_DIM=${MEM_EMBED_DIM:?set MEM_EMBED_DIM}
       # Database topology — parts, not a DSN. A DSN embeds the password.
       # The password is read from Vault (secret/agent/credentials/postgres_password)
       # by config/settings_registry.py and assembled into DATABASES there.

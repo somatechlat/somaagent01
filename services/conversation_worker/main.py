@@ -48,6 +48,13 @@ tracer = setup_tracing("conversation-worker", endpoint=os.environ.get("OTLP_ENDP
 _metrics_started = False
 
 
+
+def _require_router_url() -> str:
+    """Router is a service endpoint; resolve it through the operator layer."""
+    from admin.core.helpers.service_urls import require_service_url
+
+    return str(require_service_url("ROUTER_URL"))
+
 def _start_metrics() -> None:
     """Start Prometheus metrics server if configured."""
     global _metrics_started
@@ -96,7 +103,7 @@ class ConversationWorkerImpl:
         self.policy = PolicyClient(base_url=django_settings.OPA_URL, tenant_config=self.tenants)
         self.enforcer = ConversationPolicyEnforcer(self.policy)
         self.telemetry = TelemetryPublisher(publisher=self.publisher)
-        self.router = RouterClient(base_url=os.environ.get("ROUTER_URL", ""))
+        self.router = RouterClient(base_url=_require_router_url())
         # Initialize use cases
         self._init_use_cases()
 

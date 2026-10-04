@@ -20,6 +20,8 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from django.conf import settings
+
+from admin.core.helpers.service_urls import require_service_url
 from django.db import transaction
 from django.utils import timezone
 from prometheus_client import Counter, Histogram
@@ -136,7 +138,7 @@ def certify_capsule(capsule: Capsule) -> Capsule:
             capsule.constitution = constitution
             capsule.constitution_ref = {
                 "checksum": constitution.content_hash,
-                "url": getattr(settings, "SOMABRAIN_URL", "local"),
+                "url": require_service_url("SOMABRAIN_URL"),
             }
 
             # Use registry to sign

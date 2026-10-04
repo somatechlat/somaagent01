@@ -49,6 +49,13 @@ LOGGER = logging.getLogger(__name__)
 setup_tracing("conversation-temporal-worker", endpoint=os.environ.get("OTLP_ENDPOINT", ""))
 
 
+
+def _require_router_url() -> str:
+    """Router is a service endpoint; resolve it through the operator layer."""
+    from admin.core.helpers.service_urls import require_service_url
+
+    return str(require_service_url("ROUTER_URL"))
+
 def _build_use_case():
     kafka = KafkaSettings(
         bootstrap_servers=django_settings.KAFKA_BOOTSTRAP_SERVERS,
@@ -70,7 +77,7 @@ def _build_use_case():
     policy_client = PolicyClient(base_url=django_settings.OPA_URL, tenant_config=tenants)
     enforcer = ConversationPolicyEnforcer(policy_client)
     telemetry = TelemetryPublisher(publisher=publisher)
-    router = RouterClient(base_url=os.environ.get("ROUTER_URL", ""))
+    router = RouterClient(base_url=_require_router_url())
 
     gateway_base = os.environ.get("SA01_WORKER_GATEWAY_BASE")
     if not gateway_base:
@@ -311,7 +318,12 @@ async def _ensure_schedules(client: Client, task_queue: str) -> None:
 
 
 async def main() -> None:
-    temporal_host = os.environ.get("SA01_TEMPORAL_HOST", "temporal:7233")
+    temporal_host = (os.environ.get("SA01_TEMPORAL_HOST") or "").strip()
+    if not temporal_host:
+        raise RuntimeError(
+            "SA01_TEMPORAL_HOST is not configured. It is deployment "
+            "topology (operator parameter); there is no default scheduler."
+        )
     task_queue = os.environ.get("SA01_TEMPORAL_CONVERSATION_QUEUE", "conversation")
     client = await Client.connect(temporal_host)
     await _ensure_schedules(client, task_queue)

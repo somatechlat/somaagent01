@@ -17,6 +17,8 @@ import uuid
 from typing import Optional
 
 from django.conf import settings
+
+from admin.core.helpers.service_urls import require_setting
 from ninja import Router
 
 from admin.common.auth import AuthBearer
@@ -166,10 +168,10 @@ def create_upload_url(
         s3_client = boto3.client(
             "s3",
             config=Config(signature_version="s3v4"),
-            region_name=getattr(settings, "AWS_REGION", "us-east-1"),
+            region_name=require_setting("AWS_REGION"),
         )
 
-        bucket = getattr(settings, "AWS_S3_BUCKET", "somaagent-files")
+        bucket = require_setting("AWS_S3_BUCKET")
         expires_in = 3600  # 1 hour
 
         upload_url = s3_client.generate_presigned_url(
@@ -275,10 +277,10 @@ def get_download_url(request, file_id: str):
         s3_client = boto3.client(
             "s3",
             config=Config(signature_version="s3v4"),
-            region_name=getattr(settings, "AWS_REGION", "us-east-1"),
+            region_name=require_setting("AWS_REGION"),
         )
 
-        bucket = getattr(settings, "AWS_S3_BUCKET", "somaagent-files")
+        bucket = require_setting("AWS_S3_BUCKET")
         expires_in = 3600
 
         download_url = s3_client.generate_presigned_url(

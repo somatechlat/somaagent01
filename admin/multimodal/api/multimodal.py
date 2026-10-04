@@ -24,7 +24,7 @@ from services.common.authorization import authorize
 router = Router(tags=["multimodal"])
 logger = logging.getLogger(__name__)
 
-MULTIMODAL_ENABLED = getattr(settings, "SA01_ENABLE_MULTIMODAL_CAPABILITIES", False)
+MULTIMODAL_ENABLED = bool(getattr(settings, "SA01_ENABLE_MULTIMODAL_CAPABILITIES", False))
 
 
 class JobCreateRequest(BaseModel):
