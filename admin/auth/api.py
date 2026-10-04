@@ -345,7 +345,6 @@ async def _login_local(request, payload: "LoginRequest", lockout_service):
     from admin.common.session_manager import get_session_manager
 
     identity = await authenticate_local(payload.email, payload.password)
-    logger.warning('LOCAL_LOGIN email=%s ok=%s reason=%s', payload.email, identity.ok, identity.reason)
     if not identity.ok:
         new_status = await lockout_service.record_failed_attempt(payload.email)
         await _emit_auth_audit(
