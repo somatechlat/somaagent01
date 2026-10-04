@@ -200,7 +200,6 @@ def get_default_settings(agent_id: str = "default"):
     return Settings(
         version=_get_version(),
         # Chat model - from Django ORM
-        chat_model_provider=_env_or_db("SA01_CHAT_PROVIDER", agent_id, "chat_model_provider"),
         chat_model_name=_env_or_db("SA01_CHAT_MODEL", agent_id, "chat_model_name"),
         chat_model_api_base=_env_or_db("SA01_CHAT_API_BASE", agent_id, "chat_model_api_base"),
         chat_model_kwargs={
@@ -225,7 +224,6 @@ def get_default_settings(agent_id: str = "default"):
             "SA01_CHAT_RL_OUTPUT", agent_id, "chat_model_rl_output", 0
         ),
         # Utility model - from Django ORM
-        util_model_provider=_env_or_db("SA01_UTIL_PROVIDER", agent_id, "util_model_provider"),
         util_model_name=_env_or_db("SA01_UTIL_MODEL", agent_id, "util_model_name"),
         util_model_api_base=_env_or_db("SA01_UTIL_API_BASE", agent_id, "util_model_api_base"),
         util_model_ctx_length=_env_or_db_int(
@@ -249,7 +247,6 @@ def get_default_settings(agent_id: str = "default"):
             "SA01_UTIL_RL_OUTPUT", agent_id, "util_model_rl_output", 0
         ),
         # Embedding model - from Django ORM
-        embed_model_provider=_env_or_db("SA01_EMBED_PROVIDER", agent_id, "embed_model_provider"),
         embed_model_name=_env_or_db("SA01_EMBED_MODEL", agent_id, "embed_model_name"),
         embed_model_api_base=_env_or_db("SA01_EMBED_API_BASE", agent_id, "embed_model_api_base"),
         embed_model_kwargs={},
@@ -392,7 +389,6 @@ def get_default_settings(agent_id: str = "default"):
             "SA01_STT_WAITING_TIMEOUT", agent_id, "stt_waiting_timeout", 2000
         ),
         # Speech settings
-        speech_provider=_env_or_db("SA01_SPEECH_PROVIDER", agent_id, "speech_provider", "browser"),
         speech_realtime_enabled=_env_or_db_bool(
             "SA01_SPEECH_REALTIME_ENABLED", agent_id, "speech_realtime_enabled", False
         ),

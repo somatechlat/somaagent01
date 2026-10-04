@@ -88,12 +88,46 @@ def detect_required_capabilities(
     return capabilities
 
 
+async def resolve_model_pin(name: str | None) -> Any | None:
+    """Resolve an operator's pinned model name to a catalog row.
+
+    A pin is an override, not a guess. It either names an active
+    ``LLMModelConfig`` row or it is a refusal - silently falling through to
+    "route by priority" turns a typo in a setting into a routing change
+    nobody can see (fail-closed, Rule 91).
+
+    ``None``/empty means no pin: capability and priority decide, which is
+    the normal path.
+    """
+    if not name:
+        return None
+
+    from asgiref.sync import sync_to_async
+
+    from admin.llm.models import LLMModelConfig
+
+    def _lookup() -> Any | None:
+        return (
+            LLMModelConfig.objects.filter(name=name, is_active=True).first()
+            or LLMModelConfig.objects.filter(display_name=name, is_active=True).first()
+        )
+
+    row = await sync_to_async(_lookup)()
+    if row is None:
+        raise NoCapableModelError(
+            {"pinned": name},
+            f"the pinned model {name!r} is not an active LLMModelConfig row",
+        )
+    return row
+
+
 async def select_model(
     required_capabilities: Set[str],
     capsule_body: Optional[Dict[str, Any]] = None,
     tenant_id: Optional[str] = None,
     prefer_cost_tier: Optional[str] = None,
     preferred_model_id: Optional[int] = None,
+    preferred_name: Optional[str] = None,
 ) -> SelectedModel:
     """
     Select optimal LLM model based on requirements.
@@ -121,6 +155,14 @@ async def select_model(
     Raises:
         NoCapableModelError: If no model matches, or the registry is unavailable
     """
+    # An operator pin by name is an override, and it must resolve. resolve_model_pin
+    # raises when the name is not an active catalog row rather than letting a typo
+    # fall through to priority routing.
+    if preferred_name:
+        pinned = await resolve_model_pin(preferred_name)
+        if pinned is not None:
+            preferred_model_id = getattr(pinned, "id", preferred_model_id)
+
     # Try to import Django ORM model
     try:
         from asgiref.sync import sync_to_async

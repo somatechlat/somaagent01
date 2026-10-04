@@ -34,9 +34,6 @@ class SettingsModel(BaseModel):
 
     # Chat / util / embed model settings — defaults from Django settings / env
     # (SA01_DEFAULT_*). Stored per-agent in the agent settings model at runtime.
-    chat_model_provider: str = Field(
-        default_factory=lambda: _dj("DEFAULT_CHAT_MODEL_PROVIDER", "openrouter")
-    )
     chat_model_name: str = Field(default_factory=lambda: _dj("DEFAULT_CHAT_MODEL_NAME", ""))
     chat_model_api_base: str = ""
     chat_model_kwargs: Dict[str, Any] = {}
@@ -51,9 +48,6 @@ class SettingsModel(BaseModel):
     chat_model_rl_input: int = 0
     chat_model_rl_output: int = 0
 
-    util_model_provider: str = Field(
-        default_factory=lambda: _dj("DEFAULT_UTIL_MODEL_PROVIDER", "openrouter")
-    )
     util_model_name: str = Field(default_factory=lambda: _dj("DEFAULT_UTIL_MODEL_NAME", ""))
     util_model_api_base: str = ""
     util_model_ctx_length: int = Field(
@@ -67,9 +61,6 @@ class SettingsModel(BaseModel):
     util_model_rl_input: int = 0
     util_model_rl_output: int = 0
 
-    embed_model_provider: str = Field(
-        default_factory=lambda: _dj("DEFAULT_EMBED_MODEL_PROVIDER", "huggingface")
-    )
     embed_model_name: str = Field(default_factory=lambda: _dj("DEFAULT_EMBED_MODEL_NAME", ""))
     embed_model_api_base: str = ""
     embed_model_kwargs: Dict[str, Any] = {}
@@ -78,9 +69,6 @@ class SettingsModel(BaseModel):
     embed_model_rl_output: int = 0
 
     # Browser / tool model settings
-    browser_model_provider: str = Field(
-        default_factory=lambda: _dj("DEFAULT_CHAT_MODEL_PROVIDER", "openrouter")
-    )
     browser_model_name: str = Field(default_factory=lambda: _dj("DEFAULT_CHAT_MODEL_NAME", ""))
     browser_model_api_base: str = ""
     browser_model_vision: bool = True
@@ -169,7 +157,6 @@ class SettingsModel(BaseModel):
         default_factory=lambda: int(_dj("STT_SILENCE_DURATION", 1000))
     )
     stt_waiting_timeout: int = Field(default_factory=lambda: int(_dj("STT_WAITING_TIMEOUT", 2000)))
-    speech_provider: str = "browser"
     speech_realtime_enabled: bool = False
     speech_realtime_model: str = Field(default_factory=lambda: _dj("SPEECH_REALTIME_MODEL", ""))
     speech_realtime_voice: str = Field(default_factory=lambda: _dj("SPEECH_REALTIME_VOICE", ""))

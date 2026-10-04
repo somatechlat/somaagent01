@@ -170,11 +170,8 @@ HTTP_READ_TIMEOUT_S = float(os.environ.get("SA01_HTTP_READ_TIMEOUT", "10.0"))
 HTTP_SLOW_READ_TIMEOUT_S = float(os.environ.get("SA01_HTTP_SLOW_READ_TIMEOUT", "30.0"))
 
 DEFAULT_VOICE_MODEL = os.environ.get("SA01_DEFAULT_VOICE_MODEL", "gpt-4o-mini")
-DEFAULT_CHAT_MODEL_PROVIDER = os.environ.get("SA01_DEFAULT_CHAT_MODEL_PROVIDER", "openrouter")
 DEFAULT_CHAT_MODEL_NAME = os.environ.get("SA01_DEFAULT_CHAT_MODEL_NAME", "")
-DEFAULT_UTIL_MODEL_PROVIDER = os.environ.get("SA01_DEFAULT_UTIL_MODEL_PROVIDER", "openrouter")
 DEFAULT_UTIL_MODEL_NAME = os.environ.get("SA01_DEFAULT_UTIL_MODEL_NAME", "")
-DEFAULT_EMBED_MODEL_PROVIDER = os.environ.get("SA01_DEFAULT_EMBED_MODEL_PROVIDER", "huggingface")
 DEFAULT_EMBED_MODEL_NAME = os.environ.get("SA01_DEFAULT_EMBED_MODEL_NAME", "")
 
 # Circuit breaker knobs (SomaBrain / external service resilience).
