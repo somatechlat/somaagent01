@@ -164,6 +164,35 @@ export class ApiClient {
             throw new ApiError(0, error instanceof Error ? error.message : 'Logout request failed');
         }
     }
+
+    /**
+     * Start a federated sign-in through the server OAuth router.
+     *
+     * The browser never holds an issuer URL or a client id. `GET /auth/oauth/{provider}`
+     * (`admin/auth/api_oauth.py`) builds the Keycloak authorize URL from
+     * `get_keycloak_config()` and returns `redirect_url`; we navigate there.
+     * A client that constructs `http://localhost:…` or a Google client id is a
+     * second lane around that router.
+     */
+    async startOAuthLogin(provider: string): Promise<void> {
+        const url = `${this.config.baseUrl}/auth/oauth/${encodeURIComponent(provider)}`;
+        const response = await fetch(url, {
+            credentials: 'include',
+            headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) {
+            const body = await response.json().catch(() => ({}));
+            throw new ApiError(
+                response.status,
+                body.detail ?? body.message ?? `OAuth initiate refused (HTTP ${response.status})`
+            );
+        }
+        const body = await response.json();
+        if (!body.redirect_url) {
+            throw new ApiError(0, 'OAuth initiate returned no redirect_url');
+        }
+        window.location.assign(body.redirect_url);
+    }
 }
 
 /**

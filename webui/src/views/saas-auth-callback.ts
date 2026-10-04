@@ -1,38 +1,19 @@
 /**
- * SomaAgent SaaS — Auth Callback Page
- * Per UI_STYLE_GUIDE.md - Minimal White/Black Design
+ * Auth callback landing — session check only.
  *
- * VIBE COMPLIANT:
- * - Real Lit implementation
- * - OIDC callback handling (Keycloak + Google)
- * - Token exchange
- * - Light theme design
+ * Federated sign-in is completed by the server OAuth router
+ * (`GET /api/v2/auth/oauth/callback` in `admin/auth/api_oauth.py`), which
+ * exchanges the code, sets httpOnly cookies and redirects into the app. This
+ * page is the SPA landing if a provider or proxy sends the browser here; it
+ * never holds an issuer URL and never exchanges a code in the browser.
  */
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { keycloakService } from '../services/keycloak-service.js';
-import { googleAuthService } from '../services/google-auth-service.js';
-import { Router } from '@vaadin/router';
 
 @customElement('saas-auth-callback')
 export class SaasAuthCallback extends LitElement {
     static styles = css`
-        .material-symbols-outlined {
-            font-family: 'Material Symbols Outlined';
-            font-weight: normal;
-            font-style: normal;
-            font-size: 20px;
-            line-height: 1;
-            letter-spacing: normal;
-            text-transform: none;
-            display: inline-block;
-            white-space: nowrap;
-            word-wrap: normal;
-            direction: ltr;
-            -webkit-font-feature-settings: 'liga';
-            -webkit-font-smoothing: antialiased;
-        }
         :host {
             display: flex;
             justify-content: center;
@@ -42,19 +23,16 @@ export class SaasAuthCallback extends LitElement {
             color: var(--saas-text-primary, #1a1a1a);
             font-family: var(--saas-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
         }
-
         .callback-container {
             text-align: center;
             padding: 48px;
             background: var(--saas-bg-card, #ffffff);
             border: 1px solid var(--saas-border-light, #e0e0e0);
             border-radius: 12px;
-            box-shadow: var(--saas-shadow-md, 0 2px 8px rgba(0,0,0,0.06));
             max-width: 400px;
             width: 100%;
             margin: 24px;
         }
-
         .spinner {
             width: 48px;
             height: 48px;
@@ -64,203 +42,87 @@ export class SaasAuthCallback extends LitElement {
             animation: spin 0.8s linear infinite;
             margin: 0 auto 24px;
         }
-
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-
-        .status {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: var(--saas-text-primary, #1a1a1a);
-        }
-
-        .detail {
-            font-size: 14px;
-            color: var(--saas-text-secondary, #666);
-        }
-
-        .error {
-            color: var(--saas-status-danger, #ef4444);
-        }
-
-        .error-box {
-            padding: 16px;
-            border-radius: 8px;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            margin-top: 20px;
-            font-size: 13px;
-            color: var(--saas-status-danger, #ef4444);
-        }
-
+        .status { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+        .detail { font-size: 14px; color: var(--saas-text-secondary, #666); }
+        .error { color: var(--saas-status-danger, #ef4444); }
         .retry-btn {
             margin-top: 24px;
             padding: 12px 24px;
-            border-radius: 8px;
             background: var(--saas-accent, #1a1a1a);
-            color: white;
+            color: #fff;
             border: none;
-            font-weight: 600;
-            font-size: 14px;
+            border-radius: 8px;
             cursor: pointer;
-            transition: background 0.15s ease;
-            font-family: inherit;
-        }
-
-        .retry-btn:hover {
-            background: #333;
-        }
-
-        .success-icon {
-            width: 48px;
-            height: 48px;
-            background: rgba(34, 197, 94, 0.1);
-            border: 1px solid rgba(34, 197, 94, 0.2);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 24px;
-            font-size: 24px;
+            font-size: 14px;
         }
     `;
 
-    @state() private _status = 'Processing authentication...';
-    @state() private _error: string | null = null;
     @state() private _isLoading = true;
+    @state() private _error = '';
+    @state() private _status = 'Completing sign-in…';
 
-    connectedCallback() {
+    override connectedCallback() {
         super.connectedCallback();
-        this._handleCallback();
+        void this._complete();
     }
 
-    render() {
-        return html`
-            <div class="callback-container">
-                ${this._isLoading ? html`
-                    <div class="spinner"></div>
-                    <p class="status">${this._status}</p>
-                    <p class="detail">Please wait while we complete your sign-in</p>
-                ` : this._error ? html`
-                    <p class="status error">Authentication Failed</p>
-                    <div class="error-box">${this._error}</div>
-                    <button class="retry-btn" @click=${this._retry}>
-                        Return to Login
-                    </button>
-                ` : html`
-                    <div class="success-icon"><span class="material-symbols-outlined">check_circle</span></div>
-                    <p class="status">Success!</p>
-                    <p class="detail">Redirecting to application...</p>
-                `}
-            </div>
-        `;
-    }
-
-    private async _handleCallback() {
-        try {
-            // Detect which OAuth provider by checking stored state
-            const isGoogleAuth = sessionStorage.getItem('saas_google_state') !== null;
-            const isKeycloakAuth = sessionStorage.getItem('saas_auth_state') !== null;
-
-            if (isGoogleAuth) {
-                await this._handleGoogleCallback();
-            } else if (isKeycloakAuth) {
-                await this._handleKeycloakCallback();
-            } else {
-                throw new Error('No authentication session found');
-            }
-
-        } catch (error) {
+    private async _complete() {
+        // The server callback already set the session cookies when it landed
+        // here. Confirm the session exists, then enter the app. A provider
+        // error in the query string is shown as-is — never invented.
+        const params = new URLSearchParams(window.location.search);
+        const providerError = params.get('error') || params.get('error_description');
+        if (providerError) {
             this._isLoading = false;
-            this._error = error instanceof Error ? error.message : 'Authentication failed';
+            this._error = providerError;
+            return;
         }
-    }
-
-    /**
-     * Handle Google OAuth callback
-     */
-    private async _handleGoogleCallback() {
-        const callback = googleAuthService.parseCallback(window.location.href);
-
-        if (callback.error) {
-            throw new Error(callback.error);
+        try {
+            this._status = 'Checking your session…';
+            const res = await fetch('/api/v2/auth/me', { credentials: 'include' });
+            if (!res.ok) {
+                this._isLoading = false;
+                this._error = 'No active session. Sign in again.';
+                return;
+            }
+            this._status = 'Signed in. Opening chat…';
+            window.location.assign('/chat');
+        } catch (err) {
+            this._isLoading = false;
+            this._error = err instanceof Error ? err.message : 'Could not confirm the session';
         }
-
-        if (callback.state && !googleAuthService.verifyState(callback.state)) {
-            throw new Error('Invalid state parameter - possible CSRF attack');
-        }
-
-        if (!callback.code) {
-            throw new Error('No authorization code received');
-        }
-
-        this._status = 'Exchanging authorization code...';
-
-        // Exchange code via backend (keeps client_secret secure)
-        const result = await googleAuthService.exchangeCode(callback.code);
-
-        // Token is stored in httpOnly cookie by backend; keep only minimal user info for UI.
-        if (result.user) {
-            sessionStorage.setItem('saas_user', JSON.stringify(result.user));
-        }
-
-        // Clear state
-        googleAuthService.clearState();
-
-        this._isLoading = false;
-
-        // Redirect based on role
-        setTimeout(() => {
-            Router.go(result.redirect_path || '/chat');
-        }, 1000);
-    }
-
-    /**
-     * Handle Keycloak OIDC callback
-     */
-    private async _handleKeycloakCallback() {
-        const callback = keycloakService.parseCallback(window.location.href);
-
-        if (callback.error) {
-            throw new Error(callback.error);
-        }
-
-        if (callback.state && !keycloakService.verifyState(callback.state)) {
-            throw new Error('Invalid state parameter - possible CSRF attack');
-        }
-
-        if (!callback.code) {
-            throw new Error('No authorization code received');
-        }
-
-        this._status = 'Exchanging authorization code...';
-        await keycloakService.exchangeCode(callback.code);
-
-        this._status = 'Fetching user information...';
-        const userInfo = await keycloakService.getUserInfo();
-
-        if (userInfo) {
-            sessionStorage.setItem('saas_user', JSON.stringify({
-                id: userInfo.sub,
-                username: userInfo.preferred_username,
-                email: userInfo.email,
-                name: userInfo.name,
-                roles: userInfo.realm_access?.roles || [],
-            }));
-        }
-
-        this._isLoading = false;
-
-        // Redirect to app
-        setTimeout(() => {
-            window.location.href = '/chat';
-        }, 1000);
     }
 
     private _retry() {
-        window.location.href = '/login';
+        window.location.assign('/login');
+    }
+
+    override render() {
+        return html`
+            <div class="callback-container">
+                ${this._isLoading
+                    ? html`
+                          <div class="spinner"></div>
+                          <p class="status">${this._status}</p>
+                      `
+                    : html`
+                          <p class="status ${this._error ? 'error' : ''}">
+                              ${this._error || 'Success!'}
+                          </p>
+                          ${this._error
+                              ? html`
+                                    <p class="detail">${this._error}</p>
+                                    <button class="retry-btn" @click=${this._retry}>
+                                        Return to Login
+                                    </button>
+                                `
+                              : html`<p class="detail">Redirecting to application...</p>`}
+                      `}
+            </div>
+        `;
     }
 }
 

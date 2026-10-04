@@ -12,8 +12,7 @@
 
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { keycloakService } from '../services/keycloak-service.js';
-import { googleAuthService } from '../services/google-auth-service.js';
+import { apiClient } from '../services/api-client.js';
 
 type SSOProvider = 'oidc' | 'saml' | 'ldap' | 'ad' | 'okta' | 'azure' | 'ping' | 'onelogin';
 
@@ -887,8 +886,14 @@ export class SaasLogin extends LitElement {
         }
     }
 
-    private _handleGoogleSignIn() {
-        window.location.href = googleAuthService.getAuthUrl();
+    private async _handleGoogleSignIn() {
+        try {
+            // The server OAuth router builds the authorize URL from
+            // get_keycloak_config(); the browser never holds an issuer or client id.
+            await apiClient.startOAuthLogin('google');
+        } catch (err) {
+            this._error = err instanceof Error ? err.message : 'Google sign-in failed';
+        }
     }
 
     private async _testConnection() {
@@ -939,21 +944,23 @@ export class SaasLogin extends LitElement {
         }
 
         try {
-            // Save SSO config to backend
-            await fetch('/api/v2/auth/sso/configure', {
+            // Save SSO config to backend. The server is the only authority on
+            // whether persistence exists — never claim success it did not return.
+            const response = await fetch('/api/v2/auth/sso/configure', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ provider: this._selectedProvider, config }),
             });
-
-            // If OIDC, redirect to the configured provider
-            if (this._selectedProvider === 'oidc' && config.issuer_url) {
-                window.location.href = keycloakService.getAuthUrl();
-            } else {
-                this._showSSOModal = false;
-                this._error = '';
-                alert('SSO configured! Click Enterprise SSO again to connect.');
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || result.success === false) {
+                this._testStatus = 'error';
+                this._testMessage = result.detail || result.message || 'SSO configuration was refused.';
+                return;
             }
+            this._testStatus = 'success';
+            this._testMessage = result.message || 'SSO configuration stored.';
+            this._showSSOModal = false;
+            this._error = '';
         } catch {
             this._error = 'Failed to save SSO configuration';
         }
