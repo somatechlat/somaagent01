@@ -13,7 +13,7 @@
  *   UI-X-04 Editor   — read-only view of a file opened from UI-X-01
  *   UI-X-05 Debug    — real WS frame ring buffer (websocket-client.ts)
  *   UI-X-06 Capsule  — <saas-capsule-editor>
- *   UI-X-07 Brain    — <saas-brain-panel>
+ *   UI-X-07 Brain    — <saas-cognitive-panel>
  *   UI-X-08 Desktop  — GATED (REQ-UIX-007), fixed blocking reason
  */
 
@@ -23,7 +23,7 @@ import { workspaceStore } from '../stores/workspace-store.js';
 import { apiClient, ApiError } from '../services/api-client.js';
 import { wsFrameLog, onWsFrame, type WsFrame } from '../services/websocket-client.js';
 import './saas-capsule-editor.js';
-import './saas-brain-panel.js';
+import '../views/saas-cognitive-panel.js';
 
 // ---------------------------------------------------------------------------
 // Registry (UI-C-014 order)
@@ -830,7 +830,7 @@ export class SaasRightPanel extends LitElement {
             case 'capsule':
                 return html`${header}<saas-capsule-editor></saas-capsule-editor>`;
             case 'brain':
-                return html`${header}<saas-brain-panel></saas-brain-panel>`;
+                return html`${header}<saas-cognitive-panel></saas-cognitive-panel>`;
             case 'desktop':
                 return html`${header}${this._renderDesktop(def)}`;
             default:

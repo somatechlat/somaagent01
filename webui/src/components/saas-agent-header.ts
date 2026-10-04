@@ -14,7 +14,7 @@ export class SaasAgentHeader extends LitElement {
     @state() private _profileDropdownOpen = false;
     @state() private _presetDropdownOpen = false;
     @state() private _agentState = agentStore.state;
-    @state() private _iqState = iqStore.knobs.intelligence;
+    @state() private _iqState = iqStore.knobs?.intelligence_level ?? null;
 
     static styles = css`
         .material-symbols-outlined {
@@ -233,7 +233,7 @@ export class SaasAgentHeader extends LitElement {
             this._agentState = agentStore.state;
         });
         iqStore.subscribe(() => {
-            this._iqState = iqStore.knobs.intelligence;
+            this._iqState = iqStore.knobs?.intelligence_level ?? null;
         });
     }
 
@@ -245,7 +245,7 @@ export class SaasAgentHeader extends LitElement {
         const activeProfile = profiles.find(p => p.id === this._agentState.activeProfileId);
         const activePreset = presets.find(p => p.id === this._agentState.activePresetId);
 
-        const iqClass = iq <= 3 ? '' : iq <= 7 ? 'medium' : 'high';
+        const iqClass = iq === null ? '' : iq <= 3 ? '' : iq <= 7 ? 'medium' : 'high';
 
         return html`
             <div class="header">
@@ -261,8 +261,8 @@ export class SaasAgentHeader extends LitElement {
                 </div>
 
                 <div class="controls">
-                    <button class="iq-badge ${iqClass}" @click=${() => workspaceStore.setSurface('brain')} title="IQ Level">
-                        IQ ${iq}
+                    <button class="iq-badge ${iqClass}" @click=${() => workspaceStore.setSurface('brain')} title="AgentIQ intelligence level">
+                        ${iq === null ? 'IQ —' : `IQ ${iq}`}
                     </button>
 
                     <div class="pill-select">

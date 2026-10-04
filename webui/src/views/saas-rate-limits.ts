@@ -255,9 +255,7 @@ export class SaasRateLimits extends LitElement {
             <p class="header-subtitle">Configure global rate limits and per-tier overrides</p>
           </div>
           <div class="header-actions">
-            <button class="btn">
-              + Add New Limit
-            </button>
+            <span class="muted">Limits come from the server; adding a new key has no API here.</span>
             <button class="btn btn-primary" ?disabled=${this.saving} @click=${() => this.saveRateLimits()}>
               ${this.saving ? 'Saving...' : html`<span class='material-symbols-outlined'>save</span> Save Changes`}
             </button>
@@ -309,7 +307,7 @@ export class SaasRateLimits extends LitElement {
                           </select>
                         </td>
                         <td>
-                          <button class="btn btn-icon" title="Delete"><span class="material-symbols-outlined">delete</span></button>
+                          <span class="muted">—</span>
                         </td>
                       </tr>
                     `)}

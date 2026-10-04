@@ -13,15 +13,12 @@ export { SaasMemoryView } from './saas-memory-view.js';
 export { SaasCognitivePanel } from './saas-cognitive-panel.js';
 
 // Admin Views
-export { SaasAdminApiKeys } from './saas-admin-api-keys.js';
-export { SaasAdminModelsList } from './saas-admin-models-list.js';
 export { SaasAdminRolesList } from './saas-admin-roles-list.js';
+export { SaasAdminApiKeys } from './saas-admin-api-keys.js';
 export { SaasRoleMatrix } from './saas-role-matrix.js';
-export { SaasPermissions } from './saas-permissions.js';
 
 // Other
 export { SaasAuditDashboard } from './saas-audit-dashboard.js';
-export { SaasAuditLog } from './saas-audit-log.js';
 export { SaasIntegrationsDashboard } from './saas-integrations-dashboard.js';
 export { SaasMfaSetup } from './saas-mfa-setup.js';
 export { SaasMultimodalSettings } from './saas-multimodal-settings.js';

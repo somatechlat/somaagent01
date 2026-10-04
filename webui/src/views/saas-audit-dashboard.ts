@@ -334,6 +334,7 @@ export class SaasAuditDashboard extends LitElement {
         });
         if (this.actionFilter) params.set('action', this.actionFilter);
         if (this.resourceFilter) params.set('resource_type', this.resourceFilter);
+        if (this.searchQuery.trim()) params.set('search', this.searchQuery.trim());
 
         const data = await apiClient.get<{ items?: AuditLogEntry[]; total?: number }>(`/aaas/audit?${params}`);
         this.logs = data.items || [];
@@ -357,6 +358,7 @@ export class SaasAuditDashboard extends LitElement {
         const params = new URLSearchParams({ limit: '10000' });
         if (this.actionFilter) params.set('action', this.actionFilter);
         if (this.resourceFilter) params.set('resource_type', this.resourceFilter);
+        if (this.searchQuery.trim()) params.set('search', this.searchQuery.trim());
 
         window.location.href = `/api/v2/aaas/audit/export?${params}`;
     }
@@ -380,6 +382,17 @@ export class SaasAuditDashboard extends LitElement {
         if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
         return date.toLocaleDateString();
     }
+
+    private _searchTimer: ReturnType<typeof setTimeout> | null = null;
+
+    private _onSearchInput = (e: Event) => {
+        this.searchQuery = (e.target as HTMLInputElement).value;
+        if (this._searchTimer) clearTimeout(this._searchTimer);
+        this._searchTimer = setTimeout(() => {
+            this.page = 1;
+            void this.fetchLogs();
+        }, 300);
+    };
 
     private handlePageChange(newPage: number) {
         this.page = newPage;
@@ -437,7 +450,7 @@ export class SaasAuditDashboard extends LitElement {
             class="search-input" 
             placeholder="Search logs..."
             .value=${this.searchQuery}
-            @input=${(e: InputEvent) => this.searchQuery = (e.target as HTMLInputElement).value}
+            @input=${this._onSearchInput}
           />
           <select 
             class="filter-select"

@@ -1,327 +1,178 @@
 /**
- * SAAS Admin Roles List View
- * Management interface for Roles & Permissions
+ * Roles list — the one role catalogue screen.
  *
- * SRS Reference: Section 9.2
- * VIBE COMPLIANT:
- * - Real Lit 3.x Web Component
- * - Uses shared components
- * - Material Icons
- * - Permission Matrix UI
+ * Backed by GET /aaas/settings/roles (PlatformConfig Global Defaults) and
+ * GET /auth/me for the caller's real permissions. The deleted /permissions/*
+ * router used to mint fabricated CRUD; this view never talks to it.
+ *
+ * System / provisioned roles are locked. The real authority to rewrite what a
+ * role grants is `org:assign_roles` (admin/aaas/api/settings.py update_role).
  */
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
-import '../components/saas-data-table.js';
-import '../components/saas-glass-modal.js';
-import '../components/saas-form-field.js';
 import '../components/saas-status-badge.js';
-import '../components/saas-action-menu.js';
-import '../components/saas-toggle.js';
-import type { TableColumn } from '../components/saas-data-table.js';
 
-interface Role {
+interface RoleRow {
     id: string;
     name: string;
-    code: string;
-    level: 'platform' | 'tenant' | 'agent';
-    users: number;
-    permissions: number;
     description: string;
+    permissions: string[];
+    user_count: number;
 }
+
+/** Roles established at install / break-glass. Never assignable, never editable. */
+const PROVISIONED_ROLES = new Set(['sysadmin', 'agent_owner']);
 
 @customElement('saas-admin-roles-list')
 export class SaasAdminRolesList extends LitElement {
     static styles = css`
         :host {
             display: block;
-            padding: var(--saas-space-lg, 24px);
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: var(--saas-space-lg, 24px);
-        }
-
-        .title-area h1 {
-            font-size: var(--saas-text-2xl, 28px);
-            font-weight: var(--saas-font-semibold, 600);
+            height: 100vh;
+            overflow-y: auto;
+            padding: 24px;
+            background: var(--saas-bg-page, #f5f5f5);
             color: var(--saas-text-primary, #1a1a1a);
-            margin: 0;
+            font-family: var(--saas-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
         }
-
-        .subtitle {
-            font-size: var(--saas-text-sm, 13px);
-            color: var(--saas-text-secondary, #666666);
-            margin-top: 4px;
+        * { box-sizing: border-box; }
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-size: 20px;
+            line-height: 1;
+            display: inline-block;
         }
-
-        .btn-primary {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 16px;
-            background: var(--saas-accent, #1a1a1a);
-            color: var(--saas-text-inverse, #ffffff);
-            border: none;
-            border-radius: var(--saas-radius-md, 8px);
-            font-size: var(--saas-text-sm, 13px);
-            font-weight: var(--saas-font-medium, 500);
-            cursor: pointer;
-        }
-
-        /* Matrix Styles */
-        .matrix-container {
-            border: 1px solid var(--saas-border-light);
-            border-radius: 8px;
-            overflow: hidden;
-            margin-top: 16px;
-        }
-
-        .matrix-header {
-            background: var(--saas-bg-active);
-            padding: 8px 16px;
-            font-weight: 600;
+        h1 { font-size: 24px; margin: 0 0 4px; }
+        .subtitle { color: var(--saas-text-secondary, #666); margin: 0 0 20px; font-size: 13px; }
+        .notice {
+            border: 1px solid var(--saas-border-light, #e0e0e0);
+            background: var(--saas-bg-card, #fff);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 20px;
             font-size: 13px;
-            display: flex;
-            justify-content: space-between;
+            line-height: 1.5;
         }
-
-        .matrix-group {
-            border-bottom: 1px solid var(--saas-border-light);
-        }
-
-        .matrix-group-title {
-            padding: 8px 16px;
-            font-weight: 600;
-            font-size: 11px;
-            color: var(--saas-text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            background: var(--saas-bg-page);
-        }
-
-        .matrix-row {
-            display: flex;
-            align-items: center;
-            padding: 8px 16px;
-            border-bottom: 1px solid var(--saas-border-light);
-            font-size: 13px;
-        }
-
-        .matrix-row:last-child {
-            border-bottom: none;
-        }
-
-        .matrix-row:hover {
-            background: var(--saas-bg-hover);
-        }
-
-        .perm-check {
-            margin-right: 12px;
-        }
-
-        .perm-code {
-            font-family: var(--saas-font-mono);
-            font-size: 12px;
-            color: var(--saas-text-secondary);
-            width: 160px;
-        }
-        
-        .perm-desc {
-            flex: 1;
-        }
-
-        .section-tabs {
-            display: flex;
-            gap: 24px;
-            border-bottom: 1px solid var(--saas-border-light);
-            margin-bottom: 24px;
-        }
-
-        .tab {
-            padding: 12px 0;
-            font-size: 14px;
-            color: var(--saas-text-secondary);
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-        }
-
-        .tab.active {
-            color: var(--saas-text-primary);
-            font-weight: 500;
-            border-bottom-color: var(--saas-accent);
+        table { width: 100%; border-collapse: collapse; background: var(--saas-bg-card, #fff);
+            border: 1px solid var(--saas-border-light, #e0e0e0); border-radius: 10px; overflow: hidden; }
+        th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--saas-border-light, #eee); font-size: 13px; vertical-align: top; }
+        th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--saas-text-secondary, #666); }
+        tr:last-child td { border-bottom: none; }
+        .muted { color: var(--saas-text-muted, #999); font-size: 12px; }
+        .perm-list { margin: 0; padding-left: 16px; }
+        .perm-list li { margin: 2px 0; font-family: ui-monospace, monospace; font-size: 11px; }
+        .error { color: #b91c1c; background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
+        .actions { display: flex; gap: 8px; }
+        a.link {
+            color: inherit; font-size: 12px; text-decoration: underline;
+            background: none; border: none; cursor: pointer; padding: 0;
         }
     `;
 
-    @state() private _roles: Role[] = [];
-    @state() private _activeTab = 'platform';
-    @state() private _showModal = false;
+    @state() private _roles: RoleRow[] = [];
+    @state() private _loading = true;
+    @state() private _error = '';
+    @state() private _canAssignRoles = false;
 
-    connectedCallback() {
+    async connectedCallback() {
         super.connectedCallback();
-        this._loadRoles();
+        await this._load();
     }
 
-    private async _loadRoles() {
+    private async _load() {
+        this._loading = true;
+        this._error = '';
         try {
-            const data = await apiClient.get('/permissions/roles') as {
-                roles?: Array<{
-                    role_id: string;
-                    name: string;
-                    description?: string;
-                    permissions?: string[];
-                    is_system?: boolean;
-                    tenant_id?: string | null;
-                }>;
-            };
-            this._roles = (data.roles || []).map(r => ({
-                id: r.role_id,
-                name: r.name,
-                code: this._slugFromName(r.name),
-                level: this._mapLevel(r.is_system, r.tenant_id),
-                users: 0,
-                permissions: r.permissions?.length ?? 0,
-                description: r.description ?? '',
-            }));
-        } catch (error) {
-            console.error('[SaasAdminRolesList] Failed to load roles:', error);
+            const [roles, me] = await Promise.all([
+                apiClient.get<RoleRow[]>('/aaas/settings/roles'),
+                apiClient.get<{ permissions?: string[] }>('/auth/me'),
+            ]);
+            this._roles = roles || [];
+            this._canAssignRoles = (me.permissions || []).includes('org:assign_roles');
+        } catch (err) {
+            this._error = `Couldn't load roles. ${err instanceof Error ? err.message : err}`;
             this._roles = [];
+        } finally {
+            this._loading = false;
         }
     }
-
-    private _slugFromName(name: string): string {
-        return name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-    }
-
-    private _mapLevel(is_system?: boolean, tenant_id?: string | null): 'platform' | 'tenant' | 'agent' {
-        if (is_system) return 'platform';
-        if (tenant_id) return 'tenant';
-        return 'agent';
-    }
-
-    private _columns: TableColumn[] = [
-        { key: 'name', label: 'Role Name', sortable: true, width: '25%' },
-        {
-            key: 'code',
-            label: 'Code',
-            width: '20%',
-            render: (val) => html`<code style="font-size: 12px; background: var(--saas-bg-active); padding: 2px 4px; border-radius: 4px">${val}</code>`
-        },
-        { key: 'users', label: 'Users', width: '10%', align: 'center' },
-        { key: 'permissions', label: 'Perms', width: '10%', align: 'center' },
-        { key: 'description', label: 'Description', width: '30%' },
-        {
-            key: 'actions',
-            label: '',
-            width: '40px',
-            align: 'right',
-            render: (val, row) => html`
-                <saas-action-menu
-                    .actions=${[
-                    { id: 'edit', label: 'Edit Permissions', icon: 'lock_open' },
-                    { id: 'users', label: 'View Users', icon: 'group' },
-                    { id: 'delete', label: 'Delete', icon: 'delete', variant: 'danger' }
-                ]}
-                ></saas-action-menu>
-            `
-        }
-    ];
-
-    private _matrix: Array<{ group: string; perms: Array<{ code: string; desc: string; checked: boolean }> }> = [];
 
     render() {
         return html`
-            <div class="header">
-                <div class="title-area">
-                    <h1>Roles & Permissions</h1>
-                    <div class="subtitle">Configure access controls for Platform, Tenants, and Agents</div>
-                </div>
-                <button class="btn-primary" @click=${() => this._showModal = true}>
-                    <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-                    Create Role
-                </button>
+            <h1>Roles</h1>
+            <p class="subtitle">
+                Catalogue roles and the permissions each one grants.
+                Authority is <code>admin.core.authz</code>; this screen reads it, it does not invent verbs.
+            </p>
+
+            <div class="notice">
+                Editing what a role grants requires <strong>org:assign_roles</strong>.
+                ${this._canAssignRoles
+                    ? html`You hold that permission. Open the <a class="link" href="/platform/role-matrix" @click=${this._goMatrix}>permission matrix</a> to change grants.`
+                    : html`You do not hold it, so grants are read-only here.`}
+                Provisioned roles (<code>sysadmin</code>, <code>agent_owner</code>) are locked:
+                they are established at install, never assigned from inside an organization.
             </div>
 
-            <div class="section-tabs">
-                <div class="tab ${this._activeTab === 'platform' ? 'active' : ''}" @click=${() => this._activeTab = 'platform'}>Platform Roles</div>
-                <div class="tab ${this._activeTab === 'tenant' ? 'active' : ''}" @click=${() => this._activeTab = 'tenant'}>Tenant Roles</div>
-                <div class="tab ${this._activeTab === 'agent' ? 'active' : ''}" @click=${() => this._activeTab = 'agent'}>Agent Roles</div>
-            </div>
+            ${this._error ? html`<div class="error">${this._error}</div>` : nothing}
 
-            <saas-data-table
-                .columns=${this._columns}
-                .data=${this._roles.filter(r => r.level === this._activeTab)}
-            ></saas-data-table>
-
-            <saas-glass-modal
-                ?open=${this._showModal}
-                title="Edit Role Permissions"
-                size="lg"
-                @saas-modal-close=${() => this._showModal = false}
-            >
-                <div>
-                    <div style="display: flex; gap: 16px; margin-bottom: 24px">
-                        <saas-form-field label="Role Name" value="" style="flex: 1"></saas-form-field>
-                        <saas-form-field label="Role Code" value="" disabled style="flex: 1"></saas-form-field>
-                    </div>
-
-                    <div style="margin-bottom: 16px">
-                        <p style="font-size: 13px; font-weight: 600; margin-bottom: 8px">Agent Modes Allowed</p>
-                        <div style="display: flex; gap: 16px">
-                            <saas-toggle label="STD" checked></saas-toggle>
-                            <saas-toggle label="DEV" checked></saas-toggle>
-                            <saas-toggle label="TRN"></saas-toggle>
-                            <saas-toggle label="ADM"></saas-toggle>
-                            <saas-toggle label="RO"></saas-toggle>
-                        </div>
-                    </div>
-
-                    <div class="matrix-container" style="opacity: 0.6; pointer-events: none;">
-                        <div class="matrix-header">
-                            <span>PERMISSION MATRIX</span>
-                            <span style="color: var(--saas-text-secondary);">Select All</span>
-                        </div>
-
-                        ${this._matrix.length === 0 ? html`
-                            <p style="font-size: 13px; color: var(--saas-text-secondary); padding: 12px 0;">
-                                Permission matrix editor is unavailable until a matrix endpoint is implemented.
-                            </p>
-                        ` : ''}
-
-                        ${this._matrix.map(group => html`
-                            <div class="matrix-group">
-                                <div class="matrix-group-title">${group.group}</div>
-                                ${group.perms.map(perm => html`
-                                    <div class="matrix-row">
-                                        <div class="perm-check">
-                                            <input type="checkbox" ?checked=${perm.checked} disabled>
-                                        </div>
-                                        <div class="perm-code">${perm.code}</div>
-                                        <div class="perm-desc">${perm.desc}</div>
-                                    </div>
-                                `)}
-                            </div>
-                        `)}
-                    </div>
-                </div>
-
-                <div slot="footer" style="display: flex; justify-content: flex-end; gap: 8px">
-                    <button class="btn-secondary" @click=${() => this._showModal = false} style="
-                        padding: 8px 16px;
-                        background: transparent;
-                        border: 1px solid var(--saas-border-light);
-                        border-radius: 8px;
-                        cursor: pointer;
-                    ">Cancel</button>
-                    <button class="btn-primary" disabled>Save Changes</button>
-                </div>
-            </saas-glass-modal>
+            ${this._loading
+                ? html`<p class="muted">Loading roles…</p>`
+                : this._roles.length === 0
+                    ? html`<p class="muted">No roles are configured on this deployment.</p>`
+                    : html`
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Role</th>
+                                    <th>Provisioned</th>
+                                    <th>Users</th>
+                                    <th>Permissions</th>
+                                    <th>Description</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${this._roles.map(r => {
+                                    const locked = PROVISIONED_ROLES.has(r.id);
+                                    return html`
+                                        <tr>
+                                            <td>
+                                                <strong>${r.name || r.id}</strong>
+                                                <div class="muted">${r.id}</div>
+                                            </td>
+                                            <td>
+                                                ${locked
+                                                    ? html`<saas-status-badge variant="info" size="sm">locked</saas-status-badge>`
+                                                    : html`<span class="muted">assignable</span>`}
+                                            </td>
+                                            <td>${r.user_count ?? 0}</td>
+                                            <td>
+                                                <ul class="perm-list">
+                                                    ${(r.permissions || []).map(p => html`<li>${p}</li>`)}
+                                                </ul>
+                                            </td>
+                                            <td>${r.description || '—'}</td>
+                                            <td>
+                                                <div class="actions">
+                                                    <a class="link" href="/platform/role-matrix" @click=${this._goMatrix}>Matrix</a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `;
+                                })}
+                            </tbody>
+                        </table>
+                    `}
         `;
     }
+
+    private _goMatrix = (e: Event) => {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/platform/role-matrix' } }));
+    };
 }
 
 declare global {

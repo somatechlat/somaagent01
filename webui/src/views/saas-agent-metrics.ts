@@ -268,6 +268,7 @@ export class SaasAgentMetrics extends LitElement {
     }
   `;
 
+    @state() private month = new Date().toISOString().slice(0, 7);
     @state() private loading = true;
     @state() private usage: UsageMetric[] = [];
     @state() private agents: AgentUsage[] = [];
@@ -338,6 +339,11 @@ export class SaasAgentMetrics extends LitElement {
         return this.costs.reduce((sum, c) => sum + c.amount, 0);
     }
 
+    private _onMonthChange = (e: Event) => {
+        this.month = (e.target as HTMLInputElement).value;
+        void this.loadMetrics();
+    };
+
     render() {
         return html`
       <aside class="sidebar">
@@ -350,7 +356,7 @@ export class SaasAgentMetrics extends LitElement {
             <h1 class="header-title"><span class="material-symbols-outlined">bar_chart</span> Agent Metrics</h1>
             <p class="header-subtitle">Usage and cost breakdown for your agents</p>
           </div>
-          <input type="month" class="date-range" value="2025-12">
+          <input type="month" class="date-range" .value=${this.month} @change=${this._onMonthChange}>
         </header>
 
         <div class="content">

@@ -17,12 +17,14 @@ import { customElement, property, state, query } from 'lit/decorators.js';
 import { WebSocketClient } from '../services/websocket-client.js';
 import { apiClient } from '../services/api-client.js';
 import type { ToolCallStep, ToolStepStatus } from '../components/saas-tool-timeline.js';
+import { iqStore } from '../stores/iq-store.js';
 import type { ComposerSendDetail } from '../components/saas-composer.js';
 import type { ChatControlAction, ConnectionStatus } from '../components/saas-chat-topbar.js';
 import { formatRelative } from '../utils/markdown.js';
 import '../components/saas-message.js';
 import '../components/saas-tool-timeline.js';
 import '../components/saas-chat-topbar.js';
+import '../components/saas-agent-iq.js';
 import '../components/saas-composer.js';
 import '../components/saas-right-panel.js';
 
@@ -1190,9 +1192,23 @@ export class SaasChat extends LitElement {
             this._connectionStatus = 'ok';
             window.clearTimeout(this._reconnectBannerTimer);
             window.clearTimeout(this._connectionChipTimer);
-            const payload = data as { iq_tier?: string; agent_id?: string; tools_available?: number } | undefined;
+            const payload = data as {
+                iq_tier?: string;
+                agent_id?: string;
+                tools_available?: number;
+                iq?: { knobs?: Record<string, unknown>; derived?: Record<string, unknown> } | undefined;
+            } | undefined;
             if (payload?.iq_tier) {
                 this._modelLabel = payload.iq_tier;
+            }
+            // AgentIQ: take knobs/derived only if the server sent them. Never recompute.
+            if (payload?.iq) {
+                iqStore.setFromServer(
+                    (payload.iq.knobs as never) ?? null,
+                    (payload.iq.derived as never) ?? null,
+                );
+            } else if (payload?.iq_tier) {
+                iqStore.setFromServer(null, { model_tier: payload.iq_tier as never });
             }
         });
         this._wsClient.on('disconnected', () => {
@@ -2004,6 +2020,8 @@ export class SaasChat extends LitElement {
                         .connectionStatus=${this._connectionStatus}
                         @saas-chat-control=${this._onChatControl}
                     ></saas-chat-topbar>
+
+                    <saas-agent-iq></saas-agent-iq>
 
                     <div class="header-right">
                         ${this._agents.length > 1

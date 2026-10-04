@@ -459,8 +459,7 @@ export class SaasPlatformProfile extends LitElement {
             }
             </div>
             <div class="avatar-actions">
-              <button class="btn-secondary">Upload Photo</button>
-              <button class="btn-secondary">Remove</button>
+              <span class="muted">Avatar upload has no API on this deployment.</span>
             </div>
           </div>
 
@@ -495,7 +494,7 @@ export class SaasPlatformProfile extends LitElement {
               <span class="security-label">Multi-Factor Authentication</span>
               <span class="security-value">${this.profile.mfaEnabled ? html`Enabled <span class='material-symbols-outlined'>check_circle</span>` : 'Disabled'}</span>
             </div>
-            <button class="btn-secondary">Reconfigure</button>
+            <button class="btn-secondary" @click=${() => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/mfa/setup' } }))}>Reconfigure</button>
           </div>
 
           <div class="security-item">
@@ -528,11 +527,11 @@ export class SaasPlatformProfile extends LitElement {
               <span class="security-label">Active Sessions</span>
               <span class="security-value">${this.profile.activeSessions} device(s)</span>
             </div>
-            <button class="btn-danger">Sign Out All</button>
+            <span class="muted">Session revocation has no API on this deployment.</span>
           </div>
 
           <div class="action-buttons" style="margin-top: 16px;">
-            <button class="btn-secondary">Change Password</button>
+            <span class="muted">Password change has no API on this deployment.</span>
           </div>
         </div>
 

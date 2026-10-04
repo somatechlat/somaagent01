@@ -107,8 +107,9 @@ if (app) {
         }
 
         if (path === '/platform/models') {
-            await import('./views/saas-admin-models-list.js');
-            app.appendChild(document.createElement('saas-admin-models-list'));
+            // One model catalog: /llm/models on the Models settings screen.
+            await import('./views/saas-settings-models.js');
+            app.appendChild(document.createElement('saas-settings-models'));
             return;
         }
 
@@ -126,22 +127,16 @@ if (app) {
             return;
         }
 
+        // One roles list + one permission matrix (the old permissions screen is folded in).
         if (path === '/platform/roles') {
             await import('./views/saas-admin-roles-list.js');
             app.appendChild(document.createElement('saas-admin-roles-list'));
             return;
         }
-
-        // Role Matrix - Visual permission editor
-        if (path === '/platform/role-matrix') {
+        if (path === '/platform/role-matrix'
+            || path === '/saas/permissions' || path === '/platform/permissions') {
             await import('./views/saas-role-matrix.js');
             app.appendChild(document.createElement('saas-role-matrix'));
-            return;
-        }
-
-        if (path === '/saas/permissions' || path === '/platform/permissions') {
-            await import('./views/saas-permissions.js');
-            app.appendChild(document.createElement('saas-permissions'));
             return;
         }
 
@@ -272,10 +267,10 @@ if (app) {
             return;
         }
 
-        // Audit Log
+        // One audit surface: the dashboard (stats + log + filters).
         if (path === '/audit' || path === '/admin/audit') {
-            await import('./views/saas-audit-log.js');
-            app.appendChild(document.createElement('saas-audit-log'));
+            await import('./views/saas-audit-dashboard.js');
+            app.appendChild(document.createElement('saas-audit-dashboard'));
             return;
         }
 

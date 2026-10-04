@@ -170,12 +170,12 @@ export class SaasWorkspace extends LitElement {
     render() {
         return html`
             <div class="workspace">
-                <saas-sidebar-workspace></saas-sidebar-workspace>
+                <saas-sidebar active-route="/workspace"></saas-sidebar>
                 
                 <div class="main-area">
                     <saas-agent-header></saas-agent-header>
                     <div class="chat-container">
-                        <saas-chat-workspace></saas-chat-workspace>
+                        <saas-chat></saas-chat>
                     </div>
                 </div>
 

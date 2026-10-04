@@ -1,49 +1,73 @@
 /**
- * IQ Store — Agent Intelligence Quotient state
- * 3 knobs: intelligence, autonomy, resource_budget
- * Derived settings computed client-side
+ * IQ Store — AgentIQ knob state.
+ *
+ * The lookup tables live on the server (`admin/core/agentiq/tables.py` and
+ * `derivation.py`). This store NEVER re-implements them. Derived settings are
+ * whatever the server last reported; until an endpoint returns them they are
+ * absent, not guessed.
+ *
+ * Knob field names follow the model keys (`intelligence_level`,
+ * `autonomy_level`, `resource_budget`, `response_style`) — see
+ * SOMA-01-UIUX-001 H-07.
  */
 
 import { createContext } from '@lit/context';
 
 export interface IQKnobs {
-    intelligence: number;   // 1-10
-    autonomy: number;       // 1-10
-    budget: number;         // $/turn, 0.01-1.00
+    intelligence_level: number;   // 1-10
+    autonomy_level: number;       // 1-10
+    resource_budget: number;      // $/turn
+    response_style: string;       // precise | balanced | creative
 }
 
+/**
+ * Server-side DerivedSettings (admin/core/agentiq/settings.py).
+ * Every field is computed by the server from the knobs. The UI must not
+ * invent values for any of them.
+ */
 export interface DerivedSettings {
+    response_style: string;
     temperature: number;
     max_tokens: number;
-    rlm_iterations: number;
     recall_limit: number;
     model_tier: 'budget' | 'standard' | 'premium' | 'flagship';
     brain_query_enabled: boolean;
-    require_hitl: 'none' | 'dangerous' | 'all';
+    require_hitl: boolean;
     tool_approval: 'none' | 'dangerous' | 'all';
     egress_allowed: 'none' | 'whitelist' | 'expanded' | 'unrestricted';
     token_limit: number;
-    cost_tier: 'low' | 'mid' | 'high';
-    thinking_budget: number;
 }
 
 export const iqContext = createContext<IQStore>('iq-store');
 
 export class IQStore {
-    private _knobs: IQKnobs = {
-        intelligence: 7,
-        autonomy: 5,
-        budget: 0.05,
-    };
-
+    /** Knobs as last seen from the server. Null = not loaded. */
+    private _knobs: IQKnobs | null = null;
+    /** Derived settings as last computed by the server. Null = not loaded. */
+    private _derived: DerivedSettings | null = null;
+    private _saved: IQKnobs | null = null;
     private _listeners: Set<() => void> = new Set();
 
-    get knobs(): Readonly<IQKnobs> {
-        return { ...this._knobs };
+    get knobs(): Readonly<IQKnobs> | null {
+        return this._knobs ? { ...this._knobs } : null;
     }
 
-    get derived(): DerivedSettings {
-        return this._computeDerived(this._knobs);
+    get derived(): Readonly<DerivedSettings> | null {
+        return this._derived ? { ...this._derived } : null;
+    }
+
+    get saved(): Readonly<IQKnobs> | null {
+        return this._saved ? { ...this._saved } : null;
+    }
+
+    get dirty(): boolean {
+        if (!this._knobs || !this._saved) return false;
+        return (
+            this._knobs.intelligence_level !== this._saved.intelligence_level ||
+            this._knobs.autonomy_level !== this._saved.autonomy_level ||
+            this._knobs.resource_budget !== this._saved.resource_budget ||
+            this._knobs.response_style !== this._saved.response_style
+        );
     }
 
     subscribe(listener: () => void): () => void {
@@ -55,64 +79,47 @@ export class IQStore {
         this._listeners.forEach(l => l());
     }
 
-    setIntelligence(value: number) {
-        this._knobs.intelligence = Math.max(1, Math.min(10, value));
+    /** Load knobs + derived settings the server computed. Missing fields stay missing. */
+    setFromServer(knobs: Partial<IQKnobs> | null, derived: Partial<DerivedSettings> | null) {
+        if (knobs) {
+            this._knobs = {
+                intelligence_level: knobs.intelligence_level ?? this._knobs?.intelligence_level ?? 5,
+                autonomy_level: knobs.autonomy_level ?? this._knobs?.autonomy_level ?? 5,
+                resource_budget: knobs.resource_budget ?? this._knobs?.resource_budget ?? 0.10,
+                response_style: knobs.response_style ?? this._knobs?.response_style ?? 'balanced',
+            };
+            if (!this._saved) this._saved = { ...this._knobs };
+        }
+        if (derived) {
+            this._derived = { ...(this._derived ?? {}), ...derived } as DerivedSettings;
+        }
         this._notify();
     }
 
-    setAutonomy(value: number) {
-        this._knobs.autonomy = Math.max(1, Math.min(10, value));
+    markSaved() {
+        if (this._knobs) this._saved = { ...this._knobs };
         this._notify();
     }
 
-    setBudget(value: number) {
-        this._knobs.budget = Math.max(0.01, Math.min(1.0, value));
+    setKnob<K extends keyof IQKnobs>(key: K, value: IQKnobs[K]) {
+        if (!this._knobs) {
+            this._knobs = {
+                intelligence_level: 5,
+                autonomy_level: 5,
+                resource_budget: 0.10,
+                response_style: 'balanced',
+            };
+            if (!this._saved) this._saved = { ...this._knobs };
+        }
+        this._knobs = { ...this._knobs, [key]: value };
         this._notify();
     }
 
-    setKnobs(knobs: Partial<IQKnobs>) {
-        if (knobs.intelligence !== undefined) this._knobs.intelligence = Math.max(1, Math.min(10, knobs.intelligence));
-        if (knobs.autonomy !== undefined) this._knobs.autonomy = Math.max(1, Math.min(10, knobs.autonomy));
-        if (knobs.budget !== undefined) this._knobs.budget = Math.max(0.01, Math.min(1.0, knobs.budget));
-        this._notify();
-    }
-
-    private _computeDerived(k: IQKnobs): DerivedSettings {
-        // Intelligence mapping
-        const tempMap = [0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45];
-        const tokenMap = [512, 1024, 1536, 2048, 2560, 3072, 3584, 4096, 6144, 8192];
-        const rlmMap = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5];
-        const recallMap = [10, 15, 20, 25, 30, 35, 40, 45, 50, 60];
-        const tierMap: DerivedSettings['model_tier'][] = ['budget', 'budget', 'standard', 'standard', 'standard', 'premium', 'premium', 'premium', 'flagship', 'flagship'];
-
-        // Autonomy mapping
-        const hitlMap: DerivedSettings['require_hitl'][] = ['none', 'none', 'dangerous', 'dangerous', 'dangerous', 'all', 'all', 'all', 'all', 'all'];
-        const approvalMap: DerivedSettings['tool_approval'][] = ['none', 'none', 'none', 'dangerous', 'dangerous', 'dangerous', 'all', 'all', 'all', 'all'];
-        const egressMap: DerivedSettings['egress_allowed'][] = ['none', 'none', 'whitelist', 'whitelist', 'whitelist', 'expanded', 'expanded', 'expanded', 'unrestricted', 'unrestricted'];
-
-        // Budget mapping
-        const tokenLimitMap = [1024, 2048, 3072, 4096, 5120, 6144, 8192, 10240, 12288, 16384];
-        const costTierMap: DerivedSettings['cost_tier'][] = ['low', 'low', 'low', 'mid', 'mid', 'mid', 'mid', 'high', 'high', 'high'];
-        const thinkingMap = [256, 512, 512, 1024, 1024, 1536, 2048, 3072, 4096, 4096];
-
-        const idx = Math.round(k.intelligence) - 1;
-        const aidx = Math.round(k.autonomy) - 1;
-        const bidx = Math.round(k.budget * 10) - 1;
-
-        return {
-            temperature: tempMap[idx] ?? 0.7,
-            max_tokens: tokenMap[idx] ?? 2048,
-            rlm_iterations: rlmMap[idx] ?? 3,
-            recall_limit: recallMap[idx] ?? 30,
-            model_tier: tierMap[idx] ?? 'standard',
-            brain_query_enabled: k.intelligence >= 5,
-            require_hitl: hitlMap[aidx] ?? 'dangerous',
-            tool_approval: approvalMap[aidx] ?? 'dangerous',
-            egress_allowed: egressMap[aidx] ?? 'whitelist',
-            token_limit: tokenLimitMap[bidx] ?? 4096,
-            cost_tier: costTierMap[bidx] ?? 'mid',
-            thinking_budget: thinkingMap[bidx] ?? 1024,
-        };
+    resetToSaved() {
+        if (this._saved) {
+            this._knobs = { ...this._saved };
+            this._notify();
+        }
     }
 }
 

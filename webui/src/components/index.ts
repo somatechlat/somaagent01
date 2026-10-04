@@ -18,12 +18,9 @@ export { SettingsForm } from './settings-form.js';
 export { SaasAgentHeader } from './saas-agent-header.js';
 export { SaasComposer } from './saas-composer.js';
 export { SaasComposerMenu } from './saas-composer-menu.js';
-export { SaasChatWorkspace } from './saas-chat-workspace.js';
 export { SaasWelcomeDashboard } from './saas-welcome-dashboard.js';
 export { SaasRightPanel } from './saas-right-panel.js';
-export { SaasSidebarWorkspace } from './saas-sidebar-workspace.js';
 export { SaasCapsuleEditor } from './saas-capsule-editor.js';
-export { SaasBrainPanel } from './saas-brain-panel.js';
 
 // Chat E2E (C2–C4): message bubble, tool timeline, topbar controls
 export { SaasMessage } from './saas-message.js';

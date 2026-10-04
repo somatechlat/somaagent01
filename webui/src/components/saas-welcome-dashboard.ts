@@ -14,14 +14,9 @@ interface ActionCard {
 }
 
 const ACTIONS: ActionCard[] = [
-    { icon: '+', label: 'New Chat', description: 'Start a new conversation', action: () => window.dispatchEvent(new CustomEvent('new-conversation')) },
-    { icon: '📁', label: 'Projects', description: 'Manage agent projects', action: () => {} },
-    { icon: '🧠', label: 'Memory', description: 'Browse agent memories', action: () => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/memory' } })) },
-    { icon: '⏱', label: 'Tasks', description: 'View scheduled tasks', action: () => {} },
-    { icon: '⚙', label: 'Settings', description: 'Configure agent', action: () => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/settings' } })) },
-    { icon: '🎨', label: 'Skins', description: 'Customize appearance', action: () => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/themes' } })) },
-    { icon: '💊', label: 'Capsules', description: 'Manage agent identity', action: () => {} },
-    { icon: '🌐', label: 'Browser', description: 'Open web browser', action: () => {} },
+    { icon: 'add', label: 'New Chat', description: 'Start a new conversation', action: () => window.dispatchEvent(new CustomEvent('new-conversation')) },
+    { icon: 'memory', label: 'Memory', description: 'Browse agent memories', action: () => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/memory' } })) },
+    { icon: 'settings', label: 'Settings', description: 'Configure agent', action: () => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/settings' } })) },
 ];
 
 @customElement('saas-welcome-dashboard')
@@ -192,26 +187,6 @@ export class SaasWelcomeDashboard extends LitElement {
                 `)}
             </div>
 
-            <div class="health-section">
-                <div class="section-title">System Health</div>
-                <div class="health-grid">
-                    <div class="health-item">
-                        <span class="health-label">SomaBrain</span>
-                        <div class="health-bar"><div class="health-fill success" style="width:92%"></div></div>
-                        <span class="health-value">Connected</span>
-                    </div>
-                    <div class="health-item">
-                        <span class="health-label">Memory</span>
-                        <div class="health-bar"><div class="health-fill success" style="width:100%"></div></div>
-                        <span class="health-value">Healthy</span>
-                    </div>
-                    <div class="health-item">
-                        <span class="health-label">Cognitive Load</span>
-                        <div class="health-bar"><div class="health-fill warning" style="width:62%"></div></div>
-                        <span class="health-value">Medium</span>
-                    </div>
-                </div>
-            </div>
         `;
     }
 }

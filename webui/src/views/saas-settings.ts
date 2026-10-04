@@ -779,79 +779,23 @@ export class SaasSettings extends LitElement {
 
     private _renderExternalTab() {
         return html`
-            <!-- Provider API keys — real Vault status, write-only -->
             <div class="section">
                 <h3 class="section-title">
                     <span class="material-symbols-outlined">vpn_key</span>
                     API Keys
                 </h3>
                 <p class="section-desc">
-                    API keys are stored in Vault and never read back. Rotate in Vault.
+                    Provider API keys live on the Models settings screen, next to the
+                    provider and the models that use each key. They are stored in Vault,
+                    write-only, and never echoed back.
                 </p>
-
-                ${this._secretProviders.length === 0
-                    ? html`<p class="honest-note">No secret providers are registered with this deployment.</p>`
-                    : this._secretProviders.map(p => {
-                        const draft = this._secretDrafts[p.provider] ?? '';
-                        return html`
-                            <div class="provider-key-row">
-                                <div class="provider-key-meta">
-                                    <span class="provider-key-name">${p.provider}</span>
-                                    <span class="provider-key-state">
-                                        ${p.configured
-                                            ? 'Stored in Vault (write-only, never echoed)'
-                                            : 'Not configured'}
-                                    </span>
-                                </div>
-                                <div>
-                                    <label class="form-label" for=${'secret-' + p.provider}>API key (write-only)</label>
-                                    <input
-                                        id=${'secret-' + p.provider}
-                                        class="form-input"
-                                        type="password"
-                                        autocomplete="new-password"
-                                        data-control="secret-input"
-                                        placeholder=${p.configured
-                                            ? 'Stored in Vault. Enter a new value only to rotate.'
-                                            : 'Paste API key'}
-                                        .value=${draft}
-                                        title=${this._canEditSettings
-                                            ? 'Write-only. The value is never echoed back.'
-                                            : DISABLED_REASON}
-                                        ?disabled=${!this._canEditSettings}
-                                        @input=${(e: Event) => {
-                                            const v = (e.target as HTMLInputElement).value;
-                                            this._secretDrafts = { ...this._secretDrafts, [p.provider]: v };
-                                        }}
-                                    />
-                                </div>
-                                <div class="provider-key-actions">
-                                    <button
-                                        class="api-key-action"
-                                        data-control="secret-save"
-                                        title=${!this._canEditSettings
-                                            ? DISABLED_REASON
-                                            : draft.trim()
-                                                ? 'Save key to Vault'
-                                                : 'Enter an API key first'}
-                                        ?disabled=${!this._canEditSettings || !draft.trim()}
-                                        @click=${() => this._saveSecretKey(p.provider)}
-                                    >Save key</button>
-                                    <button
-                                        class="api-key-action"
-                                        data-control="secret-delete"
-                                        title=${this._canEditSettings
-                                            ? (p.configured ? 'Delete key from Vault' : 'No key is stored for this provider')
-                                            : DISABLED_REASON}
-                                        ?disabled=${!this._canEditSettings || !p.configured}
-                                        @click=${() => this._deleteSecretKey(p.provider)}
-                                    >Delete key</button>
-                                </div>
-                            </div>
-                        `;
-                    })}
-
-                ${this._renderDisabledReason()}
+                <button
+                    class="add-btn"
+                    @click=${() => this._openModels()}
+                >
+                    <span class="material-symbols-outlined">settings_suggest</span>
+                    Open Models Settings
+                </button>
             </div>
 
             <!-- MCP Configuration -->
@@ -868,6 +812,7 @@ export class SaasSettings extends LitElement {
                         <div class="toggle-desc">Connect to external MCP servers</div>
                     </div>
                     <label class="toggle-switch">
+<label class="toggle-switch">
                         <input
                             type="checkbox"
                             data-control="feature-flag-mcp"
@@ -1145,50 +1090,6 @@ export class SaasSettings extends LitElement {
     }
 
     /** Write-only key save. The draft is cleared after a successful write. */
-    private async _saveSecretKey(provider: string) {
-        if (!this._canEditSettings) return;
-        const draft = (this._secretDrafts[provider] ?? '').trim();
-        if (!draft) {
-            this._flash('error', 'API key is required (write-only — it will not be shown again)');
-            return;
-        }
-        try {
-            const res = await apiClient.put<SecretKeyWriteResult>(
-                `/secrets/providers/${provider}`,
-                { api_key: draft }
-            );
-            if (!res.saved) {
-                this._flash('error', `Key not saved for ${provider}: ${res.detail}`);
-                return;
-            }
-            this._secretDrafts = { ...this._secretDrafts, [provider]: '' };
-            this._flash('ok', res.detail
-                ? `Key for ${provider} saved (${res.detail}). Stored in Vault, never echoed.`
-                : `Key for ${provider} saved. Stored in Vault, never echoed.`);
-            await this._loadSecretProviders();
-        } catch (error) {
-            this._flash('error', `Save key failed: ${error instanceof Error ? error.message : error}`);
-        }
-    }
-
-    private async _deleteSecretKey(provider: string) {
-        if (!this._canEditSettings) return;
-        try {
-            const res = await apiClient.delete<SecretKeyWriteResult>(`/secrets/providers/${provider}`);
-            this._flash('ok', res.detail
-                ? `Key for ${provider} removed from Vault (${res.detail}).`
-                : `Key for ${provider} removed from Vault.`);
-            await this._loadSecretProviders();
-        } catch (error) {
-            this._flash('error', `Delete key failed: ${error instanceof Error ? error.message : error}`);
-        }
-    }
-
-    /**
-     * Export only real state: feature flags as loaded from the server, plus the
-     * configured booleans for secret providers when those were loaded. Never a
-     * key value, never a key fragment, never a fabricated model id.
-     */
     private _exportConfig() {
         const config: Record<string, unknown> = {
             featureFlags: {

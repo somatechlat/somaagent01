@@ -399,8 +399,7 @@ export class SaasPersonalProfile extends LitElement {
             }
               </div>
               <div class="avatar-actions">
-                <button class="btn btn-secondary">Upload Photo</button>
-                <button class="btn btn-secondary">Remove</button>
+                <span class="muted">Avatar upload has no API on this deployment.</span>
               </div>
             </div>
 
@@ -466,7 +465,7 @@ export class SaasPersonalProfile extends LitElement {
                 <span class="security-label">Multi-Factor Authentication</span>
                 <span class="security-value">${this.profile.mfaEnabled ? html`<span class='material-symbols-outlined'>check_circle</span> Enabled (TOTP)` : html`<span class='material-symbols-outlined'>cancel</span> Disabled`}</span>
               </div>
-              <button class="btn btn-secondary">Reconfigure</button>
+              <button class="btn btn-secondary" @click=${() => window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route: '/mfa/setup' } }))}>Reconfigure</button>
             </div>
 
             <div class="security-row">
@@ -474,15 +473,7 @@ export class SaasPersonalProfile extends LitElement {
                 <span class="security-label">Password</span>
                 <span class="security-value">Last changed ${this.profile.lastPasswordChange || 'never'}</span>
               </div>
-              <button class="btn btn-secondary">Change Password</button>
-            </div>
-
-            <div class="security-row">
-              <div class="security-info">
-                <span class="security-label">Active Sessions</span>
-                <span class="security-value">${this.profile.activeSessions} device(s)</span>
-              </div>
-              <button class="btn btn-danger">Sign Out Other Devices</button>
+              <span class="muted">Password change has no API on this deployment.</span>
             </div>
           </div>
         </div>

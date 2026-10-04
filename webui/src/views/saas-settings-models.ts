@@ -662,154 +662,178 @@ export class SaasSettingsModels extends LitElement {
         `;
     }
 
+    private _keyBadge(providerId: string) {
+        const keyState = this._keys[providerId];
+        const configured = keyState?.configured ?? this._providers.find(p => p.id === providerId)?.has_api_key ?? false;
+        return configured
+            ? html`<saas-status-badge variant="success" size="sm" dot>key stored</saas-status-badge>`
+            : html`<saas-status-badge variant="danger" size="sm" dot>no key</saas-status-badge>`;
+    }
+
+    private _modelsForProvider(providerId: string): ModelRow[] {
+        return this._models.filter(m => m.provider === providerId);
+    }
+
+    private _providerHasKey(providerId: string): boolean {
+        const keyState = this._keys[providerId];
+        if (keyState?.configured) return true;
+        return this._providers.find(p => p.id === providerId)?.has_api_key ?? false;
+    }
+
     private _renderProviders() {
         return html`
             <div class="section">
                 <h3 class="section-title">
                     <span class="material-symbols-outlined">dns</span>
-                    Provider registry
+                    Providers
                 </h3>
                 <p class="section-desc">
-                    Enable providers, set base URL and default model name.
-                    Custom OpenAI-compatible endpoints are supported. API keys are managed below (write-only).
+                    One row per provider: base URL, default model, and the Vault key that every
+                    model on that provider uses. Keys are write-only and never echoed back.
                 </p>
-                ${this._providers.map(p => html`
-                    <div class="provider-row">
-                        <div class="provider-name">
-                            ${p.label}
-                            ${p.is_custom
-                                ? html`<saas-status-badge variant="info" size="sm">custom</saas-status-badge>`
-                                : nothing}
-                            ${p.has_api_key
-                                ? html`<saas-status-badge variant="success" size="sm" dot>key</saas-status-badge>`
-                                : html`<saas-status-badge variant="warning" size="sm" dot>no key</saas-status-badge>`}
-                        </div>
-                        <div>
-                            <label class="field-label">Enabled</label>
-                            <saas-toggle
-                                .checked=${p.enabled}
-                                @change=${() => {
-                                    this._providers = this._providers.map(x =>
-                                        x.id === p.id ? { ...x, enabled: !x.enabled } : x
-                                    );
-                                }}
-                            ></saas-toggle>
-                        </div>
-                        <div>
-                            <label class="field-label">Base URL</label>
-                            <input
-                                type="url"
-                                .value=${p.base_url}
-                                placeholder="https://api.example.com/v1"
-                                @input=${(e: Event) => {
-                                    const v = (e.target as HTMLInputElement).value;
-                                    this._providers = this._providers.map(x =>
-                                        x.id === p.id ? { ...x, base_url: v } : x
-                                    );
-                                }}
-                            />
-                        </div>
-                        <div>
-                            <label class="field-label">Default model name</label>
-                            <input
-                                type="text"
-                                .value=${p.model_name}
-                                placeholder="model-id"
-                                @input=${(e: Event) => {
-                                    const v = (e.target as HTMLInputElement).value;
-                                    this._providers = this._providers.map(x =>
-                                        x.id === p.id ? { ...x, model_name: v } : x
-                                    );
-                                }}
-                            />
-                        </div>
-                        <div class="row-actions">
-                            <button class="btn" @click=${() => this._saveProvider(p)} ?disabled=${this._saving}>Save</button>
-                            <button
-                                class="btn"
-                                @click=${() => this._testConnection({
-                                    provider: p.id,
-                                    model: p.model_name,
-                                    base_url: p.base_url,
-                                })}
-                                ?disabled=${this._testBusy[p.id]}
-                            >
-                                <span class="material-symbols-outlined">network_check</span>
-                                ${this._testBusy[p.id] ? 'Testing…' : 'Test'}
-                            </button>
-                        </div>
-                        ${this._testResult[p.id]
-                            ? html`<div class="key-hint" style="grid-column: 1 / -1; color: ${this._testResult[p.id].ok ? '#047857' : '#b91c1c'}">
-                                ${this._testResult[p.id].ok ? 'OK' : 'Fail'} — ${this._testResult[p.id].detail}
-                            </div>`
-                            : nothing}
-                    </div>
-                `)}
-            </div>
 
-            <div class="section">
-                <h3 class="section-title">
-                    <span class="material-symbols-outlined">vpn_key</span>
-                    Provider API keys
-                </h3>
-                <p class="section-desc">
-                    Keys are write-only and stored in Vault. They are never displayed after save.
-                </p>
-                ${this._providers.map(p => {
-                    const keyState = this._keys[p.id] || { configured: false, draft: '' };
-                    return html`
-                        <div class="key-row">
-                            <div class="provider-name">
-                                ${p.label}
-                                ${keyState.configured
-                                    ? html`<saas-status-badge variant="success" size="sm" dot>stored</saas-status-badge>`
-                                    : html`<saas-status-badge variant="danger" size="sm" dot>missing</saas-status-badge>`}
-                            </div>
-                            <div>
-                                <label class="field-label">API key (write-only)</label>
-                                <input
-                                    type="password"
-                                    autocomplete="new-password"
-                                    placeholder=${keyState.configured ? '••••••••  (leave blank to keep)' : 'Paste API key'}
-                                    .value=${keyState.draft}
-                                    @input=${(e: Event) => {
-                                        const v = (e.target as HTMLInputElement).value;
-                                        this._keys = {
-                                            ...this._keys,
-                                            [p.id]: { configured: keyState.configured, draft: v },
-                                        };
-                                    }}
-                                />
-                                <div class="key-hint">Never echoed back. Stored at Vault secret/agent/api_keys/${p.id}_api_key.</div>
-                            </div>
-                            <button
-                                class="btn primary"
-                                @click=${() => this._saveKey(p.id)}
-                                ?disabled=${this._saving || !(this._keys[p.id]?.draft || '').trim()}
-                            >Save key</button>
-                            <div class="row-actions">
-                                <button
-                                    class="btn"
-                                    @click=${() => this._testConnection({
-                                        provider: p.id,
-                                        model: p.model_name,
-                                        base_url: p.base_url,
-                                        api_key: this._keys[p.id]?.draft || undefined,
-                                    })}
-                                    ?disabled=${this._testBusy[`key-${p.id}`] || this._testBusy[p.id]}
-                                >
-                                    <span class="material-symbols-outlined">network_check</span>
-                                    Test
-                                </button>
-                                <button
-                                    class="btn"
-                                    @click=${() => this._deleteKey(p.id)}
-                                    ?disabled=${this._saving || !keyState.configured}
-                                >Delete</button>
-                            </div>
-                        </div>
-                    `;
-                })}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Provider</th>
+                            <th>Base URL</th>
+                            <th>Default model</th>
+                            <th>Key</th>
+                            <th>Models that use this key</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${this._providers.map(p => {
+                            const keyState = this._keys[p.id] || { configured: false, draft: '' };
+                            const dependents = this._modelsForProvider(p.id);
+                            const hasKey = keyState.configured || p.has_api_key;
+                            return html`
+                                <tr>
+                                    <td>
+                                        <strong>${p.label}</strong>
+                                        ${p.is_custom
+                                            ? html`<saas-status-badge variant="info" size="sm">custom</saas-status-badge>`
+                                            : nothing}
+                                        <div class="muted" style="margin-top: 6px;">
+                                            <saas-toggle
+                                                .checked=${p.enabled}
+                                                @change=${() => {
+                                                    this._providers = this._providers.map(x =>
+                                                        x.id === p.id ? { ...x, enabled: !x.enabled } : x
+                                                    );
+                                                }}
+                                            ></saas-toggle>
+                                            ${p.enabled ? 'Enabled' : 'Disabled'}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <input
+                                            type="url"
+                                            .value=${p.base_url}
+                                            placeholder="https://api.example.com/v1"
+                                            @input=${(e: Event) => {
+                                                const v = (e.target as HTMLInputElement).value;
+                                                this._providers = this._providers.map(x =>
+                                                    x.id === p.id ? { ...x, base_url: v } : x
+                                                );
+                                            }}
+                                        />
+                                    </td>
+                                    <td>
+                                        <input
+                                            type="text"
+                                            .value=${p.model_name}
+                                            placeholder="model-id"
+                                            @input=${(e: Event) => {
+                                                const v = (e.target as HTMLInputElement).value;
+                                                this._providers = this._providers.map(x =>
+                                                    x.id === p.id ? { ...x, model_name: v } : x
+                                                );
+                                            }}
+                                        />
+                                    </td>
+                                    <td>
+                                        ${this._keyBadge(p.id)}
+                                        <div style="margin-top: 8px;">
+                                            <input
+                                                type="password"
+                                                autocomplete="new-password"
+                                                placeholder=${hasKey ? '••••••••  rotate in Vault' : 'Paste API key'}
+                                                .value=${keyState.draft}
+                                                @input=${(e: Event) => {
+                                                    const v = (e.target as HTMLInputElement).value;
+                                                    this._keys = {
+                                                        ...this._keys,
+                                                        [p.id]: { configured: keyState.configured, draft: v },
+                                                    };
+                                                }}
+                                            />
+                                            <div class="key-hint">
+                                                Write-only. Stored at Vault secret/agent/api_keys/${p.id}_api_key.
+                                            </div>
+                                            <div class="row-actions" style="justify-content: flex-start; margin-top: 6px;">
+                                                <button
+                                                    class="btn primary"
+                                                    @click=${() => this._saveKey(p.id)}
+                                                    ?disabled=${this._saving || !(this._keys[p.id]?.draft || '').trim()}
+                                                >Save key</button>
+                                                <button
+                                                    class="btn"
+                                                    @click=${() => this._deleteKey(p.id)}
+                                                    ?disabled=${this._saving || !hasKey}
+                                                    title=${hasKey ? 'Delete the stored key from Vault' : 'No key is stored for this provider'}
+                                                >Delete</button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        ${dependents.length === 0
+                                            ? html`<span class="muted">No models bound</span>`
+                                            : html`
+                                                <ul style="margin: 0; padding-left: 16px;">
+                                                    ${dependents.map(m => html`
+                                                        <li>
+                                                            ${m.display_name || m.name}
+                                                            ${m.is_active
+                                                                ? html`<saas-status-badge variant="success" size="sm">active</saas-status-badge>`
+                                                                : html`<saas-status-badge variant="warning" size="sm">inactive</saas-status-badge>`}
+                                                        </li>
+                                                    `)}
+                                                </ul>
+                                            `}
+                                    </td>
+                                    <td>
+                                        <div class="row-actions">
+                                            <button class="btn" @click=${() => this._saveProvider(p)} ?disabled=${this._saving}>Save</button>
+                                            <button
+                                                class="btn"
+                                                @click=${() => this._testConnection({
+                                                    provider: p.id,
+                                                    model: p.model_name,
+                                                    base_url: p.base_url,
+                                                })}
+                                                ?disabled=${this._testBusy[p.id] || !hasKey}
+                                                title=${hasKey ? 'Test the stored key against this provider' : 'No API key stored for this provider.'}
+                                            >
+                                                <span class="material-symbols-outlined">network_check</span>
+                                                ${this._testBusy[p.id] ? 'Testing…' : 'Test'}
+                                            </button>
+                                        </div>
+                                        ${!hasKey
+                                            ? html`<div class="key-hint">No API key stored for this provider.</div>`
+                                            : nothing}
+                                        ${this._testResult[p.id]
+                                            ? html`<div class="key-hint" style="color: ${this._testResult[p.id].ok ? '#047857' : '#b91c1c'}">
+                                                ${this._testResult[p.id].ok ? 'OK' : 'Fail'} — ${this._testResult[p.id].detail}
+                                            </div>`
+                                            : nothing}
+                                    </td>
+                                </tr>
+                            `;
+                        })}
+                    </tbody>
+                </table>
             </div>
         `;
     }
@@ -1013,7 +1037,8 @@ export class SaasSettingsModels extends LitElement {
                     Model catalog (LLMModelConfig)
                 </h3>
                 <p class="section-desc">
-                    Real rows from admin.llm.LLMModelConfig. Add provider models here before binding slots.
+                    Real rows from admin.llm.LLMModelConfig. Each model uses its provider's Vault key —
+                    the key badge on every row is that provider's key status, never a per-model secret.
                 </p>
 
                 <div class="inline-form">
@@ -1077,7 +1102,7 @@ export class SaasSettingsModels extends LitElement {
                             <thead>
                                 <tr>
                                     <th>Name</th>
-                                    <th>Provider</th>
+                                    <th>Provider / key</th>
                                     <th>Type</th>
                                     <th>Active</th>
                                     <th></th>
@@ -1090,7 +1115,11 @@ export class SaasSettingsModels extends LitElement {
                                             <strong>${m.display_name || m.name}</strong>
                                             <div class="muted">${m.name}</div>
                                         </td>
-                                        <td>${m.provider}</td>
+                                        <td>
+                                            <strong>${m.provider}</strong>
+                                            <div style="margin-top: 4px;">${this._keyBadge(m.provider)}</div>
+                                            <div class="key-hint">Uses the ${m.provider} provider key</div>
+                                        </td>
                                         <td style="text-transform: capitalize">${m.model_type}</td>
                                         <td>
                                             <saas-toggle
@@ -1106,7 +1135,10 @@ export class SaasSettingsModels extends LitElement {
                                                         provider: m.provider,
                                                         model_id: m.id,
                                                     })}
-                                                    ?disabled=${this._testBusy[m.id]}
+                                                    ?disabled=${this._testBusy[m.id] || !this._providerHasKey(m.provider)}
+                                                    title=${this._providerHasKey(m.provider)
+                                                        ? 'Test this model through its provider key'
+                                                        : 'No API key stored for this provider.'}
                                                 >
                                                     ${this._testBusy[m.id] ? 'Testing…' : 'Test'}
                                                 </button>

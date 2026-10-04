@@ -131,6 +131,7 @@ export class SaasMultimodalSettings extends LitElement {
     }
 
     .quota-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+    .quota-empty { color: var(--saas-text-secondary, #666); font-size: 13px; margin: 0 0 16px; }
     .quota-fill.low { background: #22c55e; }
     .quota-fill.medium { background: #eab308; }
     .quota-fill.high { background: #ef4444; }
@@ -292,12 +293,8 @@ export class SaasMultimodalSettings extends LitElement {
         screenshot_provider: 'playwright',
     };
 
-    @state() private quotas: QuotaUsage = {
-        images: { current: 312, limit: 500 },
-        diagrams: { current: 234, limit: 1000 },
-        screenshots: { current: 158, limit: 1000 },
-        video_minutes: { current: 0, limit: 10 },
-    };
+    /** Quotas only exist when the API returns them. Never invented. */
+    @state() private quotas: QuotaUsage | null = null;
 
     @state() private loading = false;
     @state() private saving = false;
@@ -313,7 +310,7 @@ export class SaasMultimodalSettings extends LitElement {
         try {
             const data = await apiClient.get<{ config?: Partial<MultimodalConfig>; quotas?: QuotaUsage }>(`/agents/${this.agentId}/multimodal-config`);
             this.config = { ...this.config, ...data.config };
-            this.quotas = data.quotas || this.quotas;
+            this.quotas = data.quotas ?? null;
         } catch (e) {
             console.error('Failed to load multimodal config:', e);
         } finally {
@@ -363,19 +360,23 @@ export class SaasMultimodalSettings extends LitElement {
         </header>
 
         <div class="content">
-          <!-- Quota Usage -->
-          <div class="quota-grid">
-            ${Object.entries(this.quotas).map(([key, { current, limit }]) => html`
-              <div class="quota-card">
-                <div class="quota-label">${key.replace('_', ' ').toUpperCase()}</div>
-                <div class="quota-value">${current} / ${limit}</div>
-                <div class="quota-bar">
-                  <div class="quota-fill ${this.getQuotaClass(current, limit)}"
-                    style="width: ${Math.min(100, (current / limit) * 100)}%"></div>
-                </div>
+          <!-- Quota Usage — only when the API reports real usage -->
+          ${this.quotas
+            ? html`
+              <div class="quota-grid">
+                ${Object.entries(this.quotas).map(([key, { current, limit }]) => html`
+                  <div class="quota-card">
+                    <div class="quota-label">${key.replace('_', ' ').toUpperCase()}</div>
+                    <div class="quota-value">${current} / ${limit}</div>
+                    <div class="quota-bar">
+                      <div class="quota-fill ${this.getQuotaClass(current, limit)}"
+                        style="width: ${limit > 0 ? Math.min(100, (current / limit) * 100) : 0}%"></div>
+                    </div>
+                  </div>
+                `)}
               </div>
-            `)}
-          </div>
+            `
+            : html`<p class="quota-empty">No quota usage reported by the API.</p>`}
 
           <!-- Multimodal Capabilities -->
           <div class="section">

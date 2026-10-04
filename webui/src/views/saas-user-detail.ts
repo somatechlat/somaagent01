@@ -476,15 +476,11 @@ export class SaasUserDetail extends LitElement {
                   </div>
                   <div class="section-content">
                     <div class="action-buttons">
-                      <button class="btn">Reset Password</button>
-                      <button class="btn">Revoke MFA</button>
                       <button class="btn btn-danger" @click=${this._suspendUser}>
                         ${this.user.status === 'suspended' ? 'Unsuspend User' : html`<span class='material-symbols-outlined'>warning</span> Suspend User`}
                       </button>
-                      <saas-permission-guard permission="org:user_delete" fallback="hide">
-                        <button class="btn btn-danger"><span class="material-symbols-outlined">delete</span> Delete User</button>
-                      </saas-permission-guard>
                     </div>
+                    <p class="muted">Password reset, MFA revoke and account delete have no API on this deployment.</p>
                   </div>
                 </div>
               </saas-permission-guard>
@@ -552,7 +548,7 @@ export class SaasUserDetail extends LitElement {
         return html`
             <div class="section-header" style="border: none; padding: 0 0 16px 0;">
               <span class="section-title">Agent Access</span>
-              <button class="btn btn-primary"><span class="material-symbols-outlined">add</span> Add Agent</button>
+              <span class="muted">Agent access changes go through agent ownership transfer.</span>
             </div>
             <table class="agent-table">
               <thead>
@@ -572,8 +568,7 @@ export class SaasUserDetail extends LitElement {
                       </td>
                       <td>${agent.isOwner ? html`<span class="owner-badge">Owner</span>` : 'No'}</td>
                       <td>
-                        <button class="btn" style="padding: 4px 8px;">Edit</button>
-                        <button class="btn" style="padding: 4px 8px;">Remove</button>
+                        <span class="muted">—</span>
                       </td>
                     </tr>
                 `)}
@@ -626,7 +621,7 @@ export class SaasUserDetail extends LitElement {
                       <td>${session.location}</td>
                       <td>${new Date(session.lastActive).toLocaleString()}</td>
                       <td>
-                        ${!session.current ? html`<button class="btn btn-danger" style="padding: 4px 8px;">Revoke</button>` : ''}
+                        ${session.current ? html`<span class="muted">current</span>` : html`<span class="muted">—</span>`}
                       </td>
                     </tr>
                 `)}

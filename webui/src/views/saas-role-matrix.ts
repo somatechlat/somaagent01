@@ -1,425 +1,200 @@
 /**
- * Role Matrix Component
- * Visual permission matrix showing all roles and their permissions
+ * Role Matrix — one permission matrix + the folded-in permissions list.
  *
- * VIBE COMPLIANT:
- * - Lit 3.x implementation
- * - Full 78 permission granularity
- * - Light theme, minimal, professional
- * - Material Symbols icons
- * 
- * Features:
- * - Role columns (Platform Admin, Tenant Admin, Agent Admin, User)
- * - Permission rows grouped by category
- * - Editable toggle cells
- * - Save/revert capabilities
+ * Backed by GET /aaas/settings/roles (each role carries its granted permission
+ * names) and PATCH /aaas/settings/roles/{id} which requires `org:assign_roles`.
+ * The deleted /permissions/* router used to mint fabricated CRUD; this screen
+ * never talks to it. Verb names come from the role rows the catalog returns —
+ * the UI does not invent a permission vocabulary.
  */
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
+import '../components/saas-sidebar.js';
 
-interface Permission {
+interface RoleOut {
     id: string;
     name: string;
     description: string;
-    category: string;
+    permissions: string[];
+    user_count?: number;
 }
 
-interface Role {
-    id: string;
-    name: string;
-    slug: string;
-    level: number;  // 0 = highest (platform admin)
-    description: string;
-}
-
-interface RolePermission {
-    role_id: string;
-    permission_id: string;
-    granted: boolean;
-}
+const PROVISIONED_ROLES = new Set(['sysadmin', 'agent_owner']);
 
 @customElement('saas-role-matrix')
 export class SaasRoleMatrix extends LitElement {
     static styles = css`
-    :host {
-      display: flex;
-      height: 100vh;
-      background: var(--saas-bg-page, #f5f5f5);
-      font-family: var(--saas-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-      color: var(--saas-text-primary, #1a1a1a);
-    }
+        :host {
+            display: flex;
+            height: 100vh;
+            background: var(--saas-bg-page, #f5f5f5);
+            font-family: var(--saas-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+            color: var(--saas-text-primary, #1a1a1a);
+        }
+        * { box-sizing: border-box; }
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-size: 20px; line-height: 1; display: inline-block;
+        }
+        .sidebar { width: 260px; background: var(--saas-bg-card, #fff); border-right: 1px solid var(--saas-border-light, #e0e0e0); flex-shrink: 0; }
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 24px; background: var(--saas-bg-card, #fff);
+            border-bottom: 1px solid var(--saas-border-light, #e0e0e0);
+        }
+        .header-title { font-size: 18px; font-weight: 600; margin: 0; }
+        .header-subtitle { font-size: 13px; color: var(--saas-text-secondary, #666); margin: 4px 0 0; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 500;
+            cursor: pointer; border: 1px solid var(--saas-border-light, #e0e0e0);
+            background: var(--saas-bg-card, #fff); color: var(--saas-text-primary, #1a1a1a);
+        }
+        .btn.primary { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .content { flex: 1; overflow: auto; padding: 20px 24px; }
+        .notice {
+            border: 1px solid var(--saas-border-light, #e0e0e0);
+            background: var(--saas-bg-card, #fff);
+            border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;
+            font-size: 13px; line-height: 1.5;
+        }
+        .error-banner {
+            background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca;
+            border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; font-size: 13px;
+        }
+        .loading { color: var(--saas-text-secondary, #666); padding: 24px; }
+        table { width: 100%; border-collapse: collapse; background: var(--saas-bg-card, #fff);
+            border: 1px solid var(--saas-border-light, #e0e0e0); border-radius: 10px; overflow: hidden; }
+        th, td { padding: 10px 12px; border-bottom: 1px solid var(--saas-border-light, #eee); font-size: 12px; text-align: left; vertical-align: top; }
+        th { background: var(--saas-bg-page, #f5f5f5); font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--saas-text-secondary, #666); }
+        tr:last-child td { border-bottom: none; }
+        .category-row td { background: var(--saas-bg-page, #f5f5f5); font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.4px; }
+        .perm-name { font-family: ui-monospace, monospace; font-size: 12px; display: block; }
+        .perm-desc { color: var(--saas-text-secondary, #666); font-size: 11px; display: block; margin-top: 2px; }
+        .toggle-cell { text-align: center; }
+        .toggle {
+            display: inline-block; width: 18px; height: 18px; border-radius: 4px;
+            border: 1px solid var(--saas-border-light, #ccc); cursor: pointer; background: #fff;
+        }
+        .toggle.active { background: #1a1a1a; border-color: #1a1a1a; }
+        .toggle.locked { opacity: 0.45; cursor: not-allowed; }
+        .role-col-locked { opacity: 0.7; }
+        .muted { color: var(--saas-text-muted, #999); font-size: 12px; }
+    `;
 
-    * { box-sizing: border-box; }
-
-    .material-symbols-outlined {
-      font-family: 'Material Symbols Outlined';
-      font-weight: normal;
-      font-style: normal;
-      font-size: 20px;
-      line-height: 1;
-      display: inline-block;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .sidebar {
-      width: 260px;
-      background: var(--saas-bg-card, #ffffff);
-      border-right: 1px solid var(--saas-border-light, #e0e0e0);
-      flex-shrink: 0;
-    }
-
-    .main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .header {
-      padding: 20px 32px;
-      background: var(--saas-bg-card, #ffffff);
-      border-bottom: 1px solid var(--saas-border-light, #e0e0e0);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .header-title { font-size: 22px; font-weight: 600; margin: 0; }
-    .header-subtitle { font-size: 13px; color: var(--saas-text-muted, #999); margin: 4px 0 0 0; }
-
-    .header-actions { display: flex; gap: 12px; }
-
-    .btn {
-      padding: 10px 18px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: all 0.1s ease;
-      border: 1px solid var(--saas-border-light, #e0e0e0);
-      background: var(--saas-bg-card, #ffffff);
-    }
-
-    .btn:hover { background: var(--saas-bg-hover, #fafafa); }
-    .btn.primary { background: #1a1a1a; color: white; border-color: #1a1a1a; }
-    .btn.primary:hover { background: #333; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    /* Stats Bar */
-    .stats-bar {
-      padding: 16px 32px;
-      background: var(--saas-bg-card, #ffffff);
-      border-bottom: 1px solid var(--saas-border-light, #e0e0e0);
-      display: flex;
-      gap: 32px;
-    }
-
-    .stat-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .stat-value {
-      font-size: 24px;
-      font-weight: 700;
-    }
-
-    .stat-label {
-      font-size: 12px;
-      color: var(--saas-text-muted, #999);
-    }
-
-    /* Matrix Container */
-    .content {
-      flex: 1;
-      overflow: auto;
-      padding: 32px;
-    }
-
-    .matrix-wrap {
-      background: var(--saas-bg-card, #ffffff);
-      border: 1px solid var(--saas-border-light, #e0e0e0);
-      border-radius: 12px;
-      overflow: hidden;
-    }
-
-    /* Matrix Table */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 800px;
-    }
-
-    thead {
-      background: var(--saas-bg-hover, #fafafa);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-
-    th {
-      padding: 16px;
-      text-align: center;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--saas-text-secondary, #666);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border-bottom: 1px solid var(--saas-border-light, #e0e0e0);
-    }
-
-    th:first-child {
-      text-align: left;
-      min-width: 280px;
-    }
-
-    .role-header {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .role-name { font-size: 13px; font-weight: 600; color: var(--saas-text-primary, #1a1a1a); }
-    .role-level { font-size: 10px; color: var(--saas-text-muted, #999); }
-
-    /* Category Row */
-    .category-row td {
-      padding: 12px 16px;
-      background: var(--saas-bg-hover, #fafafa);
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--saas-text-secondary, #666);
-      border-bottom: 1px solid var(--saas-border-light, #e0e0e0);
-    }
-
-    /* Permission Row */
-    td {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--saas-border-light, #e0e0e0);
-      vertical-align: middle;
-    }
-
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(0,0,0,0.02); }
-
-    .perm-cell {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .perm-name {
-      font-size: 13px;
-      font-weight: 500;
-    }
-
-    .perm-desc {
-      font-size: 11px;
-      color: var(--saas-text-muted, #999);
-    }
-
-    /* Toggle Cell */
-    .toggle-cell {
-      text-align: center;
-    }
-
-    .toggle {
-      width: 36px;
-      height: 20px;
-      border-radius: 10px;
-      background: var(--saas-border-light, #e0e0e0);
-      position: relative;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: inline-block;
-    }
-
-    .toggle.active {
-      background: #22c55e;
-    }
-
-    .toggle.inherited {
-      background: #3b82f6;
-      opacity: 0.6;
-    }
-
-    .toggle::after {
-      content: '';
-      position: absolute;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: white;
-      top: 2px;
-      left: 2px;
-      transition: all 0.2s ease;
-    }
-
-    .toggle.active::after,
-    .toggle.inherited::after {
-      left: 18px;
-    }
-
-    .toggle.disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-
-    /* Loading */
-    .loading {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 60px;
-      color: var(--saas-text-muted, #999);
-    }
-
-    /* Legend */
-    .legend {
-      display: flex;
-      gap: 24px;
-      padding: 16px;
-      background: var(--saas-bg-hover, #fafafa);
-      border-top: 1px solid var(--saas-border-light, #e0e0e0);
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      color: var(--saas-text-secondary, #666);
-    }
-
-    .legend-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 3px;
-    }
-
-    .legend-dot.granted { background: #22c55e; }
-    .legend-dot.inherited { background: #3b82f6; }
-    .legend-dot.denied { background: #e0e0e0; }
-
-    .error-banner {
-      padding: 12px 16px;
-      margin: 0 32px 24px;
-      background: #fee2e2;
-      color: #b91c1c;
-      border: 1px solid #fecaca;
-      border-radius: 12px;
-      font-size: 14px;
-    }
-  `;
-
-    @state() private roles: Role[] = [];
-    @state() private permissions: Permission[] = [];
-    @state() private matrix: Map<string, boolean> = new Map();
-    @state() private originalMatrix: Map<string, boolean> = new Map();
+    @state() private roles: RoleOut[] = [];
+    /** permission name -> set of role ids that grant it */
+    @state() private grants: Map<string, Set<string>> = new Map();
+    @state() private original: Map<string, Set<string>> = new Map();
+    @state() private allPermissions: string[] = [];
     @state() private loading = true;
     @state() private saving = false;
     @state() private dirty = false;
     @state() private error = '';
+    @state() private canAssignRoles = false;
 
-    connectedCallback() {
+    async connectedCallback() {
         super.connectedCallback();
-        this.loadData();
+        await this.loadData();
     }
 
     private async loadData() {
         this.loading = true;
         this.error = '';
         try {
-            await Promise.all([this.loadRoles(), this.loadPermissions()]);
-            await this.loadMatrix();
-        } catch {
-            this.error = 'Failed to load role matrix';
+            const [roles, me] = await Promise.all([
+                apiClient.get<RoleOut[]>('/aaas/settings/roles'),
+                apiClient.get<{ permissions?: string[] }>('/auth/me'),
+            ]);
+            this.roles = roles || [];
+            this.canAssignRoles = (me.permissions || []).includes('org:assign_roles');
+
+            const grants = new Map<string, Set<string>>();
+            const perms = new Set<string>();
+            for (const role of this.roles) {
+                for (const p of role.permissions || []) {
+                    perms.add(p);
+                    if (!grants.has(p)) grants.set(p, new Set());
+                    grants.get(p)!.add(role.id);
+                }
+            }
+            this.allPermissions = Array.from(perms).sort();
+            this.grants = grants;
+            this.original = new Map(Array.from(grants.entries()).map(([k, v]) => [k, new Set(v)]));
+            this.dirty = false;
+        } catch (err) {
+            this.error = `Couldn't load the role matrix. ${err instanceof Error ? err.message : err}`;
         } finally {
             this.loading = false;
         }
     }
 
-    private async loadRoles() {
-        const response = await apiClient.get('/permissions/roles') as { roles?: Role[] };
-        this.roles = response.roles || [];
+    private isLocked(roleId: string): boolean {
+        return PROVISIONED_ROLES.has(roleId) || !this.canAssignRoles;
     }
 
-    private async loadPermissions() {
-        const response = await apiClient.get('/permissions/permissions') as { permissions?: Permission[] };
-        this.permissions = response.permissions || [];
-    }
-
-    private async loadMatrix() {
-        const newMatrix = new Map<string, boolean>();
-        try {
-            const response = await apiClient.get('/permissions/granular/granular/matrix') as {
-                grants?: RolePermission[];
-            };
-            for (const grant of (response.grants || [])) {
-                newMatrix.set(`${grant.role_id}:${grant.permission_id}`, grant.granted);
-            }
-        } catch {
-            // Leave matrix empty if the endpoint is unavailable
-        }
-        this.matrix = newMatrix;
-        this.originalMatrix = new Map(newMatrix);
-    }
-
-    private togglePermission(roleId: string, permId: string) {
-        const key = `${roleId}:${permId}`;
-        const current = this.matrix.get(key) || false;
-        this.matrix.set(key, !current);
-        this.matrix = new Map(this.matrix);
+    private toggle(roleId: string, perm: string) {
+        if (this.isLocked(roleId)) return;
+        const next = new Map(Array.from(this.grants.entries()).map(([k, v]) => [k, new Set(v)]));
+        const set = next.get(perm) || new Set<string>();
+        if (set.has(roleId)) set.delete(roleId);
+        else set.add(roleId);
+        next.set(perm, set);
+        this.grants = next;
         this.checkDirty();
     }
 
     private checkDirty() {
-        let isDirty = false;
-        for (const [key, value] of this.matrix) {
-            if (this.originalMatrix.get(key) !== value) {
-                isDirty = true;
-                break;
-            }
+        for (const perm of this.allPermissions) {
+            const a = this.grants.get(perm) || new Set();
+            const b = this.original.get(perm) || new Set();
+            if (a.size !== b.size) { this.dirty = true; return; }
+            for (const id of a) { if (!b.has(id)) { this.dirty = true; return; } }
         }
-        this.dirty = isDirty;
+        this.dirty = false;
     }
 
     private revert() {
-        this.matrix = new Map(this.originalMatrix);
+        this.grants = new Map(Array.from(this.original.entries()).map(([k, v]) => [k, new Set(v)]));
         this.dirty = false;
+        this.error = '';
     }
 
     private async save() {
         this.saving = true;
         this.error = '';
         try {
-            const grants = Array.from(this.matrix.entries()).map(([key, granted]) => {
-                const [role_id, permission_id] = key.split(':', 2);
-                return { role_id, permission_id, granted };
-            });
-            await apiClient.post('/permissions/granular/grants', { grants });
-            this.originalMatrix = new Map(this.matrix);
-            this.dirty = false;
-        } catch {
-            this.error = 'Failed to save role matrix';
+            for (const role of this.roles) {
+                if (this.isLocked(role.id)) continue;
+                const before = new Set(role.permissions || []);
+                const after = new Set(
+                    this.allPermissions.filter(p => (this.grants.get(p) || new Set()).has(role.id))
+                );
+                let changed = before.size !== after.size;
+                if (!changed) {
+                    for (const p of before) { if (!after.has(p)) { changed = true; break; } }
+                }
+                if (!changed) continue;
+                await apiClient.patch(`/aaas/settings/roles/${role.id}`, {
+                    permissions: Array.from(after).sort(),
+                });
+            }
+            await this.loadData();
+        } catch (err) {
+            this.error = `Failed to save role grants. ${err instanceof Error ? err.message : err}`;
         } finally {
             this.saving = false;
         }
     }
 
-    private groupPermissionsByCategory(): Map<string, Permission[]> {
-        const groups = new Map<string, Permission[]>();
-        for (const perm of this.permissions) {
-            const cat = perm.category;
+    private byCategory(): Map<string, string[]> {
+        const groups = new Map<string, string[]>();
+        for (const perm of this.allPermissions) {
+            const cat = perm.includes(':') ? perm.split(':', 1)[0] : 'other';
             if (!groups.has(cat)) groups.set(cat, []);
             groups.get(cat)!.push(perm);
         }
@@ -428,108 +203,103 @@ export class SaasRoleMatrix extends LitElement {
 
     render() {
         return html`
-      <aside class="sidebar">
-        <saas-sidebar active-route="/platform/roles"></saas-sidebar>
-      </aside>
+            <aside class="sidebar">
+                <saas-sidebar active-route="/platform/role-matrix"></saas-sidebar>
+            </aside>
+            <main class="main">
+                <header class="header">
+                    <div>
+                        <h1 class="header-title">Permission Matrix</h1>
+                        <p class="header-subtitle">
+                            Role → permission grants. Provisioned roles are locked.
+                            Saving requires <code>org:assign_roles</code>.
+                        </p>
+                    </div>
+                    <div>
+                        <button class="btn" ?disabled=${!this.dirty} @click=${() => this.revert()}>
+                            <span class="material-symbols-outlined">undo</span> Revert
+                        </button>
+                        <button
+                            class="btn primary"
+                            ?disabled=${!this.dirty || this.saving || !this.canAssignRoles}
+                            title=${this.canAssignRoles ? 'Save role grants' : 'Requires org:assign_roles'}
+                            @click=${() => this.save()}
+                        >
+                            <span class="material-symbols-outlined">${this.saving ? 'hourglass_empty' : 'save'}</span>
+                            ${this.saving ? 'Saving…' : 'Save Changes'}
+                        </button>
+                    </div>
+                </header>
 
-      <main class="main">
-        <header class="header">
-          <div>
-            <h1 class="header-title">Role Matrix</h1>
-            <p class="header-subtitle">Manage permissions for each role</p>
-          </div>
-          <div class="header-actions">
-            <button class="btn" ?disabled=${!this.dirty} @click=${() => this.revert()}>
-              <span class="material-symbols-outlined">undo</span>
-              Revert
-            </button>
-            <button class="btn primary" ?disabled=${!this.dirty || this.saving} @click=${() => this.save()}>
-              <span class="material-symbols-outlined">${this.saving ? 'hourglass_empty' : 'save'}</span>
-              ${this.saving ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-        </header>
+                ${this.error ? html`<div class="error-banner">${this.error}</div>` : nothing}
+                ${!this.canAssignRoles
+                    ? html`<div class="notice">
+                        You don't have access to change role grants. Requires the
+                        <strong>org:assign_roles</strong> permission. The matrix below is read-only.
+                    </div>`
+                    : nothing}
 
-        ${this.error ? html`<div class="error-banner">${this.error}</div>` : ''}
-
-        <div class="stats-bar">
-          <div class="stat-item">
-            <div class="stat-value">${this.roles.length}</div>
-            <div class="stat-label">Roles</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">${this.permissions.length}</div>
-            <div class="stat-label">Permissions</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">${Array.from(this.matrix.values()).filter(v => v).length}</div>
-            <div class="stat-label">Grants</div>
-          </div>
-        </div>
-
-        <div class="content">
-          ${this.loading ? html`<div class="loading">Loading role matrix...</div>` : html`
-            <div class="matrix-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Permission</th>
-                    ${this.roles.map(role => html`
-                      <th>
-                        <div class="role-header">
-                          <span class="role-name">${role.name}</span>
-                          <span class="role-level">Level ${role.level}</span>
-                        </div>
-                      </th>
-                    `)}
-                  </tr>
-                </thead>
-                <tbody>
-                  ${Array.from(this.groupPermissionsByCategory()).map(([category, perms]) => html`
-                    <tr class="category-row">
-                      <td colspan="${this.roles.length + 1}">${category}</td>
-                    </tr>
-                    ${perms.map(perm => html`
-                      <tr>
-                        <td>
-                          <div class="perm-cell">
-                            <span class="perm-name">${perm.name}</span>
-                            <span class="perm-desc">${perm.description}</span>
-                          </div>
-                        </td>
-                        ${this.roles.map(role => html`
-                          <td class="toggle-cell">
-                            <span 
-                              class="toggle ${this.matrix.get(`${role.id}:${perm.id}`) ? 'active' : ''} ${role.id === 'platform_admin' ? 'disabled' : ''}"
-                              @click=${() => role.id !== 'platform_admin' && this.togglePermission(role.id, perm.id)}
-                            ></span>
-                          </td>
-                        `)}
-                      </tr>
-                    `)}
-                  `)}
-                </tbody>
-              </table>
-              
-              <div class="legend">
-                <div class="legend-item">
-                  <div class="legend-dot granted"></div>
-                  <span>Granted</span>
+                <div class="content">
+                    ${this.loading
+                        ? html`<div class="loading">Loading role matrix…</div>`
+                        : this.roles.length === 0
+                            ? html`<div class="loading">No roles are configured on this deployment.</div>`
+                            : html`
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Permission</th>
+                                            ${this.roles.map(role => html`
+                                                <th class=${PROVISIONED_ROLES.has(role.id) ? 'role-col-locked' : ''}>
+                                                    ${role.name || role.id}
+                                                    ${PROVISIONED_ROLES.has(role.id)
+                                                        ? html`<div class="muted">locked</div>`
+                                                        : html`<div class="muted">${role.id}</div>`}
+                                                </th>
+                                            `)}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${Array.from(this.byCategory().entries()).map(([cat, perms]) => html`
+                                            <tr class="category-row">
+                                                <td colspan=${this.roles.length + 1}>${cat}</td>
+                                            </tr>
+                                            ${perms.map(perm => html`
+                                                <tr>
+                                                    <td>
+                                                        <span class="perm-name">${perm}</span>
+                                                    </td>
+                                                    ${this.roles.map(role => {
+                                                        const on = (this.grants.get(perm) || new Set()).has(role.id);
+                                                        const locked = this.isLocked(role.id);
+                                                        return html`
+                                                            <td class="toggle-cell">
+                                                                <span
+                                                                    class="toggle ${on ? 'active' : ''} ${locked ? 'locked' : ''}"
+                                                                    title=${locked
+                                                                        ? (PROVISIONED_ROLES.has(role.id)
+                                                                            ? 'Provisioned role — locked'
+                                                                            : 'Requires org:assign_roles')
+                                                                        : (on ? 'Revoke' : 'Grant')}
+                                                                    @click=${() => this.toggle(role.id, perm)}
+                                                                ></span>
+                                                            </td>
+                                                        `;
+                                                    })}
+                                                </tr>
+                                            `)}
+                                        `)}
+                                    </tbody>
+                                </table>
+                                <p class="muted" style="margin-top: 12px;">
+                                    ${this.allPermissions.length} permissions carried by
+                                    ${this.roles.length} roles. Verb names are whatever the
+                                    catalog attached to each role — this UI does not invent verbs.
+                                </p>
+                            `}
                 </div>
-                <div class="legend-item">
-                  <div class="legend-dot inherited"></div>
-                  <span>Inherited</span>
-                </div>
-                <div class="legend-item">
-                  <div class="legend-dot denied"></div>
-                  <span>Denied</span>
-                </div>
-              </div>
-            </div>
-          `}
-        </div>
-      </main>
-    `;
+            </main>
+        `;
     }
 }
 
