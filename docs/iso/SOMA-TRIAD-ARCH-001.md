@@ -6,24 +6,24 @@
 |---|---|
 | Document Title | Soma Triad Architecture Description — Agent / Brain / Memory |
 | Document Identifier | SOMA-TRIAD-ARCH-001 |
-| Version | 2.0.0 |
-| Date | 2026-09-27 |
+| Version | 2.1.0 |
+| Date | 2026-10-03 |
 | Status | Draft |
 | Author | SomaTech Engineering |
 | Approver | — |
 | Classification | Internal |
 | ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
-| Next Review | 2026-12-28 |
-| Related | `docs/architecture/SOMA-ARCH-INVARIANTS-001.md` (normative), `docs/standards/SOMA-STD-CODING-001.md` (engineering law), `docs/project/SOMA-PM-PLAN-TRIAD-001.md` (delivery) |
+| Next Review | 2027-01-03 |
+| Related | `docs/architecture/SOMA-ARCH-INVARIANTS-001.md` (normative), `docs/standards/SOMA-STD-CODING-001.md` (engineering law), `docs/project/SOMA-PM-PLAN-TRIAD-001.md` (delivery), `docs/architecture/SOMA-ARCH-ADR-001.md` (embedding dim ADR) |
 
 ## Revision History
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
-
-| 2.0.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control. Prior status value `Draft — findings open, remediation plan approved for execution` is outside the closed set `Draft \| In Review \| Approved \| Obsolete`; normalised to `Draft` — no approver has signed this document. |
 | 1.0.0 | 2026-09-27 | SomaTech Engineering | Initial description. Memory lane verified live. |
 | 2.0.0 | 2026-09-27 | SomaTech Engineering | Rebuilt from full source read of all three repos. Target architecture (§4), remediation plan (§11), scale review (§10) added. Findings register re-opened with source citations. |
+| 2.0.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control. Prior status value `Draft — findings open, remediation plan approved for execution` is outside the closed set `Draft \| In Review \| Approved \| Obsolete`; normalised to `Draft` — no approver has signed this document. Revision History table unbroken (it had a blank line between header and rows). |
+| 2.1.0 | 2026-10-03 | SomaTech Engineering | Truth pass against the code. §12 Verification Matrix refreshed: **T-1 is MET** (SomaBrain-only gateway; `sfm_adapter.py` deleted 2026-09-27). T-2 MET (one `_stable_coord` in `memory_contract.py:161`). T-5 MET on the agent side (recall raises `MemoryRecallUnavailable`; empty-list fail-open gone). T-6 MET (durable accept into `OutboxMessage` before the network hop, `memory_gateway.py:35-71,146`). "Two adapters" is now "one adapter". Embedding dim recorded as 768 with ADR `SOMA-ARCH-ADR-001`. |
 
 ---
 
@@ -429,13 +429,15 @@ degraded system silently answers every question with amnesia.
 
 **Fix:** R-05 — raise, or return a typed degraded result the orchestrator must surface.
 
-### F-11 · LOW · Latent 256-dimension fallback
+### F-11 · LOW · Latent 256-dimension fallback — **FIXED 2026-10-03**
 
-`somafractalmemory/admin/core/services.py:127` — `getattr(settings, "SOMA_VECTOR_DIM", 256)`.
-`settings/infra.py:73` always defines it as 768 so this branch is dead today, but the default
-contradicts the 768 invariant and will silently misconfigure if the setting ever moves.
-
-**Fix:** R-07 — drop the `256` default; use `settings.SOMA_VECTOR_DIM` directly.
+Earlier text cited `somafractalmemory/admin/core/services.py:127` —
+`getattr(settings, "SOMA_VECTOR_DIM", 256)`. That literal is gone. The current
+code refuses to guess: `services.py:131-133` raises
+`RuntimeError("SOMA_VECTOR_DIM is not configured — refusing to guess a vector dim")`.
+`TUNABLES` declares the default as **768** (`settings/model.py:121-126`). The
+seam default is `DEFAULT_MEM_EMBED_DIM = 768` (`memory_contract.py:43`).
+Recorded as ADR `SOMA-ARCH-ADR-001`.
 
 ### F-12 · MEDIUM · Agent containers degraded
 
@@ -457,7 +459,7 @@ end-to-end verification of the chat lane.
 | Error honesty | `_interpret_delete_response` raises on ambiguous 2xx | Good |
 | Naming | Contract names match the domain | Good |
 | Test honesty | 5 files mock; 1 is entirely fake | **Poor** |
-| Magic values | 768 is named and shared; one stale `256` remains | Mostly good |
+| Magic values | 768 is named and shared; the stale `256` fallback is gone (F-11 fixed) | Good |
 | Module size | `services/common/` has 60+ modules in one flat package | Needs structure |
 | Docstrings | Cite real file:line — unusually good | Good |
 
@@ -600,21 +602,24 @@ R-10  (commit/push)
 
 ## 12. Verification Matrix
 
+Refreshed 2026-10-03 against the tree. Evidence is `file:line`.
+
 | Target | Evidence | Status |
 |---|---|---|
-| T-1 one writer | two `POST /memories` paths (§5 F-01) | **NOT MET** |
-| T-2 one coord authority | two `_stable_coord` definitions (F-02) | **NOT MET** |
-| T-3 one embedding authority | computed once in gateway (`memory_gateway.py:54-57`) | MET |
-| T-4 one lane per op | duplicate coord in one recall *[live]* | **NOT MET** |
-| T-5 fail-closed | three fail-opens (F-06, F-07, F-10) | **NOT MET** |
-| T-6 durable writes | outbox brain-side only | **PARTIAL** |
-| T-7 bounded resources | unbounded pool (F-08) | **NOT MET** |
-| T-8 real tests | 5 mocked files (F-05) | **NOT MET** |
-| Single gateway singleton | `get_memory_gateway()` `memory_gateway.py:202` | MET |
-| Two adapters only | `adapters/` is the only dialect owner | MET |
+| T-1 one writer | `FanoutMemoryGateway.remember` calls only `SomaBrainAdapter.remember` (`memory_gateway.py:97-109,169-171`). `sfm_adapter.py` deleted 2026-09-27 (`adapters/__init__.py:14-17`). No SFM client in the agent. | **MET** |
+| T-2 one coord authority | one `_stable_coord` in `memory_contract.py:161`; `make_coord` at `:186`. Math is mirrored in SomaBrain's `write.py:21` by design — same preimage, same output. | **MET** (cross-repo parity is documented, not accidental) |
+| T-3 one embedding authority | computed once in the gateway via `embed_fn(text, get_mem_embed_dim())` (`memory_gateway.py:95`), sent precomputed. | **MET** |
+| T-4 one lane per op | recall is SomaBrain-only (`memory_gateway.py:185-192`); one coord per write. No duplicate-coord recall observed in the current path. | **MET** (agent side) |
+| T-5 fail-closed | recall raises `MemoryRecallUnavailable` (`memory_gateway.py:186-190`, `somabrain_adapter.py:236-238`) — the empty-list fail-open is gone. `can_access_namespace` empty allow-list grants nothing (`api/auth.py:75-78`). Vault `_credential` raises. | **MET** (agent side) |
+| T-6 durable writes | `_durable_accept` writes an `OutboxMessage` row **before** the network hop (`memory_gateway.py:35-71`, called at `:146`), `mark_published` on `ack.ok` (`:178-182`). Idempotency key `mem:{coord}`. | **MET** |
+| T-7 bounded resources | Somabrain-side pool question (F-08). Not owned by the agent tree. | **OPEN** (brain-side) |
+| T-8 real tests | `tests/unit/test_process_message_uses_seam.py` asserts the chat path uses the seam. Unit tests mock at the adapter boundary by design. E2E against real services is `tests/e2e/test_triad_integration.py`. | **PARTIAL** — OPEN: e2e coverage against live SomaBrain/SFM needs a running triad |
+| Single gateway singleton | `get_memory_gateway()` at `memory_gateway.py:220-225` | MET |
+| One adapter only | `services/common/adapters/` contains only `somabrain_adapter.py`. `sfm_adapter.py` removed 2026-09-27. | MET |
 | No secrets in git | only `.env.example` tracked | MET |
-| Cross-tenant isolation by key | tenant in coord preimage | MET |
-| Delete contract honoured | `_interpret_delete_response` | MET |
+| Cross-tenant isolation by key | tenant in coord preimage (`memory_contract.py:150-186`) | MET |
+| Delete contract honoured | `SomaBrainAdapter.forget` → `POST /memory/forget` (`somabrain_adapter.py:247+`) | MET |
+| Embedding dim unity | `DEFAULT_MEM_EMBED_DIM = 768` (`memory_contract.py:43`), `MEM_EMBED_DIM` default `"768"` (`config/settings.py:116`), `SOMA_VECTOR_DIM` default 768 (SFM `settings/model.py:121-126`). Pinned by `tests/unit/test_embed_dim_seam_768.py`. | MET — ADR `SOMA-ARCH-ADR-001` |
 
 ---
 

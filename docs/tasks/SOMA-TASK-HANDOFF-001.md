@@ -1,6 +1,6 @@
-> **HISTORICAL SNAPSHOT — 2025-01-26**
+> **OBSOLETE — HISTORICAL SNAPSHOT 2025-01-26. DO NOT USE AS CURRENT TRUTH.**
 >
-> This handoff reflects the architecture as understood in January 2025. Significant consolidation has occurred since then: the old `ChatService`/`ConversationService`/`MessageService` hierarchy under `services/common/chat/` was deleted and replaced by the V3 orchestrator in `admin/core/chat_orchestrator.py`; `SOMA_AAAS_MODE` is no longer the canonical deployment-mode switch (use `SA01_DEPLOYMENT_MODE`); and `SimpleGovernor`/context builder details have evolved. For current architecture, see `AGENT.md` and the latest approved plan.
+> This handoff is a record of a past session. It is retained for traceability only. It describes `BrainBridge` (`aaas/brain.py`) as the memory access path; **that class and file were deleted** in commit `6395bd78`. The current memory seam is `MemoryGateway` → `SomaBrainAdapter` (`services/common/memory_contract.py`, `services/common/memory_gateway.py`, `services/common/adapters/somabrain_adapter.py`), and T-1 holds: the agent never holds an SFM client. The old `ChatService`/`ConversationService`/`MessageService` hierarchy under `services/common/chat/` was deleted and replaced by the V3 orchestrator in `admin/core/chat_orchestrator.py`; `SOMA_AAAS_MODE` is no longer the canonical deployment-mode switch (use `SA01_DEPLOYMENT_MODE`). For current architecture, see `AGENT.md` and `docs/iso/SOMA-TRIAD-ARCH-001.md`.
 
 # 🤖 AGENT HANDOFF - SomaAgent01 Repository
 
@@ -10,20 +10,21 @@
 |---|---|
 | Document Title | 🤖 AGENT HANDOFF - SomaAgent01 Repository |
 | Document Identifier | SOMA-TASK-HANDOFF-001 |
-| Version | 1.0.0 |
-| Date | 2026-09-28 |
-| Status | Draft |
+| Version | 1.1.0 |
+| Date | 2026-10-03 |
+| Status | Obsolete |
 | Author | SomaTech Engineering |
 | Approver | — |
 | Classification | Internal |
 | ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
-| Next Review | 2026-12-28 |
+| Next Review | 2027-01-03 |
 
 ## Revision History
 
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under ISO document control. |
+| 1.1.0 | 2026-10-03 | SomaTech Engineering | Re-stamped **Obsolete**. This is a 2025-01-26 session snapshot. Its BrainBridge / `aaas/brain.py` architecture is deleted code (`6395bd78`). Retained for traceability; superseded by `AGENT.md` v2.1.0 and `SOMA-TRIAD-ARCH-001`. |
 
 
 **Date**: 2025-01-26  

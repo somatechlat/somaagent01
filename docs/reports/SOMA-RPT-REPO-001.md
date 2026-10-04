@@ -1,6 +1,6 @@
-> **HISTORICAL SNAPSHOT — 2026-01-25**
+> **OBSOLETE — HISTORICAL SNAPSHOT 2026-01-25. DO NOT USE AS CURRENT TRUTH.**
 >
-> This analysis reflects the state of the repo on the date above. Several findings are no longer accurate (e.g. root `README.md` is now populated, `services/common/chat/*` modules were deleted during V3 consolidation, the V3 orchestrator is now the WebSocket/REST production path). For current authoritative context, see `AGENT.md` and the latest approved plan.
+> This analysis reflects the state of the repo on the date above. It is retained for traceability only. Findings that are no longer accurate include: root `README.md` **is** populated; `docs/standards/SOMA-STD-CODING-001.md` **does** exist; `services/common/chat/*` was deleted during V3 consolidation; `admin/core/budget/` and `admin/core/features/` were deleted in `b98bbb2d`; the V3 orchestrator is the WebSocket/REST production path. For current authoritative context, see `AGENT.md` and `docs/iso/SOMA-TRIAD-ARCH-001.md`.
 
 # SomaAgent01 Deep Repo Analysis
 
@@ -10,20 +10,21 @@
 |---|---|
 | Document Title | SomaAgent01 Deep Repo Analysis |
 | Document Identifier | SOMA-RPT-REPO-001 |
-| Version | 1.0.0 |
-| Date | 2026-09-28 |
-| Status | Draft |
+| Version | 1.1.0 |
+| Date | 2026-10-03 |
+| Status | Obsolete |
 | Author | SomaTech Engineering |
 | Approver | — |
 | Classification | Internal |
 | ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
-| Next Review | 2026-12-28 |
+| Next Review | 2027-01-03 |
 
 ## Revision History
 
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under ISO document control. |
+| 1.1.0 | 2026-10-03 | SomaTech Engineering | Re-stamped **Obsolete**. This is a 2026-01-25 snapshot. Claims that `SOMA-STD-CODING-001.md` does not exist and that root `README.md` is empty are both false at HEAD. Retained for traceability; superseded by `AGENT.md` v2.1.0 and `SOMA-RPT-INVENTORY-001` v1.1.0. |
 
 
 Date: 2026-01-25

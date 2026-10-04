@@ -6,11 +6,14 @@
 |-------|-------|
 | Document Title | SomaAgent01 Agent Knowledge Base |
 | Document Identifier | SOMA-DOC-002 |
-| Version | 2.0.0 |
-| Date | 2026-06-15 |
-| Status | Pre-Production |
+| Version | 2.1.0 |
+| Date | 2026-10-03 |
+| Status | Draft |
 | Author | SomaTech Engineering |
+| Approver | — |
 | Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2027-01-03 |
 
 ## Revision History
 
@@ -19,6 +22,7 @@
 | 1.0.0 | 2025-12-30 | SomaTech Engineering | Initial release |
 | 1.1.0 | 2026-06-01 | SomaTech Engineering | Updated to reflect actual implementation status; corrected deployment port namespaces; documented known gaps |
 | 2.0.0 | 2026-06-15 | SomaTech Engineering | Code-verified deep analysis; corrected audit findings; added ISO documentation suite |
+| 2.1.0 | 2026-10-03 | SomaTech Engineering | Truth pass against the code. Replaced BrainBridge / MemoryPort / MemoryServiceProtocol / `sfm_adapter` with the real seam: `MemoryGateway` → `SomaBrainAdapter` (T-1: the agent never holds an SFM client). AAAS commerce models (`SubscriptionTier`, `AaasFeature`, `TierFeature`, `FeatureProvider`, `UsageRecord`) corrected — dropped or never present. Project structure and implementation status re-derived from the tree. Status set to Draft (meaning change). |
 
 ---
 
@@ -67,8 +71,10 @@ This document does not cover:
 | Term | Definition |
 |------|------------|
 | AAAS | Agent-As-A-Service |
-| BrainBridge | Python class in `aaas/brain.py` providing in-process or HTTP access to SomaBrain |
-| MemoryPort | Protocol defined in `services/common/ports/memory_port.py` consolidating memory access |
+| MemoryGateway | Protocol at `services/common/memory_contract.py:102`. The agent's only memory write/read seam. |
+| FanoutMemoryGateway | Implementation at `services/common/memory_gateway.py:74`. Historical name — there is no fan-out. Hot path is SomaBrain only. |
+| SomaBrainAdapter | HTTP adapter at `services/common/adapters/somabrain_adapter.py:97`. The only store dialect. Speaks SomaBrain's `/memory/remember\|recall\|forget`. |
+| T-1 | Invariant: the agent never holds an SFM client. All memory I/O goes Agent → SomaBrain → somafractalmemory. |
 | V3 Pipeline | 12-phase chat orchestrator defined in `admin/core/chat_orchestrator.py` |
 | VIBE | Internal coding standard: Verification, Integration, Build, Enforcement |
 | Standalone | Agent-only deployment mode without Brain/Memory |
@@ -147,18 +153,21 @@ somaAgent01/
 ├── services/                 # Service layer
 │   ├── gateway/             # ASGI entrypoint, Django settings, URL routing
 │   ├── common/              # 40+ shared modules
+│   │   ├── memory_contract.py  # MemoryGateway protocol + DTOs (T-1 seam)
+│   │   ├── memory_gateway.py   # FanoutMemoryGateway (SomaBrain only)
+│   │   ├── adapters/
+│   │   │   └── somabrain_adapter.py  # the only store dialect
 │   │   ├── event_bus.py    # Kafka producer/consumer with OpenTelemetry tracing
 │   │   ├── circuit_breaker.py
 │   │   ├── rate_limiter.py # Redis-based; FAIL-CLOSED on Redis errors
 │   │   ├── policy_client.py # Real HTTP OPA client
 │   │   ├── spicedb_client.py # Real gRPC SpiceDB client
 │   │   ├── health_monitor.py
-│   │   ├── simple_governor.py
-│   │   └── ports/memory_port.py # MemoryPort protocol (P3-01)
+│   │   └── simple_governor.py
 │   ├── conversation_worker/ # Kafka consumer for chat events
 │   ├── tool_executor/       # Tool execution engine
 │   ├── delegation_gateway/  # A2A delegation handling
-│   ├── memory_replicator/   # Memory synchronization
+│   ├── memory_replicator/   # Replays the agent WAL into SomaBrain via MemoryGateway (T-1)
 │   └── multimodal/          # Multi-modal processing
 ├── webui/                   # Lit 3.x Web Components frontend
 │   └── src/
@@ -258,8 +267,8 @@ The old fragmented modules under `services/common/chat/` were deleted during the
 
 ```
 User -> Chat UI -> WebSocket -> ChatConsumer -> V3ChatOrchestrator -> LLM (via LiteLLM)
-                                                                   -> SomaBrain (AAAS mode only)
-                                                                   -> SomaFractalMemory (AAAS mode only)
+                                                                   -> SomaBrain only (T-1)
+                                                                        -> SomaFractalMemory
 ```
 
 ### 7.3 Components
@@ -269,17 +278,16 @@ User -> Chat UI -> WebSocket -> ChatConsumer -> V3ChatOrchestrator -> LLM (via L
    - Authentication: JWT via `Sec-WebSocket-Protocol` subprotocol, query string, Authorization header, or cookie
    - Message format: JSON with `type`, `conversation_id`, `content`
 
-2. **SomaBrain** (AAAS only)
+2. **SomaBrain** (memory and cognitive APIs)
    - Port: 63996
-   - Access: `BrainBridge` in `aaas/brain.py` (direct in-process) or `SomaBrainClient` in `admin/core/somabrain_client.py` (HTTP)
-   - Modes: Direct (in-process) or HTTP fallback
-   - `BrainBridge.recall()` is implemented for both direct and HTTP modes
+   - Memory seam (the T-1 path used by chat): `ChatOrchestrator` → `MemoryGateway.remember_text()` → `FanoutMemoryGateway` → `SomaBrainAdapter` → `POST /memory/remember`
+   - `SomaBrainAdapter` (`services/common/adapters/somabrain_adapter.py`) is the only store dialect. Endpoints: `/memory/remember`, `/memory/recall`, `/memory/forget`.
+   - `SomaBrainClient` (`admin/core/somabrain_client.py`) is a second HTTP client used for cognitive APIs (context_evaluate, neuromodulators, reward, sleep). It also exposes `remember`/`recall`/`forget` and is still called from a few off-seam sites (`admin/agents/services/somabrain_integration.py`, `admin/somabrain/api_router.py`, `services/tool_executor/result_publisher.py`). Consolidating those onto `MemoryGateway` is **OPEN**.
 
-3. **SomaFractalMemory** (AAAS only)
+3. **SomaFractalMemory**
    - Port: 63901
-   - Access: `MemoryServiceProtocol` adapters in `services/common/adapters/`
-   - Operations: `episodic` and `semantic` memory storage and retrieval
-   - Note: `MemoryPort` protocol in `services/common/ports/memory_port.py` is defined but not adopted by production adapters
+   - The agent **never** holds an SFM client (T-1). SomaBrain is the only writer to SFM.
+   - `services/common/adapters/sfm_adapter.py` was deleted 2026-09-27 for this reason.
 
 ### 7.4 Chat Code Inventory
 
@@ -329,23 +337,27 @@ SensorOutbox         # Sensor event outbox
 ### 8.2 AAAS Models (`admin/aaas/models/`)
 
 ```python
-Tenant               # Organization with subscription tier
+Tenant               # Organization
 TenantUser           # User-tenant membership with roles
 Agent                # AI agent with capsules and feature settings
 AgentUser            # User assignment to agents
-SubscriptionTier     # Billing subscription tiers
-AaasFeature          # Platform feature flags
-TierFeature          # Tier-to-feature mapping
-FeatureProvider      # Feature provider config
-UsageRecord          # Usage/billing records
-AuditLog             # Audit trail (moved from admin.core)
-PlatformConfig       # Platform-wide defaults (renamed from GlobalDefault)
+LocalIdentity        # Local login identity
+LocalSession         # Local session principal (identity UUID)
+AuditLog             # Audit trail
+PlatformConfig       # Platform-wide defaults singleton
 AdminProfile         # Admin user profile
 TenantSettings       # Per-tenant settings
 UserPreferences      # User preferences
 UserSession          # Extended user session
 ApiKey               # API key storage
 ```
+
+**Dropped or never present.** Earlier revisions of this file listed
+`SubscriptionTier`, `UsageRecord`, `AaasFeature`, `TierFeature` and
+`FeatureProvider`. `SubscriptionTier` and `UsageRecord` were dropped in
+`admin/aaas/migrations/0006_drop_commerce_tables.py`. `AaasFeature`,
+`TierFeature` and `FeatureProvider` never existed as models. The standalone
+agent has no billing and no feature-flag commerce.
 
 ---
 
@@ -473,12 +485,13 @@ pytest tests/unit/ -v
 | Component | File | Status |
 |-----------|------|--------|
 | Chat Orchestrator | `admin/core/chat_orchestrator.py` | V3 pipeline is the production path for WebSocket/REST; conversation worker still uses separate use-case pipeline |
-| BrainBridge | `aaas/brain.py` | Direct and HTTP modes implemented; `recall()` implemented for both modes |
+| Memory seam (T-1) | `services/common/memory_contract.py`, `memory_gateway.py`, `adapters/somabrain_adapter.py` | `MemoryGateway` → `SomaBrainAdapter`. One `remember_text` ⇒ one `POST /memory/remember` ⇒ one `MemoryAck`. Durable accept via `OutboxMessage` before the hop. |
 | SpiceDB Client | `services/common/spicedb_client.py` | Real gRPC client; some high-level RBAC API endpoints still return stubs |
 | Policy Client | `services/common/policy_client.py` | Real HTTP OPA client; `UnifiedGate` uses it |
 | Audit Publisher | `admin/core/models/` `OutboxMessage` | Outbox exists; not wired to all endpoints |
 | WebSocket Consumer | `services/gateway/consumers/chat.py` | Wired to V3 orchestrator. Frontend contract verified: `webui/src/views/saas-chat.ts` connects to `/ws/v2/chat/{agent_id}` and passes `agent_id` (via `capsule_id \|\| agent.id`), matching `services/gateway/routing.py`. Agent selector is present and auto-selects when only one agent exists. |
-| MemoryPort Adapters | `services/common/ports/memory_port.py` | Protocol defined; production adapters implement `MemoryServiceProtocol` instead |
+
+**Deleted — do not resurrect.** `aaas/brain.py` (BrainBridge), `services/common/ports/memory_port.py` (MemoryPort), `services/common/adapters/sfm_adapter.py`, `services/common/protocols/` (MemoryServiceProtocol). See `docs/architecture/SOMA-ARCH-INVARIANTS-001.md` §0.
 
 ### 12.3 Gaps
 
@@ -513,8 +526,9 @@ pytest tests/unit/ -v
 
 - Port: 63901 (AAAS) or 10101 (direct)
 - API: `http://localhost:63901` or `http://localhost:10101`
-- Endpoints: `/api/v1/recall`, `/api/v1/store`
+- Endpoints: `/memories`, `/memories/search`, `/graph/*`
 - Memory types: `episodic`, `semantic`
+- **The agent never holds an SFM client (T-1).** SomaBrain is the only writer. The agent's memory seam is `MemoryGateway` → `SomaBrainAdapter`.
 - Note: This repository does not contain SomaFractalMemory source code.
 
 ---

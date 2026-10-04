@@ -6,26 +6,29 @@
 |---|---|
 | Document Title | PLAN — Seamless Triad: Agent ↔ SomaBrain ↔ SomaFractalMemory |
 | Document Identifier | SOMA-PM-PLAN-TRIAD-001 |
-| Version | 1.0.0 |
-| Date | 2026-09-28 |
+| Version | 1.1.0 |
+| Date | 2026-10-03 |
 | Status | Draft |
 | Author | SomaTech Engineering |
 | Approver | — |
 | Classification | Internal |
 | ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
-| Next Review | 2026-12-28 |
+| Next Review | 2027-01-03 |
+| Related | `docs/architecture/SOMA-ARCH-ADR-001.md` |
 
 ## Revision History
 
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under ISO document control. |
+| 1.1.0 | 2026-10-03 | SomaTech Engineering | Truth pass against the code. Goal and W1 exit rewritten: T-1 decided SomaBrain is the **sole** writer — one `remember` ⇒ one row via SomaBrain, not "both stores ack". Embedding dim corrected to **768** (ADR `SOMA-ARCH-ADR-001`). W1-1 no longer names `SFMAdapter`; W1-3 no longer names BrainBridge (both deleted). |
 
 
 **Date:** 2026-09-26
 **Owner:** somaplanet
-**Goal:** One chat turn with a real Groq model stores memories in BOTH somabrain and
-somafractalmemory and recalls them into the next turn — proven 100% by an automated test.
+**Goal:** One chat turn with a real Groq model stores **one** memory row via
+SomaBrain (the sole writer to somafractalmemory, T-1) and recalls it into the
+next turn — proven 100% by an automated test.
 
 ---
 
@@ -62,15 +65,17 @@ webui ──WS──► gateway consumer ──► ChatOrchestrator (12 phases)
 
 1. `services/common/memory_contract.py` is the **single authority** for
    `MemoryWrite`, `MemoryHit`, `MemoryAck`, `make_coord()`, `embed_text()`.
-2. **Embedding computed ONCE** in the gateway, sent precomputed to both stores →
-   both stores share one vector space. Dim = `MEM_EMBED_DIM` (default 256).
+2. **Embedding computed ONCE** in the gateway, sent precomputed to SomaBrain
+   (the sole writer). Dim = `MEM_EMBED_DIM` (default **768** — ADR
+   `SOMA-ARCH-ADR-001`).
 3. **Coordinate computed ONCE** via `make_coord(tenant, kind, ts, text)` — same
-   function SFM uses to key rows. No second writer.
-4. **One write path**: `ChatOrchestrator` → `MemoryGateway.remember()` →
-   fan-out (brain + SFM) with per-store ack; `PendingMemory` outbox only retries
-   failed acks (never a second write).
-5. **One read path**: context memory lane → `MemoryGateway.recall()` → merge,
-   dedupe by coord, rank by score.
+   function SomaBrain uses to key rows. No second writer.
+4. **One write path**: `ChatOrchestrator` → `MemoryGateway.remember_text()` →
+   `SomaBrainAdapter` → one `POST /memory/remember` → one `MemoryAck`. T-1:
+   SomaBrain is the sole writer to somafractalmemory. The outbox retries only
+   failed acks through the same seam (never a second write).
+5. **One read path**: context memory lane → `MemoryGateway.recall()` → SomaBrain
+   only. No merge, no cross-store dedupe.
 6. **Env contract**: `SOMABRAIN_URL`, `SFM_URL`, `GROQ_API_KEY` (Vault-managed),
    `MEM_EMBED_DIM`. No localhost fallbacks, no mock ports in prod paths.
 
@@ -101,7 +106,7 @@ class MemoryAck(BaseModel):
     error: str | None = None
 
 class MemoryGateway(Protocol):
-    async def remember(w: MemoryWrite) -> list[MemoryAck]: ...   # one entry, both stores
+    async def remember(w: MemoryWrite) -> list[MemoryAck]: ...   # one entry, SomaBrain only (T-1)
     async def recall(query: str, k: int, tenant_id: str) -> list[MemoryHit]: ...
     async def forget(coord: str, tenant_id: str) -> bool: ...
 ```
@@ -124,14 +129,17 @@ class MemoryGateway(Protocol):
 
 | ID | Pts | Todo | Agent |
 |----|-----|------|-------|
-| W1-1 | 5 | `services/common/memory_contract.py` + `MemoryGateway` + `SomaBrainAdapter` + `SFMAdapter` in somaAgent01; delete `/api/v1/*` dialect; single `make_coord`/`embed_text` | **seam-gateway** |
+| W1-1 | 5 | `services/common/memory_contract.py` + `MemoryGateway` + `SomaBrainAdapter` in somaAgent01; delete `/api/v1/*` dialect; single `make_coord`/`embed_text`. **`SFMAdapter` is out of scope — T-1 forbids the agent from holding an SFM client.** | **seam-gateway** |
 | W1-2 | 5 | somafractalmemory: align real `/memories`, `/memories/search` to accept precomputed embeddings + `coord`; tenant scoping; drop HashEmbedder as the only path | **sfm-contract** |
-| W1-3 | 5 | somabrain: pick ONE remember/recall contract, make BrainBridge speak it, persist beliefs so recall returns them | **brain-contract** |
-| W1-4 | 3 | ChatOrchestrator: `_store_to_sfm` → `MemoryGateway.remember()`; outbox retries only failed acks; recall feeds the memory lane | **orchestrator-wire** |
-| W1-5 | 3 | Seam E2E test (TDD): chat turn → both stores contain the memory → next turn's context contains it | **seam-proof** |
+| W1-3 | 5 | somabrain: pick ONE remember/recall contract and speak it; persist beliefs so recall returns them. **BrainBridge is deleted (`6395bd78`); the contract lives on the SomaBrain HTTP API, not on an in-process stub.** | **brain-contract** |
+| W1-4 | 3 | ChatOrchestrator: `_store_to_sfm` → `MemoryGateway.remember_text()`; outbox retries only failed acks; recall feeds the memory lane | **orchestrator-wire** |
+| W1-5 | 3 | Seam E2E test (TDD): chat turn → the memory is in SomaBrain → next turn's context contains it | **seam-proof** |
 
-**Exit criteria:** `pytest tests/e2e/test_triad_integration.py` green against real
-services (not mocks); one memory written, both stores ack, recall returns it.
+**Exit criteria (definition of done, aligned with `SOMA-ARCH-INVARIANTS-001` §9):**
+`pytest tests/e2e/test_triad_integration.py` green against real services (not
+mocks); **one `remember` ⇒ one row via SomaBrain** (SomaBrain is the sole
+writer, T-1); one `MemoryAck` per call; the next turn's memory lane contains
+that memory.
 
 ### WAVE 2 — REAL GROQ CHAT (P0 · 15 pts)
 

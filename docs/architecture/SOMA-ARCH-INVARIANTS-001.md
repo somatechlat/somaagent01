@@ -6,20 +6,22 @@
 |---|---|
 | Document Title | ARCHITECTURE INVARIANTS — what must be perfect |
 | Document Identifier | SOMA-ARCH-INVARIANTS-001 |
-| Version | 1.0.0 |
-| Date | 2026-09-28 |
+| Version | 1.1.0 |
+| Date | 2026-10-03 |
 | Status | Draft |
 | Author | SomaTech Engineering |
 | Approver | — |
 | Classification | Internal |
 | ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
-| Next Review | 2026-12-28 |
+| Next Review | 2027-01-03 |
+| Related | `docs/architecture/SOMA-ARCH-ADR-001.md` |
 
 ## Revision History
 
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under ISO document control. |
+| 1.1.0 | 2026-10-03 | SomaTech Engineering | Truth pass against the code. §0: **one** adapter, not two — `sfm_adapter.py` deleted 2026-09-27. §2: embedding dim is **768**, not 256 (ADR `SOMA-ARCH-ADR-001`). §3 write/read: no fan-out, no merge — SomaBrain is the sole writer (T-1). §9 definition of done rewritten: one `remember` ⇒ one row via SomaBrain; the next turn's memory lane contains it. |
 
 
 **Date:** 2026-09-26
@@ -34,14 +36,17 @@ Companion to `SOMA-PM-PLAN-TRIAD-001.md` (delivery waves). This document says
 
 ## 0. Single source of truth
 
-**ONE** memory contract. **ONE** gateway. **TWO** adapters. Nothing else.
+**ONE** memory contract. **ONE** gateway. **ONE** adapter. Nothing else.
 
 ```
 services/common/memory_contract.py     ← DTOs + coord + embed  (AUTHORITY)
 services/common/memory_gateway.py      ← MemoryGateway impl    (ONLY entry point)
-services/common/adapters/sfm_adapter.py        ┐
-services/common/adapters/somabrain_adapter.py  ┘ (ONLY store dialects)
+services/common/adapters/somabrain_adapter.py  ← (ONLY store dialect)
 ```
+
+T-1 holds: the agent never holds an SFM client. SomaBrain is the sole writer to
+somafractalmemory. `sfm_adapter.py` was deleted 2026-09-27 precisely because it
+was a second dialect that let the agent write around the brain.
 
 Every memory read/write in the agent goes through `MemoryGateway`.
 If you find yourself defining another `Memory*Protocol` / `*MemoryPort` /
@@ -112,10 +117,10 @@ embed_text(text) -> list[float]     # dim == MEM_EMBED_DIM
 ```
 
 1. The embedding is computed **once**, in the gateway, and sent **precomputed**
-   to both stores. Never let each store re-embed.
+   to SomaBrain (the sole writer). Never let a store re-embed.
 2. Dimension: `MEM_EMBED_DIM` (agent) **must equal** `SOMA_VECTOR_DIM` (SFM).
-   Both default **256**. Milvus collections are fixed-dim at creation — a mismatch
-   is a hard failure, not a soft one.
+   Both default **768** — ADR `SOMA-ARCH-ADR-001`. Milvus collections are
+   fixed-dim at creation — a mismatch is a hard failure, not a soft one.
 3. SFM writes precomputed vectors **verbatim** to Milvus
    (`embedding_source="precomputed"`). Its `HashEmbedder` is a **fallback only**
    (`embedding_source="hash"`), and hash hits are ranked × 0.25 so they never
@@ -130,8 +135,11 @@ recall returns noise.
 
 ## 3. INVARIANT — one write path, one read path
 
-**Write:** `ChatOrchestrator` → `MemoryGateway.remember_text(...)` → fan-out to
-both stores → one `MemoryAck` per store.
+**Write:** `ChatOrchestrator` → `MemoryGateway.remember_text(...)` →
+`SomaBrainAdapter.remember` → **one** `POST /memory/remember` → **one**
+`MemoryAck`. SomaBrain is the sole writer to somafractalmemory (T-1). There is
+no fan-out. `FanoutMemoryGateway` is a historical name; the hot path is
+SomaBrain only (`memory_gateway.py:77`).
 
 `remember_text()` is the caller-facing entry point: it builds the `MemoryWrite`,
 derives the coord **and** the SomaBrain `key` material from the same
@@ -141,15 +149,20 @@ coordinate (see §1). Callers that build a `MemoryWrite` themselves and call
 coordinate string and writes a second row.
 
 1. `remember()` **never throws**. A failed store produces `MemoryAck(ok=False, error=...)`.
-2. The embedding is computed **once** per write, never once per store.
-3. `PendingMemory` outbox retries **only failed acks**. It is never a second
-   unconditional write. Its idempotency key **must** be the seam `coord` —
-   not a UUID (a random suffix makes the outbox multiply memories).
+2. The embedding is computed **once** per write.
+3. Durable accept: an `OutboxMessage` row is written **before** the network hop
+   (`memory_gateway.py:_durable_accept`), marked published on `ack.ok`. Replay
+   goes through `MemoryGateway.remember_text` again — it is never a second
+   writer. The idempotency key **must** be `mem:{coord}` — not a UUID (a random
+   suffix makes the outbox multiply memories).
 4. Postgres `Message` rows are the conversation transcript. They are **not**
    semantic memory and must not be treated as recall.
 
-**Read:** `MemoryGateway.recall(query, k, tenant_id)` → merge both stores →
-**dedupe by `coord`** keeping the highest score → sort by score desc.
+**Read:** `MemoryGateway.recall(query, k, tenant_id)` → SomaBrain only →
+sort by score desc. There is no merge and no cross-store dedupe: one store,
+one answer. On outage the call raises `MemoryRecallUnavailable` — it never
+returns an empty list to mean "no memories" when the truth is "the store is
+down".
 
 1. The 5-lane context builder's memory lane is fed **only** from `recall()`.
 2. A memory written on turn N must appear in turn N+1's memory lane. If it
@@ -241,7 +254,7 @@ class MemoryAck(BaseModel):
 |---|---|---|
 | `SOMABRAIN_URL` | brain base URL | no localhost fallback (VIBE Rule 91) |
 | `SFM_URL` (alias `SOMAFRACTALMEMORY_URL`) | memory base URL | no localhost fallback |
-| `MEM_EMBED_DIM` / `SOMA_VECTOR_DIM` | vector dim | must match, default 256 |
+| `MEM_EMBED_DIM` / `SOMA_VECTOR_DIM` | vector dim | must match, default **768** (ADR `SOMA-ARCH-ADR-001`) |
 | `SOMA_API_TOKEN` | SFM bearer | Vault/env only |
 | `SOMABRAIN_MEMORY_HTTP_TOKEN` | brain bearer | Vault/env only |
 | `GROQ_API_KEY` | Groq | Vault `secret/agent/api_keys` field `groq_api_key` — **never** in a file |
@@ -318,7 +331,11 @@ duplication, and each needs its own decision rather than a blind rewrite:
 A feature is done when, against **real** services (no mocks):
 
 1. One chat turn with a real Groq model stores a memory.
-2. Both stores ack it — or the failed ack is queued and retried.
-3. The next turn's context contains that memory in the memory lane.
+2. **One `remember` ⇒ one row via SomaBrain.** SomaBrain is the sole writer to
+   somafractalmemory (T-1). The agent sends exactly one `POST /memory/remember`
+   per `remember_text` call and receives exactly one `MemoryAck`. A failed ack
+   is queued in the agent `OutboxMessage` and replayed through the same seam —
+   never a second write path.
+3. The next turn's memory lane contains that memory (fed only from `recall()`).
 4. `pytest tests/e2e/test_triad_integration.py` is green.
 5. No second coordinate scheme, no second embedding path, no second protocol.

@@ -6,25 +6,28 @@
 |---|---|
 | Document Title | V3 FLOW MASTER TASK TRACKER — COMPLETE IMPLEMENTATION PLAN |
 | Document Identifier | SOMA-TASK-FLOW-001 |
-| Version | 1.0.0 |
-| Date | 2026-09-28 |
+| Version | 1.1.0 |
+| Date | 2026-10-03 |
 | Status | Draft |
 | Author | SomaTech Engineering |
 | Approver | — |
 | Classification | Internal |
 | ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
-| Next Review | 2026-12-28 |
+| Next Review | 2027-01-03 |
 
 ## Revision History
 
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under ISO document control. |
+| 1.1.0 | 2026-10-03 | SomaTech Engineering | Truth pass against the code. `admin/core/budget/` and `admin/core/features/` were **deleted** in commit `b98bbb2d` ("delete budget, features, integrations and audit surfaces" — the standalone agent has no billing, no feature-flag commerce, no third-party integration marketplace). Matrix rows that marked them ✅ DONE are corrected to REMOVED. Sprint 10/11 "Files to Create" tables are retained as historical plans, not as work remaining. |
 
 
 **Project:** SomaAgent01 V3 Flow
-**Last Updated:** 2026-01-16 20:51
-**Status:** 81% COMPLETE (13/16 SRS)
+**Last Updated:** 2026-10-03
+**Status:** Budget and feature-flag SRS rows are REMOVED (code deleted). The
+remaining matrix rows are the implemented set. See the correction note in
+Revision History 1.1.0.
 
 ---
 
@@ -66,17 +69,21 @@
 | 8 | SRS-MODEL-ROUTING | 8 | `admin/core/model_router.py` | 220 | ✅ DONE |
 | 9 | SRS-MULTIMODAL | 8 | `admin/core/multimodal.py` | 230 | ✅ DONE |
 | 11 | SRS-CHAT-FLOW-MASTER | 9 | `admin/core/chat_orchestrator.py` | 215 | ✅ DONE |
-| 12 | SRS-BUDGET-SYSTEM | 9 | `admin/core/budget/limits.py` | 220 | ✅ DONE |
+| 12 | SRS-BUDGET-SYSTEM | 9 | `admin/core/budget/limits.py` | 220 | **REMOVED** — package deleted (`b98bbb2d`) |
 | 13 | SRS-SOMABRAIN-INTEGRATION | 3 | `admin/somabrain/` | 400+ | ✅ DONE |
-| 14 | **SRS-BUDGET-SYSTEM** | 10 | `admin/core/budget/` | 950 | ✅ DONE |
-| 15 | **SRS-FEATURE-FLAGS** | 11 | `admin/core/features/` | 1300 | ✅ DONE |
+| 14 | **SRS-BUDGET-SYSTEM** | 10 | `admin/core/budget/` | 950 | **REMOVED** — package deleted (`b98bbb2d`) |
+| 15 | **SRS-FEATURE-FLAGS** | 11 | `admin/core/features/` | 1300 | **REMOVED** — package deleted (`b98bbb2d`) |
 | 16 | **SRS-BACKUP-SYSTEM** | 12 | `services/capsule_export.py` | 445 | ✅ DONE |
 
 ---
 
 ## 🎯 SPRINT 10: BUDGET SYSTEM
 
-### Files to Create
+> **REMOVED 2026-10-03.** `admin/core/budget/` was deleted in commit `b98bbb2d`.
+> The table below is a historical plan. These files are **not** to be created:
+> the standalone agent has no billing surface.
+
+### Files to Create (historical — do not create)
 
 | File | Purpose | Est. Lines |
 |------|---------|------------|
@@ -125,7 +132,11 @@
 
 ## 🎯 SPRINT 11: FEATURE FLAGS
 
-### Files to Create
+> **REMOVED 2026-10-03.** `admin/core/features/` was deleted in commit `b98bbb2d`.
+> The table below is a historical plan. These files are **not** to be created:
+> the standalone agent has no feature-flag commerce.
+
+### Files to Create (historical — do not create)
 
 | File | Purpose | Est. Lines |
 |------|---------|------------|
@@ -232,23 +243,20 @@
 | `admin/core/permission_matrix.py` | PERMISSION | 270 | ✅ |
 | `admin/core/chat_orchestrator.py` | CHAT-FLOW | 215 | ✅ |
 | `admin/core/multimodal.py` | MULTIMODAL | 230 | ✅ |
-| `admin/core/budget/limits.py` | BUDGET | 220 | ✅ |
+| `admin/core/budget/limits.py` | BUDGET | 220 | **REMOVED** (`b98bbb2d`) |
 
-### 🔴 FILES TO CREATE (12 files, ~900 lines)
+### REMOVED — budget and feature-flag surfaces (deleted `b98bbb2d`)
 
-| File | SRS | Est. Lines |
-|------|-----|------------|
-| `admin/core/budget/__init__.py` | BUDGET | 30 |
-| `admin/core/budget/registry.py` | BUDGET | 100 |
-| `admin/core/budget/gate.py` | BUDGET | 80 |
-| `admin/core/budget/limits.py` | BUDGET | 60 |
-| `admin/core/budget/cache.py` | BUDGET | 50 |
-| `admin/core/budget/exceptions.py` | BUDGET | 40 |
-| `admin/core/features/__init__.py` | FEATURES | 25 |
-| `admin/core/features/registry.py` | FEATURES | 150 |
-| `admin/core/features/check.py` | FEATURES | 80 |
-| `admin/core/features/gate.py` | FEATURES | 60 |
-| `admin/api/features.py` | FEATURES | 100 |
+The following files are **not** to be created. They were deleted along with the
+rest of `admin/core/budget/`, `admin/core/features/`, `admin/audit/` and
+`admin/integrations/` because the standalone agent has no billing, no
+feature-flag commerce and no third-party integration marketplace.
+
+| File | SRS | Status |
+|------|-----|--------|
+| `admin/core/budget/*` (6 files) | BUDGET | **REMOVED** |
+| `admin/core/features/*` (4 files) | FEATURES | **REMOVED** |
+| `admin/api/features.py` | FEATURES | **REMOVED** |
 
 ---
 
@@ -257,12 +265,9 @@
 | Metric | Value |
 |--------|-------|
 | **SRS Documents** | 17 |
-| **SRS Implemented** | 13/16 (81%) |
-| **Files Created** | 16 |
-| **Lines Implemented** | ~2,642 |
-| **Files Remaining** | 12 |
-| **Lines Remaining** | ~900 |
-| **Total Estimated** | ~3,542 |
+| **SRS Implemented** | see the matrix above; budget and feature-flag rows are REMOVED |
+| **Files Created** | see the implemented-files table |
+| **Budget / feature surfaces** | **REMOVED** (`b98bbb2d`) — not remaining work |
 
 ---
 
@@ -317,4 +322,4 @@
 
 **Document End**
 
-*13/16 SRS IMPLEMENTED — 81% COMPLETE ✅*
+*Budget and feature-flag SRS rows are REMOVED (code deleted `b98bbb2d`). See Revision History 1.1.0.*
