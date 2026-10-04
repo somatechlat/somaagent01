@@ -435,7 +435,9 @@ class V3ChatOrchestrator:
                 user_id=turn.user_id,
                 permission="resource:chat_send",
                 tenant_id=tenant_id,
-                roles=list(turn.roles or []),
+                # None means resolve them; [] is a positive claim that the
+                # subject holds no role at all.
+                roles=list(turn.roles) if turn.roles else None,
             )
             if not perm.allowed:
                 result.response = get_message(ErrorCode.DEGRADED_PERMISSION_DENIED)
