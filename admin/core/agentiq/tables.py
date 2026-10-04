@@ -130,6 +130,13 @@ STYLE_TABLE: Dict[str, StyleRow] = {
 }
 DEFAULT_RESPONSE_STYLE = "balanced"
 
+# Schema defaults for the four control knobs — the last layer of the settings
+# chain (Capsule > AgentSetting > InfrastructureConfig > SettingsModel > here).
+# The number appears once, here (SOMA-RAPID-DEVELOPMENT-001).
+DEFAULT_INTELLIGENCE_LEVEL = 5
+DEFAULT_AUTONOMY_LEVEL = 5
+DEFAULT_RESOURCE_BUDGET = 0.10
+
 
 def lookup_style(style: str | None) -> StyleRow:
     """Look up response style. Unknown values fall back to the default style."""

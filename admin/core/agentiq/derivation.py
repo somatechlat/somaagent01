@@ -15,6 +15,9 @@ from typing import Any, Dict, TYPE_CHECKING
 
 from admin.core.agentiq.settings import DerivedSettings
 from admin.core.agentiq.tables import (
+    DEFAULT_AUTONOMY_LEVEL,
+    DEFAULT_INTELLIGENCE_LEVEL,
+    DEFAULT_RESOURCE_BUDGET,
     DEFAULT_RESPONSE_STYLE,
     lookup_autonomy,
     lookup_intelligence,
@@ -24,6 +27,34 @@ from admin.core.agentiq.tables import (
 
 if TYPE_CHECKING:
     from admin.core.models import Capsule
+
+
+def resolve_knobs(capsule: "Capsule") -> Dict[str, Any]:
+    """Effective control knobs for a capsule: stored, else chain-resolved.
+
+    One place that decides what the knobs *are*. ``derive_all_settings`` and
+    the AgentIQ HTTP surface both read through here, so a reported knob is
+    exactly the knob that drove derivation — never a second guess.
+    """
+    from admin.core.helpers.capsule_settings import resolve_setting
+
+    body: Dict[str, Any] = getattr(capsule, "_cached_body", None) or capsule.body or {}
+    persona = body.get("persona", {})
+    knobs = persona.get("knobs", {}) or {}
+
+    def _one(name: str, resolved_default: Any) -> Any:
+        if knobs.get(name) is not None:
+            return knobs.get(name)
+        return resolve_setting(
+            f"AGENTIQ_{name.upper()}", capsule=capsule, default=resolved_default
+        )
+
+    return {
+        "intelligence_level": _one("intelligence_level", DEFAULT_INTELLIGENCE_LEVEL),
+        "autonomy_level": _one("autonomy_level", DEFAULT_AUTONOMY_LEVEL),
+        "resource_budget": _one("resource_budget", DEFAULT_RESOURCE_BUDGET),
+        "response_style": _one("response_style", DEFAULT_RESPONSE_STYLE),
+    }
 
 
 def derive_all_settings(capsule: "Capsule") -> DerivedSettings:
@@ -42,36 +73,11 @@ def derive_all_settings(capsule: "Capsule") -> DerivedSettings:
     Raises:
         ValueError: If capsule.body is malformed
     """
-    # Extract knobs from capsule.body (use cached body if available)
-    body: Dict[str, Any] = getattr(capsule, "_cached_body", None) or capsule.body or {}
-    persona = body.get("persona", {})
-    knobs = persona.get("knobs", {})
-
-    # The 3 control knobs — Capsule / Django settings authority (no magic numbers).
-    from admin.core.helpers.capsule_settings import resolve_setting
-
-    intelligence_level: int = int(
-        knobs.get("intelligence_level")
-        if knobs.get("intelligence_level") is not None
-        else resolve_setting("AGENTIQ_INTELLIGENCE_LEVEL", capsule=capsule, default=5)
-    )
-    autonomy_level: int = int(
-        knobs.get("autonomy_level")
-        if knobs.get("autonomy_level") is not None
-        else resolve_setting("AGENTIQ_AUTONOMY_LEVEL", capsule=capsule, default=5)
-    )
-    resource_budget: float = float(
-        knobs.get("resource_budget")
-        if knobs.get("resource_budget") is not None
-        else resolve_setting("AGENTIQ_RESOURCE_BUDGET", capsule=capsule, default=0.10)
-    )
-    response_style: str = str(
-        knobs.get("response_style")
-        if knobs.get("response_style") is not None
-        else resolve_setting(
-            "AGENTIQ_RESPONSE_STYLE", capsule=capsule, default=DEFAULT_RESPONSE_STYLE
-        )
-    )
+    knobs = resolve_knobs(capsule)
+    intelligence_level: int = int(knobs["intelligence_level"])
+    autonomy_level: int = int(knobs["autonomy_level"])
+    resource_budget: float = float(knobs["resource_budget"])
+    response_style: str = str(knobs["response_style"])
 
     # Lookup derivations from tables
     intel = lookup_intelligence(intelligence_level)
@@ -121,11 +127,17 @@ def derive_from_knobs(
     from admin.core.helpers.capsule_settings import resolve_setting
 
     if intelligence_level is None:
-        intelligence_level = int(resolve_setting("AGENTIQ_INTELLIGENCE_LEVEL", default=5))
+        intelligence_level = int(
+            resolve_setting("AGENTIQ_INTELLIGENCE_LEVEL", default=DEFAULT_INTELLIGENCE_LEVEL)
+        )
     if autonomy_level is None:
-        autonomy_level = int(resolve_setting("AGENTIQ_AUTONOMY_LEVEL", default=5))
+        autonomy_level = int(
+            resolve_setting("AGENTIQ_AUTONOMY_LEVEL", default=DEFAULT_AUTONOMY_LEVEL)
+        )
     if resource_budget is None:
-        resource_budget = float(resolve_setting("AGENTIQ_RESOURCE_BUDGET", default=0.10))
+        resource_budget = float(
+            resolve_setting("AGENTIQ_RESOURCE_BUDGET", default=DEFAULT_RESOURCE_BUDGET)
+        )
 
     if response_style is None:
         response_style = str(

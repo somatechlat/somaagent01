@@ -5,6 +5,7 @@ Pure Django Ninja implementation for admin domain.
 
 from ninja import Router
 
+from admin.core.api.agentiq import router as agentiq_router
 from admin.core.api.degradation import router as degradation_router
 from admin.core.api.general import router as general_router
 from admin.core.api.health import router as health_router
@@ -28,5 +29,6 @@ router.add_router("/migrate", migrate_router)
 router.add_router("/infrastructure", infrastructure_router)  # Rate limits + infra
 router.add_router("/infrastructure/degradation", degradation_router)  # Degradation monitor
 router.add_router("/settings", settings_router)  # Service configuration
+router.add_router("/agentiq", agentiq_router)  # Capsule knobs + server-derived settings
 
 __all__ = ["router"]
