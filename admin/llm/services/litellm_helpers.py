@@ -5,12 +5,14 @@ Extracted from litellm_client.py for 650-line compliance.
 
 from __future__ import annotations
 
+from typing import Optional
+
 import asyncio
 import logging
 import os
 import random
 import time
-from typing import Any, Awaitable, Callable, TYPE_CHECKING
+from typing import Any, Awaitable, Callable, Optional, TYPE_CHECKING
 
 import httpx
 import litellm
@@ -336,6 +338,11 @@ def prepare_completion_kwargs(model: str, kwargs: dict, *, stream: bool) -> tupl
     apply_reasoning_format(model, call_kwargs)
     if stream and _is_groq_model(model) and call_kwargs.get("response_format"):
         return call_kwargs, False
+    if stream:
+        # Ask the provider for usage on the final chunk. Without this a stream
+        # often reports no token counts at all, and the metric would be a lie
+        # or a local estimate. Callers that already set stream_options win.
+        call_kwargs.setdefault("stream_options", {"include_usage": True})
     return call_kwargs, stream
 
 
@@ -564,6 +571,31 @@ def _extract_tool_call_deltas(delta: Any, message: Any) -> list[Any]:
     return out
 
 
+def _extract_usage(chunk: Any) -> Optional[dict[str, Any]]:
+    """Provider-reported usage from a completion chunk, or None.
+
+    LiteLLM surfaces ``usage`` on the final stream chunk (when
+    ``stream_options.include_usage`` is set) and on every non-stream
+    response. Absent usage is reported as None — never as zeros.
+    """
+    usage = chunk.get("usage") if isinstance(chunk, dict) else getattr(chunk, "usage", None)
+    if not isinstance(usage, dict):
+        return None
+    prompt = usage.get("prompt_tokens", usage.get("input_tokens"))
+    completion = usage.get("completion_tokens", usage.get("output_tokens"))
+    if prompt is None and completion is None:
+        return None
+    out: dict[str, Any] = {}
+    if prompt is not None:
+        out["prompt_tokens"] = prompt
+    if completion is not None:
+        out["completion_tokens"] = completion
+    total = usage.get("total_tokens")
+    if total is not None:
+        out["total_tokens"] = total
+    return out
+
+
 def _parse_chunk(chunk: Any) -> "ChatChunk":
     """Parse LLM response chunk into standardized format."""
 
@@ -586,6 +618,9 @@ def _parse_chunk(chunk: Any) -> "ChatChunk":
     tool_call_deltas = _extract_tool_call_deltas(delta, message)
     if tool_call_deltas:
         parsed["tool_call_deltas"] = tool_call_deltas
+    usage = _extract_usage(chunk)
+    if usage is not None:
+        parsed["usage"] = usage
     return parsed
 
 

@@ -5,9 +5,11 @@ Extracted from litellm_client.py for 650-line compliance.
 
 from __future__ import annotations
 
+from typing import Optional
+
 import json
 from dataclasses import dataclass, field
-from typing import Any, NotRequired, TypedDict
+from typing import Any, NotRequired, Optional, TypedDict
 
 
 @dataclass
@@ -57,6 +59,10 @@ class ChatChunk(TypedDict):
     response_delta: str
     reasoning_delta: str
     tool_call_deltas: NotRequired[list[ToolCallDelta]]
+    #: Provider-reported usage when the chunk carries it (final chunk under
+    #: ``stream_options.include_usage``, or a non-stream response). Absent
+    #: means the provider reported none — never invent a zero here.
+    usage: NotRequired[Optional[dict[str, Any]]]
 
 
 class ToolCallAccumulator:

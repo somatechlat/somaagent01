@@ -54,7 +54,7 @@ from services.common.memory_contract import (
 )
 from services.common.memory_gateway import build_memory_gateway, get_memory_gateway
 from services.common.simple_governor import get_governor
-from services.common.unified_metrics import get_metrics, TurnPhase
+from services.common.unified_metrics import get_metrics, TurnPhase, TurnUsage
 
 logger = logging.getLogger(__name__)
 
@@ -664,6 +664,9 @@ class V3ChatOrchestrator:
             messages = self._to_langchain_messages(context, history, turn.user_message)
             self._metrics.record_turn_phase(turn_id, TurnPhase.LLM_INVOKED)
 
+            # Provider-reported usage only. The LLM response carries it; when a
+            # round reports none the metric is None, never a local estimate.
+            usage = TurnUsage()
             response_chunks: List[str] = []
             tools_called: List[str] = []
             try:
@@ -675,6 +678,7 @@ class V3ChatOrchestrator:
                     tools_for_llm=tools_for_llm,
                     tool_registry=turn.tool_registry,
                     capsule=capsule,
+                    usage=usage,
                 ):
                     if isinstance(item, ToolStreamEvent):
                         if item.type == TOOL_EVENT_DONE:
@@ -690,11 +694,27 @@ class V3ChatOrchestrator:
                 result.response = get_message(ErrorCode.LLM_DEGRADED_CIRCUIT_OPEN)
                 result.errors.append("LLM circuit OPEN — degraded mode")
                 result.phase_completed = 8
+                self._metrics.record_turn_complete(
+                    turn_id=turn_id,
+                    tokens_in=usage.prompt_tokens,
+                    tokens_out=usage.completion_tokens,
+                    model=model.name,
+                    provider=model.provider,
+                    error="llm_circuit_open",
+                )
                 return result
             except asyncio.TimeoutError:
                 result.response = get_message(ErrorCode.LLM_DEGRADED_TIMEOUT)
                 result.errors.append("LLM streaming timeout — degraded mode")
                 result.phase_completed = 8
+                self._metrics.record_turn_complete(
+                    turn_id=turn_id,
+                    tokens_in=usage.prompt_tokens,
+                    tokens_out=usage.completion_tokens,
+                    model=model.name,
+                    provider=model.provider,
+                    error="llm_timeout",
+                )
                 return result
 
             full_response = "".join(response_chunks)
@@ -760,8 +780,8 @@ class V3ChatOrchestrator:
             result.latency_ms = elapsed_ms
             self._metrics.record_turn_complete(
                 turn_id=turn_id,
-                tokens_in=_token_count(turn.user_message),
-                tokens_out=_token_count(full_response),
+                tokens_in=usage.prompt_tokens,
+                tokens_out=usage.completion_tokens,
                 model=result.model_used,
                 provider=model.provider,
                 error=None,
@@ -1002,6 +1022,9 @@ class V3ChatOrchestrator:
         )
 
         response_chunks: List[str] = []
+        # Provider-reported usage only. The LLM response carries it; when a
+        # round reports none the metric is None, never a local estimate.
+        usage = TurnUsage()
         try:
             async for item in run_tool_loop(
                     iq=iq,
@@ -1011,6 +1034,7 @@ class V3ChatOrchestrator:
                 tools_for_llm=tools_for_llm,
                 tool_registry=turn.tool_registry,
                 capsule=capsule,
+                usage=usage,
             ):
                 if isinstance(item, ToolStreamEvent):
                     yield item
@@ -1021,8 +1045,8 @@ class V3ChatOrchestrator:
             yield "[System degraded: LLM service temporarily unavailable. Using cached context only.]"
             self._metrics.record_turn_complete(
                 turn_id=turn_id,
-                tokens_in=_token_count(turn.user_message),
-                tokens_out=_token_count("".join(response_chunks)),
+                tokens_in=usage.prompt_tokens,
+                tokens_out=usage.completion_tokens,
                 model=model.name,
                 provider=model.provider,
                 error="llm_circuit_open",
@@ -1032,8 +1056,8 @@ class V3ChatOrchestrator:
             yield get_message(ErrorCode.LLM_DEGRADED_TIMEOUT)
             self._metrics.record_turn_complete(
                 turn_id=turn_id,
-                tokens_in=_token_count(turn.user_message),
-                tokens_out=_token_count("".join(response_chunks)),
+                tokens_in=usage.prompt_tokens,
+                tokens_out=usage.completion_tokens,
                 model=model.name,
                 provider=model.provider,
                 error="llm_timeout",
@@ -1060,14 +1084,14 @@ class V3ChatOrchestrator:
             coordinate=assistant_coord,
         )
         await self._bump_message_count(turn.conversation_id or "")
-        # Completion metrics for the stream path. The counts come from the
-        # turn itself — the same measure the sync path records — and the model
-        # identity from the SelectedModel that served it. A metric that always
-        # reports zero is a lie.
+        # Completion metrics for the stream path. Token counts are what the
+        # provider reported for this turn (None when it reported none — never
+        # a local estimate presented as billed usage), and the model identity
+        # from the SelectedModel that served it.
         self._metrics.record_turn_complete(
             turn_id=turn_id,
-            tokens_in=_token_count(turn.user_message),
-            tokens_out=_token_count(full_response),
+            tokens_in=usage.prompt_tokens,
+            tokens_out=usage.completion_tokens,
             model=model.name,
             provider=model.provider,
         )

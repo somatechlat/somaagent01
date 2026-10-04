@@ -110,6 +110,50 @@ class LiteLLMChatWrapper(SimpleChatModel):
             model_value = f"{provider}/{model}"
         super().__init__(model_name=model_value, provider=provider, kwargs=kwargs)  # type: ignore
         self.a0_model_conf = model_config
+        # Provider-reported usage for this wrapper (one chat turn may call
+        # _astream several times in a tool loop). Absent fields stay unknown.
+        self._usage_prompt: Optional[int] = None
+        self._usage_completion: Optional[int] = None
+
+    def _note_usage(self, usage: Optional[dict[str, Any]]) -> None:
+        """Accumulate one provider usage payload. Ignores anything unusable."""
+        if not isinstance(usage, dict):
+            return
+        prompt = usage.get("prompt_tokens", usage.get("input_tokens"))
+        completion = usage.get("completion_tokens", usage.get("output_tokens"))
+        try:
+            if prompt is not None:
+                self._usage_prompt = (self._usage_prompt or 0) + int(prompt)
+        except (TypeError, ValueError):
+            pass
+        try:
+            if completion is not None:
+                self._usage_completion = (self._usage_completion or 0) + int(completion)
+        except (TypeError, ValueError):
+            pass
+
+    def pop_usage(self) -> Optional[dict[str, Any]]:
+        """Return provider usage seen since the last pop, then reset.
+
+        ``None`` when the provider reported nothing — the caller must not
+        substitute a local estimate for a count the provider never gave.
+        """
+        if self._usage_prompt is None and self._usage_completion is None:
+            return None
+        out: dict[str, Any] = {}
+        if self._usage_prompt is not None:
+            out["prompt_tokens"] = self._usage_prompt
+        if self._usage_completion is not None:
+            out["completion_tokens"] = self._usage_completion
+        self._usage_prompt = None
+        self._usage_completion = None
+        return out
+
+    def _parse_and_note(self, chunk: Any) -> Any:
+        """Parse a completion chunk and record any provider usage it carries."""
+        parsed = _parse_chunk(chunk)
+        self._note_usage(parsed.get("usage"))
+        return parsed
 
     @property
     def _llm_type(self) -> str:
@@ -165,7 +209,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
             base_delay=base_delay,
             model=self.model_name,
         )
-        parsed = _parse_chunk(resp)
+        parsed = self._parse_and_note(resp)
         output = ChatGenerationResult(parsed).output()
         return output["response_delta"]
 
@@ -202,7 +246,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     resp = completion(
                         model=self.model_name, messages=msgs, stop=stop, **call_kwargs
                     )
-                    parsed = _parse_chunk(resp)
+                    parsed = self._parse_and_note(resp)
                     output = result.add_chunk(parsed)
                     deltas = output.get("tool_call_deltas")
                     if deltas:
@@ -222,7 +266,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     **call_kwargs,
                 ):
                     got_any_chunk = True
-                    parsed = _parse_chunk(chunk)
+                    parsed = self._parse_and_note(chunk)
                     output = result.add_chunk(parsed)
                     deltas = output.get("tool_call_deltas")
                     if deltas:
@@ -285,7 +329,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     resp = await acompletion(
                         model=self.model_name, messages=msgs, stop=stop, **call_kwargs
                     )
-                    parsed = _parse_chunk(resp)
+                    parsed = self._parse_and_note(resp)
                     output = result.add_chunk(parsed)
                     deltas = output.get("tool_call_deltas")
                     if deltas:
@@ -306,7 +350,7 @@ class LiteLLMChatWrapper(SimpleChatModel):
                 )
                 async for chunk in response:  # type: ignore
                     got_any_chunk = True
-                    parsed = _parse_chunk(chunk)
+                    parsed = self._parse_and_note(chunk)
                     output = result.add_chunk(parsed)
                     deltas = output.get("tool_call_deltas")
                     if deltas:
@@ -398,14 +442,14 @@ class LiteLLMChatWrapper(SimpleChatModel):
                     resp = await acompletion(
                         model=self.model_name, messages=msgs_conv, **call_kwargs
                     )
-                    await _emit(result.add_chunk(_parse_chunk(resp)))
+                    await _emit(result.add_chunk(self._parse_and_note(resp)))
                     return result.response, result.reasoning
                 _completion = await acompletion(
                     model=self.model_name, messages=msgs_conv, stream=True, **call_kwargs
                 )
                 async for chunk in _completion:  # type: ignore
                     got_any_chunk = True
-                    await _emit(result.add_chunk(_parse_chunk(chunk)))
+                    await _emit(result.add_chunk(self._parse_and_note(chunk)))
                 return result.response, result.reasoning
             except Exception as e:
                 if got_any_chunk and _is_transient_litellm_error(e):

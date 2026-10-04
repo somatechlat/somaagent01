@@ -397,9 +397,9 @@ class TestStreamTurnMetricsAreHonest:
 
     The stream lane's completion call passed ``tokens_in=0, tokens_out=0`` and
     looked its turn up under the conversation id — a turn it never started —
-    so TOKENS_TOTAL never moved. These pin the wiring: real counts from the
-    turn, the real model identity, and a turn that is started and completed
-    under the same id.
+    so TOKENS_TOTAL never moved. These pin the wiring: provider-reported usage
+    from the turn (or ``None`` when the provider reported none), the real model
+    identity, and a turn that is started and completed under the same id.
     """
 
     @staticmethod
@@ -413,10 +413,10 @@ class TestStreamTurnMetricsAreHonest:
         assert "tokens_in=0" not in src
         assert "tokens_out=0" not in src
 
-    def test_stream_completion_counts_the_real_turn(self):
+    def test_stream_completion_uses_provider_usage(self):
         src = self._stream_turn_src()
-        assert "_token_count(turn.user_message)" in src
-        assert "_token_count(full_response)" in src
+        assert "usage.prompt_tokens" in src
+        assert "usage.completion_tokens" in src
 
     def test_stream_completion_reports_the_real_model(self):
         src = self._stream_turn_src()

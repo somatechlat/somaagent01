@@ -17,7 +17,7 @@ import os
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from prometheus_client import Counter, Gauge, Histogram, Info
 
@@ -59,6 +59,45 @@ class TurnPhase(str, Enum):
     ERROR = "error"
 
 
+class TurnUsage:
+    """Provider-reported token usage for one turn.
+
+    The LLM response carries usage. This accumulates it across tool-loop
+    rounds. Until a provider reports a field it stays ``None`` — a missing
+    value is not zero, and a tiktoken estimate is not what the provider
+    billed. ``absorb`` never invents a count.
+    """
+
+    __slots__ = ("prompt_tokens", "completion_tokens")
+
+    def __init__(self) -> None:
+        self.prompt_tokens: Optional[int] = None
+        self.completion_tokens: Optional[int] = None
+
+    def absorb(self, usage: Optional[dict[str, Any]]) -> None:
+        """Add one provider usage payload. Ignores anything unusable."""
+        if not isinstance(usage, dict):
+            return
+        prompt = usage.get("prompt_tokens")
+        if prompt is None:
+            prompt = usage.get("input_tokens")
+        completion = usage.get("completion_tokens")
+        if completion is None:
+            completion = usage.get("output_tokens")
+        try:
+            prompt_i = int(prompt) if prompt is not None else None
+        except (TypeError, ValueError):
+            prompt_i = None
+        try:
+            completion_i = int(completion) if completion is not None else None
+        except (TypeError, ValueError):
+            completion_i = None
+        if prompt_i is not None:
+            self.prompt_tokens = (self.prompt_tokens or 0) + prompt_i
+        if completion_i is not None:
+            self.completion_tokens = (self.completion_tokens or 0) + completion_i
+
+
 @dataclass
 class TurnMetrics:
     """Metrics collected for a single turn."""
@@ -71,8 +110,10 @@ class TurnMetrics:
     end_time: Optional[float] = None
     phases: dict[TurnPhase, float] = field(default_factory=dict)
     latency_ms: Optional[float] = None
-    tokens_in: int = 0
-    tokens_out: int = 0
+    # Provider-reported, or None when the provider reported none. Never a
+    # fabricated 0 — see TurnUsage.
+    tokens_in: Optional[int] = None
+    tokens_out: Optional[int] = None
     error: Optional[str] = None
     degradation_level: str = "none"
     health_status: HealthStatus = HealthStatus.HEALTHY
@@ -260,13 +301,18 @@ class UnifiedMetrics:
     def record_turn_complete(
         self,
         turn_id: str,
-        tokens_in: int,
-        tokens_out: int,
+        tokens_in: Optional[int],
+        tokens_out: Optional[int],
         model: str,
         provider: str,
         error: Optional[str] = None,
     ) -> None:
-        """Record completion of a turn."""
+        """Record completion of a turn.
+
+        ``tokens_in`` / ``tokens_out`` are provider-reported usage, or ``None``
+        when the provider reported none. A missing count is omitted from the
+        counter — never recorded as zero.
+        """
         if turn_id not in self._active_turns:
             logger.warning("Turn %s not found when recording completion", turn_id)
             return
@@ -295,13 +341,15 @@ class UnifiedMetrics:
                 tenant_id=metrics.tenant_id, health_status=metrics.health_status.value
             ).observe(metrics.latency_ms / 1000.0)
 
-        self.TOKENS_TOTAL.labels(
-            tenant_id=metrics.tenant_id, direction="input", provider=provider, model=model
-        ).inc(tokens_in)
+        if tokens_in is not None:
+            self.TOKENS_TOTAL.labels(
+                tenant_id=metrics.tenant_id, direction="input", provider=provider, model=model
+            ).inc(tokens_in)
 
-        self.TOKENS_TOTAL.labels(
-            tenant_id=metrics.tenant_id, direction="output", provider=provider, model=model
-        ).inc(tokens_out)
+        if tokens_out is not None:
+            self.TOKENS_TOTAL.labels(
+                tenant_id=metrics.tenant_id, direction="output", provider=provider, model=model
+            ).inc(tokens_out)
 
     def record_health_status(self, service_name: str, is_healthy: bool, latency_ms: float) -> None:
         """Record health check result.
@@ -468,6 +516,7 @@ __all__ = [
     "UnifiedMetrics",
     "TurnMetrics",
     "TurnPhase",
+    "TurnUsage",
     "HealthStatus",
     "get_metrics",
     # Legacy re-exports migration period

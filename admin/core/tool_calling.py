@@ -264,6 +264,7 @@ async def run_tool_loop(
     iq: Any = None,
     approval_gate: Any = None,
     max_iterations: int = MAX_TOOL_ITERATIONS,
+    usage: Any = None,
 ) -> AsyncIterator[Union[str, ToolStreamEvent]]:
     """Run the native function-calling loop until a final response (or cap).
 
@@ -273,6 +274,11 @@ async def run_tool_loop(
 
     Every LLM round passes ``tools=tools_for_llm`` through to LiteLLM —
     native function calling only, never regex parsing.
+
+    ``usage`` is an optional sink with ``.absorb(dict | None)`` (see
+    ``TurnUsage``). After each LLM round the wrapper's provider-reported
+    token counts are folded into it. The provider may report none — the
+    sink stays unknown rather than inventing a count.
     """
     from admin.llm.services.litellm_schemas import (
         ToolCallDeltasChunk,
@@ -281,6 +287,13 @@ async def run_tool_loop(
 
     policy = resolve_tool_policy(capsule, iq)
     allow_egress = egress_permitted(iq)
+
+    def _drain_llm_usage() -> None:
+        if usage is None:
+            return
+        pop = getattr(llm, "pop_usage", None)
+        if callable(pop):
+            usage.absorb(pop())
 
     for iteration in range(1, max_iterations + 1):
         response_text: List[str] = []
@@ -323,6 +336,8 @@ async def run_tool_loop(
             if token:
                 response_text.append(token)
                 yield token
+
+        _drain_llm_usage()
 
         if not pending_tool_calls:
             # Final response — the model is done.
