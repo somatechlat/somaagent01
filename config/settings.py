@@ -64,6 +64,47 @@ VAULT_MOUNT = os.environ.get("VAULT_MOUNT", "secret")
 SOMABRAIN_URL = os.environ.get("SOMABRAIN_URL")
 SOMABRAIN_MEMORY_HTTP_TOKEN = get_secret_manager().get_credential("somabrain_memory_http_token")
 
+# ---------------------------------------------------------------------------
+# Deployment service endpoints (SOMA-STD-CONFIG-001). Empty when unset.
+# Call sites resolve through admin.core.helpers.service_urls.require_service_url
+# and refuse an unconfigured endpoint — there is no guessed host.
+# ---------------------------------------------------------------------------
+OPA_URL = os.environ.get("OPA_URL") or os.environ.get("SA01_OPA_URL") or ""
+LLM_API_URL = os.environ.get("LLM_API_URL") or os.environ.get("SA01_LLM_API_URL") or ""
+IMAGE_GEN_URL = os.environ.get("IMAGE_GEN_URL") or os.environ.get("SA01_IMAGE_GEN_URL") or ""
+DIAGRAM_URL = os.environ.get("DIAGRAM_URL") or os.environ.get("SA01_DIAGRAM_URL") or ""
+MERMAID_CLI_URL = (
+    os.environ.get("MERMAID_CLI_URL") or os.environ.get("SA01_MERMAID_CLI_URL") or ""
+)
+WHISPER_URL = os.environ.get("WHISPER_URL") or os.environ.get("SA01_WHISPER_URL") or ""
+WHISPER_API_URL = (
+    os.environ.get("WHISPER_API_URL") or os.environ.get("SA01_WHISPER_API_URL") or ""
+)
+KOKORO_URL = os.environ.get("KOKORO_URL") or os.environ.get("SA01_KOKORO_URL") or ""
+KOKORO_TTS_URL = (
+    os.environ.get("KOKORO_TTS_URL") or os.environ.get("SA01_KOKORO_TTS_URL") or ""
+)
+AGENTVOICEVOX_BASE_URL = (
+    os.environ.get("AGENTVOICEVOX_BASE_URL")
+    or os.environ.get("SA01_VOICEVOX_URL")
+    or ""
+)
+BRIDGE_BASE_URL = (
+    os.environ.get("BRIDGE_BASE_URL") or os.environ.get("WA_BRIDGE_BASE_URL") or ""
+)
+PROMETHEUS_URL = (
+    os.environ.get("PROMETHEUS_URL") or os.environ.get("SA01_PROMETHEUS_URL") or ""
+)
+KAFKA_BOOTSTRAP_SERVERS = (
+    os.environ.get("KAFKA_BOOTSTRAP_SERVERS")
+    or os.environ.get("SA01_KAFKA_BOOTSTRAP_SERVERS")
+    or ""
+)
+GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI") or ""
+GOOGLE_JAVASCRIPT_ORIGIN = os.environ.get("GOOGLE_JAVASCRIPT_ORIGIN") or ""
+SMTP_HOST = os.environ.get("SMTP_HOST") or ""
+SMTP_PORT = os.environ.get("SMTP_PORT") or ""
+
 # SomaFractalMemory (vector memory storage + semantic search)
 SOMAFRACTALMEMORY_URL = os.environ.get("SOMAFRACTALMEMORY_URL")
 SOMA_API_TOKEN = get_secret_manager().get_credential("soma_api_token")

@@ -220,6 +220,8 @@ class SettingsModel(BaseModel):
     service_kafka_bootstrap_servers: str = Field(
         default_factory=lambda: str(_dj("KAFKA_BOOTSTRAP_SERVERS", ""))
     )
+    service_smtp_host: str = Field(default_factory=lambda: str(_dj("SMTP_HOST", "")))
+    service_smtp_port: str = Field(default_factory=lambda: str(_dj("SMTP_PORT", "")))
 
     # AuthN / login hardening. Tunable behaviour, not a literal at the gate.
     login_rate_limit: int = Field(
