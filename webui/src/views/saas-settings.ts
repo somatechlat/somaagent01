@@ -23,6 +23,7 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
+import '../components/settings-form.js';
 
 type SettingsTab = 'agent' | 'external' | 'connectivity' | 'system';
 
@@ -625,6 +626,10 @@ export class SaasSettings extends LitElement {
     @state() private _message: { kind: 'ok' | 'error'; text: string } | null = null;
     @state() private _saveStatus: { kind: 'ok' | 'error'; text: string } | null = null;
 
+    /** Configurable services, from GET /api/v2/core/settings/ — never a local list. */
+    @state() private _entities: { entity: string; name: string; icon: string }[] = [];
+    @state() private _entitiesError = '';
+
     private _tabs: { id: SettingsTab; label: string; icon: string }[] = [
         { id: 'agent', label: 'Agent', icon: 'smart_toy' },
         { id: 'external', label: 'External', icon: 'key' },
@@ -848,13 +853,39 @@ export class SaasSettings extends LitElement {
 
     private _renderConnectivityTab() {
         return html`
+            <div class="section">
+                <h3 class="section-title">
+                    <span class="material-symbols-outlined">cable</span>
+                    Service endpoints
+                </h3>
+                <p class="section-desc">
+                    Every service URL and behaviour knob is an administrator parameter.
+                    Edits save to InfrastructureConfig (the operator layer) and take
+                    effect without a rebuild — including repointing the memory lane.
+                </p>
+
+                ${this._entitiesError
+                    ? html`<p class="disabled-reason" role="status">${this._entitiesError}</p>`
+                    : this._entities.length === 0
+                        ? html`<p class="honest-note" role="status">No configurable services returned by the server.</p>`
+                        : this._entities.map(
+                              (e) => html`
+                                  <settings-form
+                                      entity=${e.entity}
+                                      .permissions=${this._permissions}
+                                      style="margin: 16px 0 24px;"
+                                  ></settings-form>
+                              `
+                          )}
+            </div>
+
             <!-- Voice Settings -->
             <div class="section">
                 <h3 class="section-title">
                     <span class="material-symbols-outlined">mic</span>
                     Voice / Speech
                 </h3>
-                <p class="section-desc">Configure voice input and output.</p>
+                <p class="section-desc">Enable or disable voice input and output.</p>
 
                 <div class="toggle-row">
                     <div>
@@ -979,7 +1010,22 @@ export class SaasSettings extends LitElement {
             this._loadIdentity(),
             this._loadFeatureFlags(),
             this._loadSecretProviders(),
+            this._loadEntities(),
         ]);
+    }
+
+    /** The configurable-service inventory is server-owned. */
+    private async _loadEntities() {
+        try {
+            const rows = await apiClient.get<{ entity: string; name: string; icon: string }[]>(
+                '/core/settings/'
+            );
+            this._entities = rows ?? [];
+            this._entitiesError = '';
+        } catch (error) {
+            this._entities = [];
+            this._entitiesError = `Failed to load service settings: ${error instanceof Error ? error.message : error}`;
+        }
     }
 
     /** Resolve the caller's real permissions from GET /api/v2/auth/me. */

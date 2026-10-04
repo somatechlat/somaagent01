@@ -176,7 +176,14 @@ if (app) {
 
         // Settings Configuration (uses SettingsForm pattern)
         if (path.startsWith('/platform/settings/')) {
-            const entity = path.split('/').pop() || 'postgresql';
+            const entity = path.split('/').pop();
+            if (!entity) {
+                // No entity in the path: refuse rather than invent one.
+                const notice = document.createElement('div');
+                notice.textContent = 'Settings entity missing from the route.';
+                app.appendChild(notice);
+                return;
+            }
             await import('./components/settings-form.js');
             const form = document.createElement('settings-form') as HTMLElement;
             form.setAttribute('entity', entity);
