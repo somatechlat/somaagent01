@@ -83,7 +83,6 @@ test_webui_monitoring.html
 node_modules/
 
 # Docker
-.dockerignore
 
 # Other
 *.bak
