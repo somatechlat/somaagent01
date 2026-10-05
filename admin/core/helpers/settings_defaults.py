@@ -415,6 +415,13 @@ def get_default_settings(agent_id: str = "default"):
         mcp_server_enabled=_env_or_db_bool(
             "SA01_MCP_SERVER_ENABLED", agent_id, "mcp_server_enabled", False
         ),
+        # Role resolution cache bound. Absent (None) means "do not memoise" —
+        # every lookup goes to the one store. There is no code-level default
+        # number: a cache bound is operator-chosen. See
+        # admin.aaas.models.tenants._role_cache_bound.
+        role_cache_max_entries=_env_or_db(
+            "SA01_ROLE_CACHE_MAX_ENTRIES", agent_id, "role_cache_max_entries"
+        ),
         # A2A settings
         a2a_server_enabled=_env_or_db_bool(
             "SA01_A2A_SERVER_ENABLED", agent_id, "a2a_server_enabled", False

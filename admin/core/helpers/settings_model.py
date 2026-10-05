@@ -8,9 +8,9 @@ call sites.
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 def _dj(name: str, default: Any = None) -> Any:
@@ -172,6 +172,11 @@ class SettingsModel(BaseModel):
     service_somafractalmemory_url: str = Field(
         default_factory=lambda: str(_dj("SOMAFRACTALMEMORY_URL", ""))
     )
+    # Memory addressing partition. Empty is honest: require_setting refuses
+    # until Capsule / AgentSetting / InfrastructureConfig supply one (Rule 91).
+    somabrain_namespace: str = Field(
+        default_factory=lambda: str(_dj("SOMABRAIN_NAMESPACE", ""))
+    )
     service_opa_url: str = Field(default_factory=lambda: str(_dj("OPA_URL", "")))
     service_llm_api_url: str = Field(default_factory=lambda: str(_dj("LLM_API_URL", "")))
     service_image_gen_url: str = Field(default_factory=lambda: str(_dj("IMAGE_GEN_URL", "")))
@@ -293,6 +298,35 @@ class SettingsModel(BaseModel):
     ws_stream_flush_max_chars: int = Field(
         default_factory=lambda: int(_dj("WS_STREAM_FLUSH_MAX_CHARS", 512))
     )
+
+    # Role resolution cache. Every authorisation decision asks which roles a
+    # principal holds; the answer is memoised in a bounded LRU so millions of
+    # transactions do not each hit Postgres. The bound is an operator knob
+    # (this field), never a literal at the call site. There is deliberately no
+    # schema default: a cache bound nobody chose is a hardcoded value.
+    # ``admin.aaas.models.tenants._role_cache_bound`` refuses to memoise when
+    # this is absent, which fails closed (every lookup goes to the store).
+    role_cache_max_entries: Optional[int] = Field(
+        default_factory=lambda: _dj("ROLE_CACHE_MAX_ENTRIES")
+    )
+
+    @field_validator("role_cache_max_entries", mode="before")
+    @classmethod
+    def _absent_role_cache_bound_stays_absent(cls, v: Any) -> Any:
+        """Map the empty shapes of "no bound chosen" onto the absent state.
+
+        A fresh deployment reaches this field as ``""`` (the shape
+        ``_env_or_db`` returns when nothing configured it). ``""`` is not a
+        cache bound and must not fail coercion into ``Optional[int]``, nor
+        become a bound. ``None``, ``""`` and whitespace-only all mean the
+        operator chose nothing; a present-but-unusable value still falls
+        through to ``int`` validation and refuses (Rule 91).
+        """
+        if v is None:
+            return None
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v
 
     # Temporal async cycle — schedule cadence (SOMA-STD-CONFIG-001 R-BEH-01/02).
     # Behaviour, not topology: the administrator turns these through

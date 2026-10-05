@@ -28,16 +28,15 @@ Properties this script must have:
 Usage::
 
     python3 init_vault.py            # seed keys not already present
-    python3 init_vault.py --force    # overwrite every key from ./secrets/
-    python3 init_vault.py --check    # report presence, write nothing
+    python3 init_vault.py --force    # overwrite every key from SECRETS_DIR
+    python3 init_vault.py --check    # report presence + t=0 match, write nothing
 
-Environment::
+Environment (bootstrap topology — every one REQUIRED, never defaulted;
+VIBE Rule 91 / RAPID Rule 1 and 3)::
 
-    VAULT_TOKEN_FILE          path to the Vault root token (NOT the token).
-                              Default: <SECRETS_DIR>/vault_root_token
-    VAULT_ADDR                default http://localhost:20882
-    VAULT_MOUNT               default "secret"
-    SECRETS_DIR               default ./secrets next to this file
+    VAULT_TOKEN_FILE          path to the Vault root token (NOT the token)
+    VAULT_ADDR                Vault API address for the agent stack
+    SECRETS_DIR               directory of t=0 secret files
 
 There is no VAULT_TOKEN environment variable. The root token is a credential
 and is read from a file, never from the environment (VIBE Rule 164).
@@ -54,20 +53,39 @@ import urllib.request
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-SECRETS_DIR = Path(os.environ.get("SECRETS_DIR", SCRIPT_DIR / "secrets"))
-VAULT_ADDR = os.environ.get("VAULT_ADDR", "http://localhost:20882").rstrip("/")
-VAULT_MOUNT = os.environ.get("VAULT_MOUNT", "secret").rstrip("/")
+
+
+def require_env(name: str) -> str:
+    """One required bootstrap variable. Fail closed; never default (Rule 91)."""
+    value = os.environ.get(name)
+    if not value:
+        raise SystemExit(
+            f"ERROR: required environment variable {name} is not set.\n"
+            f"   Bootstrap topology is required and never defaulted. A default "
+            f"   is a hardcoded value (RAPID Rule 1 / VIBE Rule 91). See this "
+            f"   file's docstring for the contract."
+        )
+    return value
+
+
+SECRETS_DIR = Path(require_env("SECRETS_DIR"))
+VAULT_ADDR = require_env("VAULT_ADDR").rstrip("/")
+# KV v2 mount for agent credentials. This is the path contract from RAPID
+# Rule 5 and SOMA-STD-CONFIG-001 R-SEC-01 (`secret/agent/credentials/{key}`),
+# the same constant the readers use (services/common/vault_secrets.py
+# mount_point, somabrain/core/security/vault_client.SHARED_CREDENTIALS_PATH).
+# It is not deployment topology and is not overridable — one mount, one path.
+VAULT_MOUNT = "secret"
 
 # The Vault root token authenticates this seeder TO Vault, so it cannot itself
 # live in Vault. It is still a credential, and VIBE Rule 164 says a credential
 # does not belong in the environment — an ENV value is visible in `ps`, in
 # /proc/*/environ and in every crash dump. It arrives as a FILE instead, the
-# same way postgres_password does: a Docker secret, or ./secrets/vault_root_token
-# for a bare-metal run. VAULT_TOKEN_FILE is a path, not a secret.
+# same way postgres_password does. VAULT_TOKEN_FILE is a path, not a secret.
 #
 # There is deliberately no VAULT_TOKEN fallback. Exporting a root token into a
 # shell is exactly the habit this whole design exists to remove.
-_TOKEN_FILE = Path(os.environ.get("VAULT_TOKEN_FILE", SECRETS_DIR / "vault_root_token"))
+_TOKEN_FILE = Path(require_env("VAULT_TOKEN_FILE"))
 try:
     VAULT_TOKEN = _TOKEN_FILE.read_text(encoding="utf-8").strip()
 except OSError:
@@ -82,6 +100,14 @@ if not VAULT_TOKEN:
 
 CREDENTIALS_PATH = "agent/credentials"
 API_KEYS_PATH = "agent/api_keys"
+
+# The shared agent↔brain trust boundary. BOTH stacks must track the t=0 file:
+# the brain vault_init job always writes this key from the same file, and a
+# skip-if-present here would let the two sides diverge again (the 401 this
+# path exists to prevent — one credential, one value). Readers:
+# UnifiedSecretManager.get_credential("somabrain_memory_http_token") and
+# somabrain vault_client.get_runtime_secret("memory_http_token").
+SHARED_MEMORY_TOKEN_KEY = "somabrain_memory_http_token"
 
 # Keys the settings modules read via get_credential(). Names are load-bearing:
 # config/settings.py, services/gateway/settings.py and
@@ -205,17 +231,20 @@ def key_present(path: str, key: str) -> bool:
 
 
 def write_secret(path: str, key: str, value: bytes) -> None:
-    """Merge one key into the KV document at `path`.
+    """Merge one key into the KV document at `path`, then read back and assert.
 
     `value` is raw bytes from a file — never a shell string.
 
     KV v2 `POST /:mount/data/:path` REPLACES the document; it does not merge.
     Writing `{key: text}` alone would silently destroy every other key already
     stored at that path. So this reads the current document, sets one key in
-    it, and writes the whole map back.
+    it, and writes the whole map back — then reads the document again and
+    asserts the key landed byte-for-byte and every pre-existing sibling is
+    still present. A mismatch is a hard error; nothing is logged but names.
     """
     text = value.decode("utf-8")
     current = read_secret_map(path)
+    prior_keys = set(current)
     current[key] = text
     body = json.dumps({"data": current}).encode("utf-8")
     status, _ = _request("POST", f"{VAULT_MOUNT}/data/{path}", body)
@@ -225,6 +254,24 @@ def write_secret(path: str, key: str, value: bytes) -> None:
             f"Vault refused the write at {VAULT_MOUNT}/{path} [{key}] "
             f"(HTTP {status}). The value was not logged; see the Vault audit "
             f"log for the cause."
+        )
+
+    # Read-back is mandatory. The value must match the t=0 material exactly
+    # (same trailing-newline trim every consumer applies), and a merge write
+    # must carry every sibling forward — KV v2 POST replaces the document.
+    stored_map = read_secret_map(path)
+    if stored_map.get(key) != text:
+        raise SeedError(
+            f"read-back mismatch at {VAULT_MOUNT}/{path} [{key}]: the stored "
+            f"value does not match the t=0 source file. Refusing to treat the "
+            f"seed as successful. The value was not logged."
+        )
+    lost = prior_keys - set(stored_map)
+    if lost:
+        raise SeedError(
+            f"merge write at {VAULT_MOUNT}/{path} destroyed sibling key(s): "
+            f"{sorted(lost)}. KV v2 POST replaces the whole document; every "
+            f"pre-existing key must be carried forward."
         )
 
 
@@ -264,25 +311,54 @@ def read_secret_file(name: str, *, required: bool) -> bytes | None:
     return data
 
 
-def seed(path: str, key: str, filename: str, *, required: bool, force: bool, check: bool) -> str:
-    """Returns 'seeded' | 'skipped' | 'present' | 'missing'."""
+def seed(
+    path: str,
+    key: str,
+    filename: str,
+    *,
+    required: bool,
+    force: bool,
+    check: bool,
+    always: bool = False,
+) -> str:
+    """Returns 'seeded' | 'skipped' | 'present' | 'missing'.
+
+    ``always`` is for the shared agent↔brain trust-boundary credential: its
+    t=0 file is the single source of value, both stacks must track it, and
+    skip-if-present would let them diverge. Every other key keeps
+    skip-if-present so a hand-rotation in Vault survives a re-run.
+    """
     if check:
-        if key_present(path, key):
-            log(f"   ✔ {VAULT_MOUNT}/{path}  [{key}]  present")
+        has_file = SECRETS_DIR.is_dir() and (SECRETS_DIR / filename).is_file()
+        if not key_present(path, key):
+            if required or has_file:
+                log(f"   ✘ {VAULT_MOUNT}/{path}  [{key}]  MISSING")
+                return "missing"
+            log(f"   ○ {VAULT_MOUNT}/{path}  [{key}]  absent (optional; feature fail-closes)")
+            return "skipped"
+        # Presence is not proof. When the t=0 file exists, the stored value
+        # must match it byte-for-byte — that is the one-value assertion.
+        expected = read_secret_file(filename, required=False) if has_file else None
+        if expected is not None:
+            stored = read_secret_map(path).get(key)
+            if stored != expected.decode("utf-8"):
+                log(f"   ✘ {VAULT_MOUNT}/{path}  [{key}]  MISMATCH vs t=0 file")
+                return "missing"
+            log(f"   ✔ {VAULT_MOUNT}/{path}  [{key}]  present, matches t=0")
             return "present"
-        log(f"   ✘ {VAULT_MOUNT}/{path}  [{key}]  MISSING")
-        return "missing"
+        log(f"   ✔ {VAULT_MOUNT}/{path}  [{key}]  present")
+        return "present"
 
     value = read_secret_file(filename, required=required)
     if value is None:
         return "skipped"
 
-    if not force and key_present(path, key):
+    if not force and not always and key_present(path, key):
         log(f"   ↷ already present, not overwriting: {VAULT_MOUNT}/{path}  [{key}]  (use --force)")
         return "skipped"
 
     write_secret(path, key, value)
-    log(f"   ✔ seeded {VAULT_MOUNT}/{path}  [{key}]")
+    log(f"   ✔ seeded {VAULT_MOUNT}/{path}  [{key}]  (read-back matched t=0)")
     return "seeded"
 
 
@@ -337,7 +413,20 @@ def main(argv: list[str]) -> int:
 
     log(f"📝 Credentials → {VAULT_MOUNT}/{CREDENTIALS_PATH}")
     for key in REQUIRED_CREDENTIALS:
-        counts[seed(CREDENTIALS_PATH, key, key, required=True, force=force, check=check)] += 1
+        # The shared agent↔brain token always follows the t=0 file. The brain
+        # vault_init job writes the same key from the same file on every run;
+        # skipping here is how the two sides drifted to different values.
+        counts[
+            seed(
+                CREDENTIALS_PATH,
+                key,
+                key,
+                required=True,
+                force=force,
+                check=check,
+                always=(key == SHARED_MEMORY_TOKEN_KEY),
+            )
+        ] += 1
     for key in OPTIONAL_CREDENTIALS:
         counts[seed(CREDENTIALS_PATH, key, key, required=False, force=force, check=check)] += 1
 

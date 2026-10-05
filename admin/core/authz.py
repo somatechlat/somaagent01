@@ -298,11 +298,16 @@ _EVERY_PRINCIPAL = frozenset({"identity:self"})
 #: anything. There is no wildcard entry and there must never be one.
 #: Every entry includes ``_EVERY_PRINCIPAL``.
 ROLE_PERMISSIONS: Mapping[str, frozenset[str]] = {
-    # Operates the runtime. Reads organizations to see they exist; does not read
-    # their content by default.
+    # Operates the runtime: the only role that may change system-wide
+    # configuration. Also holds ordinary use — a sysadmin who cannot send a
+    # chat message is locked out of the product they run. The ordinary-use
+    # grants are the named ``_RESOURCE_USE`` set plus ``agent:read``, exactly
+    # what a ``member`` needs; nothing here is a union of other roles.
     "sysadmin": _EVERY_PRINCIPAL
+    | _RESOURCE_USE
     | frozenset(
         {
+            "agent:read",
             "system:view",
             "system:configure",
             "system:ratelimit",
@@ -317,6 +322,9 @@ ROLE_PERMISSIONS: Mapping[str, frozenset[str]] = {
         }
     ),
     # Administrates one organization: its people, its agents, its keys.
+    # Holds read-only observability of the runtime (``system:view``,
+    # ``system:read_metrics``, ``audit:read``) so an org admin can see what is
+    # happening, but ``system:configure`` stays exclusive to ``sysadmin``.
     "org_admin": _EVERY_PRINCIPAL
     | _ORG_MEMBER_READ
     | frozenset(
@@ -335,6 +343,8 @@ ROLE_PERMISSIONS: Mapping[str, frozenset[str]] = {
             "agent:delete",
             "agent:manage_users",
             "audit:read",
+            "system:view",
+            "system:read_metrics",
         }
     )
     | _AGENT_OPERATE
