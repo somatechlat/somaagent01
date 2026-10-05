@@ -65,14 +65,58 @@ async function composer(page) {
  * Shadow DOM (Lit) means body.innerText is empty — read the message elements,
  * which is what the person sees.
  */
+
+/**
+ * Wait until the chat surface reports a live socket before sending.
+ * The UI refuses to send over a closed socket ("Not connected — message not
+ * sent"), so a person waits for the connection. Same wait, not a bypass —
+ * every assertion below is still on what the agent replied.
+ */
+async function waitForChatSocket(page) {
+  await page.waitForFunction(
+    () => {
+      const chat = document.querySelector('saas-chat');
+      // Lit @state fields live on the element instance.
+      return Boolean(chat && chat._wsConnected);
+    },
+    { timeout: 20000 }
+  );
+}
+
 async function ask(page, text) {
+  await waitForChatSocket(page);
   const box = await composer(page);
   await box.fill(text);
   await box.press('Enter');
-  const last = page.locator('saas-message, .message, .assistant').last();
+  // The composer's own message is also a saas-message. Read the ASSISTANT's
+  // turn, not whichever element happens to be last on the page.
+  const last = page
+    .locator('saas-message[message-role="assistant"], .assistant')
+    .last();
   await expect(last).toBeVisible({ timeout: 60000 });
-  // Give the turn time to finish streaming before reading it.
-  await page.waitForTimeout(4000);
+
+  // Wait for the turn to actually land content, not a fixed sleep. A slow
+  // model reads as "no reply" if the test just waits a few seconds.
+  await expect
+    .poll(
+      async () => {
+        return await last
+          .evaluate((el) => {
+            const root = el.shadowRoot || el;
+            return (root.textContent || '').replace(/\s+/g, ' ').trim().length;
+          })
+          .catch(() => 0);
+      },
+      {
+        timeout: 90000,
+        message:
+          'the assistant turn never produced any text - the reply did not render',
+      }
+    )
+    .toBeGreaterThan(0);
+
+  // Let streaming settle before reading.
+  await page.waitForTimeout(1500);
   // Lit renders into a shadow root. innerText of the host element is empty
   // even when the person can read the reply, so read the shadow content.
   return (
@@ -82,7 +126,31 @@ async function ask(page, text) {
         return root.textContent || '';
       })
       .catch(() => '')
-  ).replace(/\s+/g, ' ').trim();
+  )
+    // Collapse runs of blank space but keep line breaks: a structured answer
+    // is flattened to one line otherwise, and "give me three bullets" then
+    // looks like prose even when it answered correctly.
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/**
+ * Normalise for comparison only. A model types back what it was given with
+ * typographic punctuation — a non-breaking hyphen (U+2011) for a hyphen-minus
+ * (U+002D), curly quotes for straight ones. The agent remembering the right
+ * string is not a failure; the assertion has to compare what a person reads as
+ * the same word.
+ */
+function normalise(text) {
+  return (text || '')
+    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2212\uFE63\uFF0D]/g, '-')
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+    .replace(/[\u00A0\u2007\u202F]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 test.describe('Tuning the agent chat', () => {
@@ -95,9 +163,10 @@ test.describe('Tuning the agent chat', () => {
   test('simple turn: the agent answers the question it was asked', async ({ page }) => {
     await login(page);
     const reply = await ask(page, `Reply with exactly the word ${MARK} and nothing else.`);
-    expect(reply, `simple turn did not answer: got "${reply.slice(0, 200)}"`).toContain(
-      MARK
-    );
+    expect(
+      normalise(reply),
+      `simple turn did not answer: got "${reply.slice(0, 200)}"`
+    ).toContain(MARK);
   });
 
   test('simple turn: it does not dump a stop string or an error at the person', async ({
@@ -144,7 +213,7 @@ test.describe('Tuning the agent chat', () => {
     await ask(page, `My project is called ${MARK}. Acknowledge in one short sentence.`);
     const reply = await ask(page, 'What did I say my project is called?');
     expect(
-      reply,
+      normalise(reply),
       `the agent lost the conversation thread: got "${reply.slice(0, 200)}"`
     ).toContain(MARK);
   });
@@ -156,7 +225,7 @@ test.describe('Tuning the agent chat', () => {
     await ask(page, `Remember this codeword for me: ${MARK}`);
     const reply = await ask(page, 'What codeword did I ask you to remember?');
     expect(
-      reply,
+      normalise(reply),
       `recall failed - the fact did not come back through SomaBrain. ` +
         `got "${reply.slice(0, 200)}"`
     ).toContain(MARK);
@@ -171,7 +240,7 @@ test.describe('Tuning the agent chat', () => {
     await page.waitForTimeout(1500);
     const reply = await ask(page, 'What codeword did I ask you to remember?');
     expect(
-      reply,
+      normalise(reply),
       `recall across conversations failed: got "${reply.slice(0, 200)}"`
     ).toContain(MARK);
   });

@@ -66,6 +66,7 @@ KEY_CATEGORY: Dict[str, str] = {
     "SECRET_KEY": CATEGORY_SECURITY,
     # MEMORY
     "MEM_EMBED_DIM": CATEGORY_MEMORY,
+    "SOMABRAIN_NAMESPACE": CATEGORY_MEMORY,
     "MEM_RECALL_TOP_K": CATEGORY_MEMORY,
     "MEM_PROXIMITY_TOP_K": CATEGORY_MEMORY,
     "MEM_HISTORY_LIMIT": CATEGORY_MEMORY,
@@ -180,6 +181,15 @@ def resolve_setting(
 ) -> Any:
     """Resolve one setting: Capsule → AgentSetting → Django settings → default."""
     cat = category_of(key)
+
+    # 1a. Capsule.memory_pointer is the agent's memory addressing authority
+    # (SOMA-01-UIUX-005: Capsule.memory_pointer / persona_config.memory).
+    if key == "SOMABRAIN_NAMESPACE" and capsule is not None:
+        pointer = getattr(capsule, "memory_pointer", None)
+        if isinstance(pointer, Mapping):
+            ns = pointer.get("namespace")
+            if ns is not None and str(ns).strip():
+                return str(ns).strip()
 
     # 1. Capsule identity defaults (persona_config.settings).
     bucket = capsule_settings_bucket(capsule)

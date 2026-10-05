@@ -127,7 +127,10 @@ MEM_EMBED_DIM = int(os.environ["MEM_EMBED_DIM"]) if os.environ.get("MEM_EMBED_DI
 # and must never touch os.environ directly — this file is the one authority.
 MEM_HTTP_TIMEOUT = os.environ.get("MEM_HTTP_TIMEOUT")
 SFM_NAMESPACE = os.environ.get("SFM_NAMESPACE", "api_ns")
-SOMABRAIN_NAMESPACE = os.environ.get("SOMABRAIN_NAMESPACE", "default")
+# No default: a namespace is an administrator parameter resolved through
+# Capsule > AgentSetting > InfrastructureConfig > SettingsModel. A `"default"`
+# here is a hardcoded value (Rule 91) and hides a missing setting.
+SOMABRAIN_NAMESPACE = os.environ.get("SOMABRAIN_NAMESPACE")
 
 # ---------------------------------------------------------------------------
 # MEMORY TOOLS / SEAM — fully configurable. No hardcoded tool parameters.

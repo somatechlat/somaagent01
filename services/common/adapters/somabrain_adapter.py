@@ -42,9 +42,6 @@ from services.common.memory_contract import (
 
 LOGGER = logging.getLogger(__name__)
 
-# Logical namespace sent with writes; recall must use the same one.
-DEFAULT_NAMESPACE = "default"
-
 
 class ForgetRequest(BaseModel):
     """Wire DTO for ``POST /memory/forget`` — mirrors somabrain's ForgetRequest.
@@ -115,6 +112,47 @@ def _resolve_base_url(explicit: str | None) -> str:
     return base.rstrip("/")
 
 
+def _resolve_namespace(explicit: str | None) -> str:
+    """Resolve the memory namespace through the settings chain, or refuse.
+
+    Same chain as every other administrator parameter:
+    Capsule → AgentSetting → InfrastructureConfig → SettingsModel. There is
+    no default namespace on this path (Rule 91) — write and recall must name
+    the same one or nothing is ever found.
+    """
+
+    if explicit is not None:
+        ns = str(explicit).strip()
+        if not ns:
+            raise MemoryConfigurationError(
+                "SomaBrain namespace was passed explicitly and is empty. "
+                "There is no default namespace (VIBE Rule 91)."
+            )
+        return ns
+
+    from django.core.exceptions import ImproperlyConfigured
+
+    from admin.core.helpers.service_urls import require_setting
+
+    try:
+        ns = str(require_setting("SOMABRAIN_NAMESPACE")).strip()
+    except ImproperlyConfigured as exc:
+        raise MemoryConfigurationError(
+            "SomaBrain namespace is not configured. Set SOMABRAIN_NAMESPACE "
+            "through the administration settings (Capsule.memory_pointer / "
+            "AgentSetting / InfrastructureConfig). There is no default "
+            f"namespace (VIBE Rule 91). Cause: {exc}"
+        ) from exc
+    if not ns:
+        raise MemoryConfigurationError(
+            "SomaBrain namespace is not configured. Set SOMABRAIN_NAMESPACE "
+            "through the administration settings (Capsule.memory_pointer / "
+            "AgentSetting / InfrastructureConfig). There is no default "
+            "namespace (VIBE Rule 91)."
+        )
+    return ns
+
+
 class SomaBrainAdapter:
     """HTTP adapter for SomaBrain's real ``/memory/remember|recall|forget`` API."""
 
@@ -148,9 +186,10 @@ class SomaBrainAdapter:
         self._timeout = float(
             timeout if timeout is not None else get_memory_setting("MEM_HTTP_TIMEOUT", 5.0)
         )
-        self._namespace = namespace or str(
-            get_memory_setting("SOMABRAIN_NAMESPACE", DEFAULT_NAMESPACE) or DEFAULT_NAMESPACE
-        )
+        # One namespace for write AND recall, from the settings chain. Body
+        # `namespace` and header `X-Namespace` always carry this same value so
+        # the brain's get_tenant and payload paths cannot diverge.
+        self._namespace = _resolve_namespace(namespace)
         self._client = httpx.AsyncClient(
             base_url=self._base_url,
             timeout=self._timeout,
@@ -166,6 +205,9 @@ class SomaBrainAdapter:
         headers["Authorization"] = f"Bearer {self._token}"
         if tenant_id:
             headers["X-Tenant-ID"] = tenant_id
+        # Brain get_tenant reads X-Namespace first (somabrain/tenant.py). Write
+        # and read must see the same namespace or recall finds nothing.
+        headers["X-Namespace"] = self._namespace
         # Production low-latency write: WM + durable outbox ack, LTM async (T-6).
         headers["X-Soma-Fast-Ack"] = "true"
         return headers

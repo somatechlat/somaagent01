@@ -143,6 +143,12 @@ ENTITY_SPECS: Dict[str, Dict[str, Dict[str, Any]]] = {
             "default": "",
             "setting": "SOMABRAIN_URL",
         },
+        "namespace": {
+            "type": "string",
+            "editable": True,
+            "default": "",
+            "setting": "SOMABRAIN_NAMESPACE",
+        },
         "retention_days": {"type": "integer", "editable": True, "default": 365},
         "sleep_interval": {"type": "integer", "editable": True, "default": 21600},
         "consolidation_enabled": {"type": "boolean", "editable": True, "default": True},

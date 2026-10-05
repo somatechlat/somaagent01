@@ -230,6 +230,9 @@ SOMABRAIN_URL = get_optional_env(
     "SomaBrain cognitive runtime HTTP endpoint",
 )
 SOMABRAIN_BASE_URL = SOMABRAIN_URL  # Alias for compatibility
+# Memory addressing partition. No default (Rule 91): empty until the operator
+# sets it through Capsule.memory_pointer / AgentSetting / InfrastructureConfig.
+SOMABRAIN_NAMESPACE = os.environ.get("SOMABRAIN_NAMESPACE")
 SOMABRAIN_MEMORY_HTTP_TOKEN = get_secret_manager().get_credential("somabrain_memory_http_token")
 # Absent becomes None, never "". An empty string reads as "configured with a blank
 # secret" and is then sent as `Authorization: Bearer ` — an unauthenticated call
