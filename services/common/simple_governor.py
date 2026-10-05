@@ -2,6 +2,9 @@
 
 Replaces 327-line AgentIQ Governor with production-proven simplicity.
 
+Lane vocabulary is ``admin.core.context.lanes.LANE_KEYS`` — exactly five keys:
+system, history, memory, tools, buffer. One vocabulary for one concept (AP-06).
+
 VIBE COMPLIANT:
 - Real implementation, no abstractions
 - Binary healthy/degraded decision
@@ -18,6 +21,11 @@ from typing import Literal
 
 logger = logging.getLogger(__name__)
 
+# Same spelling as admin.core.context.lanes.LANE_KEYS. Duplicated as literals
+# only because importing the admin package would drag the context stack into
+# this standalone module; the governor tests assert the two spellings match.
+LANE_KEYS = ("system", "history", "memory", "tools", "buffer")
+
 
 class HealthStatus(str, Enum):
     """Binary health status for production reality."""
@@ -28,23 +36,21 @@ class HealthStatus(str, Enum):
 
 @dataclass
 class LaneBudget:
-    """Token budget allocation per context lane."""
+    """Token budget allocation per context lane (LANE_KEYS)."""
 
-    system_policy: int
+    system: int
     history: int
     memory: int
     tools: int
-    tool_results: int
     buffer: int
 
     def to_dict(self) -> dict[str, int]:
-        """Convert to dictionary."""
+        """Token counts keyed by LANE_KEYS — the only spelling."""
         return {
-            "system_policy": self.system_policy,
+            "system": self.system,
             "history": self.history,
             "memory": self.memory,
             "tools": self.tools,
-            "tool_results": self.tool_results,
             "buffer": self.buffer,
         }
 
@@ -52,11 +58,10 @@ class LaneBudget:
     def total_allocated(self) -> int:
         """Sum of all allocated tokens."""
         return (
-            self.system_policy
+            self.system
             + self.history
             + self.memory
             + self.tools
-            + self.tool_results
             + self.buffer
         )
 
@@ -75,11 +80,10 @@ class GovernorDecision:
     def rescue_path(cls, reason: str = "Service failure") -> GovernorDecision:
         """Create rescue path decision with tools disabled."""
         budget = LaneBudget(
-            system_policy=400,
+            system=400,
             history=0,
             memory=100,
             tools=0,
-            tool_results=0,
             buffer=500,
         )
         return cls(
@@ -103,31 +107,30 @@ class SimpleGovernor:
     Uses fixed production ratios based on operating mode.
     """
 
-    # Production ratios - Field-tested and proven
+    # Production ratios - Field-tested and proven.
+    # The five keys are LANE_KEYS. They sum to 1.0 and every token of the
+    # turn budget is allocated to a lane that actually reads it.
     NORMAL_RATIOS = {
-        "system_policy": 0.15,  # 15% for system prompt
-        "history": 0.25,  # 25% for chat history
-        "memory": 0.25,  # 25% for SomaBrain snippets
-        "tools": 0.20,  # 20% for tool definitions
-        "tool_results": 0.10,  # 10% for tool outputs
-        "buffer": 0.05,  # 5% safety margin
+        "system": 0.15,  # 15% system prompt
+        "history": 0.35,  # 35% chat history (incl. tool output turns)
+        "memory": 0.25,  # 25% SomaBrain snippets
+        "tools": 0.20,  # 20% tool definitions
+        "buffer": 0.05,  # 5% current user message
     }
 
     DEGRADED_RATIOS = {
-        "system_policy": 0.40,  # Prioritize system prompt
+        "system": 0.40,  # Prioritize system prompt
         "history": 0.10,  # Minimize history
         "memory": 0.15,  # Limited memory
         "tools": 0.00,  # Disable tools
-        "tool_results": 0.00,  # No tool results
         "buffer": 0.35,  # Large safety margin
     }
 
     MINIMUM_TOKENS = {
-        "system_policy": 200,
+        "system": 200,
         "history": 0,
         "memory": 50,
         "tools": 0,
-        "tool_results": 0,
         "buffer": 200,
     }
 
@@ -142,6 +145,9 @@ class SimpleGovernor:
     ) -> GovernorDecision:
         """Allocate token budget for a turn.
 
+        The five lanes are LANE_KEYS. Allocations sum to exactly ``max_tokens``
+        — a budget that is allocated and then dropped is the D-06 defect.
+
         Args:
             max_tokens: Maximum context window size
             is_degraded: Whether system is in degraded state
@@ -151,49 +157,37 @@ class SimpleGovernor:
         """
         ratios = self.DEGRADED_RATIOS if is_degraded else self.NORMAL_RATIOS
 
-        allocations = {lane: int(max_tokens * ratio) for lane, ratio in ratios.items()}
+        # Cumulative rounding: the five ints sum to exactly max_tokens, so no
+        # token is allocated to a lane and then thrown away on the floor.
+        allocations: dict[str, int] = {}
+        running = 0.0
+        given = 0
+        for lane, ratio in ratios.items():
+            running += max_tokens * ratio
+            allocations[lane] = int(running) - given
+            given = int(running)
 
-        # Apply minimums
+        # Raise any lane below its minimum by transferring from a donor lane.
+        # Transfers only — the total stays max_tokens (never invent tokens).
         for lane, minimum in self.MINIMUM_TOKENS.items():
-            if allocations[lane] < minimum:
-                deficit = minimum - allocations[lane]
-
-                if is_degraded:
-                    # In degraded mode, scale down other lanes to meet minimum
-                    # Prioritize system_policy and buffer
-                    for lane_name in ["history", "memory"]:
-                        if allocations[lane_name] >= deficit:
-                            allocations[lane_name] -= deficit
-                            deficit = 0
-                            break
-                        else:
-                            deficit -= allocations[lane_name]
-                            allocations[lane_name] = 0
-                else:
-                    # In normal mode, just buffer absorbs the difference
-                    allocations["buffer"] += deficit
-
-                allocations[lane] = minimum
-
-        # Ensure we don't exceed total
-        total = sum(allocations.values())
-        if total > max_tokens:
-            scale = max_tokens / total
-            allocations = {
-                lane: max(0, int(tokens * scale)) for lane, tokens in allocations.items()
-            }
-            # Re-apply buffer minimum after scaling
-            if allocations["buffer"] < self.MINIMUM_TOKENS["buffer"]:
-                deficit = self.MINIMUM_TOKENS["buffer"] - allocations["buffer"]
-                # Take from history if available
-                if allocations["history"] >= deficit:
-                    allocations["history"] -= deficit
-                else:
-                    # Take from memory as well
-                    remaining = deficit - allocations["history"]
-                    allocations["history"] = 0
-                    if allocations["memory"] >= remaining:
-                        allocations["memory"] -= remaining
+            if allocations[lane] >= minimum:
+                continue
+            deficit = minimum - allocations[lane]
+            donors = (
+                ("history", "memory") if is_degraded else ("buffer", "history", "memory")
+            )
+            for donor in donors:
+                if donor == lane:
+                    continue
+                spare = allocations[donor] - self.MINIMUM_TOKENS[donor]
+                if spare <= 0:
+                    continue
+                take = min(deficit, spare)
+                allocations[donor] -= take
+                deficit -= take
+                if deficit == 0:
+                    break
+            allocations[lane] = minimum - deficit
 
         budget = LaneBudget(**allocations)  # type: ignore[arg-type]
 
@@ -262,18 +256,11 @@ def get_governor() -> SimpleGovernor:
     return _governor
 
 
-# Re-export for backward compatibility during migration
-LegacyLanePlan = LaneBudget
-LegacyGovernorDecision = GovernorDecision
-
-
 __all__ = [
     "SimpleGovernor",
     "HealthStatus",
     "LaneBudget",
     "GovernorDecision",
     "get_governor",
-    # Legacy re-exports for migration
-    "LegacyLanePlan",
-    "LegacyGovernorDecision",
+    "LANE_KEYS",
 ]

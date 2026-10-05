@@ -19,7 +19,7 @@ import logging
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from admin.core.agentiq import derive_all_settings
-from admin.core.context.lanes import get_lane_allocation
+from admin.core.context.lanes import LANE_KEYS, get_lane_allocation
 from admin.core.context.models import BuiltContext
 
 if TYPE_CHECKING:
@@ -88,11 +88,14 @@ class ContextBuilder:
             capsule: Capsule with body containing persona
             user_message: Current user message
             history: Optional conversation history
-            budget_override: Optional explicit token budget per lane from SimpleGovernor
+            budget_override: Optional explicit token budget per lane from
+                SimpleGovernor, keyed by LANE_KEYS (system, history, memory,
+                tools, buffer). A missing lane is a caller error and raises.
             memory_hits: ``MemoryGateway.recall()`` hits — the only read path
                 (PLAN-TRIAD-SEAMLESS §1 rule 5). ``[]`` means recall ran and
-                found nothing. There is no fallback client; passing ``None``
-                is a caller error and raises.
+                found nothing. ``None`` means recall could not run (SomaBrain
+                outage) and the memory lane degrades to a truthful sentinel.
+                There is no second read path either way.
 
         Returns:
             BuiltContext with all 5 lanes assembled
@@ -110,14 +113,15 @@ class ContextBuilder:
 
         # 2. Get lane allocation from learned, defaults, or governor override
         if budget_override:
-            # Normalize governor keys to context builder keys
-            token_budget = {
-                "system": budget_override.get("system_policy", budget_override.get("system", 4000)),
-                "history": budget_override.get("history", 2000),
-                "memory": budget_override.get("memory", 2000),
-                "tools": budget_override.get("tools", 1000),
-                "buffer": budget_override.get("buffer", 1000),
-            }
+            # Governor emits LANE_KEYS. One vocabulary (AP-06): no key
+            # translation, no discarded lane, no silent default for a
+            # missing lane — a missing key is a caller bug (Rule 2/6).
+            missing = [key for key in LANE_KEYS if key not in budget_override]
+            if missing:
+                raise ValueError(
+                    "budget_override is missing lanes: " + ", ".join(missing)
+                )
+            token_budget = {key: budget_override[key] for key in LANE_KEYS}
         else:
             lanes = await get_lane_allocation(capsule)
             token_budget = lanes.allocate(max_tokens)

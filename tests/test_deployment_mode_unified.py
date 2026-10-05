@@ -55,12 +55,13 @@ class TestContextBuilderDeploymentMode:
     """CTX-002: Test ContextBuilder deployment mode memory retrieval."""
 
     @pytest.mark.asyncio
-    async def test_aaas_mode_memory_lane_requires_hits(self):
-        """AAAS mode: a caller that did not recall is rejected, not papered over.
+    async def test_aaas_mode_memory_lane_degrades_on_outage(self):
+        """AAAS mode: a SomaBrain outage degrades the lane, it does not abort.
 
-        The old behaviour dropped through to ``"[Memory recall unavailable]"``
-        when no client was attached — a populated-looking lane holding nothing.
-        The lane now requires the caller's recall result.
+        Contract since 547d43a7 (tests/unit/test_memory_lane_degrades.py):
+        ``memory_hits=None`` means recall could not run. The lane states that
+        truthfully. ``[]`` is the honest empty result and must not claim
+        unavailability. There is still no second read path.
         """
         original = _set_deployment_mode("aaas")
         try:
@@ -75,21 +76,32 @@ class TestContextBuilderDeploymentMode:
                 id="test-capsule",
                 body={"persona": {"memory": {"recall_limit": 5, "similarity_threshold": 0.7}}},
             )
+            persona = capsule.body["persona"]
 
-            with pytest.raises(ValueError, match="memory_hits is required"):
-                await builder._build_memory_lane(
-                    capsule=capsule,
-                    query="test query",
-                    persona=capsule.body["persona"],
-                    budget=100,
-                )
-            print("  ✅ AAAS mode: missing recall is rejected, not faked")
+            outage_lane = await builder._build_memory_lane(
+                capsule=capsule,
+                query="test query",
+                persona=persona,
+                budget=100,
+                memory_hits=None,
+            )
+            assert "unavailable" in outage_lane.lower()
+
+            empty_lane = await builder._build_memory_lane(
+                capsule=capsule,
+                query="test query",
+                persona=persona,
+                budget=100,
+                memory_hits=[],
+            )
+            assert "unavailable" not in empty_lane.lower()
+            print("  ✅ AAAS mode: outage degrades honestly; [] is not 'unavailable'")
         finally:
             _restore_deployment_mode(original)
 
     @pytest.mark.asyncio
-    async def test_standalone_mode_memory_lane_requires_hits(self):
-        """Standalone mode: same contract — a missing recall is a caller bug."""
+    async def test_standalone_mode_memory_lane_degrades_on_outage(self):
+        """Standalone mode: same contract — outage degrades, [] stays honest."""
         original = _set_deployment_mode("standalone")
         try:
             import admin.core.context.builder as cb_module
@@ -103,15 +115,26 @@ class TestContextBuilderDeploymentMode:
                 id="test-capsule",
                 body={"persona": {"memory": {"recall_limit": 5, "similarity_threshold": 0.7}}},
             )
+            persona = capsule.body["persona"]
 
-            with pytest.raises(ValueError, match="memory_hits is required"):
-                await builder._build_memory_lane(
-                    capsule=capsule,
-                    query="test query",
-                    persona=capsule.body["persona"],
-                    budget=100,
-                )
-            print("  ✅ STANDALONE mode: missing recall is rejected, not faked")
+            outage_lane = await builder._build_memory_lane(
+                capsule=capsule,
+                query="test query",
+                persona=persona,
+                budget=100,
+                memory_hits=None,
+            )
+            assert "unavailable" in outage_lane.lower()
+
+            empty_lane = await builder._build_memory_lane(
+                capsule=capsule,
+                query="test query",
+                persona=persona,
+                budget=100,
+                memory_hits=[],
+            )
+            assert "unavailable" not in empty_lane.lower()
+            print("  ✅ STANDALONE mode: outage degrades honestly; [] is not 'unavailable'")
         finally:
             _restore_deployment_mode(original)
 
@@ -343,6 +366,28 @@ class TestUnifiedMetricsDeploymentMode:
 class TestSimpleGovernorDeploymentMode:
     """GOV-002: Test SimpleGovernor budget allocation."""
 
+    def test_five_lane_keys_sum_to_full_budget(self):
+        """Five LANE_KEYS carry the whole budget — no silent 10% loss."""
+        from admin.core.context.lanes import LANE_KEYS
+        from services.common.simple_governor import get_governor
+
+        governor = get_governor()
+        max_tokens = 4096
+
+        for is_degraded in (False, True):
+            decision = governor.allocate_budget(
+                max_tokens=max_tokens, is_degraded=is_degraded
+            )
+            budget = decision.lane_budget
+            keys = budget.to_dict()
+            assert set(keys) == set(LANE_KEYS)
+            assert "tool_results" not in keys
+            assert "system_policy" not in keys
+            assert budget.total_allocated == max_tokens
+            assert sum(keys.values()) == max_tokens
+
+        print("  ✅ Five LANE_KEYS sum to the full budget")
+
     def test_normal_mode_budget_allocation(self):
         """Test Normal mode budget allocation."""
         from services.common.simple_governor import get_governor, HealthStatus
@@ -356,10 +401,11 @@ class TestSimpleGovernorDeploymentMode:
         assert decision.tools_enabled is True
 
         budget = decision.lane_budget
-        assert abs(budget.system_policy - 614) < 10
-        assert abs(budget.history - 1024) < 10
-        assert abs(budget.memory - 1024) < 10
-        assert abs(budget.tools - 819) < 10
+        assert budget.system == 614
+        assert budget.history == 1434
+        assert budget.memory == 1024
+        assert budget.tools == 819
+        assert budget.total_allocated == 4096
 
         print("  ✅ NORMAL mode: Budget allocation verified")
 
@@ -376,10 +422,11 @@ class TestSimpleGovernorDeploymentMode:
         assert decision.tools_enabled is False
 
         budget = decision.lane_budget
-        assert abs(budget.system_policy - 1638) < 10
-        assert abs(budget.history - 409) < 10
-        assert abs(budget.memory - 614) < 10
+        assert budget.system == 1638
+        assert budget.history == 410
+        assert budget.memory == 614
         assert budget.tools == 0
+        assert budget.total_allocated == 4096
 
         print("  ✅ DEGRADED mode: Budget allocation verified")
 
@@ -394,11 +441,11 @@ class TestSimpleGovernorDeploymentMode:
         assert decision.tools_enabled is False
 
         budget = decision.lane_budget
-        assert budget.system_policy == 400
+        assert budget.system == 400
         assert budget.history == 0
         assert budget.memory == 100
         assert budget.tools == 0
-        assert budget.buffer >= 200
+        assert budget.buffer == 500
 
         print("  ✅ RESCUE mode: Budget allocation verified")
 
