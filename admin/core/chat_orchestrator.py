@@ -420,7 +420,9 @@ class V3ChatOrchestrator:
             result.phase_completed = 2
 
             tenant_id = str(capsule.tenant_id) if capsule.tenant_id else turn.tenant_id
-            turn_metrics = self._metrics.record_turn_start(
+            # record_turn_start registers the turn in the metrics store
+            # (looked up later by turn_id). Its return value is not needed here.
+            self._metrics.record_turn_start(
                 turn_id=turn_id,
                 tenant_id=tenant_id,
                 user_id=turn.user_id,
@@ -484,6 +486,7 @@ class V3ChatOrchestrator:
                     else None
                 )
                 if brain_client:
+                    task_step = await self._resume_task_cursor(brain_client, tenant_id)
                     eval_result = cast(
                         Dict[str, Any],
                         await self._cb_somabrain.call(
@@ -495,6 +498,7 @@ class V3ChatOrchestrator:
                                 "context": {
                                     "system_prompt": capsule.system_prompt,
                                     "history_length": len(turn.history or []),
+                                    "task_step": task_step,
                                 },
                             },
                         ),
@@ -736,9 +740,6 @@ class V3ChatOrchestrator:
                 tenant_id=tenant_id,
                 user_message=turn.user_message,
                 assistant_response=full_response,
-                model_id=result.model_used,
-                elapsed_ms=elapsed_ms,
-                token_count_out=_token_count(full_response),
                 salience=brain_confidence,
             )
             await self._persist_message(
@@ -747,6 +748,9 @@ class V3ChatOrchestrator:
                 role="assistant",
                 text=full_response,
                 coordinate=assistant_coord,
+                model=result.model_used,
+                latency_ms=elapsed_ms,
+                token_count=_token_count(full_response),
             )
             await self._bump_message_count(turn.conversation_id or "")
             await self._publish_cognitive_learning(
@@ -756,6 +760,11 @@ class V3ChatOrchestrator:
                 user_message=turn.user_message,
                 assistant_response=full_response,
                 confidence=brain_confidence,
+                personality_traits=(
+                    dict(capsule.personality_traits)
+                    if capsule and getattr(capsule, "personality_traits", None)
+                    else None
+                ),
             )
 
             # Emit Django signals for outbox publishers.
@@ -901,6 +910,7 @@ class V3ChatOrchestrator:
             client = await SomaBrainClient.get_async()
             if client is None:
                 return None
+            task_step = await self._resume_task_cursor(client, tenant_id)
             return await self._cb_somabrain.call(
                 client.context_evaluate,
                 request={
@@ -910,6 +920,7 @@ class V3ChatOrchestrator:
                     "context": {
                         "system_prompt": capsule.system_prompt,
                         "history_length": len(turn.history or []),
+                        "task_step": task_step,
                     },
                 },
             )
@@ -984,6 +995,36 @@ class V3ChatOrchestrator:
                     )
                     seen_tools.add(tool_def.name)
 
+        # SomaBrain suggests tools for this turn. Only names that actually
+        # exist are promoted - the brain cannot invent a tool. Suggestion
+        # reorders; it never adds. Same rule as process_turn (Phase 7).
+        if brain_suggested_tools:
+            wanted = {str(s) for s in brain_suggested_tools}
+            suggested = [
+                t
+                for t in tools_for_llm
+                if (t.get("function") or {}).get("name") in wanted
+            ]
+            rest = [
+                t
+                for t in tools_for_llm
+                if (t.get("function") or {}).get("name") not in wanted
+            ]
+            tools_for_llm = suggested + rest
+
+        # Do not offer a tool the turn may not run. A network tool with
+        # egress denied costs a model round-trip and returns a confusing
+        # error; filtering here is the honest signal.
+        from admin.core.tool_calling import _NETWORK_TOOLS, egress_permitted
+
+        if not egress_permitted(iq):
+            tools_for_llm = [
+                t
+                for t in tools_for_llm
+                if (t.get("function") or {}).get("name") not in _NETWORK_TOOLS
+            ]
+
+        # Degraded mode: drop optional tools (memory kit remains).
         tools_for_llm = select_tools_for_mode(
             tools_for_llm,
             tools_enabled=gov_decision.tools_enabled,
@@ -1104,9 +1145,6 @@ class V3ChatOrchestrator:
             tenant_id=tenant_id,
             user_message=turn.user_message,
             assistant_response=full_response,
-            model_id=f"{model.provider}/{model.name}",
-            elapsed_ms=elapsed_ms,
-            token_count_out=_token_count(full_response),
         )
         await self._persist_message(
             conversation_id=turn.conversation_id or "",
@@ -1114,6 +1152,9 @@ class V3ChatOrchestrator:
             role="assistant",
             text=full_response,
             coordinate=assistant_coord,
+            model=f"{model.provider}/{model.name}",
+            latency_ms=elapsed_ms,
+            token_count=_token_count(full_response),
         )
         await self._bump_message_count(turn.conversation_id or "")
         # Completion metrics for the stream path. Token counts are what the
@@ -1134,6 +1175,11 @@ class V3ChatOrchestrator:
             user_message=turn.user_message,
             assistant_response=full_response,
             confidence=0.5,
+            personality_traits=(
+                dict(capsule.personality_traits)
+                if capsule and getattr(capsule, "personality_traits", None)
+                else None
+            ),
         )
 
         # Emit Django signals for outbox publishers.
@@ -1261,12 +1307,20 @@ class V3ChatOrchestrator:
         role: str,
         text: str,
         coordinate: str,
+        model: Optional[str] = None,
+        latency_ms: Optional[int] = None,
+        token_count: Optional[int] = None,
     ) -> None:
         """Write one conversation-transcript row (ARCH-INVARIANTS §3).
 
         Message rows are the transcript, NOT semantic memory. They must be
         written even when every memory store is down — that is why this path
         never goes through the MemoryGateway.
+
+        Turn accounting lands on the row, not in the memory payload:
+        ``model`` / ``latency_ms`` / ``token_count`` → the matching
+        ``Message`` columns; ``tenant_id`` → ``Message.metadata`` (the row
+        has no tenant column; the conversation carries the FK).
         """
         if not conversation_id:
             return
@@ -1279,6 +1333,10 @@ class V3ChatOrchestrator:
                 role=role,
                 content=text,
                 coordinate=coordinate,
+                model=model,
+                latency_ms=latency_ms,
+                token_count=token_count if token_count is not None else 0,
+                metadata={"tenant_id": tenant_id},
             )
 
         await _create()
@@ -1431,9 +1489,6 @@ class V3ChatOrchestrator:
         tenant_id: str,
         user_message: str,
         assistant_response: str,
-        model_id: str,
-        elapsed_ms: int,
-        token_count_out: int,
         salience: float | None = None,
     ) -> str:
         """Store a turn in semantic memory (T-1) via the MemoryGateway seam.
@@ -1441,6 +1496,9 @@ class V3ChatOrchestrator:
         SomaBrain/SFM hold the semantic memories. Postgres ``Message`` rows
         are the conversation transcript (ARCH-INVARIANTS §3) and are written
         separately via ``_persist_message`` — never through this path.
+
+        Turn accounting (model, latency, token count) is recorded on the
+        transcript row and in the turn metrics — never in the memory payload.
 
         Returns the assistant turn's seam coordinate (from
         ``_remember_via_gateway``) so the transcript row can carry it.
@@ -1486,8 +1544,9 @@ class V3ChatOrchestrator:
         user_message: str,
         assistant_response: str,
         confidence: float,
+        personality_traits: Optional[Dict[str, float]] = None,
     ) -> None:
-        """Full cognitive loop after every turn: context feedback + reward.
+        """Full cognitive loop after every turn: context feedback + reward + cognition.
 
         SomaBrain learns from every chat exchange (T-6 cognitive loop).
         Non-blocking best-effort — never stalls the reply.
@@ -1500,9 +1559,53 @@ class V3ChatOrchestrator:
                 user_message=user_message,
                 assistant_response=assistant_response,
                 confidence=confidence,
+                personality_traits=personality_traits,
             )
         )
         task.add_done_callback(self._on_background_task_done("_publish_cognitive_learning"))
+
+    async def _publish_reward_kafka(
+        self,
+        *,
+        session_id: str,
+        signal: str,
+        value: float,
+        tenant_id: str,
+        meta: Dict[str, Any],
+    ) -> None:
+        """Reward signal → Kafka (100-percent-wiring.md:94). Not HTTP.
+
+        Uses the existing durable Kafka path (``DurablePublisher``) that the
+        memory.wal outbox drain uses. The topic name is a setting — never a
+        literal. Missing topic or missing Kafka is a refusal naming the
+        setting (Rule 6 / Rule 91).
+        """
+        from services.common.memory_contract import get_memory_setting
+        from services.common.publisher import get_durable_publisher
+
+        topic = get_memory_setting("SOMABRAIN_TOPIC_REWARD_EVENTS")
+        if not topic:
+            raise RuntimeError(
+                "SOMABRAIN_TOPIC_REWARD_EVENTS is not configured; reward signal refused"
+            )
+        publisher = await get_durable_publisher()
+        if publisher is None:
+            raise RuntimeError("Kafka is not configured; reward signal refused")
+        payload = {
+            "type": "reward",
+            "session_id": session_id,
+            "signal": signal,
+            "value": value,
+            "meta": meta,
+        }
+        await publisher.publish(
+            str(topic),
+            payload,
+            partition_key=tenant_id,
+            session_id=session_id,
+            tenant=tenant_id,
+            dedupe_key=f"reward:{session_id}:{signal}",
+        )
 
     async def _cognitive_learning_bg(
         self,
@@ -1513,6 +1616,7 @@ class V3ChatOrchestrator:
         user_message: str,
         assistant_response: str,
         confidence: float,
+        personality_traits: Optional[Dict[str, float]] = None,
     ) -> None:
         try:
             brain_client = await SomaBrainClient.get_async()
@@ -1536,19 +1640,85 @@ class V3ChatOrchestrator:
                 },
                 tenant_id=tenant_id,
             )
-            await self._cb_somabrain.call(
-                brain_client.publish_reward,
-                session_id,
-                "reward",
-                utility,
-                {
+            await self._publish_reward_kafka(
+                session_id=session_id,
+                signal="reward",
+                value=utility,
+                tenant_id=tenant_id,
+                meta={
                     "tenant_id": tenant_id,
                     "persona_id": persona_id,
                     "source": "chat_turn",
                 },
             )
+            await self._wire_brain_cognition(
+                brain_client=brain_client,
+                tenant_id=tenant_id,
+                user_message=user_message,
+                personality_traits=personality_traits,
+            )
         except Exception as exc:
             logger.warning("Cognitive learning publish skipped: %s", exc)
+
+    async def _resume_task_cursor(
+        self, brain_client: Any, tenant_id: str
+    ) -> Optional[str]:
+        """Advance the brain-side task cursor and return this turn's step.
+
+        ``GET /threads/thread/next`` returns ``{"tenant_id", "option"}`` and
+        advances the cursor. The cursor lives in the brain's Postgres and
+        survives agent restarts — that is the resumable-task gain. A missing
+        thread (404) is a real "no task in flight", not an error.
+        """
+        try:
+            step = await self._cb_somabrain.call(brain_client.thread_next, tenant_id)
+            if step:
+                logger.info("Task cursor step for tenant=%s: %s", tenant_id, step)
+            return step
+        except Exception as exc:
+            logger.debug("Task cursor resume skipped: %s", exc)
+            return None
+
+    async def _wire_brain_cognition(
+        self,
+        *,
+        brain_client: Any,
+        tenant_id: str,
+        user_message: str,
+        personality_traits: Optional[Dict[str, float]] = None,
+    ) -> None:
+        """Plan/suggest + thread cursor + personality — the three real cognition surfaces.
+
+        - ``POST /cognitive/plan/suggest``: gated on ``SOMABRAIN_USE_PLANNER``.
+          This code never defaults that flag on — it is an operator choice.
+          The useful pattern is: the turn already remembered the goal
+          (``_store_turn``), then plan with the same key.
+        - ``/threads/*``: the plan becomes a resumable task cursor. The cursor
+          lives in the brain's Postgres and survives agent restarts.
+        - ``POST /cognitive/personality``: push the capsule's Big-5 traits.
+        """
+        from services.common.memory_contract import get_memory_setting
+
+        planner_on = get_memory_setting("SOMABRAIN_USE_PLANNER")
+        if planner_on:
+            plan = await self._cb_somabrain.call(
+                brain_client.plan_suggest,
+                user_message,
+            )
+            if plan:
+                await self._cb_somabrain.call(
+                    brain_client.thread_create,
+                    tenant_id,
+                    list(plan),
+                )
+                logger.info(
+                    "Task cursor seeded for tenant=%s steps=%d", tenant_id, len(plan)
+                )
+        if personality_traits:
+            await self._cb_somabrain.call(
+                brain_client.set_personality,
+                dict(personality_traits),
+            )
 
     async def trigger_sleep_cycle(self, tenant_id: str, persona_id: str) -> None:
         """Trigger a SomaBrain sleep/consolidation cycle.
