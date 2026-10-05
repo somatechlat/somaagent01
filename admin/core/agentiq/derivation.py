@@ -29,16 +29,24 @@ if TYPE_CHECKING:
     from admin.core.models import Capsule
 
 
-def resolve_knobs(capsule: "Capsule") -> Dict[str, Any]:
+def resolve_knobs(
+    capsule: "Capsule", *, body: Dict[str, Any] | None = None
+) -> Dict[str, Any]:
     """Effective control knobs for a capsule: stored, else chain-resolved.
 
     One place that decides what the knobs *are*. ``derive_all_settings`` and
     the AgentIQ HTTP surface both read through here, so a reported knob is
     exactly the knob that drove derivation — never a second guess.
+
+    ``body`` is a pre-fetched ``capsule.body``. When it is supplied the
+    function touches no ORM, so the async HTTP surface can call it directly.
+    When it is omitted the body is read synchronously and the caller must be
+    on a sync path (or wrap this call in ``sync_to_async``).
     """
     from admin.core.helpers.capsule_settings import resolve_setting
 
-    body: Dict[str, Any] = getattr(capsule, "_cached_body", None) or capsule.body or {}
+    if body is None:
+        body = getattr(capsule, "_cached_body", None) or capsule.body or {}
     persona = body.get("persona", {})
     knobs = persona.get("knobs", {}) or {}
 
@@ -57,7 +65,9 @@ def resolve_knobs(capsule: "Capsule") -> Dict[str, Any]:
     }
 
 
-def derive_all_settings(capsule: "Capsule") -> DerivedSettings:
+def derive_all_settings(
+    capsule: "Capsule", *, body: Dict[str, Any] | None = None
+) -> DerivedSettings:
     """
     Derive ALL settings from capsule.body.persona.knobs.
 
@@ -66,6 +76,8 @@ def derive_all_settings(capsule: "Capsule") -> DerivedSettings:
 
     Args:
         capsule: The Capsule model with body containing knobs
+        body: Pre-fetched ``capsule.body``. Pass it from async callers so no
+            ORM query runs on the event loop; omit it only on a sync path.
 
     Returns:
         DerivedSettings: Frozen Pydantic model with all derived values
@@ -73,7 +85,7 @@ def derive_all_settings(capsule: "Capsule") -> DerivedSettings:
     Raises:
         ValueError: If capsule.body is malformed
     """
-    knobs = resolve_knobs(capsule)
+    knobs = resolve_knobs(capsule, body=body)
     intelligence_level: int = int(knobs["intelligence_level"])
     autonomy_level: int = int(knobs["autonomy_level"])
     resource_budget: float = float(knobs["resource_budget"])

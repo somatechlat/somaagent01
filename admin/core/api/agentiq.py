@@ -62,9 +62,9 @@ def _derived_to_dict(d: DerivedSettings) -> dict:
     }
 
 
-def _effective_knobs(capsule: Capsule) -> dict:
+def _effective_knobs(capsule: Capsule, body: dict | None = None) -> dict:
     """Knobs as derivation actually used them (stored or chain-resolved)."""
-    return resolve_knobs(capsule)
+    return resolve_knobs(capsule, body=body)
 
 
 def _load_capsule(capsule_id: str) -> Capsule:
@@ -96,24 +96,24 @@ def _validate_knobs(knobs: dict) -> None:
 
 async def _read(capsule: Capsule) -> AgentIQOut:
     """Assemble the AgentIQ view. Lanes come from the same allocator the
-    chat context builder uses — never a browser-side percentage."""
+    chat context builder uses — never a browser-side percentage.
+
+    ``capsule.body`` hits the ORM (``capabilities``). It is fetched once on a
+    thread and handed to every resolver, so nothing on this async path calls
+    the database synchronously (R-02).
+    """
     from admin.core.agentiq.tables import STYLE_TABLE
     from admin.core.context.lanes import get_lane_allocation
 
-    derived = derive_all_settings(capsule)
-    lanes = await get_lane_allocation(capsule)
+    body = await capsule.async_body()
+    derived = derive_all_settings(capsule, body=body)
+    lanes = await get_lane_allocation(capsule, body=body)
     return AgentIQOut(
         capsule_id=str(capsule.id),
-        knobs=_effective_knobs(capsule),
+        knobs=_effective_knobs(capsule, body=body),
         derived=_derived_to_dict(derived),
         response_styles=sorted(STYLE_TABLE),
-        lanes={
-            "system": lanes.system,
-            "history": lanes.history,
-            "memory": lanes.memory,
-            "tools": lanes.tools,
-            "buffer": lanes.buffer,
-        },
+        lanes=lanes.to_dict(),
     )
 
 
