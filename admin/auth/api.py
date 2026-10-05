@@ -38,6 +38,10 @@ from admin.common.exceptions import BadRequestError, ServiceUnavailableError, Un
 from services.common.authorization import authorize
 from admin.common.messages import get_message, SuccessCode
 from services.common.http_timeouts import httpx_timeout  # noqa: E402
+# One vocabulary for the public authentication failure. The precise reason
+# is an audit fact; the caller is never told which of unknown, wrong
+# password, disabled or locked it was (user enumeration).
+from services.common.identity.authenticate import PUBLIC_FAILURE_MESSAGE
 
 logger = logging.getLogger(__name__)
 router = Router(tags=["Authentication"])
@@ -49,8 +53,14 @@ async def _emit_auth_audit(
     details: dict | None = None,
     actor_id: str = "",
     actor_email: str = "",
-) -> None:
-    """Emit audit event for auth failure. Best-effort: never blocks response."""
+) -> bool:
+    """Emit an audit event for an auth attempt.
+
+    Returns True only when the row was durably written. Login treats a
+    missing audit record as a refusal (``services.common.identity.login``:
+    an authentication that could not be audited did not happen), so the
+    caller must be able to see whether the sink accepted the write.
+    """
     from uuid import uuid4
 
     from asgiref.sync import sync_to_async
@@ -71,8 +81,10 @@ async def _emit_auth_audit(
             user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
             request_id=str(uuid4()),
         )
+        return True
     except Exception as exc:
         logger.warning("Auth audit logging failed: %s", exc)
+        return False
 
 
 # =============================================================================
@@ -334,72 +346,151 @@ async def logout(request):
 # =============================================================================
 
 
-async def _login_local(request, payload: "LoginRequest", lockout_service):
+async def _login_local(request, payload: "LoginRequest"):
     """Standalone login: LocalIdentity is the authority.
 
     The session token is the session id - `_decode_session` resolves it and
     re-reads roles and permissions from the identity on every request, so a
     stale row cannot carry a stale grant.
-    """
-    from admin.auth.identity import authenticate_local
-    from admin.common.session_manager import get_session_manager
 
-    identity = await authenticate_local(payload.email, payload.password)
-    if not identity.ok:
-        new_status = await lockout_service.record_failed_attempt(payload.email)
+    Lockout and the failure ledger are the LocalIdentity columns
+    (``failure_count`` / ``locked_until`` / ``hard_locked``), decided by the
+    pure rules in ``services.common.identity``. The public failure is
+    uniform: unknown, wrong password, disabled and locked all return the
+    same 401 body. The precise reason is written to the audit trail and
+    never to the response.
+    """
+    from asgiref.sync import sync_to_async
+    from django.utils import timezone
+
+    from admin.aaas.models.identity import LocalIdentity
+    from services.common.identity.authenticate import (
+        decide_authentication,
+    )
+    from services.common.identity.lockout import (
+        LockoutState,
+        evaluate_lockout,
+    )
+    from services.common.identity.login import complete_login
+    from services.common.identity.password import verify_password
+    from services.common.identity.pepper import get_password_pepper
+
+    now = timezone.now()
+
+    @sync_to_async
+    def _load_row():
+        return (
+            LocalIdentity.objects.filter(email__iexact=payload.email).first()
+            or LocalIdentity.objects.filter(username__iexact=payload.email).first()
+        )
+
+    row = await _load_row()
+    ledger = row.to_lockout_state() if row is not None else LockoutState()
+    lockout = evaluate_lockout(ledger, now=now)
+
+    # Unknown account is the same shape as disabled: nothing to verify.
+    is_active = bool(row is not None and getattr(row, "is_active", True))
+    has_password = bool(row is not None and row.password_hash)
+
+    # Order is security: the lockout is consulted before argon2 runs, so a
+    # locked account cannot be used as a hashing denial-of-service.
+    password_ok = False
+    pepper_failed = False
+    if not lockout.locked and is_active and has_password:
+
+        @sync_to_async
+        def _verify() -> tuple[bool, bool]:
+            try:
+                pepper = get_password_pepper()
+            except Exception:
+                return False, True
+            return verify_password(payload.password, row.password_hash, pepper), False
+
+        password_ok, pepper_failed = await _verify()
+
+    if pepper_failed:
+        # The credential could not be checked. Fail closed, and do not name
+        # the secret store in the response (that is a map of the inside).
         await _emit_auth_audit(
             request,
             action="auth.login_failed",
-            details={"error": identity.reason},
+            details={"error": "pepper_unavailable"},
             actor_email=payload.email,
         )
-        if new_status.is_locked:
-            raise ForbiddenError(
-                action="login",
-                resource="account",
-                message=f"Account locked. Try again in {(new_status.retry_after or 0) // 60} minutes.",
-                details={"retry_after": new_status.retry_after},
-            )
-        raise UnauthorizedError(message="Invalid email or password")
+        raise ServiceUnavailableError("auth", "Identity service is not configured")
 
-    await lockout_service.record_successful_login(payload.email)
+    outcome = decide_authentication(
+        is_active=is_active,
+        has_password=has_password,
+        password_ok=password_ok,
+        lockout=lockout,
+    )
+
+    # Audit before sealing. complete_login refuses a correct password whose
+    # audit write did not land: a session with no audit record is an
+    # unauditable privileged action.
+    audit_written = await _emit_auth_audit(
+        request,
+        action="auth.login_succeeded" if outcome.ok else "auth.login_failed",
+        details={"provider": "local"} if outcome.ok else {"error": outcome.reason},
+        actor_email=(row.email if row is not None else payload.email) if outcome.ok else payload.email,
+    )
+
+    result = complete_login(
+        outcome=outcome,
+        lockout=lockout,
+        ledger=ledger,
+        audit_written=audit_written,
+        now=now,
+    )
+
+    if row is not None:
+
+        @sync_to_async
+        def _persist_ledger() -> None:
+            LocalIdentity.objects.filter(pk=row.pk).update(
+                failure_count=result.next_ledger.failure_count,
+                locked_until=result.next_ledger.locked_until,
+                hard_locked=result.next_ledger.hard_locked,
+            )
+
+        await _persist_ledger()
+
+    if not result.ok:
+        # Uniform 401. The precise reason (locked, bad_password, disabled,
+        # audit_unavailable, ...) is already in the audit trail.
+        raise UnauthorizedError(message=PUBLIC_FAILURE_MESSAGE)
 
     # Mint a real local session. `generate_session_token` returns the raw
     # bearer (shown to the client once) and its hash (the only thing stored).
     # decode_token classifies on shape - `ses_` is what routes a bearer to the
     # local-session stack instead of the JWT stack.
-    from asgiref.sync import sync_to_async
-
+    from admin.auth.api_helpers import get_highest_role
     from admin.aaas.models.session import LocalSession
     from services.common.identity.session import generate_session_token
 
     raw_token, token_hash = generate_session_token()
+    roles = list(row.roles or ())
 
     @sync_to_async
     def _open_session() -> str:
-        from django.utils import timezone
-
-        now = timezone.now()
+        instant = timezone.now()
         # LocalSession has no expires_at column: is_valid() derives the
         # absolute window from created_at and the idle window from
         # last_seen_at. Both are required and NOT NULL.
         LocalSession.objects.create(
             token_hash=token_hash,
-            principal_id=identity.principal_id,
-            created_at=now,
-            last_seen_at=now,
+            principal_id=str(row.id),
+            created_at=instant,
+            last_seen_at=instant,
             revoked=False,
-            privileged=False,
+            privileged=bool(
+                row.roles and set(row.roles) & {"sysadmin", "org_admin", "agent_owner", "agent_operator"}
+            ),
         )
-        return identity.principal_id
+        return str(row.id)
 
     principal = await _open_session()
-    await _emit_auth_audit(
-        request,
-        action="auth.login_succeeded",
-        details={"provider": "local"},
-        actor_email=identity.email,
-    )
 
     from django.http import JsonResponse
 
@@ -413,11 +504,11 @@ async def _login_local(request, payload: "LoginRequest", lockout_service):
             "session_id": principal,
             "redirect_path": "/chat",
             "user": {
-                "id": identity.email,
-                "email": identity.email,
-                "name": identity.display_name,
-                "role": "member",
-                "roles": [],
+                "id": row.email,
+                "email": row.email,
+                "name": row.display_name or row.username,
+                "role": get_highest_role(roles),
+                "roles": roles,
             },
         },
     )
@@ -439,8 +530,6 @@ async def _login_local(request, payload: "LoginRequest", lockout_service):
 @router.post("/login")
 async def login_with_email(request, payload: LoginRequest):
     """Login with email and password with account lockout protection."""
-    from admin.common.account_lockout import get_lockout_service
-    from admin.common.exceptions import ForbiddenError
     from admin.common.rate_limit import check_rate_limit
     from admin.common.session_manager import get_session_manager
 
@@ -449,35 +538,38 @@ async def login_with_email(request, payload: LoginRequest):
     ].strip() or request.META.get("REMOTE_ADDR", "unknown")
     await check_rate_limit(client_ip, "/api/v2/auth/login")
 
+    # Exactly one authority answers (see admin.auth.identity).
+    #
+    #   STANDALONE  -> LocalIdentity. The agent holds the credential; there is
+    #                  no identity provider and none is consulted. Lockout is
+    #                  the LocalIdentity ledger (services.common.identity).
+    #   ENTERPRISE  -> Keycloak password grant. This process never stores it.
+    #                  Lockout is the Redis AccountLockoutService.
+    #
+    # Never both, and never a fallback between them: falling through from a
+    # federated rejection to a local check would let a disabled cloud account
+    # be resurrected by a stale local row. Two ledgers for one account is the
+    # same defect in slower motion.
+    from admin.auth.identity import resolve_identity_provider
+
+    if resolve_identity_provider() == "local":
+        return await _login_local(request, payload)
+
+    from admin.common.account_lockout import get_lockout_service
+
     lockout_service = await get_lockout_service()
     lockout_status = await lockout_service.check_lockout(payload.email)
     if lockout_status.is_locked:
         await _emit_auth_audit(
             request,
             action="auth.login_failed",
-            details={"error": "Account locked", "retry_after": lockout_status.retry_after},
+            details={"error": "account_locked", "retry_after": lockout_status.retry_after},
             actor_email=payload.email,
         )
-        raise ForbiddenError(
-            action="login",
-            resource="account",
-            message=f"Account locked. Try again in {(lockout_status.retry_after or 0) // 60} minutes.",
-            details={"retry_after": lockout_status.retry_after},
-        )
-
-    # Exactly one authority answers (see admin.auth.identity).
-    #
-    #   STANDALONE  -> LocalIdentity. The agent holds the credential; there is
-    #                  no identity provider and none is consulted.
-    #   ENTERPRISE  -> Keycloak password grant. This process never stores it.
-    #
-    # Never both, and never a fallback between them: falling through from a
-    # federated rejection to a local check would let a disabled cloud account
-    # be resurrected by a stale local row.
-    from admin.auth.identity import resolve_identity_provider
-
-    if resolve_identity_provider() == "local":
-        return await _login_local(request, payload, lockout_service)
+        # Uniform 401. A lockout message is enumeration with a timestamp:
+        # it tells a stranger the account exists and exactly when to retry.
+        # The lock and its timer are audit facts, not client facts.
+        raise UnauthorizedError(message=PUBLIC_FAILURE_MESSAGE)
 
     config = get_keycloak_config()
     token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
@@ -572,24 +664,20 @@ async def login_with_email(request, payload: LoginRequest):
                     request,
                     action="auth.login_failed",
                     details={
-                        "error": "Account locked after failed attempt",
+                        "error": "account_locked_after_failed_attempt",
                         "retry_after": new_status.retry_after,
                     },
                     actor_email=payload.email,
                 )
-                raise ForbiddenError(
-                    action="login",
-                    resource="account",
-                    message=f"Account locked. Try again in {(new_status.retry_after or 0) // 60} minutes.",
-                    details={"retry_after": new_status.retry_after},
-                )
+                # Uniform 401 — same body as unknown and wrong password.
+                raise UnauthorizedError(message=PUBLIC_FAILURE_MESSAGE)
             await _emit_auth_audit(
                 request,
                 action="auth.login_failed",
-                details={"error": "Invalid email or password"},
+                details={"error": "federated_rejected"},
                 actor_email=payload.email,
             )
-            raise UnauthorizedError(message="Invalid email or password")
+            raise UnauthorizedError(message=PUBLIC_FAILURE_MESSAGE)
     except httpx.HTTPError as e:
         logger.error("Login error: %s", e)
         await _emit_auth_audit(
@@ -802,8 +890,8 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
 def _set_auth_cookies(response, token_data: dict, session_id: str, secure: bool):
     """Set authentication cookies on response.
 
-    ``secure`` must be False on plain HTTP (localhost Docker) or browsers
-    drop the session and /chat redirects to login.
+    ``secure`` must be False on plain HTTP (a local Docker deployment) or
+    browsers drop the session and /chat redirects to login.
     """
     access_ttl = token_data.get("expires_in", 900)
     refresh_ttl = token_data.get("refresh_expires_in", 86400)

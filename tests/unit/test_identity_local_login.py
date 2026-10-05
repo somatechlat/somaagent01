@@ -32,9 +32,8 @@ from asgiref.sync import sync_to_async
 from admin.aaas.models.identity import LocalIdentity
 from admin.aaas.models.session import LocalSession
 from services.common.identity.password import hash_password
+from services.common.identity.pepper import get_password_pepper
 from services.common.identity.session import hash_session_token
-
-PEPPER = "test-pepper-not-a-production-secret"
 
 # Cheap parameters for tests only. memory_cost is only legal at or above
 # 8 * parallelism, so parallelism must be lowered with it. Production uses
@@ -63,15 +62,48 @@ def auth_client():
     the synchronous client hands the un-awaited coroutine to ``NinjaResponse``,
     which then reads ``.status_code`` off it and dies. The async client awaits
     the view, which is what ASGI does in production.
+
+    ``register_exception_handlers`` is registered exactly as production does
+    (``admin/api.py``). Without it an ``ApiError`` reaches ninja's default
+    handler and is re-raised instead of becoming the JSON response production
+    returns, so the suite could not observe status codes or bodies at all.
     """
     from ninja import NinjaAPI
     from ninja.testing import TestAsyncClient
 
     from admin.auth.api import router
+    from admin.common.handlers import register_exception_handlers
 
     test_api = NinjaAPI()
+    register_exception_handlers(test_api)
     test_api.add_router("/auth", router)
     return TestAsyncClient(test_api)
+
+
+@pytest.fixture(autouse=True)
+def _fresh_rate_limiter():
+    """Give every test a rate limiter bound to its own event loop.
+
+    pytest-asyncio builds a new loop per test. ``get_rate_limiter`` caches a
+    Redis connection on the first loop and marks itself connected, so every
+    later test hits "Event loop is closed" and the limiter fails closed
+    with a 429 — the control is armed but its socket is dead. Resetting the
+    singleton and the shared pools drops only the stale connection; the
+    real limiter still counts and still denies. Disabling it to make the
+    suite pass would be testing a system that does not exist.
+    """
+    import asyncio
+
+    import services.common.rate_limiter as rate_limiter_mod
+    from services.common.redis_pool import reset_pools
+
+    rate_limiter_mod._limiter_instance = None
+    rate_limiter_mod._limiter_lock = asyncio.Lock()
+    reset_pools()
+    yield
+    rate_limiter_mod._limiter_instance = None
+    rate_limiter_mod._limiter_lock = asyncio.Lock()
+    reset_pools()
 
 
 @pytest.fixture(autouse=True)
@@ -89,7 +121,14 @@ def _standalone_mode(monkeypatch):
 
 
 async def _identity(**overrides) -> LocalIdentity:
-    """A real identity with a real argon2id verifier under the test pepper."""
+    """A real identity with a real argon2id verifier under the real pepper.
+
+    The pepper is read from Vault through ``get_password_pepper`` — the same
+    secret and the same fail-closed reader the login path uses. A dummy
+    pepper here would let the suite hash under one key while production
+    verifies under another: the gate would be a fiction. If the secret is
+    absent, this raises naming it. That is the correct outcome (Rule 7).
+    """
 
     def _create() -> LocalIdentity:
         fields = {
@@ -99,7 +138,7 @@ async def _identity(**overrides) -> LocalIdentity:
             "roles": ["developer"],
             "is_active": True,
             "password_hash": hash_password(
-                "correct horse battery staple", PEPPER, **_FAST
+                "correct horse battery staple", get_password_pepper(), **_FAST
             ),
         }
         fields.update(overrides)
@@ -208,7 +247,10 @@ async def test_a_wrong_password_is_refused_with_the_uniform_message(auth_client)
     response = await _login(auth_client, "operator@example.test", "wrong")
 
     assert response.status_code == 401
-    assert response.json()["message"] == "Invalid credentials"
+    # ApiError.to_dict() nests the human message under "error"; that is the
+    # body production's exception handler returns. The assertion still
+    # demands the exact uniform string.
+    assert response.json()["error"]["message"] == "Invalid credentials"
 
 
 async def test_an_unknown_account_gets_the_same_message_as_a_wrong_password(auth_client):
@@ -228,7 +270,10 @@ async def test_a_disabled_account_gets_the_same_message(auth_client):
     response = await _login(auth_client, "operator@example.test", "correct horse battery staple")
 
     assert response.status_code == 401
-    assert response.json()["message"] == "Invalid credentials"
+    # ApiError.to_dict() nests the human message under "error"; that is the
+    # body production's exception handler returns. The assertion still
+    # demands the exact uniform string.
+    assert response.json()["error"]["message"] == "Invalid credentials"
 
 
 async def test_a_locked_account_gets_the_same_message(auth_client):
@@ -243,7 +288,10 @@ async def test_a_locked_account_gets_the_same_message(auth_client):
     response = await _login(auth_client, "operator@example.test", "correct horse battery staple")
 
     assert response.status_code == 401
-    assert response.json()["message"] == "Invalid credentials"
+    # ApiError.to_dict() nests the human message under "error"; that is the
+    # body production's exception handler returns. The assertion still
+    # demands the exact uniform string.
+    assert response.json()["error"]["message"] == "Invalid credentials"
     assert "locked" not in response.content.decode().lower()
 
 
@@ -338,7 +386,10 @@ async def test_an_empty_password_is_refused(auth_client):
     response = await _login(auth_client, "operator@example.test", "")
 
     assert response.status_code == 401
-    assert response.json()["message"] == "Invalid credentials"
+    # ApiError.to_dict() nests the human message under "error"; that is the
+    # body production's exception handler returns. The assertion still
+    # demands the exact uniform string.
+    assert response.json()["error"]["message"] == "Invalid credentials"
 
 
 async def test_the_response_names_no_infrastructure_state(auth_client):
