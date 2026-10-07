@@ -751,8 +751,8 @@ export class SomaSettings extends LitElement {
                     <span class="material-symbols-outlined" style="margin-left: auto;">chevron_right</span>
                 </h3>
                 <p class="section-desc">
-                    Providers, API keys, model presets, and Chat / Utility / Embedding slots.
-                    Opens the full Models settings screen.
+                    Whole model cards: Activate, Custom URL, Load models, Vault keys,
+                    Used for Chat / Help / Memory. Opens the full Models screen.
                 </p>
                 <div class="api-key-row">
                     <span class="api-key-name">Providers</span>
@@ -834,18 +834,18 @@ export class SomaSettings extends LitElement {
                 <p class="honest-note">No MCP server registry is exposed by this deployment.</p>
             </div>
 
-            <!-- The real full surface for providers, keys and slots -->
+            <!-- The real full surface for providers, keys, and model setup -->
             <div class="section">
                 <h3 class="section-title">
                     <span class="material-symbols-outlined">settings_suggest</span>
                     Providers
                 </h3>
                 <p class="section-desc">
-                    Models, provider keys, slots and presets are managed on the Models settings screen.
+                    Models, provider keys, and Chat / Help / Memory bindings are managed on the Models screen.
                 </p>
                 <button class="add-btn" @click=${() => this._openModels()}>
                     <span class="material-symbols-outlined">open_in_new</span>
-                    Manage providers, keys and slots
+                    Manage providers, keys, and model setup
                 </button>
             </div>
         `;
