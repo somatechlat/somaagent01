@@ -222,6 +222,28 @@ class PresetOut(Schema):
     updated_at: str = ""
 
 
+class ModelSearchIn(Schema):
+    """List models from a live provider endpoint (key + custom URL).
+
+    api_key is write-only (form → Vault). api_base is the custom URL; empty
+    uses the provider default. model_type filters chat vs embedding names.
+    """
+
+    provider: str
+    query: str = ""
+    model_type: str = "chat"
+    api_base: Optional[str] = None
+    api_key: Optional[str] = None
+
+
+class ModelSearchOut(Schema):
+    """Live model list from the provider (or registry fallback)."""
+
+    models: list[str] = []
+    source: str = "none"  # live | registry | none | error
+    detail: str = ""
+
+
 class TestConnectionIn(Schema):
     """Live provider connectivity test.
 
@@ -705,6 +727,121 @@ def delete_preset(request, preset_id: str) -> dict:
         raise HttpError(404, f"preset_not_found: {preset_id}")
     _set_setting(DEFAULTS_AGENT_ID, "model_presets", remaining)
     return {"deleted": True, "id": preset_id}
+
+
+# ---------------------------------------------------------------------------
+# Live model list (Load models button)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/models/search",
+    response=ModelSearchOut,
+    auth=AuthBearer(),
+    summary="List models from provider (key + optional custom URL)",
+)
+async def search_models(request, body: ModelSearchIn) -> ModelSearchOut:
+    """Fetch model IDs from the provider's /models (OpenAI-compatible) or Ollama.
+
+    Uses write-only api_key if given, else Vault. Custom api_base (e.g. MiMo
+    gateway) overrides the vendor default. Falls back to LiteLLM registry names
+    when the endpoint cannot list models.
+    """
+    await authorize(request, action="system:manage_integrations", resource="llm")
+    import re as _re
+
+    import httpx
+
+    provider = (body.provider or "").lower().strip()
+    if not provider:
+        return ModelSearchOut(models=[], source="none", detail="provider_required")
+
+    api_key = body.api_key
+    if not api_key:
+        try:
+            from services.common.unified_secret_manager import get_secret_manager
+
+            api_key = get_secret_manager().get_provider_key(provider)
+        except Exception:
+            api_key = None
+
+    base_url = (body.api_base or "").strip().rstrip("/")
+    if not base_url:
+        cfg = _load_provider_configs().get(provider, {})
+        if isinstance(cfg, dict):
+            base_url = (cfg.get("base_url") or "").rstrip("/")
+        if not base_url:
+            base_url = (PROVIDER_PRESETS.get(provider, {}).get("default_base_url") or "").rstrip("/")
+
+    exclude = _re.compile(
+        r"dall-e|gpt-image|tts|whisper|audio|transcri|speech|realtime|embed|moderation",
+        _re.I,
+    )
+    want_embed = (body.model_type or "chat").lower() == "embedding"
+    query = (body.query or "").strip().lower()
+
+    names: list[str] = []
+    source = "none"
+    detail = ""
+    if base_url:
+        headers = {"Accept": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        timeout = httpx.Timeout(8.0, connect=4.0)
+        try:
+            if provider == "ollama":
+                url = f"{base_url}/api/tags"
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    resp = await client.get(url, headers=headers)
+                resp.raise_for_status()
+                payload = resp.json()
+                raw = payload.get("models") or payload.get("names") or []
+                for item in raw:
+                    if isinstance(item, dict):
+                        names.append(str(item.get("name") or item.get("model") or ""))
+                    else:
+                        names.append(str(item))
+            else:
+                url = f"{base_url}/models"
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    resp = await client.get(url, headers=headers)
+                resp.raise_for_status()
+                payload = resp.json()
+                raw = payload.get("data") or payload.get("models") or []
+                for item in raw:
+                    if isinstance(item, dict):
+                        mid = item.get("id") or item.get("name") or ""
+                        names.append(str(mid))
+                    else:
+                        names.append(str(item))
+            source = "live"
+        except Exception as exc:
+            source = "error"
+            detail = str(exc)[:300]
+
+    names = [n.strip() for n in names if isinstance(n, str) and n.strip()]
+    if names:
+        if want_embed:
+            names = [n for n in names if exclude.search(n)] or names
+        else:
+            names = [n for n in names if not exclude.search(n)]
+        if query:
+            names = [n for n in names if query in n.lower()]
+    elif source != "error":
+        # LiteLLM registry names — availability not verified
+        try:
+            import litellm
+
+            reg = list(getattr(litellm, "model_list", []) or [])
+            names = [str(n) for n in reg if isinstance(n, str)]
+            if query:
+                names = [n for n in names if query in n.lower()]
+            if names:
+                source = "registry"
+        except Exception:
+            pass
+
+    return ModelSearchOut(models=sorted(set(names))[:200], source=source, detail=detail)
 
 
 # ---------------------------------------------------------------------------

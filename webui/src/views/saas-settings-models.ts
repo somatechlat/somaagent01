@@ -1,45 +1,45 @@
 /**
- * SomaAgent SaaS — Models Settings Screen (C5 / MD-01…MD-06)
+ * SomaAgent — Models settings (card library + Activate + Normal/Advanced modal)
  *
- * VIBE COMPLIANT:
- * - Real Lit 3.x, saas-* components
- * - Real APIs: /api/v2/llm (LLMModelConfig), /api/v2/secrets (Vault keys)
- * - Write-only API keys (never echoed)
- * - No mock data, no hardcoded API keys
- * - Material Symbols only, no emojis
+ * Design: SOMA-UI-MODEL-ADMIN-001 v3.2 · FIELD-PARITY-001
+ * - One CSS card = one model (all identity fields visible)
+ * - Activate / Make live one-click
+ * - Modal: Normal | Advanced | Used for
+ * - Custom URL + Load models (live list) + manual Model ID
+ * - API key typed here → Vault only (write-only, never echoed)
+ * - No “slot” language (Used for: Chat / Help / Memory)
+ * - Default LIVE seed: Groq · DeepSeek 2.8
  */
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
 import '../components/saas-status-badge.js';
-import '../components/saas-toggle.js';
 
-type TabId = 'providers' | 'slots' | 'presets' | 'models';
-
-interface ProviderRow {
-    id: string;
-    label: string;
-    enabled: boolean;
-    base_url: string;
-    model_name: string;
-    is_custom: boolean;
-    has_api_key: boolean;
-}
+type ModelType = 'chat' | 'embedding';
+type ModalTab = 'normal' | 'advanced' | 'used';
 
 interface ModelRow {
     id: string;
     name: string;
     display_name: string;
-    model_type: 'chat' | 'embedding';
+    model_type: ModelType;
     provider: string;
     api_base: string;
-    is_active: boolean;
-    ctx_length: number;
     capabilities: string[];
+    priority: number;
+    cost_tier: string;
+    domains: string[];
+    ctx_length: number;
+    limit_requests: number;
+    limit_input: number;
+    limit_output: number;
+    vision: boolean;
+    kwargs: Record<string, unknown>;
+    is_active: boolean;
 }
 
-interface SlotsState {
+interface UsedFor {
     chat_model_id: string | null;
     utility_model_id: string | null;
     embedding_model_id: string | null;
@@ -47,1246 +47,952 @@ interface SlotsState {
     scope: string;
 }
 
-interface PresetRow {
-    id: string;
+interface Draft {
+    id?: string;
     name: string;
-    chat_model_id: string | null;
-    utility_model_id: string | null;
-    embedding_model_id: string | null;
-    notes: string;
+    display_name: string;
+    model_type: ModelType;
+    provider: string;
+    api_base: string;
+    capabilities: string;
+    priority: number;
+    cost_tier: string;
+    domains: string;
+    ctx_length: number;
+    limit_requests: number;
+    limit_input: number;
+    limit_output: number;
+    vision: boolean;
+    kwargs_text: string;
+    is_active: boolean;
+    api_key: string;
+    max_tokens: number;
+    timeout: number;
+    ctx_history: number;
+    max_embeds: number;
 }
 
-interface SetupGate {
-    needs_setup: boolean;
-    active_models: number;
-    chat_ready: boolean;
-    utility_ready: boolean;
-    embedding_ready: boolean;
-    message: string;
+const PROVIDERS = [
+    { id: 'groq', label: 'Groq' },
+    { id: 'openai', label: 'OpenAI' },
+    { id: 'anthropic', label: 'Anthropic' },
+    { id: 'ollama', label: 'Ollama' },
+    { id: 'custom', label: 'Custom / OpenAI-compatible' },
+];
+
+function emptyDraft(provider = 'groq'): Draft {
+    return {
+        name: '',
+        display_name: '',
+        model_type: 'chat',
+        provider,
+        api_base: '',
+        capabilities: '',
+        priority: 50,
+        cost_tier: 'standard',
+        domains: '',
+        ctx_length: 32768,
+        limit_requests: 0,
+        limit_input: 0,
+        limit_output: 0,
+        vision: false,
+        kwargs_text: '{}',
+        is_active: true,
+        api_key: '',
+        max_tokens: 8192,
+        timeout: 30,
+        ctx_history: 0.7,
+        max_embeds: 10,
+    };
 }
 
-interface CapsuleOption {
-    id: string;
-    name: string;
+function draftFromModel(m: ModelRow): Draft {
+    const kw = m.kwargs || {};
+    return {
+        id: m.id,
+        name: m.name,
+        display_name: m.display_name || '',
+        model_type: m.model_type,
+        provider: m.provider,
+        api_base: m.api_base || '',
+        capabilities: (m.capabilities || []).join(', '),
+        priority: m.priority ?? 50,
+        cost_tier: m.cost_tier || 'standard',
+        domains: (m.domains || []).join(', '),
+        ctx_length: m.ctx_length || 0,
+        limit_requests: m.limit_requests || 0,
+        limit_input: m.limit_input || 0,
+        limit_output: m.limit_output || 0,
+        vision: !!m.vision,
+        kwargs_text: JSON.stringify(kw, null, 2),
+        is_active: !!m.is_active,
+        api_key: '',
+        max_tokens: Number(kw.max_tokens ?? 8192),
+        timeout: Number(kw.timeout ?? 30),
+        ctx_history: Number(kw.ctx_history ?? 0.7),
+        max_embeds: Number(kw.max_embeds ?? 10),
+    };
+}
+
+function payloadFromDraft(d: Draft): Record<string, unknown> {
+    let kwargs: Record<string, unknown> = {};
+    try {
+        kwargs = JSON.parse(d.kwargs_text || '{}') as Record<string, unknown>;
+    } catch {
+        kwargs = {};
+    }
+    if (d.max_tokens > 0) kwargs.max_tokens = d.max_tokens;
+    if (d.timeout > 0) kwargs.timeout = d.timeout;
+    if (d.ctx_history > 0) kwargs.ctx_history = d.ctx_history;
+    if (d.max_embeds > 0) kwargs.max_embeds = d.max_embeds;
+    return {
+        name: d.name.trim(),
+        display_name: d.display_name.trim() || d.name.trim(),
+        model_type: d.model_type,
+        provider: d.provider,
+        api_base: d.api_base.trim(),
+        capabilities: d.capabilities.split(',').map((s) => s.trim()).filter(Boolean),
+        priority: Number(d.priority) || 50,
+        cost_tier: d.cost_tier,
+        domains: d.domains.split(',').map((s) => s.trim()).filter(Boolean),
+        ctx_length: Number(d.ctx_length) || 0,
+        limit_requests: Number(d.limit_requests) || 0,
+        limit_input: Number(d.limit_input) || 0,
+        limit_output: Number(d.limit_output) || 0,
+        vision: !!d.vision,
+        kwargs,
+        is_active: !!d.is_active,
+    };
 }
 
 @customElement('saas-settings-models')
 export class SaasSettingsModels extends LitElement {
     static styles = css`
         :host {
-            display: flex;
-            height: 100vh;
-            background: var(--saas-bg-page, #f5f5f5);
-            font-family: var(--saas-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-            color: var(--saas-text-primary, #1a1a1a);
+            display: block;
+            min-height: 100%;
+            background: var(--saas-bg-page, #0a0a0a);
+            color: var(--saas-text-primary, #e5e5e5);
+            font-family: var(--saas-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
         }
         * { box-sizing: border-box; }
-        .material-symbols-outlined {
-            font-family: 'Material Symbols Outlined';
-            font-weight: normal;
-            font-style: normal;
-            font-size: 20px;
-            line-height: 1;
-            display: inline-block;
-            white-space: nowrap;
-            -webkit-font-feature-settings: 'liga';
-            -webkit-font-smoothing: antialiased;
+        .wrap { max-width: 1120px; margin: 0 auto; padding: 24px 20px 48px; }
+        .head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+        h1 { font-size: 1.35rem; font-weight: 650; margin: 0; flex: 1; letter-spacing: -0.02em; }
+        .sub { color: var(--saas-text-secondary, #9ca3af); font-size: 0.9rem; margin-bottom: 20px; }
+        .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+        input, select, textarea {
+            background: var(--saas-bg-input, #1a1a1a);
+            border: 1px solid var(--saas-border, #2a2a2a);
+            color: inherit;
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-size: 0.9rem;
         }
-
-        .sidebar {
-            width: 240px;
-            background: var(--saas-bg-card, #ffffff);
-            border-right: 1px solid var(--saas-border-light, #e0e0e0);
+        input:focus, select:focus, textarea:focus {
+            outline: 2px solid #3b82f6;
+            outline-offset: 1px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid var(--saas-border, #2a2a2a);
+            background: var(--saas-bg-card, #141414);
+            color: inherit;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 0.88rem;
+            font-weight: 550;
+            cursor: pointer;
+        }
+        .btn:hover { border-color: #3b82f6; }
+        .btn.primary { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+        .btn.ghost { background: transparent; }
+        .btn.danger { border-color: #ef4444; color: #ef4444; }
+        .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 14px;
+        }
+        .card {
+            background: var(--saas-bg-card, #141414);
+            border: 1px solid var(--saas-border, #2a2a2a);
+            border-radius: 12px;
+            padding: 16px;
             display: flex;
             flex-direction: column;
-            flex-shrink: 0;
-            padding: 24px 0;
+            gap: 10px;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            cursor: pointer;
         }
-        .sidebar-header { padding: 0 20px 20px; border-bottom: 1px solid var(--saas-border-light, #e0e0e0); margin-bottom: 16px; }
-        .sidebar-title { font-size: 20px; font-weight: 600; margin: 0 0 4px 0; }
-        .sidebar-subtitle { font-size: 13px; color: var(--saas-text-secondary, #666); margin: 0; }
-        .tab-list { display: flex; flex-direction: column; gap: 4px; padding: 0 12px; }
-        .tab-item {
-            display: flex; align-items: center; gap: 12px;
-            padding: 12px 14px; border-radius: 8px; font-size: 14px;
-            color: var(--saas-text-secondary, #666); cursor: pointer;
-            border: none; background: transparent; width: 100%; text-align: left;
+        .card:hover { border-color: #6366f1; }
+        .card.live {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 1px #3b82f655;
         }
-        .tab-item:hover { background: var(--saas-bg-hover, #fafafa); color: var(--saas-text-primary, #1a1a1a); }
-        .tab-item.active { background: var(--saas-bg-active, #f0f0f0); color: var(--saas-text-primary, #1a1a1a); font-weight: 500; }
-        .back-btn {
-            display: flex; align-items: center; gap: 8px;
-            padding: 12px 20px; margin-top: auto; font-size: 14px;
-            color: var(--saas-text-secondary, #666); cursor: pointer;
-            border: none; background: transparent;
+        .card-top { display: flex; align-items: center; gap: 8px; }
+        .chip {
+            font-size: 0.68rem;
+            font-weight: 650;
+            letter-spacing: 0.02em;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: #1f2937;
+            color: #cbd5e1;
         }
-
-        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .header {
-            padding: 16px 24px; background: var(--saas-bg-card, #ffffff);
-            border-bottom: 1px solid var(--saas-border-light, #e0e0e0);
-            display: flex; align-items: center; justify-content: space-between; gap: 16px;
-        }
-        .header-title { font-size: 18px; font-weight: 600; margin: 0; }
-        .header-actions { display: flex; gap: 8px; align-items: center; }
-        .content { flex: 1; overflow-y: auto; padding: 24px; }
-
-        .section {
-            background: var(--saas-bg-card, #ffffff);
-            border: 1px solid var(--saas-border-light, #e0e0e0);
-            border-radius: 12px; padding: 24px; margin-bottom: 20px;
-        }
-        .section-title {
-            font-size: 16px; font-weight: 600; margin: 0 0 8px 0;
-            display: flex; align-items: center; gap: 10px;
-        }
-        .section-desc { font-size: 13px; color: var(--saas-text-secondary, #666); margin: 0 0 20px 0; }
-
-        .btn {
-            display: inline-flex; align-items: center; gap: 8px;
-            padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 500;
-            cursor: pointer; border: 1px solid var(--saas-border-light, #e0e0e0);
-            background: var(--saas-bg-card, #ffffff); color: var(--saas-text-primary, #1a1a1a);
-        }
-        .btn:hover { background: var(--saas-bg-hover, #fafafa); }
-        .btn.primary { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
-        .btn.primary:hover { background: #333; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn .material-symbols-outlined { font-size: 16px; }
-
-        .provider-row {
+        .chip.live { background: #1d4ed8; color: #fff; }
+        .chip.type { background: #312e81; color: #c7d2fe; }
+        .chip.warn { background: #78350f; color: #fcd34d; }
+        .chip.err { background: #7f1d1d; color: #fecaca; }
+        .model-id { font-weight: 650; font-size: 1rem; letter-spacing: -0.01em; }
+        .meta { color: var(--saas-text-secondary, #9ca3af); font-size: 0.8rem; line-height: 1.45; }
+        .facts {
             display: grid;
-            grid-template-columns: 160px 80px 1fr 1fr auto;
-            gap: 12px; align-items: end;
-            padding: 16px 0; border-bottom: 1px solid var(--saas-border-light, #e0e0e0);
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 10px;
+            font-size: 0.75rem;
+            color: var(--saas-text-secondary, #94a3b8);
         }
-        .provider-row:last-child { border-bottom: none; }
-        .provider-name { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; min-height: 40px; }
-
-        label.field-label {
-            display: block; font-size: 12px; font-weight: 500;
-            margin-bottom: 6px; color: var(--saas-text-secondary, #666);
+        .facts b { color: var(--saas-text-primary, #e5e5e5); font-weight: 550; }
+        .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+        .actions .btn { padding: 6px 10px; font-size: 0.78rem; }
+        .empty {
+            border: 1px dashed var(--saas-border, #2a2a2a);
+            border-radius: 12px;
+            padding: 36px 20px;
+            text-align: center;
+            color: var(--saas-text-secondary, #9ca3af);
         }
-        input, select {
-            width: 100%; padding: 10px 12px; border-radius: 8px;
-            border: 1px solid var(--saas-border-light, #e0e0e0);
-            font-size: 13px; background: var(--saas-bg-card, #ffffff);
-            color: var(--saas-text-primary, #1a1a1a);
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 16px;
         }
-        input:focus, select:focus { outline: none; border-color: #1a1a1a; }
-        input[type="password"] { font-family: monospace; letter-spacing: 0.05em; }
-
-        .key-row {
-            display: grid; grid-template-columns: 160px 1fr auto auto;
-            gap: 12px; align-items: end;
-            padding: 12px 0; border-bottom: 1px solid var(--saas-border-light, #e0e0e0);
+        .modal {
+            width: min(720px, 100%);
+            max-height: min(92vh, 900px);
+            overflow: auto;
+            background: var(--saas-bg-card, #121212);
+            border: 1px solid var(--saas-border, #2a2a2a);
+            border-radius: 14px;
+            padding: 20px 22px 22px;
         }
-        .key-row:last-child { border-bottom: none; }
-        .key-hint { font-size: 11px; color: var(--saas-text-muted, #999); margin-top: 4px; }
-
-        .slot-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+        .modal h2 { margin: 0 0 4px; font-size: 1.15rem; }
+        .tabs { display: flex; gap: 6px; margin: 14px 0 16px; border-bottom: 1px solid var(--saas-border, #2a2a2a); }
+        .tab {
+            background: transparent;
+            border: none;
+            color: var(--saas-text-secondary, #9ca3af);
+            padding: 10px 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
         }
-        @media (max-width: 960px) {
-            .provider-row { grid-template-columns: 1fr 1fr; }
-            .slot-grid { grid-template-columns: 1fr; }
-            .key-row { grid-template-columns: 1fr; }
+        .tab.on { color: #fff; border-bottom-color: #3b82f6; }
+        .field {
+            display: grid;
+            grid-template-columns: 170px 1fr;
+            gap: 10px;
+            align-items: start;
+            margin-bottom: 12px;
         }
-        .slot-card {
-            border: 1px solid var(--saas-border-light, #e0e0e0);
-            border-radius: 10px; padding: 16px; background: var(--saas-bg-hover, #fafafa);
+        .field label {
+            font-size: 0.82rem;
+            color: var(--saas-text-secondary, #9ca3af);
+            padding-top: 9px;
         }
-        .slot-card h4 {
-            margin: 0 0 4px 0; font-size: 14px;
-            display: flex; align-items: center; gap: 8px;
+        .field .hint {
+            grid-column: 2;
+            font-size: 0.72rem;
+            color: var(--saas-text-secondary, #64748b);
+            margin-top: -6px;
+            margin-bottom: 6px;
         }
-        .slot-card p { margin: 0 0 12px 0; font-size: 12px; color: var(--saas-text-secondary, #666); }
-
-        .gate {
-            border: 1px solid #f59e0b;
-            background: rgba(245, 158, 11, 0.08);
-            border-radius: 12px; padding: 20px 24px; margin-bottom: 20px;
-            display: flex; gap: 16px; align-items: flex-start;
+        .field input, .field select, .field textarea { width: 100%; }
+        .field textarea { min-height: 88px; font-family: ui-monospace, monospace; font-size: 0.8rem; }
+        .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .modal-foot {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 18px;
+            padding-top: 14px;
+            border-top: 1px solid var(--saas-border, #2a2a2a);
         }
-        .gate .material-symbols-outlined { color: #d97706; font-size: 28px; }
-        .gate h3 { margin: 0 0 6px 0; font-size: 15px; }
-        .gate p { margin: 0; font-size: 13px; color: var(--saas-text-secondary, #555); line-height: 1.5; }
-
-        .toast {
-            position: fixed; bottom: 24px; right: 24px; z-index: 1000;
-            padding: 12px 18px; border-radius: 8px; font-size: 13px;
-            background: #1a1a1a; color: #fff; max-width: 420px;
+        .model-list {
+            border: 1px solid var(--saas-border, #2a2a2a);
+            border-radius: 8px;
+            max-height: 180px;
+            overflow: auto;
+            margin: 6px 0 2px;
         }
-        .toast.error { background: #b91c1c; }
-        .toast.ok { background: #047857; }
-
-        .table {
-            width: 100%; border-collapse: collapse; font-size: 13px;
+        .model-list button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--saas-border, #2a2a2a);
+            color: inherit;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.85rem;
         }
-        .table th {
-            text-align: left; font-size: 11px; text-transform: uppercase;
-            letter-spacing: 0.4px; color: var(--saas-text-secondary, #666);
-            padding: 8px 10px; border-bottom: 1px solid var(--saas-border-light, #e0e0e0);
-        }
-        .table td {
-            padding: 10px; border-bottom: 1px solid var(--saas-border-light, #eee);
-            vertical-align: middle;
-        }
-        .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
-        .muted { color: var(--saas-text-muted, #999); font-size: 12px; }
-        .form-grid {
-            display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
-        }
-        .inline-form {
-            display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 12px; align-items: end;
-            margin-top: 16px;
-        }
-        @media (max-width: 960px) {
-            .form-grid, .inline-form { grid-template-columns: 1fr; }
-        }
-        .badge-wrap { display: inline-flex; gap: 6px; }
+        .model-list button:hover, .model-list button.sel { background: #1e3a5f; }
+        .status { font-size: 0.85rem; min-height: 1.2em; margin: 8px 0; }
+        .status.err { color: #f87171; }
+        .status.ok { color: #34d399; }
     `;
 
-    @state() private _tab: TabId = 'providers';
-    @state() private _loading = false;
-    @state() private _saving = false;
-    @state() private _message: { kind: 'ok' | 'error'; text: string } | null = null;
-
-    @state() private _providers: ProviderRow[] = [];
-    @state() private _keys: Record<string, { configured: boolean; draft: string }> = {};
     @state() private _models: ModelRow[] = [];
-    @state() private _slots: SlotsState = {
-        chat_model_id: null,
-        utility_model_id: null,
-        embedding_model_id: null,
-        capsule_id: null,
-        scope: 'tenant',
-    };
-    @state() private _capsules: CapsuleOption[] = [];
-    @state() private _presets: PresetRow[] = [];
-    @state() private _gate: SetupGate | null = null;
-    @state() private _testBusy: Record<string, boolean> = {};
-    @state() private _testResult: Record<string, { ok: boolean; detail: string }> = {};
-    @state() private _presetName = '';
-    @state() private _presetNotes = '';
-    @state() private _newModel: Partial<ModelRow> & { provider: string; name: string; model_type: 'chat' | 'embedding' } = {
-        name: '',
-        provider: '',
-        model_type: 'chat',
-        display_name: '',
-        api_base: '',
-    };
-    /** Model id being edited inline; null when no row is in edit mode. */
-    @state() private _editingModelId: string | null = null;
-    @state() private _editModel: Partial<ModelRow> = {};
+    @state() private _used: UsedFor | null = null;
+    @state() private _draft: Draft | null = null;
+    @state() private _tab: ModalTab = 'normal';
+    @state() private _search = '';
+    @state() private _filterType = 'all';
+    @state() private _status = '';
+    @state() private _statusOk = true;
+    @state() private _loading = true;
+    @state() private _keySaved: Record<string, boolean> = {};
+    @state() private _liveModels: string[] = [];
+    @state() private _liveSource = '';
 
-    private _tabs: { id: TabId; label: string; icon: string }[] = [
-        { id: 'providers', label: 'Providers', icon: 'dns' },
-        { id: 'slots', label: 'Model Slots', icon: 'account_tree' },
-        { id: 'presets', label: 'Presets', icon: 'bookmark' },
-        { id: 'models', label: 'Model Catalog', icon: 'smart_toy' },
-    ];
-
-    async connectedCallback() {
+    connectedCallback(): void {
         super.connectedCallback();
-        await this._loadAll();
+        void this._reload();
     }
 
-    private async _loadAll() {
+    private async _reload(): Promise<void> {
         this._loading = true;
         try {
-            await Promise.all([
-                this._loadProviders(),
-                this._loadKeys(),
-                this._loadModels(),
-                this._loadSlots(),
-                this._loadPresets(),
-                this._loadCapsules(),
-                this._loadGate(),
-            ]);
-        } catch (err) {
-            this._flash('error', `Failed to load model settings: ${err instanceof Error ? err.message : err}`);
+            this._models = await apiClient.get<ModelRow[]>('/llm/models');
+            this._used = await apiClient.get<UsedFor>('/llm/slots');
+            const secrets = await apiClient.get<{ provider: string; configured: boolean }[]>(
+                '/secrets/providers',
+            );
+            const map: Record<string, boolean> = {};
+            for (const s of secrets || []) map[s.provider] = !!s.configured;
+            this._keySaved = map;
+        } catch (e) {
+            this._statusOk = false;
+            this._status = e instanceof Error ? e.message : String(e);
         } finally {
             this._loading = false;
         }
     }
 
-    private _flash(kind: 'ok' | 'error', text: string) {
-        this._message = { kind, text };
-        window.setTimeout(() => {
-            if (this._message?.text === text) this._message = null;
-        }, 5000);
-    }
-
-    private async _loadProviders() {
-        this._providers = await apiClient.get<ProviderRow[]>('/llm/providers');
-    }
-
-    private async _loadKeys() {
-        const rows = await apiClient.get<{ provider: string; configured: boolean }[]>('/secrets/providers');
-        const next: Record<string, { configured: boolean; draft: string }> = {};
-        for (const row of rows) {
-            next[row.provider] = { configured: row.configured, draft: this._keys[row.provider]?.draft ?? '' };
+    private get _visible(): ModelRow[] {
+        let rows = this._models;
+        if (this._filterType !== 'all') rows = rows.filter((m) => m.model_type === this._filterType);
+        const q = this._search.trim().toLowerCase();
+        if (q) {
+            rows = rows.filter(
+                (m) =>
+                    m.name.toLowerCase().includes(q) ||
+                    (m.display_name || '').toLowerCase().includes(q) ||
+                    (m.provider || '').toLowerCase().includes(q),
+            );
         }
-        this._keys = next;
+        return rows;
     }
 
-    private async _loadModels() {
-        this._models = await apiClient.get<ModelRow[]>('/llm/models');
+    private _usedFor(id: string): string[] {
+        if (!this._used) return [];
+        const out: string[] = [];
+        if (this._used.chat_model_id === id) out.push('Chat');
+        if (this._used.utility_model_id === id) out.push('Help');
+        if (this._used.embedding_model_id === id) out.push('Memory');
+        return out;
     }
 
-    private async _loadSlots() {
-        const capsuleId = this._slots.capsule_id || undefined;
-        const q = capsuleId ? `?capsule_id=${encodeURIComponent(capsuleId)}` : '';
-        this._slots = await apiClient.get<SlotsState>(`/llm/slots${q}`);
+    private _isLive(id: string): boolean {
+        return !!this._used && this._used.chat_model_id === id;
     }
 
-    private async _loadPresets() {
-        this._presets = await apiClient.get<PresetRow[]>('/llm/presets');
-    }
-
-    private async _loadCapsules() {
+    private async _activate(m: ModelRow): Promise<void> {
         try {
-            const rows = await apiClient.get<{ id: string; name: string }[]>('/capsules/');
-            this._capsules = (rows || []).map(r => ({ id: String(r.id), name: r.name }));
-        } catch {
-            this._capsules = [];
+            await apiClient.patch(`/llm/models/${m.id}`, { is_active: true });
+            const body: Record<string, string | null> = {};
+            if (m.model_type === 'chat') body.chat_model_id = m.id;
+            if (m.model_type === 'embedding') body.embedding_model_id = m.id;
+            if (m.model_type === 'chat' && !this._used?.utility_model_id) body.utility_model_id = m.id;
+            if (Object.keys(body).length) await apiClient.put('/llm/slots', body);
+            this._statusOk = true;
+            this._status = `Live: ${m.name}`;
+            await this._reload();
+        } catch (e) {
+            this._statusOk = false;
+            this._status = e instanceof Error ? e.message : String(e);
         }
     }
 
-    private async _loadGate() {
-        const capsuleId = this._slots.capsule_id || undefined;
-        const q = capsuleId ? `?capsule_id=${encodeURIComponent(capsuleId)}` : '';
-        this._gate = await apiClient.get<SetupGate>(`/llm/setup-gate${q}`);
+    private async _setUsed(role: 'chat' | 'help' | 'memory', id: string): Promise<void> {
+        const key =
+            role === 'chat' ? 'chat_model_id' : role === 'help' ? 'utility_model_id' : 'embedding_model_id';
+        await apiClient.put('/llm/slots', { [key]: id });
+        await this._reload();
     }
 
-    private async _saveProvider(p: ProviderRow) {
-        this._saving = true;
+    private _openCreate(): void {
+        this._draft = emptyDraft('groq');
+        this._tab = 'normal';
+        this._liveModels = [];
+    }
+
+    private _openEdit(m: ModelRow): void {
+        this._draft = draftFromModel(m);
+        this._tab = 'normal';
+        this._liveModels = [];
+    }
+
+    private async _saveKey(): Promise<void> {
+        if (!this._draft?.api_key?.trim()) return;
         try {
-            await apiClient.put(`/llm/providers/${p.id}`, {
-                enabled: p.enabled,
-                base_url: p.base_url,
-                model_name: p.model_name,
-                label: p.is_custom ? p.label : undefined,
+            await apiClient.put(`/secrets/providers/${this._draft.provider}`, {
+                api_key: this._draft.api_key.trim(),
             });
-            this._flash('ok', `Provider ${p.label} saved`);
-            await Promise.all([this._loadProviders(), this._loadGate()]);
-        } catch (err) {
-            this._flash('error', `Save provider failed: ${err instanceof Error ? err.message : err}`);
-        } finally {
-            this._saving = false;
+            this._draft.api_key = '';
+            this._keySaved = { ...this._keySaved, [this._draft.provider]: true };
+            this._statusOk = true;
+            this._status = 'Key saved to Vault (not stored in files).';
+        } catch (e) {
+            this._statusOk = false;
+            this._status = e instanceof Error ? e.message : String(e);
         }
     }
 
-    private async _saveKey(provider: string) {
-        const draft = (this._keys[provider]?.draft || '').trim();
-        if (!draft) {
-            this._flash('error', 'API key is required (write-only — it will not be shown again)');
+    private async _loadModels(): Promise<void> {
+        if (!this._draft) return;
+        try {
+            const res = await apiClient.post<{ models: string[]; source: string; detail: string }>(
+                '/llm/models/search',
+                {
+                    provider: this._draft.provider,
+                    query: '',
+                    model_type: this._draft.model_type,
+                    api_base: this._draft.api_base || null,
+                    api_key: this._draft.api_key || null,
+                },
+            );
+            this._liveModels = res.models || [];
+            this._liveSource = res.source || 'none';
+            if (res.detail) {
+                this._statusOk = false;
+                this._status = res.detail;
+            } else {
+                this._statusOk = true;
+                this._status = `Loaded ${this._liveModels.length} models (${res.source})`;
+            }
+        } catch (e) {
+            this._statusOk = false;
+            this._status = e instanceof Error ? e.message : String(e);
+        }
+    }
+
+    private async _saveModel(): Promise<void> {
+        if (!this._draft) return;
+        if (!this._draft.name.trim()) {
+            this._statusOk = false;
+            this._status = 'Model ID is required.';
             return;
         }
-        this._saving = true;
         try {
-            const res = await apiClient.put<{ saved: boolean; detail: string }>(
-                `/secrets/providers/${provider}`,
-                { api_key: draft }
-            );
-            if (!res.saved) {
-                this._flash('error', `Key not saved for ${provider}: ${res.detail}`);
-                return;
+            if (this._draft.api_key.trim()) await this._saveKey();
+            const payload = payloadFromDraft(this._draft);
+            if (this._draft.id) {
+                await apiClient.patch(`/llm/models/${this._draft.id}`, payload);
+            } else {
+                await apiClient.post('/llm/models', payload);
             }
-            this._keys = {
-                ...this._keys,
-                [provider]: { configured: true, draft: '' },
-            };
-            this._flash('ok', `API key for ${provider} stored in Vault (never echoed back)`);
-            await this._loadProviders();
-        } catch (err) {
-            this._flash('error', `Save key failed: ${err instanceof Error ? err.message : err}`);
-        } finally {
-            this._saving = false;
+            this._statusOk = true;
+            this._status = 'Model saved.';
+            this._draft = null;
+            await this._reload();
+        } catch (e) {
+            this._statusOk = false;
+            this._status = e instanceof Error ? e.message : String(e);
         }
     }
 
-    private async _deleteKey(provider: string) {
-        this._saving = true;
-        try {
-            await apiClient.delete(`/secrets/providers/${provider}`);
-            this._keys = {
-                ...this._keys,
-                [provider]: { configured: false, draft: '' },
-            };
-            this._flash('ok', `API key for ${provider} deleted from Vault`);
-            await this._loadProviders();
-        } catch (err) {
-            this._flash('error', `Delete key failed: ${err instanceof Error ? err.message : err}`);
-        } finally {
-            this._saving = false;
-        }
-    }
-
-    private async _testConnection(opts: {
-        provider: string;
-        model?: string;
-        base_url?: string;
-        model_id?: string;
-        api_key?: string;
-    }) {
-        const key = opts.model_id || opts.provider;
-        this._testBusy = { ...this._testBusy, [key]: true };
+    private async _testConnection(): Promise<void> {
+        if (!this._draft) return;
         try {
             const res = await apiClient.post<{ success: boolean; latency_ms?: number; detail: string }>(
                 '/llm/test-connection',
                 {
-                    provider: opts.provider,
-                    model: opts.model || undefined,
-                    base_url: opts.base_url || undefined,
-                    model_id: opts.model_id || undefined,
-                    api_key: opts.api_key || undefined,
-                }
-            );
-            this._testResult = {
-                ...this._testResult,
-                [key]: {
-                    ok: res.success,
-                    detail: res.success
-                        ? `Connected${res.latency_ms != null ? ` (${res.latency_ms}ms)` : ''}`
-                        : res.detail || 'Connection failed',
+                    provider: this._draft.provider,
+                    model: this._draft.name || null,
+                    base_url: this._draft.api_base || null,
+                    api_key: this._draft.api_key || null,
+                    model_id: this._draft.id || null,
                 },
-            };
-        } catch (err) {
-            this._testResult = {
-                ...this._testResult,
-                [key]: { ok: false, detail: err instanceof Error ? err.message : String(err) },
-            };
-        } finally {
-            this._testBusy = { ...this._testBusy, [key]: false };
-        }
-    }
-
-    private async _saveSlots() {
-        this._saving = true;
-        try {
-            await apiClient.put('/llm/slots', {
-                chat_model_id: this._slots.chat_model_id,
-                utility_model_id: this._slots.utility_model_id,
-                embedding_model_id: this._slots.embedding_model_id,
-                capsule_id: this._slots.capsule_id,
-            });
-            this._flash('ok', 'Model slots saved');
-            await Promise.all([this._loadSlots(), this._loadGate()]);
-        } catch (err) {
-            this._flash('error', `Save slots failed: ${err instanceof Error ? err.message : err}`);
-        } finally {
-            this._saving = false;
-        }
-    }
-
-    private async _savePreset() {
-        const name = this._presetName.trim();
-        if (!name) {
-            this._flash('error', 'Preset name is required');
-            return;
-        }
-        this._saving = true;
-        try {
-            await apiClient.post('/llm/presets', {
-                name,
-                notes: this._presetNotes,
-                chat_model_id: this._slots.chat_model_id,
-                utility_model_id: this._slots.utility_model_id,
-                embedding_model_id: this._slots.embedding_model_id,
-            });
-            this._presetName = '';
-            this._presetNotes = '';
-            this._flash('ok', `Preset "${name}" saved`);
-            await this._loadPresets();
-        } catch (err) {
-            this._flash('error', `Save preset failed: ${err instanceof Error ? err.message : err}`);
-        } finally {
-            this._saving = false;
-        }
-    }
-
-    private async _applyPreset(p: PresetRow) {
-        this._saving = true;
-        try {
-            await apiClient.post(
-                `/llm/presets/${p.id}/apply${this._slots.capsule_id ? `?capsule_id=${this._slots.capsule_id}` : ''}`,
-                {}
             );
-            this._flash('ok', `Preset "${p.name}" applied`);
-            await Promise.all([this._loadSlots(), this._loadGate()]);
-        } catch (err) {
-            this._flash('error', `Apply preset failed: ${err instanceof Error ? err.message : err}`);
-        } finally {
-            this._saving = false;
+            this._statusOk = !!res.success;
+            this._status = res.success
+                ? `Connection OK (${res.latency_ms ?? 0} ms) ${res.detail}`.trim()
+                : res.detail || 'Connection failed';
+        } catch (e) {
+            this._statusOk = false;
+            this._status = e instanceof Error ? e.message : String(e);
         }
     }
 
-    private async _deletePreset(p: PresetRow) {
-        try {
-            await apiClient.delete(`/llm/presets/${p.id}`);
-            this._flash('ok', `Preset "${p.name}" deleted`);
-            await this._loadPresets();
-        } catch (err) {
-            this._flash('error', `Delete preset failed: ${err instanceof Error ? err.message : err}`);
-        }
+    private async _deleteModel(): Promise<void> {
+        if (!this._draft?.id) return;
+        if (!confirm(`Delete model “${this._draft.name}”?`)) return;
+        await apiClient.delete(`/llm/models/${this._draft.id}`);
+        this._draft = null;
+        await this._reload();
     }
 
-    private async _createModel() {
-        const m = this._newModel;
-        if (!m.name.trim() || !m.provider.trim()) {
-            this._flash('error', 'Model name and provider are required');
-            return;
-        }
-        this._saving = true;
-        try {
-            await apiClient.post('/llm/models', {
-                name: m.name.trim(),
-                display_name: (m.display_name || m.name).trim(),
-                model_type: m.model_type,
-                provider: m.provider.trim(),
-                api_base: (m.api_base || '').trim(),
-                is_active: true,
-            });
-            this._newModel = {
-                name: '',
-                provider: this._newModel.provider,
-                model_type: this._newModel.model_type,
-                display_name: '',
-                api_base: '',
-            };
-            this._flash('ok', 'Model configuration created');
-            await Promise.all([this._loadModels(), this._loadGate()]);
-        } catch (err) {
-            this._flash('error', `Create model failed: ${err instanceof Error ? err.message : err}`);
-        } finally {
-            this._saving = false;
-        }
-    }
-
-    private async _toggleModelActive(m: ModelRow) {
-        try {
-            await apiClient.patch(`/llm/models/${m.id}`, { is_active: !m.is_active });
-            await Promise.all([this._loadModels(), this._loadGate()]);
-        } catch (err) {
-            this._flash('error', `Toggle model failed: ${err instanceof Error ? err.message : err}`);
-        }
-    }
-
-    private _startEditModel(m: ModelRow) {
-        this._editingModelId = m.id;
-        this._editModel = {
-            name: m.name,
-            display_name: m.display_name,
-            model_type: m.model_type,
-            provider: m.provider,
-            api_base: m.api_base,
+    private _bind<K extends keyof Draft>(key: K) {
+        return (ev: Event) => {
+            if (!this._draft) return;
+            const el = ev.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+            const raw = el.value;
+            if (typeof this._draft[key] === 'boolean') {
+                (this._draft as Draft)[key] = (el as HTMLInputElement).checked as Draft[K];
+            } else if (typeof this._draft[key] === 'number') {
+                (this._draft as Draft)[key] = Number(raw) as Draft[K];
+            } else {
+                (this._draft as Draft)[key] = raw as Draft[K];
+            }
+            this._draft = { ...this._draft };
         };
     }
 
-    private _cancelEditModel() {
-        this._editingModelId = null;
-        this._editModel = {};
+    private _card(m: ModelRow) {
+        const used = this._usedFor(m.id);
+        const live = this._isLive(m.id);
+        return html`
+            <article
+                class="card ${live ? 'live' : ''}"
+                @click=${() => this._openEdit(m)}
+                @keydown=${(e: KeyboardEvent) => {
+                    if (e.key === 'Enter') this._openEdit(m);
+                }}
+                tabindex="0"
+                role="button"
+            >
+                <div class="card-top">
+                    ${live
+                        ? html`<span class="chip live">LIVE</span>`
+                        : html`<span class="chip">${m.is_active ? 'Ready' : 'Off'}</span>`}
+                    <span class="chip type">${m.model_type === 'embedding' ? 'Embeddings' : 'Chat'}</span>
+                    ${!this._keySaved[m.provider]
+                        ? html`<span class="chip warn">Needs key</span>`
+                        : nothing}
+                </div>
+                <div class="model-id">${m.name}</div>
+                <div class="meta">
+                    ${m.display_name || m.name} · ${m.provider}
+                    ${m.api_base ? html`<br />${m.api_base}` : nothing}
+                </div>
+                <div class="facts">
+                    <span>ctx <b>${m.ctx_length || '—'}</b></span>
+                    <span>price <b>${m.cost_tier}</b></span>
+                    <span>priority <b>${m.priority}</b></span>
+                    <span>vision <b>${m.vision ? 'yes' : 'no'}</b></span>
+                </div>
+                <div class="meta">
+                    ${used.length ? html`Used for: <b>${used.join(', ')}</b>` : html`Used for: —`}
+                </div>
+                <div class="actions" @click=${(e: Event) => e.stopPropagation()}>
+                    ${live
+                        ? html`<span class="chip live">✓ Active</span>`
+                        : html`<button class="btn primary" @click=${() => void this._activate(m)}>
+                              Activate
+                          </button>`}
+                    <button class="btn ghost" @click=${() => this._openEdit(m)}>Edit</button>
+                    <button class="btn ghost" @click=${() => this._openEdit(m)}>Test</button>
+                </div>
+            </article>
+        `;
     }
 
-    private async _saveEditModel(m: ModelRow) {
-        const e = this._editModel;
-        if (!(e.name || '').trim() || !(e.provider || '').trim()) {
-            this._flash('error', 'Model name and provider are required');
-            return;
-        }
-        this._saving = true;
-        try {
-            await apiClient.patch(`/llm/models/${m.id}`, {
-                name: (e.name || '').trim(),
-                display_name: (e.display_name || e.name || '').trim(),
-                model_type: e.model_type || m.model_type,
-                provider: (e.provider || '').trim(),
-                api_base: (e.api_base || '').trim(),
-            });
-            this._editingModelId = null;
-            this._editModel = {};
-            this._flash('ok', `Model ${e.name} updated`);
-            await Promise.all([this._loadModels(), this._loadGate()]);
-        } catch (err) {
-            this._flash('error', `Update model failed: ${err instanceof Error ? err.message : err}`);
-        } finally {
-            this._saving = false;
-        }
-    }
+    private _editor() {
+        const d = this._draft;
+        if (!d) return nothing;
+        return html`
+            <div class="modal-backdrop" @click=${(e: Event) => {
+                if (e.target === e.currentTarget) this._draft = null;
+            }}>
+                <div class="modal" role="dialog" aria-label="Model editor">
+                    <h2>${d.id ? `Edit model — ${d.name}` : 'Add model'}</h2>
+                    <div class="meta">
+                        ${d.provider}
+                        ${this._isLive(d.id || '')
+                            ? html` · <span class="chip live">LIVE</span>`
+                            : nothing}
+                    </div>
+                    <div class="tabs">
+                        <button
+                            class="tab ${this._tab === 'normal' ? 'on' : ''}"
+                            @click=${() => (this._tab = 'normal')}
+                        >
+                            Normal
+                        </button>
+                        <button
+                            class="tab ${this._tab === 'advanced' ? 'on' : ''}"
+                            @click=${() => (this._tab = 'advanced')}
+                        >
+                            Advanced
+                        </button>
+                        <button
+                            class="tab ${this._tab === 'used' ? 'on' : ''}"
+                            @click=${() => (this._tab = 'used')}
+                        >
+                            Used for
+                        </button>
+                    </div>
 
-    private async _deleteModel(m: ModelRow) {
-        try {
-            await apiClient.delete(`/llm/models/${m.id}`);
-            this._flash('ok', `Model ${m.name} deleted`);
-            await Promise.all([this._loadModels(), this._loadSlots(), this._loadGate()]);
-        } catch (err) {
-            this._flash('error', `Delete model failed: ${err instanceof Error ? err.message : err}`);
-        }
-    }
+                    ${this._tab === 'normal'
+                        ? html`
+                              <div class="field">
+                                  <label>Provider</label>
+                                  <select .value=${d.provider} @change=${this._bind('provider')}>
+                                      ${PROVIDERS.map(
+                                          (p) =>
+                                              html`<option value=${p.id} ?selected=${p.id === d.provider}>
+                                                  ${p.label}
+                                              </option>`,
+                                      )}
+                                  </select>
+                              </div>
+                              <div class="field">
+                                  <label>Custom URL</label>
+                                  <input
+                                      .value=${d.api_base}
+                                      @input=${this._bind('api_base')}
+                                      placeholder="https://… (optional — MiMo / gateway / local)"
+                                  />
+                                  <div class="hint">
+                                      Empty uses the provider standard address. Used for “Load models” and
+                                      runtime calls.
+                                  </div>
+                              </div>
+                              <div class="field">
+                                  <label>Provider key</label>
+                                  <div class="row2">
+                                      <input
+                                          type="password"
+                                          .value=${d.api_key}
+                                          @input=${this._bind('api_key')}
+                                          placeholder="${this._keySaved[d.provider]
+                                              ? '•••••• (saved in Vault)'
+                                              : 'Paste key…'}"
+                                          autocomplete="off"
+                                      />
+                                      <button class="btn" @click=${() => void this._saveKey()}>
+                                          Save to Vault
+                                      </button>
+                                  </div>
+                                  <div class="hint">
+                                      Typed here, stored in Vault only. Never files. Never shown again.
+                                  </div>
+                              </div>
+                              <div class="field">
+                                  <label>Model list</label>
+                                  <div>
+                                      <button class="btn" @click=${() => void this._loadModels()}>
+                                          Load models
+                                      </button>
+                                      <div class="meta" style="margin-top: 6px">
+                                          Source: ${this._liveSource || '—'}
+                                      </div>
+                                      <div class="model-list">
+                                          ${this._liveModels.length === 0
+                                              ? html`<button disabled>No models loaded yet</button>`
+                                              : this._liveModels.map(
+                                                    (name) =>
+                                                        html`<button
+                                                            class="${name === d.name ? 'sel' : ''}"
+                                                            @click=${() => {
+                                                                this._draft = {
+                                                                    ...this._draft!,
+                                                                    name,
+                                                                    display_name:
+                                                                        this._draft!.display_name || name,
+                                                                };
+                                                            }}
+                                                        >
+                                                            ${name}
+                                                        </button>`,
+                                                )}
+                                      </div>
+                                      <div class="hint">Click a name — or type below.</div>
+                                  </div>
+                              </div>
+                              <div class="field">
+                                  <label>Model ID</label>
+                                  <input .value=${d.name} @input=${this._bind('name')} />
+                              </div>
+                              <div class="field">
+                                  <label>Display name</label>
+                                  <input .value=${d.display_name} @input=${this._bind('display_name')} />
+                              </div>
+                              <div class="field">
+                                  <label>Type</label>
+                                  <select .value=${d.model_type} @change=${this._bind('model_type')}>
+                                      <option value="chat" ?selected=${d.model_type === 'chat'}>Chat</option>
+                                      <option
+                                          value="embedding"
+                                          ?selected=${d.model_type === 'embedding'}
+                                      >
+                                          Embeddings
+                                      </option>
+                                  </select>
+                              </div>
+                              <div class="field">
+                                  <label>Price level</label>
+                                  <select .value=${d.cost_tier} @change=${this._bind('cost_tier')}>
+                                      ${['free', 'low', 'standard', 'premium'].map(
+                                          (t) =>
+                                              html`<option value=${t} ?selected=${t === d.cost_tier}>
+                                                  ${t}
+                                              </option>`,
+                                      )}
+                                  </select>
+                              </div>
+                              <div class="field">
+                                  <label>Sees images</label>
+                                  <input
+                                      type="checkbox"
+                                      .checked=${d.vision}
+                                      @change=${this._bind('vision')}
+                                  />
+                              </div>
+                              <div class="field">
+                                  <label>Use this model</label>
+                                  <input
+                                      type="checkbox"
+                                      .checked=${d.is_active}
+                                      @change=${this._bind('is_active')}
+                                  />
+                              </div>
+                          `
+                        : nothing}
 
-    private _chatModels() {
-        return this._models.filter(m => m.model_type === 'chat' && m.is_active);
-    }
+                    ${this._tab === 'advanced'
+                        ? html`
+                              <div class="field">
+                                  <label>Context window</label>
+                                  <input
+                                      type="number"
+                                      .value=${String(d.ctx_length)}
+                                      @input=${this._bind('ctx_length')}
+                                  />
+                              </div>
+                              <div class="field">
+                                  <label>Max output tokens</label>
+                                  <input
+                                      type="number"
+                                      .value=${String(d.max_tokens)}
+                                      @input=${this._bind('max_tokens')}
+                                  />
+                                  <div class="hint">Stored in extra options if schema has no column.</div>
+                              </div>
+                              <div class="field">
+                                  <label>Timeout (seconds)</label>
+                                  <input
+                                      type="number"
+                                      .value=${String(d.timeout)}
+                                      @input=${this._bind('timeout')}
+                                  />
+                              </div>
+                              <div class="field">
+                                  <label>Chat history share</label>
+                                  <input
+                                      type="number"
+                                      step="0.01"
+                                      min="0.01"
+                                      max="1"
+                                      .value=${String(d.ctx_history)}
+                                      @input=${this._bind('ctx_history')}
+                                  />
+                                  <div class="hint">
+                                      Portion of context used for chat history (Agent Zero parity).
+                                  </div>
+                              </div>
+                              <div class="field">
+                                  <label>Max embeds</label>
+                                  <input
+                                      type="number"
+                                      .value=${String(d.max_embeds)}
+                                      @input=${this._bind('max_embeds')}
+                                  />
+                              </div>
+                              <div class="field">
+                                  <label>Requests / min</label>
+                                  <input
+                                      type="number"
+                                      .value=${String(d.limit_requests)}
+                                      @input=${this._bind('limit_requests')}
+                                  />
+                              </div>
+                              <div class="field">
+                                  <label>Input tokens / min</label>
+                                  <input
+                                      type="number"
+                                      .value=${String(d.limit_input)}
+                                      @input=${this._bind('limit_input')}
+                                  />
+                              </div>
+                              <div class="field">
+                                  <label>Output tokens / min</label>
+                                  <input
+                                      type="number"
+                                      .value=${String(d.limit_output)}
+                                      @input=${this._bind('limit_output')}
+                                  />
+                              </div>
+                              <div class="field">
+                                  <label>Priority</label>
+                                  <input
+                                      type="number"
+                                      .value=${String(d.priority)}
+                                      @input=${this._bind('priority')}
+                                  />
+                              </div>
+                              <div class="field">
+                                  <label>Good at</label>
+                                  <input
+                                      .value=${d.capabilities}
+                                      @input=${this._bind('capabilities')}
+                                      placeholder="chat, tools, reasoning"
+                                  />
+                              </div>
+                              <div class="field">
+                                  <label>Used in</label>
+                                  <input
+                                      .value=${d.domains}
+                                      @input=${this._bind('domains')}
+                                      placeholder="general, product"
+                                  />
+                              </div>
+                              <div class="field">
+                                  <label>Extra options</label>
+                                  <textarea
+                                      .value=${d.kwargs_text}
+                                      @input=${this._bind('kwargs_text')}
+                                  ></textarea>
+                                  <div class="hint">JSON. temperature, top_p, and other model params.</div>
+                              </div>
+                          `
+                        : nothing}
 
-    private _embedModels() {
-        return this._models.filter(m => m.model_type === 'embedding' && m.is_active);
+                    ${this._tab === 'used'
+                        ? html`
+                              <div class="field">
+                                  <label>Chat</label>
+                                  <input
+                                      type="checkbox"
+                                      .checked=${this._used?.chat_model_id === d.id}
+                                      @change=${() => d.id && void this._setUsed('chat', d.id)}
+                                  />
+                                  <div class="hint">Primary conversations</div>
+                              </div>
+                              <div class="field">
+                                  <label>Help</label>
+                                  <input
+                                      type="checkbox"
+                                      .checked=${this._used?.utility_model_id === d.id}
+                                      @change=${() => d.id && void this._setUsed('help', d.id)}
+                                  />
+                                  <div class="hint">Summaries and background work</div>
+                              </div>
+                              <div class="field">
+                                  <label>Memory</label>
+                                  <input
+                                      type="checkbox"
+                                      .checked=${this._used?.embedding_model_id === d.id}
+                                      @change=${() => d.id && void this._setUsed('memory', d.id)}
+                                  />
+                                  <div class="hint">Embeddings for memory and search</div>
+                              </div>
+                          `
+                        : nothing}
+
+                    ${this._status
+                        ? html`<div class="status ${this._statusOk ? 'ok' : 'err'}">${this._status}</div>`
+                        : nothing}
+
+                    <div class="modal-foot">
+                        <button class="btn primary" @click=${() => void this._saveModel()}>Save model</button>
+                        <button class="btn" @click=${() => void this._testConnection()}>
+                            Test connection
+                        </button>
+                        ${d.id
+                            ? html`<button class="btn" @click=${() => void this._activate(this._models.find((m) => m.id === d.id!)!)}>
+                                  Make live
+                              </button>
+                              <button class="btn danger" @click=${() => void this._deleteModel()}>
+                                  Delete
+                              </button>`
+                            : nothing}
+                        <button class="btn ghost" @click=${() => (this._draft = null)}>Cancel</button>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     render() {
         return html`
-            <aside class="sidebar">
-                <div class="sidebar-header">
-                    <h1 class="sidebar-title">Models</h1>
-                    <p class="sidebar-subtitle">Providers, keys, slots, presets</p>
-                </div>
-                <div class="tab-list">
-                    ${this._tabs.map(tab => html`
-                        <button
-                            class="tab-item ${this._tab === tab.id ? 'active' : ''}"
-                            @click=${() => { this._tab = tab.id; }}
-                        >
-                            <span class="material-symbols-outlined">${tab.icon}</span>
-                            ${tab.label}
-                        </button>
-                    `)}
-                </div>
-                <button class="back-btn" @click=${() => this._navigate('/settings')}>
-                    <span class="material-symbols-outlined">arrow_back</span> Back to Settings
-                </button>
-            </aside>
-
-            <main class="main">
-                <header class="header">
-                    <h2 class="header-title">${this._tabs.find(t => t.id === this._tab)?.label || 'Models'}</h2>
-                    <div class="header-actions">
-                        ${this._loading ? html`<span class="muted">Loading…</span>` : nothing}
-                        <button class="btn" @click=${() => this._loadAll()} ?disabled=${this._loading}>
-                            <span class="material-symbols-outlined">refresh</span> Refresh
-                        </button>
-                    </div>
-                </header>
-                <div class="content">
-                    <div class="section-desc" data-control="models-where">
-                        <strong>Where to change what.</strong>
-                        <ul style="margin: 8px 0 0; padding-left: 18px; line-height: 1.6;">
-                            <li><strong>API key</strong> → Providers tab → write-only key field on the provider row.
-                                Stored in Vault at <code>secret/agent/api_keys/{provider}_api_key</code>. Never echoed back.</li>
-                            <li><strong>Model (which model runs)</strong> → Model Slots tab (chat / utility / embedding)
-                                or Models tab → create or edit a catalog row.</li>
-                            <li><strong>Model type</strong> → Models tab → the <code>model_type</code> field on create/edit
-                                (<code>chat</code> or <code>embedding</code>).</li>
-                            <li><strong>Provider base URL / default model</strong> → Providers tab.</li>
-                        </ul>
-                    </div>
-                    ${this._renderGate()}
-                    ${this._tab === 'providers' ? this._renderProviders() : nothing}
-                    ${this._tab === 'slots' ? this._renderSlots() : nothing}
-                    ${this._tab === 'presets' ? this._renderPresets() : nothing}
-                    ${this._tab === 'models' ? this._renderModels() : nothing}
-                </div>
-            </main>
-            ${this._message
-                ? html`<div class="toast ${this._message.kind}">${this._message.text}</div>`
-                : nothing}
-        `;
-    }
-
-    private _renderGate() {
-        const gate = this._gate;
-        if (!gate || !gate.needs_setup) return nothing;
-        return html`
-            <div class="gate" role="status">
-                <span class="material-symbols-outlined">warning</span>
-                <div>
-                    <h3>Model setup required</h3>
-                    <p>
-                        ${gate.message}
-                        Configure a provider and API key under <strong>Providers</strong>,
-                        add a model in <strong>Model Catalog</strong>, then bind
-                        <strong>Chat / Utility / Embedding</strong> slots.
-                        Chat stays blocked until at least one model is active.
-                    </p>
-                    <p class="muted" style="margin-top: 8px;">
-                        Active models: ${gate.active_models} ·
-                        Chat ${gate.chat_ready ? 'ready' : 'unbound'} ·
-                        Utility ${gate.utility_ready ? 'ready' : 'unbound'} ·
-                        Embedding ${gate.embedding_ready ? 'ready' : 'unbound'}
-                    </p>
-                </div>
-            </div>
-        `;
-    }
-
-    private _keyBadge(providerId: string) {
-        const keyState = this._keys[providerId];
-        const configured = keyState?.configured ?? this._providers.find(p => p.id === providerId)?.has_api_key ?? false;
-        return configured
-            ? html`<saas-status-badge variant="success" size="sm" dot>key stored</saas-status-badge>`
-            : html`<saas-status-badge variant="danger" size="sm" dot>no key</saas-status-badge>`;
-    }
-
-    private _modelsForProvider(providerId: string): ModelRow[] {
-        return this._models.filter(m => m.provider === providerId);
-    }
-
-    private _providerHasKey(providerId: string): boolean {
-        const keyState = this._keys[providerId];
-        if (keyState?.configured) return true;
-        return this._providers.find(p => p.id === providerId)?.has_api_key ?? false;
-    }
-
-    private _renderProviders() {
-        return html`
-            <div class="section">
-                <h3 class="section-title">
-                    <span class="material-symbols-outlined">dns</span>
-                    Providers
-                </h3>
-                <p class="section-desc">
-                    One row per provider: base URL, default model, and the Vault key that every
-                    model on that provider uses. Keys are write-only and never echoed back.
-                </p>
-
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Provider</th>
-                            <th>Base URL</th>
-                            <th>Default model</th>
-                            <th>Key</th>
-                            <th>Models that use this key</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${this._providers.map(p => {
-                            const keyState = this._keys[p.id] || { configured: false, draft: '' };
-                            const dependents = this._modelsForProvider(p.id);
-                            const hasKey = keyState.configured || p.has_api_key;
-                            return html`
-                                <tr>
-                                    <td>
-                                        <strong>${p.label}</strong>
-                                        ${p.is_custom
-                                            ? html`<saas-status-badge variant="info" size="sm">custom</saas-status-badge>`
-                                            : nothing}
-                                        <div class="muted" style="margin-top: 6px;">
-                                            <saas-toggle
-                                                .checked=${p.enabled}
-                                                @change=${() => {
-                                                    this._providers = this._providers.map(x =>
-                                                        x.id === p.id ? { ...x, enabled: !x.enabled } : x
-                                                    );
-                                                }}
-                                            ></saas-toggle>
-                                            ${p.enabled ? 'Enabled' : 'Disabled'}
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <input
-                                            type="url"
-                                            .value=${p.base_url}
-                                            placeholder="Provider base URL"
-                                            @input=${(e: Event) => {
-                                                const v = (e.target as HTMLInputElement).value;
-                                                this._providers = this._providers.map(x =>
-                                                    x.id === p.id ? { ...x, base_url: v } : x
-                                                );
-                                            }}
-                                        />
-                                    </td>
-                                    <td>
-                                        <input
-                                            type="text"
-                                            .value=${p.model_name}
-                                            placeholder="model-id"
-                                            @input=${(e: Event) => {
-                                                const v = (e.target as HTMLInputElement).value;
-                                                this._providers = this._providers.map(x =>
-                                                    x.id === p.id ? { ...x, model_name: v } : x
-                                                );
-                                            }}
-                                        />
-                                    </td>
-                                    <td>
-                                        ${this._keyBadge(p.id)}
-                                        <div style="margin-top: 8px;">
-                                            <input
-                                                type="password"
-                                                autocomplete="new-password"
-                                                placeholder=${hasKey ? '••••••••  rotate in Vault' : 'Paste API key'}
-                                                .value=${keyState.draft}
-                                                @input=${(e: Event) => {
-                                                    const v = (e.target as HTMLInputElement).value;
-                                                    this._keys = {
-                                                        ...this._keys,
-                                                        [p.id]: { configured: keyState.configured, draft: v },
-                                                    };
-                                                }}
-                                            />
-                                            <div class="key-hint">
-                                                Write-only. Stored at Vault secret/agent/api_keys/${p.id}_api_key.
-                                            </div>
-                                            <div class="row-actions" style="justify-content: flex-start; margin-top: 6px;">
-                                                <button
-                                                    class="btn primary"
-                                                    @click=${() => this._saveKey(p.id)}
-                                                    ?disabled=${this._saving || !(this._keys[p.id]?.draft || '').trim()}
-                                                >Save key</button>
-                                                <button
-                                                    class="btn"
-                                                    @click=${() => this._deleteKey(p.id)}
-                                                    ?disabled=${this._saving || !hasKey}
-                                                    title=${hasKey ? 'Delete the stored key from Vault' : 'No key is stored for this provider'}
-                                                >Delete</button>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        ${dependents.length === 0
-                                            ? html`<span class="muted">No models bound</span>`
-                                            : html`
-                                                <ul style="margin: 0; padding-left: 16px;">
-                                                    ${dependents.map(m => html`
-                                                        <li>
-                                                            ${m.display_name || m.name}
-                                                            ${m.is_active
-                                                                ? html`<saas-status-badge variant="success" size="sm">active</saas-status-badge>`
-                                                                : html`<saas-status-badge variant="warning" size="sm">inactive</saas-status-badge>`}
-                                                        </li>
-                                                    `)}
-                                                </ul>
-                                            `}
-                                    </td>
-                                    <td>
-                                        <div class="row-actions">
-                                            <button class="btn" @click=${() => this._saveProvider(p)} ?disabled=${this._saving}>Save</button>
-                                            <button
-                                                class="btn"
-                                                @click=${() => this._testConnection({
-                                                    provider: p.id,
-                                                    model: p.model_name,
-                                                    base_url: p.base_url,
-                                                })}
-                                                ?disabled=${this._testBusy[p.id] || !hasKey}
-                                                title=${hasKey ? 'Test the stored key against this provider' : 'No API key stored for this provider.'}
-                                            >
-                                                <span class="material-symbols-outlined">network_check</span>
-                                                ${this._testBusy[p.id] ? 'Testing…' : 'Test'}
-                                            </button>
-                                        </div>
-                                        ${!hasKey
-                                            ? html`<div class="key-hint">No API key stored for this provider.</div>`
-                                            : nothing}
-                                        ${this._testResult[p.id]
-                                            ? html`<div class="key-hint" style="color: ${this._testResult[p.id].ok ? '#047857' : '#b91c1c'}">
-                                                ${this._testResult[p.id].ok ? 'OK' : 'Fail'} — ${this._testResult[p.id].detail}
-                                            </div>`
-                                            : nothing}
-                                    </td>
-                                </tr>
-                            `;
-                        })}
-                    </tbody>
-                </table>
-            </div>
-        `;
-    }
-
-    private _renderSlots() {
-        const chat = this._chatModels();
-        const emb = this._embedModels();
-        return html`
-            <div class="section">
-                <h3 class="section-title">
-                    <span class="material-symbols-outlined">account_tree</span>
-                    Chat / Utility / Embedding slots
-                </h3>
-                <p class="section-desc">
-                    Bind three model roles to the active Capsule or tenant defaults (MD-06).
-                    Chat maps to Capsule.chat_model when a Capsule is selected.
-                </p>
-
-                <div class="form-grid" style="margin-bottom: 20px;">
-                    <div>
-                        <label class="field-label">Binding scope</label>
-                        <select
-                            .value=${this._slots.capsule_id || ''}
-                            @change=${async (e: Event) => {
-                                const v = (e.target as HTMLSelectElement).value || null;
-                                this._slots = { ...this._slots, capsule_id: v };
-                                await this._loadSlots();
-                                await this._loadGate();
-                            }}
-                        >
-                            <option value="">Tenant defaults</option>
-                            ${this._capsules.map(c => html`
-                                <option value=${c.id} ?selected=${this._slots.capsule_id === c.id}>
-                                    Capsule: ${c.name}
-                                </option>
-                            `)}
-                        </select>
-                        <div class="key-hint">Scope: ${this._slots.scope}</div>
-                    </div>
-                </div>
-
-                <div class="slot-grid">
-                    <div class="slot-card">
-                        <h4><span class="material-symbols-outlined">chat</span> Chat model</h4>
-                        <p>Primary conversational engine (Capsule.chat_model).</p>
-                        <select
-                            .value=${this._slots.chat_model_id || ''}
-                            @change=${(e: Event) => {
-                                const v = (e.target as HTMLSelectElement).value || null;
-                                this._slots = { ...this._slots, chat_model_id: v };
-                            }}
-                        >
-                            <option value="">— unset —</option>
-                            ${chat.map(m => html`
-                                <option value=${m.id} ?selected=${this._slots.chat_model_id === m.id}>
-                                    ${m.provider}/${m.display_name || m.name}
-                                </option>
-                            `)}
-                        </select>
-                    </div>
-                    <div class="slot-card">
-                        <h4><span class="material-symbols-outlined">build</span> Utility model</h4>
-                        <p>Lightweight tasks: naming, summarization, routing.</p>
-                        <select
-                            .value=${this._slots.utility_model_id || ''}
-                            @change=${(e: Event) => {
-                                const v = (e.target as HTMLSelectElement).value || null;
-                                this._slots = { ...this._slots, utility_model_id: v };
-                            }}
-                        >
-                            <option value="">— unset —</option>
-                            ${chat.map(m => html`
-                                <option value=${m.id} ?selected=${this._slots.utility_model_id === m.id}>
-                                    ${m.provider}/${m.display_name || m.name}
-                                </option>
-                            `)}
-                        </select>
-                    </div>
-                    <div class="slot-card">
-                        <h4><span class="material-symbols-outlined">vector_array</span> Embedding model</h4>
-                        <p>Memory / knowledge vector generation.</p>
-                        <select
-                            .value=${this._slots.embedding_model_id || ''}
-                            @change=${(e: Event) => {
-                                const v = (e.target as HTMLSelectElement).value || null;
-                                this._slots = { ...this._slots, embedding_model_id: v };
-                            }}
-                        >
-                            <option value="">— unset —</option>
-                            ${emb.map(m => html`
-                                <option value=${m.id} ?selected=${this._slots.embedding_model_id === m.id}>
-                                    ${m.provider}/${m.display_name || m.name}
-                                </option>
-                            `)}
-                        </select>
-                    </div>
-                </div>
-
-                <div style="margin-top: 20px; display: flex; gap: 8px;">
-                    <button class="btn primary" @click=${this._saveSlots} ?disabled=${this._saving}>
-                        <span class="material-symbols-outlined">save</span>
-                        ${this._saving ? 'Saving…' : 'Save slots'}
+            <div class="wrap">
+                <div class="head">
+                    <h1>Models</h1>
+                    <button class="btn ghost" @click=${() => void this._reload()}>Refresh</button>
+                    <button class="btn" @click=${() => (window.location.hash = '#/settings')}>
+                        Manage keys
                     </button>
-                    <span class="muted" style="align-self: center;">
-                        ${chat.length === 0 ? 'No active chat models yet — add one in Model Catalog.' : ''}
-                    </span>
+                    <button class="btn primary" @click=${() => this._openCreate()}>Add model</button>
                 </div>
-            </div>
-        `;
-    }
-
-    private _renderPresets() {
-        return html`
-            <div class="section">
-                <h3 class="section-title">
-                    <span class="material-symbols-outlined">bookmark</span>
-                    Model presets
-                </h3>
-                <p class="section-desc">
-                    Save and load named Chat / Utility / Embedding bundles.
-                    Presets persist through the LLMModelConfig-backed slot API.
-                </p>
-
-                <div class="inline-form">
-                    <div>
-                        <label class="field-label">Preset name</label>
-                        <input
-                            type="text"
-                            .value=${this._presetName}
-                            placeholder="e.g. low-cost"
-                            @input=${(e: Event) => { this._presetName = (e.target as HTMLInputElement).value; }}
-                        />
-                    </div>
-                    <div style="grid-column: span 2;">
-                        <label class="field-label">Notes</label>
-                        <input
-                            type="text"
-                            .value=${this._presetNotes}
-                            placeholder="Optional description"
-                            @input=${(e: Event) => { this._presetNotes = (e.target as HTMLInputElement).value; }}
-                        />
-                    </div>
-                    <div class="muted" style="padding-bottom: 10px;">
-                        Saves current slot selection
-                    </div>
-                    <button class="btn primary" @click=${this._savePreset} ?disabled=${this._saving || !this._presetName.trim()}>
-                        Save preset
-                    </button>
+                <div class="sub">
+                    Cards show the whole model. Activate to make one live. Open a card for Normal /
+                    Advanced / Used for. Keys go to Vault only. Custom URL supports MiMo and gateways.
                 </div>
-
-                ${this._presets.length === 0
-                    ? html`<p class="muted" style="margin-top: 16px;">No presets saved yet.</p>`
-                    : html`
-                        <table class="table" style="margin-top: 20px;">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Chat</th>
-                                    <th>Utility</th>
-                                    <th>Embedding</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${this._presets.map(p => html`
-                                    <tr>
-                                        <td>
-                                            <strong>${p.name}</strong>
-                                            ${p.notes ? html`<div class="muted">${p.notes}</div>` : nothing}
-                                        </td>
-                                        <td>${this._modelLabel(p.chat_model_id)}</td>
-                                        <td>${this._modelLabel(p.utility_model_id)}</td>
-                                        <td>${this._modelLabel(p.embedding_model_id)}</td>
-                                        <td>
-                                            <div class="row-actions">
-                                                <button class="btn" @click=${() => this._applyPreset(p)} ?disabled=${this._saving}>Load</button>
-                                                <button class="btn" @click=${() => this._deletePreset(p)}>Delete</button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                `)}
-                            </tbody>
-                        </table>
-                    `}
-            </div>
-        `;
-    }
-
-    private _modelLabel(id: string | null): string {
-        if (!id) return '—';
-        const m = this._models.find(x => x.id === id);
-        return m ? `${m.provider}/${m.display_name || m.name}` : id;
-    }
-
-    private _renderModels() {
-        const n = this._newModel;
-        return html`
-            <div class="section">
-                <h3 class="section-title">
-                    <span class="material-symbols-outlined">smart_toy</span>
-                    Model catalog (LLMModelConfig)
-                </h3>
-                <p class="section-desc">
-                    Real rows from admin.llm.LLMModelConfig. Each model uses its provider's Vault key —
-                    the key badge on every row is that provider's key status, never a per-model secret.
-                </p>
-
-                <div class="inline-form">
-                    <div>
-                        <label class="field-label">Provider</label>
-                        <select
-                            .value=${n.provider}
-                            @change=${(e: Event) => {
-                                this._newModel = { ...this._newModel, provider: (e.target as HTMLSelectElement).value };
-                            }}
-                        >
-                            ${this._providers.map(p => html`<option value=${p.id}>${p.label}</option>`)}
-                        </select>
-                    </div>
-                    <div>
-                        <label class="field-label">Model name</label>
-                        <input
-                            type="text"
-                            .value=${n.name}
-                            placeholder="Model name"
-                            @input=${(e: Event) => {
-                                this._newModel = { ...this._newModel, name: (e.target as HTMLInputElement).value };
-                            }}
-                        />
-                    </div>
-                    <div>
-                        <label class="field-label">Type</label>
-                        <select
-                            .value=${n.model_type}
-                            @change=${(e: Event) => {
-                                this._newModel = {
-                                    ...this._newModel,
-                                    model_type: (e.target as HTMLSelectElement).value as 'chat' | 'embedding',
-                                };
-                            }}
-                        >
-                            <option value="chat">Chat</option>
-                            <option value="embedding">Embedding</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="field-label">API base (optional)</label>
-                        <input
-                            type="url"
-                            .value=${n.api_base || ''}
-                            placeholder="Provider base URL"
-                            @input=${(e: Event) => {
-                                this._newModel = { ...this._newModel, api_base: (e.target as HTMLInputElement).value };
-                            }}
-                        />
-                    </div>
-                    <button class="btn primary" @click=${this._createModel} ?disabled=${this._saving || !n.name.trim() || !n.provider.trim()}>
-                        Add model
-                    </button>
+                <div class="toolbar">
+                    <input
+                        style="flex: 1; min-width: 180px"
+                        placeholder="Search models…"
+                        .value=${this._search}
+                        @input=${(e: Event) => {
+                            this._search = (e.target as HTMLInputElement).value;
+                        }}
+                    />
+                    <select
+                        .value=${this._filterType}
+                        @change=${(e: Event) => {
+                            this._filterType = (e.target as HTMLSelectElement).value;
+                        }}
+                    >
+                        <option value="all">All types</option>
+                        <option value="chat">Chat</option>
+                        <option value="embedding">Embeddings</option>
+                    </select>
                 </div>
-
-                ${this._models.length === 0
-                    ? html`<p class="muted" style="margin-top: 16px;">No models configured.</p>`
-                    : html`
-                        <table class="table" style="margin-top: 20px;">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Provider / key</th>
-                                    <th>Type</th>
-                                    <th>Active</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${this._models.map(m => {
-                                    const editing = this._editingModelId === m.id;
-                                    const e = this._editModel;
-                                    return html`
-                                    <tr>
-                                        <td>
-                                            ${editing
-                                                ? html`
-                                                      <input
-                                                          type="text"
-                                                          .value=${e.name || ''}
-                                                          @input=${(ev: Event) => {
-                                                              this._editModel = { ...this._editModel, name: (ev.target as HTMLInputElement).value };
-                                                          }}
-                                                      />
-                                                      <input
-                                                          type="text"
-                                                          style="margin-top: 6px;"
-                                                          .value=${e.display_name || ''}
-                                                          placeholder="Display name"
-                                                          @input=${(ev: Event) => {
-                                                              this._editModel = { ...this._editModel, display_name: (ev.target as HTMLInputElement).value };
-                                                          }}
-                                                      />
-                                                  `
-                                                : html`
-                                                      <strong>${m.display_name || m.name}</strong>
-                                                      <div class="muted">${m.name}</div>
-                                                  `}
-                                        </td>
-                                        <td>
-                                            ${editing
-                                                ? html`
-                                                      <select
-                                                          .value=${e.provider || ''}
-                                                          @change=${(ev: Event) => {
-                                                              this._editModel = { ...this._editModel, provider: (ev.target as HTMLSelectElement).value };
-                                                          }}
-                                                      >
-                                                          <option value="">— select —</option>
-                                                          ${this._providers.map(
-                                                              (p) => html`<option value=${p.id} ?selected=${e.provider === p.id}>${p.label}</option>`
-                                                          )}
-                                                      </select>
-                                                      <div style="margin-top: 4px;">${this._keyBadge(e.provider || m.provider)}</div>
-                                                  `
-                                                : html`
-                                                      <strong>${m.provider}</strong>
-                                                      <div style="margin-top: 4px;">${this._keyBadge(m.provider)}</div>
-                                                      <div class="key-hint">Uses the ${m.provider} provider key</div>
-                                                  `}
-                                        </td>
-                                        <td>
-                                            ${editing
-                                                ? html`
-                                                      <select
-                                                          .value=${e.model_type || ''}
-                                                          @change=${(ev: Event) => {
-                                                              this._editModel = {
-                                                                  ...this._editModel,
-                                                                  model_type: (ev.target as HTMLSelectElement).value as 'chat' | 'embedding',
-                                                              };
-                                                          }}
-                                                      >
-                                                          <option value="chat" ?selected=${(e.model_type || 'chat') === 'chat'}>chat</option>
-                                                          <option value="embedding" ?selected=${e.model_type === 'embedding'}>embedding</option>
-                                                      </select>
-                                                  `
-                                                : html`<span style="text-transform: capitalize">${m.model_type}</span>`}
-                                        </td>
-                                        <td>
-                                            <saas-toggle
-                                                .checked=${m.is_active}
-                                                @change=${() => this._toggleModelActive(m)}
-                                            ></saas-toggle>
-                                        </td>
-                                        <td>
-                                            <div class="row-actions">
-                                                ${editing
-                                                    ? html`
-                                                          <button class="btn primary" @click=${() => this._saveEditModel(m)} ?disabled=${this._saving}>
-                                                              Save
-                                                          </button>
-                                                          <button class="btn" @click=${() => this._cancelEditModel()}>Cancel</button>
-                                                      `
-                                                    : html`
-                                                          <button class="btn" @click=${() => this._startEditModel(m)}>Edit</button>
-                                                          <button
-                                                              class="btn"
-                                                              @click=${() => this._testConnection({
-                                                                  provider: m.provider,
-                                                                  model_id: m.id,
-                                                              })}
-                                                              ?disabled=${this._testBusy[m.id] || !this._providerHasKey(m.provider)}
-                                                              title=${this._providerHasKey(m.provider)
-                                                                  ? 'Test this model through its provider key'
-                                                                  : 'No API key stored for this provider.'}
-                                                          >
-                                                              ${this._testBusy[m.id] ? 'Testing…' : 'Test'}
-                                                          </button>
-                                                          <button class="btn" @click=${() => this._deleteModel(m)}>Delete</button>
-                                                      `}
-                                            </div>
-                                            ${this._testResult[m.id]
-                                                ? html`<div class="key-hint" style="color: ${this._testResult[m.id].ok ? '#047857' : '#b91c1c'}">
-                                                    ${this._testResult[m.id].ok ? 'OK' : 'Fail'} — ${this._testResult[m.id].detail}
-                                                </div>`
-                                                : nothing}
-                                        </td>
-                                    </tr>
-                                `;
-                                })}
-                            </tbody>
-                        </table>
-                    `}
+                ${this._status && !this._draft
+                    ? html`<div class="status ${this._statusOk ? 'ok' : 'err'}">${this._status}</div>`
+                    : nothing}
+                ${this._loading
+                    ? html`<div class="empty">Loading models…</div>`
+                    : this._visible.length === 0
+                      ? html`<div class="empty">
+                            No models yet. <b>Add model</b> or seed Groq DeepSeek 2.8 from the agent
+                            defaults.
+                        </div>`
+                      : html`<div class="grid">${this._visible.map((m) => this._card(m))}</div>`}
             </div>
+            ${this._editor()}
         `;
-    }
-
-    private _navigate(route: string) {
-        window.dispatchEvent(new CustomEvent('saas-navigate', { detail: { route } }));
     }
 }
 
