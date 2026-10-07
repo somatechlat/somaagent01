@@ -66,7 +66,7 @@ export class SettingsForm extends LitElement {
     .title-icon {
       width: 36px;
       height: 36px;
-      background: var(--saas-bg-hover, #fafafa);
+      background: var(--soma-bg-hover, #fafafa);
       border-radius: 8px;
       display: flex;
       align-items: center;
@@ -84,22 +84,22 @@ export class SettingsForm extends LitElement {
     }
 
     .description {
-      color: var(--saas-text-muted, #999);
+      color: var(--soma-text-muted, #999);
       font-size: 14px;
       margin: 0;
     }
 
     .form-card {
-      background: var(--saas-bg-card, #ffffff);
-      border: 1px solid var(--saas-border-light, #e0e0e0);
+      background: var(--soma-bg-card, #ffffff);
+      border: 1px solid var(--soma-border-light, #e0e0e0);
       border-radius: 12px;
       overflow: hidden;
     }
 
     .group-header {
       padding: 16px 24px;
-      background: var(--saas-bg-hover, #fafafa);
-      border-bottom: 1px solid var(--saas-border-light, #e0e0e0);
+      background: var(--soma-bg-hover, #fafafa);
+      border-bottom: 1px solid var(--soma-border-light, #e0e0e0);
       font-weight: 600;
       font-size: 13px;
       display: flex;
@@ -109,7 +109,7 @@ export class SettingsForm extends LitElement {
 
     .group-header .material-symbols-outlined {
       font-size: 16px;
-      color: var(--saas-text-secondary, #666);
+      color: var(--soma-text-secondary, #666);
     }
 
     .fields {
@@ -129,24 +129,24 @@ export class SettingsForm extends LitElement {
       font-size: 13px;
       font-weight: 500;
       margin-bottom: 6px;
-      color: var(--saas-text-primary, #1a1a1a);
+      color: var(--soma-text-primary, #1a1a1a);
     }
 
     .field-label .required {
-      color: var(--saas-status-danger, #ef4444);
+      color: var(--soma-status-danger, #ef4444);
       margin-left: 2px;
     }
 
     .field-description {
       font-size: 11px;
-      color: var(--saas-text-muted, #999);
+      color: var(--soma-text-muted, #999);
       margin-bottom: 6px;
     }
 
     input, select {
       width: 100%;
       padding: 10px 14px;
-      border: 1px solid var(--saas-border-light, #e0e0e0);
+      border: 1px solid var(--soma-border-light, #e0e0e0);
       border-radius: 8px;
       font-size: 14px;
       outline: none;
@@ -159,7 +159,7 @@ export class SettingsForm extends LitElement {
     }
 
     input:disabled, select:disabled {
-      background: var(--saas-bg-hover, #fafafa);
+      background: var(--soma-bg-hover, #fafafa);
       cursor: not-allowed;
     }
 
@@ -209,7 +209,7 @@ export class SettingsForm extends LitElement {
 
     .form-actions {
       padding: 16px 24px;
-      border-top: 1px solid var(--saas-border-light, #e0e0e0);
+      border-top: 1px solid var(--soma-border-light, #e0e0e0);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
@@ -225,13 +225,13 @@ export class SettingsForm extends LitElement {
       align-items: center;
       gap: 8px;
       transition: all 0.1s ease;
-      border: 1px solid var(--saas-border-light, #e0e0e0);
-      background: var(--saas-bg-card, #ffffff);
-      color: var(--saas-text-primary, #1a1a1a);
+      border: 1px solid var(--soma-border-light, #e0e0e0);
+      background: var(--soma-bg-card, #ffffff);
+      color: var(--soma-text-primary, #1a1a1a);
     }
 
     .btn:hover {
-      background: var(--saas-bg-hover, #fafafa);
+      background: var(--soma-bg-hover, #fafafa);
     }
 
     .btn.primary {
@@ -251,10 +251,10 @@ export class SettingsForm extends LitElement {
 
     .read-only-notice {
       padding: 12px 24px;
-      background: var(--saas-bg-hover, #fafafa);
-      border-top: 1px solid var(--saas-border-light, #e0e0e0);
+      background: var(--soma-bg-hover, #fafafa);
+      border-top: 1px solid var(--soma-border-light, #e0e0e0);
       font-size: 12px;
-      color: var(--saas-text-muted, #999);
+      color: var(--soma-text-muted, #999);
       display: flex;
       align-items: center;
       gap: 8px;
@@ -265,7 +265,7 @@ export class SettingsForm extends LitElement {
       justify-content: center;
       align-items: center;
       padding: 60px;
-      color: var(--saas-text-muted, #999);
+      color: var(--soma-text-muted, #999);
     }
 
     .success-message {

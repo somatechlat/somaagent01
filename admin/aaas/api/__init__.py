@@ -3,7 +3,7 @@
 Django Ninja routers for administering this agent: its users, its agents,
 its settings, its audit trail and its health.
 
-There is no SaaS or billing administration in this product. It is a
+There is no commercial billing administration in this product. It is a
 standalone agent — subscription tiers, invoices, payment methods, plan
 feature gating and multi-tenant org lifecycle are not administered here
 and have no router. See AGENT.md §1.1 (Scope).

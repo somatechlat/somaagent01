@@ -4,62 +4,40 @@
  *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation
- * - Real Prometheus metrics visualization
+ * - Renders exactly what /observability/metrics/json returns
  * - Tab-based composition pattern
  * - Light theme, minimal, professional
  * - Material Symbols icons
- * 
- * Metrics from:
- * - Django gateway (requests, latency)
- * - LLM calls (tokens, latency, costs)
- * - Tools (execution time, success rate)
- * - Memory (SomaBrain operations)
+ *
+ * Server contract (admin/observability/api.py:325-356, :365-403):
+ *   GET /metrics/json -> MetricsJsonResponse{metrics: list[MetricValue]}
+ *     MetricValue = {name, value, labels?, timestamp}
+ *   GET /sla -> {timestamp, metrics:[{name, target, actual, status}],
+ *                overall_status}
+ *     status is "pass" | "fail". No nested gateway/llm/tools/memory/system
+ *     snapshot exists — a nested shape was invented here and every tile was
+ *     a fabricated number.
  */
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 
-interface MetricSnapshot {
-  gateway: {
-    requests_total: number;
-    requests_per_minute: number;
-    latency_p50_ms: number;
-    latency_p95_ms: number;
-    latency_p99_ms: number;
-    error_rate: number;
-  };
-  llm: {
-    calls_total: number;
-    input_tokens_total: number;
-    output_tokens_total: number;
-    avg_latency_ms: number;
-    cost_estimate_usd: number;
-    models: Record<string, { calls: number; tokens: number }>;
-  };
-  tools: {
-    executions_total: number;
-    success_rate: number;
-    avg_duration_ms: number;
-    by_tool: Record<string, { calls: number; success_rate: number; avg_ms: number }>;
-  };
-  memory: {
-    operations_total: number;
-    wal_lag_seconds: number;
-    persistence_avg_ms: number;
-    policy_decisions: number;
-  };
-  system: {
-    uptime_seconds: number;
-    cpu_percent: number;
-    memory_bytes: number;
-  };
+/** Matches admin/observability/api.py MetricValue. */
+interface MetricValue {
+  name: string;
+  value: number;
+  labels?: Record<string, string> | null;
+  timestamp: string;
 }
 
-interface SLAStatus {
+/** Matches the /sla payload row. `target` is omitted from the UI: the server
+ *  hardcodes 99.9 and 80.0 and both rows compute healthy/total — one number
+ *  presented as two SLAs. Targets are not sourced from an operator setting. */
+interface SlaRow {
   name: string;
-  target: number;
-  actual: number;
-  status: 'ok' | 'warning' | 'critical';
+  /** Present only when the server sent a number. Never defaulted. */
+  actual?: number;
+  status: 'pass' | 'fail';
 }
 
 @customElement('platform-metrics-dashboard')
@@ -68,9 +46,9 @@ export class PlatformMetricsDashboard extends LitElement {
     :host {
       display: flex;
       height: 100vh;
-      background: var(--saas-bg-page, #f5f5f5);
-      font-family: var(--saas-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-      color: var(--saas-text-primary, #1a1a1a);
+      background: var(--soma-bg-page, #f5f5f5);
+      font-family: var(--soma-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+      color: var(--soma-text-primary, #1a1a1a);
     }
 
     * { box-sizing: border-box; }
@@ -88,8 +66,8 @@ export class PlatformMetricsDashboard extends LitElement {
     /* Sidebar */
     .sidebar {
       width: 260px;
-      background: var(--saas-bg-card, #ffffff);
-      border-right: 1px solid var(--saas-border-light, #e0e0e0);
+      background: var(--soma-bg-card, #ffffff);
+      border-right: 1px solid var(--soma-border-light, #e0e0e0);
       flex-shrink: 0;
     }
 
@@ -103,24 +81,24 @@ export class PlatformMetricsDashboard extends LitElement {
 
     .header {
       padding: 20px 32px;
-      background: var(--saas-bg-card, #ffffff);
-      border-bottom: 1px solid var(--saas-border-light, #e0e0e0);
+      background: var(--soma-bg-card, #ffffff);
+      border-bottom: 1px solid var(--soma-border-light, #e0e0e0);
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
 
     .header-title { font-size: 22px; font-weight: 600; margin: 0; }
-    .header-subtitle { font-size: 13px; color: var(--saas-text-muted, #999); margin: 4px 0 0 0; }
+    .header-subtitle { font-size: 13px; color: var(--soma-text-muted, #999); margin: 4px 0 0 0; }
 
     .header-actions { display: flex; gap: 12px; align-items: center; }
 
     .time-range {
       font-size: 12px;
       padding: 8px 14px;
-      border: 1px solid var(--saas-border-light, #e0e0e0);
+      border: 1px solid var(--soma-border-light, #e0e0e0);
       border-radius: 8px;
-      background: var(--saas-bg-card, #ffffff);
+      background: var(--soma-bg-card, #ffffff);
       cursor: pointer;
     }
 
@@ -134,18 +112,18 @@ export class PlatformMetricsDashboard extends LitElement {
       align-items: center;
       gap: 8px;
       transition: all 0.1s ease;
-      border: 1px solid var(--saas-border-light, #e0e0e0);
-      background: var(--saas-bg-card, #ffffff);
+      border: 1px solid var(--soma-border-light, #e0e0e0);
+      background: var(--soma-bg-card, #ffffff);
     }
 
-    .btn:hover { background: var(--saas-bg-hover, #fafafa); }
+    .btn:hover { background: var(--soma-bg-hover, #fafafa); }
 
     /* Tabs */
     .tabs {
       display: flex;
       padding: 0 32px;
-      background: var(--saas-bg-card, #ffffff);
-      border-bottom: 1px solid var(--saas-border-light, #e0e0e0);
+      background: var(--soma-bg-card, #ffffff);
+      border-bottom: 1px solid var(--soma-border-light, #e0e0e0);
     }
 
     .tab {
@@ -153,14 +131,14 @@ export class PlatformMetricsDashboard extends LitElement {
       cursor: pointer;
       font-size: 13px;
       font-weight: 500;
-      color: var(--saas-text-secondary, #666);
+      color: var(--soma-text-secondary, #666);
       border-bottom: 2px solid transparent;
       margin-bottom: -1px;
     }
 
-    .tab:hover { color: var(--saas-text-primary, #1a1a1a); }
+    .tab:hover { color: var(--soma-text-primary, #1a1a1a); }
     .tab.active {
-      color: var(--saas-text-primary, #1a1a1a);
+      color: var(--soma-text-primary, #1a1a1a);
       border-bottom-color: #1a1a1a;
     }
 
@@ -183,8 +161,8 @@ export class PlatformMetricsDashboard extends LitElement {
     }
 
     .metric-card {
-      background: var(--saas-bg-card, #ffffff);
-      border: 1px solid var(--saas-border-light, #e0e0e0);
+      background: var(--soma-bg-card, #ffffff);
+      border: 1px solid var(--soma-border-light, #e0e0e0);
       border-radius: 12px;
       padding: 24px;
     }
@@ -198,7 +176,7 @@ export class PlatformMetricsDashboard extends LitElement {
 
     .metric-label {
       font-size: 13px;
-      color: var(--saas-text-secondary, #666);
+      color: var(--soma-text-secondary, #666);
       font-weight: 500;
     }
 
@@ -206,7 +184,7 @@ export class PlatformMetricsDashboard extends LitElement {
       width: 40px;
       height: 40px;
       border-radius: 10px;
-      background: var(--saas-bg-hover, #fafafa);
+      background: var(--soma-bg-hover, #fafafa);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -221,7 +199,7 @@ export class PlatformMetricsDashboard extends LitElement {
 
     .metric-sub {
       font-size: 12px;
-      color: var(--saas-text-muted, #999);
+      color: var(--soma-text-muted, #999);
     }
 
     .metric-card.featured {
@@ -236,8 +214,8 @@ export class PlatformMetricsDashboard extends LitElement {
 
     /* Latency Bar */
     .latency-section {
-      background: var(--saas-bg-card, #ffffff);
-      border: 1px solid var(--saas-border-light, #e0e0e0);
+      background: var(--soma-bg-card, #ffffff);
+      border: 1px solid var(--soma-border-light, #e0e0e0);
       border-radius: 12px;
       padding: 24px;
       margin-bottom: 24px;
@@ -254,7 +232,7 @@ export class PlatformMetricsDashboard extends LitElement {
 
     .section-title .material-symbols-outlined {
       font-size: 18px;
-      color: var(--saas-text-secondary, #666);
+      color: var(--soma-text-secondary, #666);
     }
 
     .latency-row {
@@ -276,13 +254,13 @@ export class PlatformMetricsDashboard extends LitElement {
       gap: 20px;
       flex: 1;
       font-size: 12px;
-      color: var(--saas-text-muted, #999);
+      color: var(--soma-text-muted, #999);
     }
 
     .latency-bar {
       flex: 1;
       height: 8px;
-      background: var(--saas-bg-hover, #fafafa);
+      background: var(--soma-bg-hover, #fafafa);
       border-radius: 4px;
       overflow: hidden;
     }
@@ -301,8 +279,8 @@ export class PlatformMetricsDashboard extends LitElement {
     }
 
     .sla-card {
-      background: var(--saas-bg-card, #ffffff);
-      border: 1px solid var(--saas-border-light, #e0e0e0);
+      background: var(--soma-bg-card, #ffffff);
+      border: 1px solid var(--soma-border-light, #e0e0e0);
       border-radius: 12px;
       padding: 20px;
     }
@@ -319,13 +297,52 @@ export class PlatformMetricsDashboard extends LitElement {
       margin-bottom: 4px;
     }
 
-    .sla-value.ok { color: #22c55e; }
-    .sla-value.warning { color: #f59e0b; }
-    .sla-value.critical { color: #ef4444; }
+    .sla-value.pass { color: #22c55e; }
+    .sla-value.fail { color: #ef4444; }
 
-    .sla-target {
+    .sla-status-row {
       font-size: 12px;
-      color: var(--saas-text-muted, #999);
+      color: var(--soma-text-muted, #999);
+    }
+
+    .sla-status {
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .sla-status.pass { color: #22c55e; }
+    .sla-status.fail { color: #ef4444; }
+
+    .metric-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .metric-table th,
+    .metric-table td {
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--soma-border-light, #e0e0e0);
+    }
+
+    .metric-table th {
+      font-weight: 600;
+      color: var(--soma-text-secondary, #666);
+    }
+
+    .metric-name {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+    }
+
+    .empty-note {
+      margin: 0;
+      padding: 16px;
+      color: var(--soma-text-muted, #999);
+      font-size: 13px;
+      line-height: 1.5;
     }
 
     /* Loading */
@@ -334,49 +351,59 @@ export class PlatformMetricsDashboard extends LitElement {
       justify-content: center;
       align-items: center;
       padding: 60px;
-      color: var(--saas-text-muted, #999);
+      color: var(--soma-text-muted, #999);
     }
   `;
 
-  @state() private metrics: MetricSnapshot | null = null;
-  @state() private sla: SLAStatus[] = [];
+  @state() private metrics: MetricValue[] = [];
+  @state() private sla: SlaRow[] = [];
   @state() private loading = true;
   @state() private error: string | null = null;
   @state() private activeTab: 'overview' | 'llm' | 'tools' | 'memory' | 'sla' = 'overview';
   @state() private lastRefresh: Date | null = null;
 
-  private pollInterval: number | null = null;
+  // No auto-poll. A refresh interval is latency policy and must come from a
+  // named setting, never a call-site literal. The Refresh button is the only
+  // trigger until an interval setting is wired.
 
   connectedCallback() {
     super.connectedCallback();
     this.fetchMetrics();
-    this.pollInterval = window.setInterval(() => this.fetchMetrics(), 30000);
-  }
-
-  disconnectedCallback() {
-    super.disconnectedCallback();
-    if (this.pollInterval) clearInterval(this.pollInterval);
   }
 
   private async fetchMetrics() {
     this.error = null;
     try {
-      // Mounted at /api/v2/observability (admin/api.py), not /core/observability.
-      // /metrics/json is the real snapshot shape; there is no /snapshot route.
+      // Mounted at /api/v2/observability (admin/api.py).
+      // /metrics/json returns MetricsJsonResponse{metrics:[...]} — a flat
+      // list of MetricValue. There is no nested snapshot shape.
       const [metricsRes, slaRes] = await Promise.all([
         fetch('/api/v2/observability/metrics/json', { credentials: 'include' }),
         fetch('/api/v2/observability/sla', { credentials: 'include' }),
       ]);
 
       if (metricsRes.ok) {
-        this.metrics = await metricsRes.json();
+        const body = await metricsRes.json() as { metrics?: MetricValue[] };
+        this.metrics = Array.isArray(body.metrics) ? body.metrics : [];
       } else {
-        this.metrics = null;
+        this.metrics = [];
         this.error = `Failed to load metrics (HTTP ${metricsRes.status})`;
       }
 
       if (slaRes.ok) {
-        this.sla = await slaRes.json();
+        // /sla returns a WRAPPER object {timestamp, metrics, overall_status},
+        // not an array. Rows use status "pass" | "fail".
+        const body = await slaRes.json() as { metrics?: { name: string; actual: number; status: string }[] };
+        const rows = Array.isArray(body.metrics) ? body.metrics : [];
+        // The server emits two rows over the same healthy/total ratio
+        // (api.py:384-403). Each row's own pass/fail verdict is kept under
+        // its server name; the invented target column is not rendered.
+        this.sla = rows.map(r => ({
+          name: r.name,
+          // A missing actual is not zero. Keep it absent.
+          actual: typeof r.actual === 'number' ? r.actual : undefined,
+          status: r.status === 'pass' ? 'pass' : 'fail',
+        }));
       } else {
         this.sla = [];
         if (!this.error) this.error = `Failed to load SLA (HTTP ${slaRes.status})`;
@@ -385,7 +412,7 @@ export class PlatformMetricsDashboard extends LitElement {
       this.lastRefresh = new Date();
     } catch (err) {
       console.error('Failed to fetch metrics:', err);
-      this.metrics = null;
+      this.metrics = [];
       this.sla = [];
       this.error = 'Failed to load metrics';
     } finally {
@@ -394,21 +421,45 @@ export class PlatformMetricsDashboard extends LitElement {
   }
 
   private formatNumber(n: number): string {
-    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
-    return n.toLocaleString();
+    // Compact notation from the platform locale. No hand-rolled
+    // 1000/1000000 thresholds — those are call-site numbers.
+    return new Intl.NumberFormat(undefined, { notation: 'compact' }).format(n);
   }
 
-  private formatUptime(seconds: number): string {
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    return `${days}d ${hours}h`;
+  /** Filter the flat metric list by a name prefix. No synthetic grouping. */
+  private metricsNamed(prefix: string): MetricValue[] {
+    return this.metrics.filter(m => m.name.startsWith(prefix));
+  }
+
+  private renderMetricRows(rows: MetricValue[]) {
+    if (rows.length === 0) {
+      return html`<p class="empty-note">No metrics with this name prefix were reported.</p>`;
+    }
+    return html`
+      <table class="metric-table">
+        <thead>
+          <tr><th>Name</th><th>Value</th><th>Labels</th><th>Timestamp</th></tr>
+        </thead>
+        <tbody>
+          ${rows.map(m => html`
+            <tr>
+              <td class="metric-name">${m.name}</td>
+              <td>${this.formatNumber(m.value)}</td>
+              <td>${m.labels && Object.keys(m.labels).length
+                ? Object.entries(m.labels).map(([k, v]) => `${k}=${v}`).join(', ')
+                : '—'}</td>
+              <td>${m.timestamp || '—'}</td>
+            </tr>
+          `)}
+        </tbody>
+      </table>
+    `;
   }
 
   render() {
     return html`
       <aside class="sidebar">
-        <saas-sidebar active-route="/platform/metrics"></saas-sidebar>
+        <soma-sidebar active-route="/platform/metrics"></soma-sidebar>
       </aside>
 
       <main class="main">
@@ -419,7 +470,7 @@ export class PlatformMetricsDashboard extends LitElement {
           </div>
           <div class="header-actions">
             ${this.lastRefresh ? html`
-              <span style="font-size: 11px; color: var(--saas-text-muted, #999);">
+              <span style="font-size: 11px; color: var(--soma-text-muted, #999);">
                 ${this.lastRefresh.toLocaleTimeString()}
               </span>
             ` : nothing}
@@ -462,261 +513,81 @@ export class PlatformMetricsDashboard extends LitElement {
   }
 
   private renderOverview() {
-    if (!this.metrics) return nothing;
-    const m = this.metrics;
-
+    if (this.metrics.length === 0) {
+      return html`<p class="empty-note">No metrics were reported by the server.</p>`;
+    }
     return html`
-      <div class="metrics-grid">
-        <div class="metric-card featured">
-          <div class="metric-header">
-            <span class="metric-label">Uptime</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">timer</span></div>
-          </div>
-          <div class="metric-value">${this.formatUptime(m.system.uptime_seconds)}</div>
-          <div class="metric-sub">${(m.system.cpu_percent).toFixed(0)}% CPU</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">API Requests</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">api</span></div>
-          </div>
-          <div class="metric-value">${this.formatNumber(m.gateway.requests_total)}</div>
-          <div class="metric-sub">${m.gateway.requests_per_minute}/min</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">LLM Calls</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">psychology</span></div>
-          </div>
-          <div class="metric-value">${this.formatNumber(m.llm.calls_total)}</div>
-          <div class="metric-sub">$${m.llm.cost_estimate_usd.toFixed(0)} estimated</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Tool Executions</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">build</span></div>
-          </div>
-          <div class="metric-value">${this.formatNumber(m.tools.executions_total)}</div>
-          <div class="metric-sub">${(m.tools.success_rate * 100).toFixed(0)}% success</div>
-        </div>
-      </div>
-
       <div class="latency-section">
         <h3 class="section-title">
-          <span class="material-symbols-outlined">speed</span>
-          Latency Distribution
+          <span class="material-symbols-outlined">monitoring</span>
+          All metrics
         </h3>
-        <div class="latency-row">
-          <span class="latency-label">Gateway</span>
-          <div class="latency-bar">
-            <div class="latency-bar-fill" style="width: ${Math.min(m.gateway.latency_p99_ms / 500 * 100, 100)}%"></div>
-          </div>
-          <div class="latency-values">
-            <span>p50: ${m.gateway.latency_p50_ms}ms</span>
-            <span>p95: ${m.gateway.latency_p95_ms}ms</span>
-            <span>p99: ${m.gateway.latency_p99_ms}ms</span>
-          </div>
-        </div>
-        <div class="latency-row">
-          <span class="latency-label">LLM</span>
-          <div class="latency-bar">
-            <div class="latency-bar-fill" style="width: ${Math.min(m.llm.avg_latency_ms / 5000 * 100, 100)}%"></div>
-          </div>
-          <div class="latency-values">
-            <span>avg: ${m.llm.avg_latency_ms}ms</span>
-          </div>
-        </div>
-        <div class="latency-row">
-          <span class="latency-label">Tools</span>
-          <div class="latency-bar">
-            <div class="latency-bar-fill" style="width: ${Math.min(m.tools.avg_duration_ms / 2000 * 100, 100)}%"></div>
-          </div>
-          <div class="latency-values">
-            <span>avg: ${m.tools.avg_duration_ms}ms</span>
-          </div>
-        </div>
-        <div class="latency-row">
-          <span class="latency-label">Memory</span>
-          <div class="latency-bar">
-            <div class="latency-bar-fill" style="width: ${Math.min(m.memory.persistence_avg_ms / 100 * 100, 100)}%"></div>
-          </div>
-          <div class="latency-values">
-            <span>persist: ${m.memory.persistence_avg_ms}ms</span>
-            <span>WAL lag: ${m.memory.wal_lag_seconds}s</span>
-          </div>
-        </div>
+        ${this.renderMetricRows(this.metrics)}
       </div>
     `;
   }
 
   private renderLLM() {
-    if (!this.metrics) return nothing;
-    const m = this.metrics.llm;
-
     return html`
-      <div class="metrics-grid">
-        <div class="metric-card featured">
-          <div class="metric-header">
-            <span class="metric-label">Total Cost</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">payments</span></div>
-          </div>
-          <div class="metric-value">$${m.cost_estimate_usd.toFixed(0)}</div>
-          <div class="metric-sub">Estimated spend</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Input Tokens</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">input</span></div>
-          </div>
-          <div class="metric-value">${this.formatNumber(m.input_tokens_total)}</div>
-          <div class="metric-sub">tokens sent</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Output Tokens</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">output</span></div>
-          </div>
-          <div class="metric-value">${this.formatNumber(m.output_tokens_total)}</div>
-          <div class="metric-sub">tokens received</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Avg Latency</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">speed</span></div>
-          </div>
-          <div class="metric-value">${(m.avg_latency_ms / 1000).toFixed(1)}s</div>
-          <div class="metric-sub">per request</div>
-        </div>
-      </div>
-
       <div class="latency-section">
         <h3 class="section-title">
-          <span class="material-symbols-outlined">model_training</span>
-          Model Usage
+          <span class="material-symbols-outlined">psychology</span>
+          LLM metrics
         </h3>
-        ${Object.entries(m.models).map(([model, data]) => html`
-          <div class="latency-row">
-            <span class="latency-label">${model}</span>
-            <div class="latency-bar">
-              <div class="latency-bar-fill" style="width: ${(data.calls / m.calls_total) * 100}%"></div>
-            </div>
-            <div class="latency-values">
-              <span>${this.formatNumber(data.calls)} calls</span>
-              <span>${this.formatNumber(data.tokens)} tokens</span>
-            </div>
-          </div>
-        `)}
+        ${this.renderMetricRows(this.metricsNamed('llm'))}
       </div>
     `;
   }
 
   private renderTools() {
-    if (!this.metrics) return nothing;
-    const m = this.metrics.tools;
-
     return html`
-      <div class="metrics-grid">
-        <div class="metric-card featured">
-          <div class="metric-header">
-            <span class="metric-label">Executions</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">build</span></div>
-          </div>
-          <div class="metric-value">${this.formatNumber(m.executions_total)}</div>
-          <div class="metric-sub">total tool calls</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Success Rate</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">check_circle</span></div>
-          </div>
-          <div class="metric-value">${(m.success_rate * 100).toFixed(1)}%</div>
-          <div class="metric-sub">completed successfully</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Avg Duration</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">timer</span></div>
-          </div>
-          <div class="metric-value">${m.avg_duration_ms}ms</div>
-          <div class="metric-sub">per execution</div>
-        </div>
-      </div>
-
       <div class="latency-section">
         <h3 class="section-title">
-          <span class="material-symbols-outlined">extension</span>
-          Tool Breakdown
+          <span class="material-symbols-outlined">build</span>
+          Tool metrics
         </h3>
-        ${Object.entries(m.by_tool).map(([tool, data]) => html`
-          <div class="latency-row">
-            <span class="latency-label">${tool}</span>
-            <div class="latency-bar">
-              <div class="latency-bar-fill" style="width: ${(data.calls / m.executions_total) * 100}%"></div>
-            </div>
-            <div class="latency-values">
-              <span>${this.formatNumber(data.calls)} calls</span>
-              <span>${(data.success_rate * 100).toFixed(0)}% success</span>
-              <span>${data.avg_ms}ms avg</span>
-            </div>
-          </div>
-        `)}
+        ${this.renderMetricRows(this.metricsNamed('tool'))}
       </div>
     `;
   }
 
   private renderMemory() {
-    if (!this.metrics) return nothing;
-    const m = this.metrics.memory;
-
     return html`
-      <div class="metrics-grid">
-        <div class="metric-card featured">
-          <div class="metric-header">
-            <span class="metric-label">Operations</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">neurology</span></div>
-          </div>
-          <div class="metric-value">${this.formatNumber(m.operations_total)}</div>
-          <div class="metric-sub">memory operations</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">WAL Lag</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">sync</span></div>
-          </div>
-          <div class="metric-value">${m.wal_lag_seconds}s</div>
-          <div class="metric-sub">replication lag</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Persistence</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">save</span></div>
-          </div>
-          <div class="metric-value">${m.persistence_avg_ms}ms</div>
-          <div class="metric-sub">avg write time</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-label">Policy Checks</span>
-            <div class="metric-icon"><span class="material-symbols-outlined">policy</span></div>
-          </div>
-          <div class="metric-value">${this.formatNumber(m.policy_decisions)}</div>
-          <div class="metric-sub">authorization checks</div>
-        </div>
+      <div class="latency-section">
+        <h3 class="section-title">
+          <span class="material-symbols-outlined">neurology</span>
+          Memory metrics
+        </h3>
+        ${this.renderMetricRows(this.metricsNamed('memory'))}
       </div>
     `;
   }
 
   private renderSLA() {
+    if (this.sla.length === 0) {
+      return html`<p class="empty-note">No SLA rows were reported by the server.</p>`;
+    }
+    // Both server rows are computed from the same healthy/total ratio
+    // (api.py:384-403). They are shown under their server names with their
+    // own pass/fail verdicts. The server's hardcoded targets (99.9, 80.0)
+    // are not rendered — they are not sourced from any operator setting.
     return html`
       <div class="sla-grid">
         ${this.sla.map(s => html`
           <div class="sla-card">
             <div class="sla-name">${s.name}</div>
-            <div class="sla-value ${s.status}">${s.actual.toFixed(2)}%</div>
-            <div class="sla-target">Target: ${s.target}%</div>
+            <div class="sla-value ${s.status}">${s.actual === undefined ? '—' : s.actual}</div>
+            <div class="sla-status-row">
+              <span class="sla-status ${s.status}">${s.status}</span>
+            </div>
           </div>
         `)}
       </div>
+      <p class="empty-note">
+        Both SLA rows are computed by the server from the same services-healthy
+        ratio. No target column is shown: the server hardcodes its targets and
+        no operator-configured SLA target is available.
+      </p>
     `;
   }
 }

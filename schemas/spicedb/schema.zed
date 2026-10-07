@@ -1,23 +1,23 @@
 /**
- * SpiceDB Authorization Schema for SomaAgent SaaS Platform
+ * SpiceDB Authorization Schema for SomaAgent Platform
  * 
  * VIBE COMPLIANT - Production-grade authorization
  * Per SRS-PERMISSION-MATRIX.md - 4-Level Permission Hierarchy
  * 
  * Hierarchy:
- *   LEVEL 0: Platform (God Mode / SAAS Admin)
+ *   LEVEL 0: Platform (God Mode / Platform Admin)
  *   LEVEL 1: Tenant (Tenant SysAdmin, Admin)
  *   LEVEL 2: Agent (Owner, Developer, Trainer, User, Viewer)
  *   LEVEL 3: Resource (Chat, Memory, Cognitive, Voice)
  */
 
 // =============================================================================
-// LEVEL 0: PLATFORM (SAAS ADMIN - GOD MODE)
+// LEVEL 0: PLATFORM (PLATFORM ADMIN - GOD MODE)
 // =============================================================================
 
 definition platform {}
 
-definition saas_admin {
+definition platform_admin {
     relation platform: platform
     
     // Platform-wide permissions (God Mode)

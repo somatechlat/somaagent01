@@ -47,9 +47,9 @@ test.describe('A person uses the agent', () => {
     await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
 
     // A human knows they are in when the chat surface appears.
-    await expect(page).toHaveURL(/\/(chat|saas\/chat|workspace)?$/, { timeout: 30000 });
+    await expect(page).toHaveURL(/\/(chat|soma\/chat|workspace)?$/, { timeout: 30000 });
     await expect(
-      page.locator('saas-chat, saas-chat-workspace, .chat-workspace').first()
+      page.locator('soma-chat, soma-chat-workspace, .chat-workspace').first()
     ).toBeVisible({ timeout: 30000 });
   });
 
@@ -58,19 +58,19 @@ test.describe('A person uses the agent', () => {
     await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
     await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
     await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
-    await expect(page.locator('saas-chat, saas-chat-workspace').first()).toBeVisible({
+    await expect(page.locator('soma-chat, soma-chat-workspace').first()).toBeVisible({
       timeout: 30000,
     });
 
     const composer = page
-      .locator('saas-composer textarea, saas-chat textarea, textarea')
+      .locator('soma-composer textarea, soma-chat textarea, textarea')
       .first();
     await composer.waitFor({ state: 'visible', timeout: 20000 });
     await composer.fill('Say exactly: STREAM-OK and nothing else.');
     await composer.press('Enter');
 
     // The reply must land as visible text, not stay stuck in a buffer.
-    await expect(page.locator('saas-message, .message, .assistant').last()).toContainText(
+    await expect(page.locator('soma-message, .message, .assistant').last()).toContainText(
       /STREAM-OK/i,
       { timeout: 45000 }
     );
@@ -81,7 +81,7 @@ test.describe('A person uses the agent', () => {
     await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
     await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
     await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
-    await expect(page.locator('saas-chat, saas-chat-workspace').first()).toBeVisible({
+    await expect(page.locator('soma-chat, soma-chat-workspace').first()).toBeVisible({
       timeout: 30000,
     });
 
@@ -106,26 +106,26 @@ test.describe('A person uses the agent', () => {
     await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
     await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
     await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
-    await expect(page.locator('saas-chat, saas-chat-workspace').first()).toBeVisible({
+    await expect(page.locator('soma-chat, soma-chat-workspace').first()).toBeVisible({
       timeout: 30000,
     });
 
     const composer = page
-      .locator('saas-composer textarea, saas-chat textarea, textarea')
+      .locator('soma-composer textarea, soma-chat textarea, textarea')
       .first();
     await composer.waitFor({ state: 'visible', timeout: 20000 });
 
     // 1. Give it something to remember.
     await composer.fill(`Remember this codeword for me: ${MARK}`);
     await composer.press('Enter');
-    await expect(page.locator('saas-message, .message').last()).toBeVisible({
+    await expect(page.locator('soma-message, .message').last()).toBeVisible({
       timeout: 45000,
     });
 
     // 2. Ask for it back in a fresh phrasing so a cached transcript cannot pass.
     await composer.fill(`What codeword did I ask you to remember?`);
     await composer.press('Enter');
-    await expect(page.locator('saas-message, .message, .assistant').last()).toContainText(
+    await expect(page.locator('soma-message, .message, .assistant').last()).toContainText(
       MARK,
       { timeout: 60000 }
     );
@@ -136,7 +136,7 @@ test.describe('A person uses the agent', () => {
     await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
     await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
     await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
-    await expect(page.locator('saas-chat, saas-chat-workspace').first()).toBeVisible({
+    await expect(page.locator('soma-chat, soma-chat-workspace').first()).toBeVisible({
       timeout: 30000,
     });
 
@@ -161,7 +161,7 @@ test.describe('A person uses the agent', () => {
     await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
     await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
     await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
-    await expect(page.locator('saas-chat, saas-chat-workspace').first()).toBeVisible({
+    await expect(page.locator('soma-chat, soma-chat-workspace').first()).toBeVisible({
       timeout: 30000,
     });
 
@@ -182,7 +182,7 @@ test.describe('A person uses the agent', () => {
     const role = me.role || (Array.isArray(me.roles) ? me.roles.join(',') : 'unknown');
 
     await page.goto(`${UI}/settings`);
-    const host = page.locator('saas-settings').first();
+    const host = page.locator('soma-settings').first();
     await expect(host).toBeVisible({ timeout: 20000 });
 
     // 1. The screen must expose its editability, and it must match the server.
@@ -201,7 +201,7 @@ test.describe('A person uses the agent', () => {
     const seenControls = new Set();
 
     for (const label of tabs) {
-      await page.locator('saas-settings .tab-item', { hasText: label }).first().click();
+      await page.locator('soma-settings .tab-item', { hasText: label }).first().click();
 
       const controls = host.locator('[data-control]');
       const count = await controls.count();

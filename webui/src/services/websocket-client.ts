@@ -1,6 +1,6 @@
 /**
- * SaaS Admin WebSocket Client
- * Per SaaS Admin UIX Design Section 4.3
+ * Soma Admin WebSocket Client
+ * Per Soma Admin UIX Design Section 4.3
  *
  * VIBE COMPLIANT:
  * - Real WebSocket implementation
@@ -132,7 +132,7 @@ export class WebSocketClient {
         let token = this._getCookie('access_token');
         if (!token) {
             try {
-                token = sessionStorage.getItem('saas_ws_token');
+                token = sessionStorage.getItem('soma_ws_token');
             } catch {
                 token = null;
             }

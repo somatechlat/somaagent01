@@ -36,8 +36,8 @@ ALLOWED_BEARER_SOURCES = {
 }
 
 LOCALSTORAGE_TOKEN_READ = re.compile(
-    r"localStorage\.getItem\(\s*['\"](?:auth_token|saas_auth_token|access_token|"
-    r"saas_keycloak_token|id_token)['\"]"
+    r"localStorage\.getItem\(\s*['\"](?:auth_token|soma_auth_token|access_token|"
+    r"soma_keycloak_token|id_token)['\"]"
 )
 
 HAND_ROLLED_BEARER = re.compile(r"['\"]Authorization['\"]\s*:\s*[`'\"]\s*Bearer")
@@ -71,7 +71,7 @@ class TestNoLocalStorageTokens:
     def test_no_token_key_names_in_storage_writes(self):
         """No component may *write* a session token into localStorage either."""
         write = re.compile(
-            r"localStorage\.setItem\(\s*['\"](?:auth_token|saas_auth_token|access_token)['\"]"
+            r"localStorage\.setItem\(\s*['\"](?:auth_token|soma_auth_token|access_token)['\"]"
         )
         offenders = []
         for path in _webui_sources():

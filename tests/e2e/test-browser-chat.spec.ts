@@ -4,7 +4,7 @@ const BASE_URL = 'http://localhost:20080';
 
 test('Login and chat via browser', async ({ page }) => {
     page.on('console', msg => {
-        if (msg.type() === 'error' || msg.text().includes('[Saas')) {
+        if (msg.type() === 'error' || msg.text().includes('[Soma')) {
             console.log(`[${msg.type()}] ${msg.text()}`);
         }
     });
@@ -39,7 +39,7 @@ test('Login and chat via browser', async ({ page }) => {
     // placeholder that could never fail, which is a lie dressed as a test.
     await expect(page).not.toHaveURL(/\/login/, { timeout: 15000 });
 
-    const chatSurface = page.locator('saas-chat, saas-chat-workspace, .chat-workspace').first();
+    const chatSurface = page.locator('soma-chat, soma-chat-workspace, .chat-workspace').first();
     await expect(chatSurface).toBeVisible({ timeout: 20000 });
 
     await page.screenshot({ path: 'test-results/chat-page.png', fullPage: true });
@@ -52,7 +52,7 @@ test('Login and chat via browser', async ({ page }) => {
     await textarea.press('Enter');
 
     await expect(
-        page.locator('saas-message, .message, .assistant').last()
+        page.locator('soma-message, .message, .assistant').last()
     ).toContainText(/BROWSER-OK/i, { timeout: 45000 });
 
     await page.screenshot({ path: 'test-results/chat-response.png', fullPage: true });

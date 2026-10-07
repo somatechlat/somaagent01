@@ -1,5 +1,5 @@
 /**
- * SaaS Sys Admin - Main Entry Point
+ * Soma Sys Admin - Main Entry Point
  * Enterprise Platform UI
  * 
  * VIBE COMPLIANT:
@@ -59,30 +59,60 @@ if (app) {
                 return;
             }
             app.innerHTML = '';
-            await import('./views/saas-login.js');
-            app.appendChild(document.createElement('saas-login'));
+            await import('./views/soma-login.js');
+            app.appendChild(document.createElement('soma-login'));
             return;
         }
 
         if (path === '/register') {
             app.innerHTML = '';
-            await import('./views/saas-register.js');
-            app.appendChild(document.createElement('saas-register'));
+            await import('./views/soma-register.js');
+            app.appendChild(document.createElement('soma-register'));
             return;
         }
 
         if (path === '/forgot-password') {
             app.innerHTML = '';
-            await import('./views/saas-forgot-password.js');
-            app.appendChild(document.createElement('saas-forgot-password'));
+            await import('./views/soma-forgot-password.js');
+            app.appendChild(document.createElement('soma-forgot-password'));
+            return;
+        }
+
+        // /reset-password and /verify-email are publicPaths but have no
+        // screen and no mounted auth handler. Without a branch they fell
+        // through to the chat workspace unauthenticated. Render an honest
+        // unavailable notice instead of a fake product surface.
+        if (path === '/reset-password' || path === '/verify-email') {
+            app.innerHTML = '';
+            const notice = document.createElement('div');
+            notice.setAttribute('data-surface', path);
+            notice.setAttribute('data-can-edit', 'false');
+            notice.style.cssText =
+                'max-width:640px;margin:15vh auto;padding:32px;text-align:center;' +
+                'font-family:system-ui,sans-serif;color:#1a1a1a;';
+            notice.innerHTML =
+                '<h1 style="font-size:20px;margin:0 0 12px;">' +
+                (path === '/reset-password' ? 'Reset password' : 'Verify email') +
+                '</h1>' +
+                '<p style="margin:0 0 8px;line-height:1.5;color:#444;">' +
+                'This screen is present but disabled.</p>' +
+                '<p disabled title="Blocked: no handler is mounted for this action." ' +
+                'style="margin:0 0 16px;line-height:1.5;color:#666;">' +
+                'Blocking reason: no ' +
+                (path === '/reset-password' ? 'password-reset' : 'email-verification') +
+                ' route is mounted in admin/auth/api.py (mounted: /token /refresh /me ' +
+                '/logout /login /register /impersonate plus /sso /oauth /mfa). ' +
+                'Contact your administrator.</p>' +
+                '<a href="/login" style="color:#1a1a1a;">Back to login</a>';
+            app.appendChild(notice);
             return;
         }
 
         // 2. Auth callback - handle OAuth response
         if (path === '/auth/callback') {
-            await import('./views/saas-auth-callback.js');
+            await import('./views/soma-auth-callback.js');
             app.innerHTML = '';
-            app.appendChild(document.createElement('saas-auth-callback'));
+            app.appendChild(document.createElement('soma-auth-callback'));
             return;
         }
 
@@ -92,40 +122,40 @@ if (app) {
 
         // Home `/` is the chat workspace (product hero).
         if (path === '/' || path === '' || path === '/index.html') {
-            await import('./views/saas-chat.js');
-            app.appendChild(document.createElement('saas-chat'));
+            await import('./views/soma-chat.js');
+            app.appendChild(document.createElement('soma-chat'));
             return;
         }
 
         // 3. AGENT ADMINISTRATION Routes
-        //    No SaaS or billing routes: this is a standalone agent, and the
+        //    No Soma or billing routes: this is a standalone agent, and the
         //    admin surface administers the agent only. See AGENT.md §1.1.
-        if (path === '/saas/dashboard' || path === '/saas' || path === '/platform') {
-            await import('./views/saas-agent-metrics.js');
-            app.appendChild(document.createElement('saas-agent-metrics'));
+        if (path === '/soma/dashboard' || path === '/soma' || path === '/platform') {
+            await import('./views/soma-agent-metrics.js');
+            app.appendChild(document.createElement('soma-agent-metrics'));
             return;
         }
 
         if (path === '/platform/models') {
             // One model catalog: /llm/models on the Models settings screen.
-            await import('./views/saas-settings-models.js');
-            app.appendChild(document.createElement('saas-settings-models'));
+            await import('./views/soma-settings-models.js');
+            app.appendChild(document.createElement('soma-settings-models'));
             return;
         }
 
         // Rate Limits live on the Infrastructure dashboard (one surface).
         if (path === '/platform/infrastructure/redis/ratelimits' || path === '/platform/ratelimits') {
-            await import('./views/saas-infrastructure-dashboard.js');
-            const el = document.createElement('saas-infrastructure-dashboard') as HTMLElement & { activeTab?: string };
+            await import('./views/soma-infrastructure-dashboard.js');
+            const el = document.createElement('soma-infrastructure-dashboard') as HTMLElement & { activeTab?: string };
             el.activeTab = 'ratelimits';
             app.appendChild(el);
             return;
         }
 
         // Platform Integrations Dashboard
-        if (path === '/platform/integrations' || path === '/saas/settings/integrations') {
-            await import('./views/saas-integrations-dashboard.js');
-            app.appendChild(document.createElement('saas-integrations-dashboard'));
+        if (path === '/platform/integrations' || path === '/soma/settings/integrations') {
+            await import('./views/soma-integrations-dashboard.js');
+            app.appendChild(document.createElement('soma-integrations-dashboard'));
             return;
         }
 
@@ -133,34 +163,34 @@ if (app) {
         // secondary pane (UI-S-23). Old matrix/permissions URLs land here.
         if (path === '/platform/roles'
             || path === '/platform/role-matrix'
-            || path === '/saas/permissions' || path === '/platform/permissions') {
-            await import('./views/saas-admin-roles-list.js');
-            app.appendChild(document.createElement('saas-admin-roles-list'));
+            || path === '/soma/permissions' || path === '/platform/permissions') {
+            await import('./views/soma-admin-roles-list.js');
+            app.appendChild(document.createElement('soma-admin-roles-list'));
             return;
         }
 
         if (path === '/platform/api-keys') {
-            await import('./views/saas-admin-api-keys.js');
-            app.appendChild(document.createElement('saas-admin-api-keys'));
+            await import('./views/soma-admin-api-keys.js');
+            app.appendChild(document.createElement('soma-admin-api-keys'));
             return;
         }
 
         // Agent metrics
         if (path === '/admin/metrics') {
-            await import('./views/saas-agent-metrics.js');
-            app.appendChild(document.createElement('saas-agent-metrics'));
+            await import('./views/soma-agent-metrics.js');
+            app.appendChild(document.createElement('soma-agent-metrics'));
             return;
         }
 
-        // Infrastructure Administration (SaaS Platform Admin)
-        if (path === '/platform/infrastructure' || path === '/saas/infrastructure') {
-            await import('./views/saas-infrastructure-dashboard.js');
-            app.appendChild(document.createElement('saas-infrastructure-dashboard'));
+        // Infrastructure Administration (Soma Platform Admin)
+        if (path === '/platform/infrastructure' || path === '/soma/infrastructure') {
+            await import('./views/soma-infrastructure-dashboard.js');
+            app.appendChild(document.createElement('soma-infrastructure-dashboard'));
             return;
         }
 
         // Platform Metrics Dashboard
-        if (path === '/platform/metrics' || path === '/saas/metrics') {
+        if (path === '/platform/metrics' || path === '/soma/metrics') {
             await import('./views/platform-metrics-dashboard.js');
             app.appendChild(document.createElement('platform-metrics-dashboard'));
             return;
@@ -168,8 +198,8 @@ if (app) {
 
         // Multimodal Settings (Agent Owner)
         if (path === '/settings/multimodal' || path === '/agent/multimodal') {
-            await import('./views/saas-multimodal-settings.js');
-            app.appendChild(document.createElement('saas-multimodal-settings'));
+            await import('./views/soma-multimodal-settings.js');
+            app.appendChild(document.createElement('soma-multimodal-settings'));
             return;
         }
 
@@ -192,55 +222,55 @@ if (app) {
 
         // Entity Views (Users, Agents using EntityManager)
         if (path === '/admin/users') {
-            await import('./views/saas-entity-views.js');
-            app.appendChild(document.createElement('saas-users-view'));
+            await import('./views/soma-entity-views.js');
+            app.appendChild(document.createElement('soma-users-view'));
             return;
         }
 
         // User Detail View
         if (path.match(/^\/admin\/users\/[^/]+$/)) {
-            await import('./views/saas-user-detail.js');
-            app.appendChild(document.createElement('saas-user-detail'));
+            await import('./views/soma-user-detail.js');
+            app.appendChild(document.createElement('soma-user-detail'));
             return;
         }
 
         // Platform Admin Profile
         if (path === '/platform/profile') {
-            await import('./views/saas-platform-profile.js');
-            app.appendChild(document.createElement('saas-platform-profile'));
+            await import('./views/soma-platform-profile.js');
+            app.appendChild(document.createElement('soma-platform-profile'));
             return;
         }
 
         // Agent admin profile
         if (path === '/admin/profile') {
-            await import('./views/saas-platform-profile.js');
-            app.appendChild(document.createElement('saas-platform-profile'));
+            await import('./views/soma-platform-profile.js');
+            app.appendChild(document.createElement('soma-platform-profile'));
             return;
         }
 
         // Personal User Profile
         if (path === '/profile') {
-            await import('./views/saas-personal-profile.js');
-            app.appendChild(document.createElement('saas-personal-profile'));
+            await import('./views/soma-personal-profile.js');
+            app.appendChild(document.createElement('soma-personal-profile'));
             return;
         }
 
         if (path === '/admin/agents') {
-            await import('./views/saas-entity-views.js');
-            app.appendChild(document.createElement('saas-agents-view'));
+            await import('./views/soma-entity-views.js');
+            app.appendChild(document.createElement('soma-agents-view'));
             return;
         }
 
         // Audit Log Dashboard
-        if (path === '/platform/audit' || path === '/saas/audit') {
-            await import('./views/saas-audit-dashboard.js');
-            app.appendChild(document.createElement('saas-audit-dashboard'));
+        if (path === '/platform/audit' || path === '/soma/audit') {
+            await import('./views/soma-audit-dashboard.js');
+            app.appendChild(document.createElement('soma-audit-dashboard'));
             return;
         }
 
         if (path === '/cognitive' || path === '/training') {
-            await import('./views/saas-cognitive-panel.js');
-            app.appendChild(document.createElement('saas-cognitive-panel'));
+            await import('./views/soma-cognitive-panel.js');
+            app.appendChild(document.createElement('soma-cognitive-panel'));
             return;
         }
 
@@ -259,64 +289,64 @@ if (app) {
             try {
                 await apiClient.logout();
             } catch (err) {
-                console.error('[SaaS] server logout failed', err);
+                console.error('[Soma] server logout failed', err);
             }
-            localStorage.removeItem('saas_auth_token');
-            localStorage.removeItem('saas_user');
+            localStorage.removeItem('soma_auth_token');
+            localStorage.removeItem('soma_user');
             window.location.href = '/login';
             return;
         }
 
         // MFA Setup
         if (path === '/mfa/setup' || path === '/settings/mfa') {
-            await import('./views/saas-mfa-setup.js');
-            app.appendChild(document.createElement('saas-mfa-setup'));
+            await import('./views/soma-mfa-setup.js');
+            app.appendChild(document.createElement('soma-mfa-setup'));
             return;
         }
 
         // One audit surface: the dashboard (stats + log + filters).
         if (path === '/audit' || path === '/admin/audit') {
-            await import('./views/saas-audit-dashboard.js');
-            app.appendChild(document.createElement('saas-audit-dashboard'));
+            await import('./views/soma-audit-dashboard.js');
+            app.appendChild(document.createElement('soma-audit-dashboard'));
             return;
         }
 
 
 
-        if (path === '/chat' || path === '/chat/' || path.startsWith('/chat/') || path === '/saas/chat') {
-            await import('./views/saas-chat.js');
-            app.appendChild(document.createElement('saas-chat'));
+        if (path === '/chat' || path === '/chat/' || path.startsWith('/chat/') || path === '/soma/chat') {
+            await import('./views/soma-chat.js');
+            app.appendChild(document.createElement('soma-chat'));
             return;
         }
 
         // Workspace is the chat chrome (one chat surface).
         if (path === '/workspace') {
-            await import('./views/saas-chat.js');
-            app.appendChild(document.createElement('saas-chat'));
+            await import('./views/soma-chat.js');
+            app.appendChild(document.createElement('soma-chat'));
             return;
         }
 
         if (path === '/memory') {
-            await import('./views/saas-memory-view.js');
-            app.appendChild(document.createElement('saas-memory-view'));
+            await import('./views/soma-memory-view.js');
+            app.appendChild(document.createElement('soma-memory-view'));
             return;
         }
 
         if (path === '/settings/models' || path === '/agent/models') {
-            await import('./views/saas-settings-models.js');
-            app.appendChild(document.createElement('saas-settings-models'));
+            await import('./views/soma-settings-models.js');
+            app.appendChild(document.createElement('soma-settings-models'));
             return;
         }
 
         if (path === '/settings/channels' || path === '/agent/channels') {
-            await import('./views/saas-settings-channels.js');
-            app.appendChild(document.createElement('saas-settings-channels'));
+            await import('./views/soma-settings-channels.js');
+            app.appendChild(document.createElement('soma-settings-channels'));
             return;
         }
 
         if (path === '/settings') {
-            await import('./views/saas-settings.js');
-            app.appendChild(document.createElement('saas-settings'));
+            await import('./views/soma-settings.js');
+            app.appendChild(document.createElement('soma-settings'));
             return;
         }
 
@@ -355,28 +385,28 @@ if (app) {
 
         // 6. Voice Routes (AgentVoice Vox)
         if (path === '/voice/personas' || path === '/platform/voice/personas') {
-            await import('./views/saas-voice-personas.js');
-            app.appendChild(document.createElement('saas-voice-personas'));
+            await import('./views/soma-voice-personas.js');
+            app.appendChild(document.createElement('soma-voice-personas'));
             return;
         }
 
         if (path === '/voice/sessions' || path === '/platform/voice/sessions') {
-            await import('./views/saas-voice-sessions.js');
-            app.appendChild(document.createElement('saas-voice-sessions'));
+            await import('./views/soma-voice-sessions.js');
+            app.appendChild(document.createElement('soma-voice-sessions'));
             return;
         }
 
         if (path === '/voice/chat' || path === '/platform/voice/chat' || path === '/voice') {
-            await import('./views/saas-voice-chat.js');
-            app.appendChild(document.createElement('saas-voice-chat'));
+            await import('./views/soma-voice-chat.js');
+            app.appendChild(document.createElement('soma-voice-chat'));
             return;
         }
 
 
 
         // Default: chat workspace (never an admin dashboard as home)
-        await import('./views/saas-chat.js');
-        app.appendChild(document.createElement('saas-chat'));
+        await import('./views/soma-chat.js');
+        app.appendChild(document.createElement('soma-chat'));
     };
 
     // Initial Render
@@ -386,7 +416,7 @@ if (app) {
     window.addEventListener('popstate', renderRoute);
 
     // Custom navigation event from components
-    window.addEventListener('saas-navigate', ((e: CustomEvent) => {
+    window.addEventListener('soma-navigate', ((e: CustomEvent) => {
         const route = e.detail.route;
         if (route) {
             window.history.pushState(null, '', route);
@@ -396,8 +426,8 @@ if (app) {
 }
 
 // Log startup
-console.log('[SaaS] SaaS Sys Admin v1.0.0 initialized');
-console.log('[SaaS] API: /api/v2/');
-console.log('[SaaS] WebSocket: /ws/v2/');
+console.log('[Soma] Soma Sys Admin v1.0.0 initialized');
+console.log('[Soma] API: /api/v2/');
+console.log('[Soma] WebSocket: /ws/v2/');
 
 

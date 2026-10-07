@@ -52,18 +52,18 @@ export class VoiceTranscript extends LitElement {
             display: flex;
             flex-direction: column;
             height: 100%;
-            background: var(--saas-surface, white);
-            border: 1px solid var(--saas-border, #e2e8f0);
+            background: var(--soma-surface, white);
+            border: 1px solid var(--soma-border, #e2e8f0);
             border-radius: 12px;
             overflow: hidden;
         }
 
         .header {
             padding: 12px 16px;
-            border-bottom: 1px solid var(--saas-border, #e2e8f0);
+            border-bottom: 1px solid var(--soma-border, #e2e8f0);
             font-size: 14px;
             font-weight: 600;
-            color: var(--saas-text, #1e293b);
+            color: var(--soma-text, #1e293b);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -72,7 +72,7 @@ export class VoiceTranscript extends LitElement {
         .clear-btn {
             background: transparent;
             border: none;
-            color: var(--saas-text-dim, #64748b);
+            color: var(--soma-text-dim, #64748b);
             cursor: pointer;
             font-size: 12px;
             padding: 4px 8px;
@@ -80,7 +80,7 @@ export class VoiceTranscript extends LitElement {
         }
 
         .clear-btn:hover {
-            background: var(--saas-bg, #f8fafc);
+            background: var(--soma-bg, #f8fafc);
         }
 
         .messages {
@@ -108,15 +108,15 @@ export class VoiceTranscript extends LitElement {
 
         .message.user {
             align-self: flex-end;
-            background: var(--saas-primary, #3b82f6);
+            background: var(--soma-primary, #3b82f6);
             color: white;
             border-bottom-right-radius: 4px;
         }
 
         .message.assistant {
             align-self: flex-start;
-            background: var(--saas-bg, #f8fafc);
-            color: var(--saas-text, #1e293b);
+            background: var(--soma-bg, #f8fafc);
+            color: var(--soma-text, #1e293b);
             border-bottom-left-radius: 4px;
         }
 
@@ -146,7 +146,7 @@ export class VoiceTranscript extends LitElement {
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            color: var(--saas-text-dim, #64748b);
+            color: var(--soma-text-dim, #64748b);
             text-align: center;
             padding: 40px;
         }

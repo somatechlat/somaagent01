@@ -152,7 +152,7 @@ export class VoiceChatController {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const resolvedTenantId =
             tenantId ||
-            sessionStorage.getItem('saas_tenant_id') ||
+            sessionStorage.getItem('soma_tenant_id') ||
             'default';
         const wsUrl = `${protocol}//${window.location.host}/ws/voice/?tenant_id=${encodeURIComponent(resolvedTenantId)}`;
 

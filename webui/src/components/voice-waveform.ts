@@ -43,10 +43,10 @@ export class VoiceWaveform extends LitElement {
         .waveform-container {
             position: relative;
             height: 80px;
-            background: var(--saas-bg, #f8fafc);
+            background: var(--soma-bg, #f8fafc);
             border-radius: 8px;
             overflow: hidden;
-            border: 1px solid var(--saas-border, #e2e8f0);
+            border: 1px solid var(--soma-border, #e2e8f0);
         }
 
         canvas {
@@ -62,7 +62,7 @@ export class VoiceWaveform extends LitElement {
             display: flex;
             align-items: center;
             gap: 8px;
-            color: var(--saas-text-dim, #64748b);
+            color: var(--soma-text-dim, #64748b);
             font-size: 14px;
         }
 
@@ -116,12 +116,12 @@ export class VoiceWaveform extends LitElement {
         }
 
         .control-btn.mic {
-            background: var(--saas-primary, #3b82f6);
+            background: var(--soma-primary, #3b82f6);
             color: white;
         }
 
         .control-btn.mic:hover {
-            background: var(--saas-primary-hover, #2563eb);
+            background: var(--soma-primary-hover, #2563eb);
             transform: scale(1.05);
         }
 
@@ -131,13 +131,13 @@ export class VoiceWaveform extends LitElement {
         }
 
         .control-btn.stop {
-            background: var(--saas-surface, white);
-            border: 1px solid var(--saas-border, #e2e8f0);
-            color: var(--saas-text, #1e293b);
+            background: var(--soma-surface, white);
+            border: 1px solid var(--soma-border, #e2e8f0);
+            color: var(--soma-text, #1e293b);
         }
 
         .control-btn.stop:hover {
-            background: var(--saas-bg, #f8fafc);
+            background: var(--soma-bg, #f8fafc);
         }
     `;
 
@@ -169,11 +169,11 @@ export class VoiceWaveform extends LitElement {
         this.canvas.height = height * 2;
         this.canvasCtx.scale(2, 2);
 
-        this.canvasCtx.fillStyle = 'var(--saas-bg, #f8fafc)';
+        this.canvasCtx.fillStyle = 'var(--soma-bg, #f8fafc)';
         this.canvasCtx.fillRect(0, 0, width, height);
 
         // Draw flat line
-        this.canvasCtx.strokeStyle = 'var(--saas-border, #e2e8f0)';
+        this.canvasCtx.strokeStyle = 'var(--soma-border, #e2e8f0)';
         this.canvasCtx.lineWidth = 2;
         this.canvasCtx.beginPath();
         this.canvasCtx.moveTo(0, height / 2);

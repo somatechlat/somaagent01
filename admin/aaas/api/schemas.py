@@ -5,7 +5,7 @@ Django Ninja/Pydantic schemas for request/response validation.
 Scope: schemas for administering this agent — its API keys, its model
 configuration and its roles.
 
-There are no SaaS or billing schemas here. This product is a standalone
+There are no commercial billing schemas here. This product is a standalone
 agent: subscription tiers, invoices, payment methods, plan feature gating
 and multi-tenant org lifecycle are not part of it and are not modelled.
 See AGENT.md §1.1 (Scope).

@@ -51,7 +51,7 @@ async function login(page) {
   await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
   await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
   await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
-  await expect(page.locator('saas-chat, .chat-workspace').first()).toBeVisible({
+  await expect(page.locator('soma-chat, .chat-workspace').first()).toBeVisible({
     timeout: 30000,
   });
 }
@@ -68,7 +68,7 @@ test.describe('A person changes settings and creates models', () => {
     // The operator's layer is InfrastructureConfig. A person must be able to
     // see the endpoints they can repoint. If the API is down the screen shows
     // an honest error — never a plausible-looking placeholder row.
-    const surface = page.locator('saas-settings-models, saas-settings').first();
+    const surface = page.locator('soma-settings-models, soma-settings').first();
     await expect(surface).toBeVisible({ timeout: 20000 });
 
     // No fabricated metrics. If a health/percentage block renders, it must not
@@ -176,7 +176,7 @@ test.describe('A person changes settings and creates models', () => {
   test('a model row shows which provider key it uses', async ({ page }) => {
     await login(page);
     await page.goto(`${UI}/settings/models`);
-    const surface = page.locator('saas-settings-models').first();
+    const surface = page.locator('soma-settings-models').first();
     await expect(surface).toBeVisible({ timeout: 20000 });
 
     // The relation is load-bearing: a model uses a provider key; the provider

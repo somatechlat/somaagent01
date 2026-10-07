@@ -28,7 +28,7 @@ test('model settings show provider-key relation both ways', async ({ page }) => 
 test('chat chrome mounts the AgentIQ strip without invented derived values', async ({ page }) => {
   await tryLogin(page);
   await page.goto('/chat');
-  const strip = page.locator('saas-agent-iq');
+  const strip = page.locator('soma-agent-iq');
   await expect(strip).toBeVisible();
   const text = await strip.innerText();
   expect(text).toContain('temperature');

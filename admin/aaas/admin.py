@@ -3,7 +3,7 @@
 Registers Django admin for this agent's own records: its agents, their
 assigned users, and the audit trail.
 
-No SaaS or billing is administered here. Subscription tiers, plan feature
+No commercial billing is administered here. Subscription tiers, plan feature
 gating and usage metering exist as data models only — this product is a
 standalone agent and has no billing administration surface. See AGENT.md §1.1.
 """

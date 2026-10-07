@@ -21,23 +21,26 @@ Run the proof (one command):
     pytest tests/e2e/test_triad_integration.py -v
 
 Environment — URLs are discovered from env ONLY by the ``seam_stack``
-fixture; no port is hardcoded anywhere in this file:
+fixture; no port is hardcoded anywhere in this file. Supply the same topology
+the deployment does (compose .env / running service URLs):
 
     SOMABRAIN_URL                 base URL of the live SomaBrain
     SFM_URL                       base URL of the live SomaFractalMemory
                                   (alias SOMAFRACTALMEMORY_URL)
 
-Optional:
+Topology (not credentials):
 
-    SOMA_API_TOKEN / SOMABRAIN_MEMORY_HTTP_TOKEN / SA01_TEST_TOKEN
-                                  bearer token sent to the stores
-    MEM_EMBED_DIM                 shared embedding dimension (settings.MEM_EMBED_DIM)
     SA01_DB_HOST / SA01_DB_PORT   Postgres for process_turn (probe matches
                                   tests/unit/test_chat_orchestrator.py)
+    SOMABRAIN_NAMESPACE           administrator namespace parameter
+    MEM_EMBED_DIM                 shared embedding dimension (settings.MEM_EMBED_DIM)
 
-Model credentials are NOT an env contract. A real LLM key must be seeded in
-Vault at secret/agent/api_keys/{provider}_api_key via the agent's model
-administration (LLMModelConfig + UnifiedSecretManager.set_provider_key).
+Credentials are NOT an env contract (VIBE Rule 164). Store bearer tokens come
+from the same settings chain the runtime uses — ``config.settings`` seeded from
+Vault (``secret/agent/credentials/somabrain_memory_http_token`` and
+``secret/agent/credentials/soma_api_token``). Model credentials likewise: a real
+LLM key must be seeded in Vault at secret/agent/api_keys/{provider}_api_key via
+the agent's model administration (LLMModelConfig + UnifiedSecretManager).
 This suite reads them the same way the runtime does.
 
 Every step skips with an explanatory reason when a dependency is missing.
@@ -52,6 +55,7 @@ from dataclasses import dataclass, field
 
 import httpx
 import pytest
+from asgiref.sync import sync_to_async
 
 pytestmark = pytest.mark.integration
 
@@ -75,14 +79,25 @@ def _env_url(*names: str) -> str | None:
 
 
 def _postgres_available() -> bool:
-    """True when the Postgres used by process_turn answers a TCP connect."""
+    """True when the Postgres used by process_turn answers a TCP connect.
 
-    host = os.environ.get("SA01_DB_HOST", "localhost")
-    port = int(os.environ.get("SA01_DB_PORT", "63932"))
+    Topology comes from ``SA01_DB_HOST`` / ``SA01_DB_PORT`` only. A default
+    would be a hardcoded host/port (Rule 1), so an unset name fails the probe
+    and the skip reason names the missing setting.
+    """
+
+    host = (os.environ.get("SA01_DB_HOST") or "").strip()
+    port_raw = (os.environ.get("SA01_DB_PORT") or "").strip()
+    if not host or not port_raw:
+        return False
+    try:
+        port = int(port_raw)
+    except ValueError:
+        return False
     try:
         with socket.create_connection((host, port), timeout=2):
             return True
-    except (socket.error, socket.timeout):
+    except (socket.error, socket.timeout, ValueError, TypeError):
         return False
 
 
@@ -119,20 +134,35 @@ def _llm_available() -> bool:
     return _provider_with_key() is not None
 
 
-def _store_headers(tenant_id: str | None = None) -> dict[str, str]:
-    """Auth/tenant headers for store calls — tokens come from env, never literals."""
+def _store_headers(tenant_id: str | None = None, store: str = "somabrain") -> dict[str, str]:
+    """Auth/tenant headers for store calls — tokens from the settings chain.
+
+    Brain and SFM are different trust boundaries (INVARIANTS §6):
+    ``SOMABRAIN_MEMORY_HTTP_TOKEN`` authenticates agent↔brain,
+    ``SOMA_API_TOKEN`` authenticates a caller to SFM. Picking the wrong one
+    yields 401 and looks like "memory is down" when it is only misauthenticated.
+    Both are resolved by ``get_memory_setting`` — the same authority
+    ``SomaBrainAdapter`` uses (Django settings, seeded from Vault). Reading
+    ``os.environ`` here would test a source of truth the runtime never reads.
+    Namespace is the administrator parameter ``SOMABRAIN_NAMESPACE`` — never a
+    literal (Rule 1 / Rule 91).
+    """
+
+    from services.common.memory_contract import get_memory_setting
 
     headers: dict[str, str] = {"Accept": "application/json"}
-    token = (
-        os.environ.get("SOMA_API_TOKEN")
-        or os.environ.get("SOMABRAIN_MEMORY_HTTP_TOKEN")
-        or os.environ.get("SA01_TEST_TOKEN")
-    )
+    if store == "somafractalmemory":
+        token = get_memory_setting("SOMA_API_TOKEN")
+    else:
+        token = get_memory_setting("SOMABRAIN_MEMORY_HTTP_TOKEN")
     if token:
         headers["Authorization"] = f"Bearer {token}"
     if tenant_id:
         headers["X-Soma-Tenant"] = tenant_id
         headers["X-Tenant-ID"] = tenant_id
+    namespace = str(get_memory_setting("SOMABRAIN_NAMESPACE") or "").strip()
+    if namespace:
+        headers["X-Namespace"] = namespace
     return headers
 
 
@@ -244,8 +274,12 @@ class AllowingGate:
         return True
 
 
-def _seed_llm_model() -> None:
-    """Ensure the chat pipeline can select a model matching the key in Vault."""
+def _seed_llm_model_sync() -> None:
+    """Ensure the chat pipeline can select a model matching the key in Vault.
+
+    Sync body: wrapped with ``sync_to_async`` at the call site because
+    ``process_turn`` runs in the event loop (Django SynchronousOnlyOperation).
+    """
 
     from admin.llm.models import LLMModelConfig
 
@@ -270,20 +304,26 @@ def _seed_llm_model() -> None:
     )
 
 
-def _probe_store(
+def _probe_store_sync(
     base: str,
     path: str,
     body: dict,
     tenant_id: str,
+    store: str = "somabrain",
 ) -> StoreProbe:
-    """POST to a store lookup route and capture the outcome without asserting."""
+    """POST to a store lookup route and capture the outcome without asserting.
+
+    Sync body: wrapped with ``sync_to_async`` at the call site because the
+    story runs in the event loop and a bare ``httpx.post`` there deadlocks
+    against the running loop (measured as ReadTimeout, not a store outage).
+    """
 
     try:
         response = httpx.post(
             f"{base}{path}",
             json=body,
-            headers=_store_headers(tenant_id),
-            timeout=10.0,
+            headers=_store_headers(tenant_id, store=store),
+            timeout=30.0,
         )
         return StoreProbe(
             ok=response.status_code == 200,
@@ -307,36 +347,58 @@ async def _run_story(stack: SeamStack) -> SeamStory:
     from admin.core.models import Capsule
 
     marker = f"SEAM-{uuid.uuid4().hex}"
+    # A real principal: UUID identity + catalog roles, exactly what the WS
+    # consumer attaches from the token (ChatTurn.roles). PermissionChecker is
+    # left real — an empty role set must deny (fail-closed), so the seam
+    # principal holds the role that grants resource:chat_send.
+    principal_id = uuid.uuid4()
 
-    tenant = Tenant.objects.create(
-        name="Seam Tenant", slug=f"seam-tenant-{uuid.uuid4().hex[:8]}"
-    )
-    capsule = Capsule.objects.create(
-        name="Seam Capsule",
-        tenant=tenant,
-        system_prompt="You are a helpful assistant.",
-        persona_config={
-            "knobs": {
-                "intelligence_level": 5,
-                "autonomy_level": 5,
-                "resource_budget": 0.1,
-            }
-        },
-    )
-    conversation = Conversation.objects.create(
-        agent_id=uuid.uuid4(),
-        user_id=uuid.uuid4(),
-        tenant_id=tenant.id,
-        title="Seam Proof Conversation",
-    )
-    _seed_llm_model()
+    @sync_to_async
+    def _seed_rows():
+        from admin.aaas.models import TenantUser
+
+        tenant = Tenant.objects.create(
+            name="Seam Tenant", slug=f"seam-tenant-{uuid.uuid4().hex[:8]}"
+        )
+        capsule = Capsule.objects.create(
+            name="Seam Capsule",
+            tenant=tenant,
+            system_prompt="You are a helpful assistant.",
+            persona_config={
+                "knobs": {
+                    "intelligence_level": 5,
+                    "autonomy_level": 5,
+                    "resource_budget": 0.1,
+                }
+            },
+        )
+        conversation = Conversation.objects.create(
+            agent_id=uuid.uuid4(),
+            user_id=principal_id,
+            tenant_id=tenant.id,
+            title="Seam Proof Conversation",
+        )
+        # Real RBAC: the principal is an org member, so PermissionChecker
+        # resolves roles from TenantUser exactly as production does. An empty
+        # role set would correctly deny (fail-closed) and never reach memory.
+        TenantUser.objects.create(
+            tenant=tenant,
+            user_id=principal_id,
+            email=f"seam-{principal_id.hex[:8]}@example.com",
+            role="sysadmin",
+            is_active=True,
+        )
+        _seed_llm_model_sync()
+        return tenant, capsule, conversation
+
+    tenant, capsule, conversation = await _seed_rows()
 
     orchestrator = V3ChatOrchestrator(unified_gate=AllowingGate())
 
     # STEP 1 — one chat turn carrying the unique marker (real public entry).
     turn1 = ChatTurn(
         capsule=capsule,
-        user_id="seam-user",
+        user_id=str(principal_id),
         tenant_id=str(tenant.id),
         user_message=(
             f"Remember this secret codeword: {marker}. " "Repeat the secret codeword back to me."
@@ -371,25 +433,43 @@ async def _run_story(stack: SeamStack) -> SeamStory:
     )
 
     # STEP 2 — marker in SomaFractalMemory via the live search API.
-    story.sfm_probe = _probe_store(
+    # Body carries tenant_id exactly as MemorySearchRequest does; the header
+    # alone is not the seam contract.
+    story.sfm_probe = await sync_to_async(_probe_store_sync)(
         stack.sfm_url,
         "/memories/search",
-        {"query": marker, "top_k": 10, "offset": 0},
+        {"query": marker, "top_k": 10, "offset": 0, "tenant_id": story.tenant_id},
         story.tenant_id,
+        store="somafractalmemory",
     )
 
-    # STEP 3 — marker in SomaBrain via its recall.
-    story.brain_probe = _probe_store(
+    # STEP 3 — marker in SomaBrain via its recall. Body matches
+    # SomaBrainAdapter.recall: tenant + namespace are first-class, not headers
+    # only — the brain binds the query to payload.tenant (memory.py:241-244).
+    from services.common.memory_contract import get_memory_setting
+
+    namespace = str(get_memory_setting("SOMABRAIN_NAMESPACE") or "").strip()
+    recall_body = {
+        "query": marker,
+        "top_k": 10,
+        "layer": "both",
+        "tenant": story.tenant_id,
+        "tenant_id": story.tenant_id,
+    }
+    if namespace:
+        recall_body["namespace"] = namespace
+    story.brain_probe = await sync_to_async(_probe_store_sync)(
         stack.somabrain_url,
         "/memory/recall",
-        {"query": marker, "top_k": 10},
+        recall_body,
         story.tenant_id,
+        store="somabrain",
     )
 
     # STEP 4 — a second turn; its built context (memory lane) must recall the marker.
     turn2 = ChatTurn(
         capsule=capsule,
-        user_id="seam-user",
+        user_id=str(principal_id),
         tenant_id=str(tenant.id),
         user_message="What secret codeword did I ask you to remember?",
         conversation_id=str(conversation.id),
@@ -428,7 +508,14 @@ def _marker_in_probe(probe: StoreProbe, marker: str) -> bool:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.skipif(not _postgres_available(), reason="PostgreSQL not available")
+@pytest.mark.skipif(
+    not _postgres_available(),
+    reason=(
+        "PostgreSQL for process_turn is not reachable — set SA01_DB_HOST and "
+        "SA01_DB_PORT to the live Postgres (compose topology). No host or port "
+        "is hardcoded in this suite."
+    ),
+)
 @pytest.mark.skipif(
     not _llm_available(),
     reason="no LLM provider key in Vault (secret/agent/api_keys/{provider}_api_key)",
@@ -448,7 +535,14 @@ async def test_step1_chat_turn_carries_marker_through_public_entry(seam_stack):
     assert story.turn1_turn_id, "STEP 1: no turn_id was returned for the marker turn"
 
 
-@pytest.mark.skipif(not _postgres_available(), reason="PostgreSQL not available")
+@pytest.mark.skipif(
+    not _postgres_available(),
+    reason=(
+        "PostgreSQL for process_turn is not reachable — set SA01_DB_HOST and "
+        "SA01_DB_PORT to the live Postgres (compose topology). No host or port "
+        "is hardcoded in this suite."
+    ),
+)
 @pytest.mark.skipif(
     not _llm_available(),
     reason="no LLM provider key in Vault (secret/agent/api_keys/{provider}_api_key)",
@@ -469,11 +563,20 @@ async def test_step2_marker_reachable_in_somafractalmemory(seam_stack):
     assert _marker_in_probe(probe, story.marker), (
         "STEP 2: marker was not found in somafractalmemory via POST /memories/search — "
         "one chat turn must land in BOTH stores (PLAN §1 one write path). "
+        "Note: the adapter writes with X-Soma-Fast-Ack, so LTM persist is async "
+        "(queued_for_ltm); an empty hit means the row never reached LTM, not a race. "
         f"Marker: {story.marker}. Response: {probe.body_text[:800]}"
     )
 
 
-@pytest.mark.skipif(not _postgres_available(), reason="PostgreSQL not available")
+@pytest.mark.skipif(
+    not _postgres_available(),
+    reason=(
+        "PostgreSQL for process_turn is not reachable — set SA01_DB_HOST and "
+        "SA01_DB_PORT to the live Postgres (compose topology). No host or port "
+        "is hardcoded in this suite."
+    ),
+)
 @pytest.mark.skipif(
     not _llm_available(),
     reason="no LLM provider key in Vault (secret/agent/api_keys/{provider}_api_key)",
@@ -498,7 +601,14 @@ async def test_step3_marker_reachable_in_somabrain(seam_stack):
     )
 
 
-@pytest.mark.skipif(not _postgres_available(), reason="PostgreSQL not available")
+@pytest.mark.skipif(
+    not _postgres_available(),
+    reason=(
+        "PostgreSQL for process_turn is not reachable — set SA01_DB_HOST and "
+        "SA01_DB_PORT to the live Postgres (compose topology). No host or port "
+        "is hardcoded in this suite."
+    ),
+)
 @pytest.mark.skipif(
     not _llm_available(),
     reason="no LLM provider key in Vault (secret/agent/api_keys/{provider}_api_key)",

@@ -48,13 +48,13 @@ async function login(page) {
   await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
   await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
   await expect(
-    page.locator('saas-chat, .chat-workspace').first()
+    page.locator('soma-chat, .chat-workspace').first()
   ).toBeVisible({ timeout: 30000 });
 }
 
 async function composer(page) {
   const box = page
-    .locator('saas-composer textarea, saas-chat textarea, textarea')
+    .locator('soma-composer textarea, soma-chat textarea, textarea')
     .first();
   await box.waitFor({ state: 'visible', timeout: 20000 });
   return box;
@@ -75,7 +75,7 @@ async function composer(page) {
 async function waitForChatSocket(page) {
   await page.waitForFunction(
     () => {
-      const chat = document.querySelector('saas-chat');
+      const chat = document.querySelector('soma-chat');
       // Lit @state fields live on the element instance.
       return Boolean(chat && chat._wsConnected);
     },
@@ -88,10 +88,10 @@ async function ask(page, text) {
   const box = await composer(page);
   await box.fill(text);
   await box.press('Enter');
-  // The composer's own message is also a saas-message. Read the ASSISTANT's
+  // The composer's own message is also a soma-message. Read the ASSISTANT's
   // turn, not whichever element happens to be last on the page.
   const last = page
-    .locator('saas-message[message-role="assistant"], .assistant')
+    .locator('soma-message[message-role="assistant"], .assistant')
     .last();
   await expect(last).toBeVisible({ timeout: 60000 });
 
@@ -194,7 +194,7 @@ test.describe('Tuning the agent chat', () => {
     await box.fill('Reply with the single word OK.');
     await box.press('Enter');
     await expect(
-      page.locator('saas-message, .message, .assistant').last()
+      page.locator('soma-message, .message, .assistant').last()
     ).toBeVisible({ timeout: 60000 });
     await page.waitForTimeout(3000);
     const elapsed = Date.now() - started;
@@ -281,10 +281,10 @@ test.describe('Tuning the agent chat', () => {
     // The timeline is the product surface for what the agent did. It must be
     // present in the chrome, not invented in the reply text.
     const timeline = page.locator(
-      'saas-tool-timeline, [class*="tool-timeline"], [data-part="tool"]'
+      'soma-tool-timeline, [class*="tool-timeline"], [data-part="tool"]'
     );
     const memoryLane = page.locator(
-      'saas-cognitive-panel, saas-agent-iq, [class*="lane"]'
+      'soma-cognitive-panel, soma-agent-iq, [class*="lane"]'
     );
     expect(
       (await timeline.count()) + (await memoryLane.count()),
@@ -298,7 +298,7 @@ test.describe('Tuning the agent chat', () => {
     page,
   }) => {
     await login(page);
-    const iq = page.locator('saas-agent-iq').first();
+    const iq = page.locator('soma-agent-iq').first();
     await expect(iq).toBeVisible({ timeout: 20000 });
 
     const text = await page.locator('body').innerText().catch(() => '');

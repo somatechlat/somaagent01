@@ -1,35 +1,35 @@
 // Core Views
-export { SaasLogin } from './saas-login.js';
-export { SaasAuthCallback } from './saas-auth-callback.js';
-export { SaasRegister } from './saas-register.js';
-export { SaasForgotPassword } from './saas-forgot-password.js';
+export { SomaLogin } from './soma-login.js';
+export { SomaAuthCallback } from './soma-auth-callback.js';
+export { SomaRegister } from './soma-register.js';
+export { SomaForgotPassword } from './soma-forgot-password.js';
 
 // Platform Views
 export { PlatformMetricsDashboard } from './platform-metrics-dashboard.js';
-export { SaasSettings } from './saas-settings.js';
-export { SaasSettingsModels } from './saas-settings-models.js';
-export { SaasChat } from './saas-chat.js';
-export { SaasMemoryView } from './saas-memory-view.js';
-export { SaasCognitivePanel } from './saas-cognitive-panel.js';
+export { SomaSettings } from './soma-settings.js';
+export { SomaSettingsModels } from './soma-settings-models.js';
+export { SomaChat } from './soma-chat.js';
+export { SomaMemoryView } from './soma-memory-view.js';
+export { SomaCognitivePanel } from './soma-cognitive-panel.js';
 
 // Admin Views
-export { SaasAdminRolesList } from './saas-admin-roles-list.js';
-export { SaasRoleMatrix } from './saas-role-matrix.js';
-export { SaasAdminApiKeys } from './saas-admin-api-keys.js';
+export { SomaAdminRolesList } from './soma-admin-roles-list.js';
+export { SomaRoleMatrix } from './soma-role-matrix.js';
+export { SomaAdminApiKeys } from './soma-admin-api-keys.js';
 
 // Other
-export { SaasAuditDashboard } from './saas-audit-dashboard.js';
-export { SaasIntegrationsDashboard } from './saas-integrations-dashboard.js';
-export { SaasMfaSetup } from './saas-mfa-setup.js';
-export { SaasMultimodalSettings } from './saas-multimodal-settings.js';
-export { SaasPersonalProfile } from './saas-personal-profile.js';
-export { SaasPlatformProfile } from './saas-platform-profile.js';
-export { SaasVoiceChat } from './saas-voice-chat.js';
-export { SaasVoicePersonas } from './saas-voice-personas.js';
-export { SaasVoiceSessions } from './saas-voice-sessions.js';
-export { SaasInfrastructureDashboard } from './saas-infrastructure-dashboard.js';
-export { SaasAgentMetrics } from './saas-agent-metrics.js';
+export { SomaAuditDashboard } from './soma-audit-dashboard.js';
+export { SomaIntegrationsDashboard } from './soma-integrations-dashboard.js';
+export { SomaMfaSetup } from './soma-mfa-setup.js';
+export { SomaMultimodalSettings } from './soma-multimodal-settings.js';
+export { SomaPersonalProfile } from './soma-personal-profile.js';
+export { SomaPlatformProfile } from './soma-platform-profile.js';
+export { SomaVoiceChat } from './soma-voice-chat.js';
+export { SomaVoicePersonas } from './soma-voice-personas.js';
+export { SomaVoiceSessions } from './soma-voice-sessions.js';
+export { SomaInfrastructureDashboard } from './soma-infrastructure-dashboard.js';
+export { SomaAgentMetrics } from './soma-agent-metrics.js';
 
 // Entity Views
-export { SaasUsersView, SaasAgentsView } from './saas-entity-views.js';
-export { SaasUserDetail } from './saas-user-detail.js';
+export { SomaUsersView, SomaAgentsView } from './soma-entity-views.js';
+export { SomaUserDetail } from './soma-user-detail.js';

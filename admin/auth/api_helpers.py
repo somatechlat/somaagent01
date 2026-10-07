@@ -40,7 +40,7 @@ def determine_redirect_path(payload: "TokenPayload") -> str:
 
     Every path returned here is a real route in ``webui/src/main.ts``. The
     previous implementation sent platform administrators to ``/select-mode``,
-    a god/tenant mode switcher that was deleted with the SaaS console; that
+    a god/tenant mode switcher that was deleted with the legacy console; that
     redirect was a dead end.
     """
     # Role names come from the catalog vocabulary (ROLE_PRIORITY), not from
@@ -53,7 +53,7 @@ def determine_redirect_path(payload: "TokenPayload") -> str:
         return "/chat"
     top = known[0]
     if top in ("sysadmin", "org_admin"):
-        return "/saas/dashboard"
+        return "/soma/dashboard"
     if top in ("agent_owner", "developer"):
         return "/admin/agents"
     return "/chat"

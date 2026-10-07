@@ -249,3 +249,105 @@ class TestGatewayShape:
         structural check of the real class, not of a double.
         """
         assert issubclass(FanoutMemoryGateway, MemoryGateway)
+
+
+# ---------------------------------------------------------------------------
+# MemoryDurability — one vocabulary, matching the brain's StrEnum (AP-06)
+# ---------------------------------------------------------------------------
+
+
+class TestMemoryDurability:
+    """The durability vocabulary is shared verbatim with the brain (AP-06)."""
+
+    def test_durability_has_exactly_the_brain_vocabulary(self):
+        from services.common.memory_contract import MemoryDurability
+
+        values = {d.value for d in MemoryDurability}
+        assert values == {"persisted_ltm", "durable_outbox", "degraded_journal"}
+
+    def test_durability_is_strenum(self):
+        from enum import StrEnum
+
+        from services.common.memory_contract import MemoryDurability
+
+        assert issubclass(MemoryDurability, StrEnum)
+
+    def test_durability_members_are_the_brain_names(self):
+        from services.common.memory_contract import MemoryDurability
+
+        assert MemoryDurability.PERSISTED_LTM == "persisted_ltm"
+        assert MemoryDurability.DURABLE_OUTBOX == "durable_outbox"
+        assert MemoryDurability.DEGRADED_JOURNAL == "degraded_journal"
+
+
+class TestMemoryAckDurability:
+    """MemoryAck carries durability — ok alone is never enough (T-6)."""
+
+    def test_ack_has_durability_field(self):
+        from services.common.memory_contract import MemoryAck, MemoryDurability
+
+        ack = MemoryAck(
+            coord="0.1,0.2,0.3",
+            store="somabrain",
+            ok=True,
+            durability=MemoryDurability.DURABLE_OUTBOX,
+            outbox_event_id=42,
+        )
+        assert ack.durability == MemoryDurability.DURABLE_OUTBOX
+        assert ack.outbox_event_id == 42
+
+    def test_ack_durability_defaults_to_none(self):
+        from services.common.memory_contract import MemoryAck
+
+        ack = MemoryAck(coord="0.1,0.2,0.3", store="somabrain", ok=False)
+        assert ack.durability is None
+        assert ack.outbox_event_id is None
+
+    def test_ack_durability_accepts_all_three_states(self):
+        from services.common.memory_contract import MemoryAck, MemoryDurability
+
+        for state in MemoryDurability:
+            ack = MemoryAck(
+                coord="0.1,0.2,0.3", store="somabrain", ok=True, durability=state
+            )
+            assert ack.durability is state
+
+
+# ---------------------------------------------------------------------------
+# Adapter reads durability — fail closed when the brain omits it (C1-6)
+# ---------------------------------------------------------------------------
+
+
+class TestAdapterDurabilityMapping:
+    """SomaBrainAdapter.remember reads durability; omitted field fails closed.
+
+    Source-text contract checks: the adapter must map the brain's durability
+    field into MemoryAck and must NOT silently claim ok when it is absent.
+    """
+
+    @staticmethod
+    def _adapter_src() -> str:
+        from pathlib import Path
+
+        return (
+            Path(__file__).resolve().parents[2]
+            / "services/common/adapters/somabrain_adapter.py"
+        ).read_text(encoding="utf-8")
+
+    def test_adapter_reads_durability_from_response(self):
+        src = self._adapter_src()
+        assert 'data.get("durability")' in src
+        assert "MemoryDurability" in src
+
+    def test_adapter_fails_closed_when_durability_missing(self):
+        src = self._adapter_src()
+        # The None branch must set ok=False, never ok=True
+        none_branch = src[src.find("if raw_durability is None:") :]
+        none_branch = none_branch[: none_branch.find("durability = MemoryDurability")]
+        assert "ok=False" in none_branch
+        assert "ok=True" not in none_branch
+
+    def test_adapter_maps_outbox_event_id(self):
+        src = self._adapter_src()
+        assert 'data.get("outbox_event_id")' in src
+        assert "outbox_event_id=" in src

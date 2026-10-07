@@ -40,7 +40,7 @@ async function login(page) {
   await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
   await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
   await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
-  await expect(page.locator('saas-chat, .chat-workspace').first()).toBeVisible({
+  await expect(page.locator('soma-chat, .chat-workspace').first()).toBeVisible({
     timeout: 30000,
   });
 }
@@ -72,7 +72,7 @@ test.describe('Wave 2 — a person configures the agent', () => {
     await login(page);
     await page.goto(`${UI}/settings`);
 
-    const surface = page.locator('saas-settings').first();
+    const surface = page.locator('soma-settings').first();
     await expect(surface).toBeVisible({ timeout: 20000 });
 
     // Open the Connectivity tab where service URLs live.
@@ -130,7 +130,7 @@ test.describe('Wave 2 — a person configures the agent', () => {
   test('models can be created, edited and deleted', async ({ page }) => {
     await login(page);
     await page.goto(`${UI}/settings/models`);
-    await expect(page.locator('saas-settings-models').first()).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('soma-settings-models').first()).toBeVisible({ timeout: 20000 });
 
     const created = await api(page, 'POST', '/api/v2/llm/models', {
       name: MARK,
@@ -211,7 +211,7 @@ test.describe('Wave 2 — a person configures the agent', () => {
 
     // The UI strip must show the same server-derived tier, not a client guess.
     await page.goto(`${UI}/chat`);
-    const strip = page.locator('saas-agent-iq').first();
+    const strip = page.locator('soma-agent-iq').first();
     await expect(strip).toBeVisible({ timeout: 20000 });
     const text = await strip.innerText();
     expect(text, 'IQ strip does not show a derived model tier').toMatch(
@@ -231,7 +231,7 @@ test.describe('Wave 2 — a person configures the agent', () => {
   test('the UI shows no dead save control for AgentIQ', async ({ page }) => {
     await login(page);
     await page.goto(`${UI}/chat`);
-    const strip = page.locator('saas-agent-iq').first();
+    const strip = page.locator('soma-agent-iq').first();
     await expect(strip).toBeVisible({ timeout: 20000 });
     const text = await strip.innerText();
     expect(text).not.toMatch(/Knob persistence has no API endpoint/i);

@@ -1,6 +1,6 @@
 /**
- * SaaS Admin API Client
- * Per SaaS Admin UIX Design Section 4.3
+ * Soma Admin API Client
+ * Per Soma Admin UIX Design Section 4.3
  *
  * VIBE COMPLIANT:
  * - Real implementation (no stubs)
@@ -73,7 +73,37 @@ export class ApiClient {
                     throw new ApiError(response.status, error.detail ?? 'Request failed');
                 }
 
-                return response.json();
+                const json = await response.json();
+                // Unwrap the standard backend envelope
+                // (admin/common/responses.py api_response / paginated_response:
+                // {success, data, timestamp[, pagination]}). Callers receive
+                // the payload, never the wrapper. Raw schemas (Ninja response
+                // models that are not enveloped) pass through unchanged.
+                if (
+                    json !== null &&
+                    typeof json === 'object' &&
+                    !Array.isArray(json) &&
+                    (json as Record<string, unknown>).success === true &&
+                    (json as Record<string, unknown>).data !== undefined
+                ) {
+                    const obj = json as Record<string, unknown>;
+                    const pagination = obj.pagination as
+                        | { total_items?: number; page?: number; page_size?: number; total_pages?: number }
+                        | undefined;
+                    if (pagination) {
+                        // paginated_response: keep the list plus its page
+                        // metadata under stable keys callers already read.
+                        return {
+                            items: obj.data,
+                            total: pagination.total_items ?? 0,
+                            page: pagination.page,
+                            pageSize: pagination.page_size,
+                            totalPages: pagination.total_pages,
+                        } as T;
+                    }
+                    return obj.data as T;
+                }
+                return json as T;
             } catch (error) {
                 clearTimeout(timeoutId);
 
