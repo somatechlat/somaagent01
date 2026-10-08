@@ -5,3 +5,6 @@
 | 2026-10-08T13:05:45Z | MiMoCode-somaAgent01 | WAVE | Human Operator directive: deploy adversarial + skeptic agents for real code review. ADV-1 (B1-B30 re-audit + T-1/Temporal) + ADV-2 (UI honesty + cognitive coverage) + SPECIALIST (stack/Temporal 100%) spawned. |
 | 2026-10-08T13:40:00Z | MiMoCode-somaAgent01 | COMMIT | e5a928cd docs: issue SOMA-RPT-STATUS-001 wiring review and UI plan (report + register + A2A channel) |
 | 2026-10-08T14:05:00Z | MiMoCode-somaAgent01 | COMMIT | 222ede73 design suite · 4e5b757d memory/chat fix · e2f1fd87 ui · 0b8c5b75 tests — pushed to main |
+| 2026-10-08T14:21:24Z | MiMoCode-somaAgent01 | COORD | GO wave: somaAgent01 MUST be fully wired to somabrain. Peer found: pid 24373 cwd somabrain. INBOX sent. No code this turn (Operator). |
+| 2026-10-08T14:21:24Z | MiMoCode-somaAgent01 | CLAIM | Wave-1 planning only: Temporal env contract, cognitive call-sites, R-15 adapter, webui cognitive panel — planning until coding ordered. |
+| 2026-10-08T14:22:22Z | MiMoCode-somaAgent01 | WAVE | ECC explore fan-out: docs authority, cognitive map, UI gaps, rapid plan architecture. Planning only — full wiring plan incoming. |

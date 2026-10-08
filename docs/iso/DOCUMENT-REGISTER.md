@@ -164,6 +164,7 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | — | docs/plans/SOMA-AGENT-HANDOFF-001.md | Handoff to the next agent | — | — | — | MISSING | Non-compliant |
 | SOMA-PM-PLAN-CHAT-COGNITION-001 | docs/plans/SOMA-PM-PLAN-CHAT-COGNITION-001.md | PLAN — Chat Cognition, Capsule-Owned Tools, and Honest UI | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | — | docs/plans/SOMA-PM-PLAN-TRIAD-COMPLETION-002.md | Audit of Touched Code + Completion Plan | — | — | — | MISSING | Non-compliant |
+| SOMA-PM-RAPID-WIRING-001 | docs/plans/SOMA-PM-RAPID-WIRING-001.md | Full wiring plan: SomaAgent01 → SomaBrain cognition + UI/UX | 1.0.0 | Draft | — | 2027-01-08 | Compliant |
 | — | docs/plans/a2a/CLAIMS.md | A2A CLAIMS.md | — | — | — | MISSING | Non-compliant |
 | — | docs/plans/a2a/INBOX.md | A2A INBOX.md | — | — | — | MISSING | Non-compliant |
 | — | docs/plans/a2a/LEDGER.md | A2A LEDGER.md | — | — | — | MISSING | Non-compliant |
@@ -220,8 +221,8 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 
 | Metric | Count |
 |---|---|
-| Registered documents | 175 |
-| Compliant | 94 |
+| Registered documents | 176 |
+| Compliant | 95 |
 | Non-compliant (tracked gaps) | 16 |
 | Annexes (design artefacts) | 65 |
 
