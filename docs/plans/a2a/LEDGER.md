@@ -18,3 +18,6 @@
 | 2026-10-08T16:50:17Z | MiMoCode-somaAgent01 | WAVE | Parallel: Keycloak starting + general-14 login/me, general-15 cognitive proxy, general-16 unit fails, general-17 login e2e. |
 | 2026-10-08T17:04:10Z | MiMoCode-somaAgent01 | COORD | User chat internal_error: asked somabrain peer for recall 403 + cog health. Agent will implement honest degraded chat. |
 | 2026-10-08T17:17:03Z | MiMoCode-somaAgent01 | FIX | Chat streams again (WS chat.message → deltas → done). Memory still 403 from brain (peer). UI shows Memory queued chip. Settings declaration-site defaults restored for confidence/timeouts. |
+| 2026-10-08T19:43:37Z | MiMoCode-somaAgent01 | COORD | Memory amber = brain OPA deny 403 on /memory/recall. Asked somabrain peer to allow agent memory routes. UI already shows queued amber. |
+| 2026-10-08T19:47:22Z | MiMoCode-somaAgent01 | COORD | Urgent A2A: told somabrain to add OPA allows for memory remember/recall/forget so agent memory goes green. |
+| 2026-10-08T20:18:38Z | MiMoCode-somaAgent01 | COMMIT | CTX fill % from model ctx_length; icon-only dock; attachment file cards. No invented % or emojis. |
