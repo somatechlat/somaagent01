@@ -37,7 +37,6 @@ from services.common.memory_contract import (
     get_memory_setting,
     MemoryAck,
     MemoryConfigurationError,
-    MemoryDurability,
     MemoryHit,
     MemoryRecallUnavailable,
     MemoryWrite,
@@ -257,6 +256,9 @@ class SomaBrainAdapter:
     ) -> MemoryAck:
         """Store one memory via POST /memory/remember. Returns a failed ack, never raises.
 
+        The ack is built by ``MemoryAck.from_brain_response`` — the 2xx status
+        is transport only and never sets ``ok`` by itself (R-15).
+
         ``key_material`` (from ``memory_contract.coord_key_material``) makes the
         brain derive the seam coordinate for its own placement — its write path
         computes ``_stable_coord(f"{universe}::{key}")``
@@ -302,39 +304,12 @@ class SomaBrainAdapter:
             )
             response.raise_for_status()
             data = response.json() or {}
-            # Prefer the backend's stored coordinate so get/forget use the real key.
-            stored = data.get("coord") or data.get("coordinate")
-            if isinstance(stored, (list, tuple)) and stored:
-                stored_coord = ",".join(str(x) for x in stored)
-            elif isinstance(stored, str) and stored.strip():
-                stored_coord = stored.strip()
-            else:
-                stored_coord = w.coord
-
-            # T-6 / INVARIANTS §5.3: read durability — ok alone is never
-            # enough. A brain that omits the field is an older brain: fail
-            # closed rather than silently claiming a durable accept.
-            raw_durability = data.get("durability")
-            if raw_durability is None:
-                return MemoryAck(
-                    coord=stored_coord,
-                    store="somabrain",
-                    ok=False,
-                    durability=None,
-                    error=(
-                        "brain response omitted durability; cannot confirm "
-                        "durable accept (T-6)"
-                    ),
-                )
-            durability = MemoryDurability(raw_durability)
-            outbox_id = data.get("outbox_event_id")
-            return MemoryAck(
-                coord=stored_coord,
-                store="somabrain",
-                ok=True,
-                durability=durability,
-                outbox_event_id=int(outbox_id) if outbox_id is not None else None,
-            )
+            # R-15 / T-6: ONE mapper for the remember body. The HTTP status is
+            # transport only — `ok` comes from the contract, which reads
+            # durability / persisted_to_ltm / queued_for_ltm and fails closed
+            # when durability is missing or unknown, or when the brain claims
+            # success without durable evidence. Never hardcode ok from a 2xx.
+            return MemoryAck.from_brain_response(data, coord=w.coord, store="somabrain")
         except Exception as exc:
             LOGGER.warning("SomaBrain remember failed: %s", exc)
             return MemoryAck(coord=w.coord, store="somabrain", ok=False, error=str(exc))

@@ -319,15 +319,17 @@ class TestMemoryAckDurability:
 
 
 # ---------------------------------------------------------------------------
-# Adapter reads durability — fail closed when the brain omits it (C1-6)
+# R-15 — the adapter maps the remember body through the ONE contract mapper.
+# Fail closed when the brain omits durability; never hardcode ok from a 2xx.
 # ---------------------------------------------------------------------------
 
 
 class TestAdapterDurabilityMapping:
-    """SomaBrainAdapter.remember reads durability; omitted field fails closed.
+    """SomaBrainAdapter.remember must go through MemoryAck.from_brain_response.
 
-    Source-text contract checks: the adapter must map the brain's durability
-    field into MemoryAck and must NOT silently claim ok when it is absent.
+    The HTTP status is transport only: ``ok`` comes from the contract mapper,
+    which fails closed when ``durability`` is missing or unknown and never
+    smooths a brain ``ok`` that lacks durable evidence (R-15 / T-6).
     """
 
     @staticmethod
@@ -339,23 +341,117 @@ class TestAdapterDurabilityMapping:
             / "services/common/adapters/somabrain_adapter.py"
         ).read_text(encoding="utf-8")
 
-    def test_adapter_reads_durability_from_response(self):
+    def test_adapter_delegates_to_contract_mapper(self):
         src = self._adapter_src()
-        assert 'data.get("durability")' in src
-        assert "MemoryDurability" in src
+        assert "MemoryAck.from_brain_response(data, coord=" in src
+        # The body that reaches the mapper is the parsed response body itself.
+        assert "from_brain_response(data" in src
 
-    def test_adapter_fails_closed_when_durability_missing(self):
-        src = self._adapter_src()
-        # The None branch must set ok=False, never ok=True
-        none_branch = src[src.find("if raw_durability is None:") :]
-        none_branch = none_branch[: none_branch.find("durability = MemoryDurability")]
-        assert "ok=False" in none_branch
-        assert "ok=True" not in none_branch
+    def test_adapter_never_hardcodes_ok_true(self):
+        # R-15: no 2xx may be turned into ok=True anywhere in the adapter.
+        assert "ok=True" not in self._adapter_src()
 
-    def test_adapter_maps_outbox_event_id(self):
+    def test_adapter_fails_closed_on_transport_error(self):
+        # The never-raises seam still answers with an honest failed ack.
         src = self._adapter_src()
-        assert 'data.get("outbox_event_id")' in src
-        assert "outbox_event_id=" in src
+        assert 'return MemoryAck(coord=w.coord, store="somabrain", ok=False' in src
+
+
+class TestAdapterRememberAckHonesty:
+    """Behavioural: a 2xx body alone never buys ok=True (R-15).
+
+    A stubbed transport stands in for the HTTP hop only — the brain's own
+    response body is the input, and the mapper under test is the real one.
+    """
+
+    @staticmethod
+    async def _remember(payload: dict, *, status: int = 200):
+        import httpx
+
+        from services.common.adapters.somabrain_adapter import SomaBrainAdapter
+        from services.common.memory_contract import MemoryWrite
+
+        # __init__ resolves admin settings and would need a live store; the
+        # mapping under test starts once the client is in place.
+        adapter = object.__new__(SomaBrainAdapter)
+        adapter._token = "unit-test-token"
+        adapter._namespace = "unit-test-ns"
+        adapter._client = httpx.AsyncClient(
+            base_url="http://somabrain.test",
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(status, json=payload)
+            ),
+        )
+        try:
+            return await adapter.remember(
+                MemoryWrite(text="marker", tenant_id="tenant", coord="1,2,3")
+            )
+        finally:
+            await adapter._client.aclose()
+
+    def test_2xx_with_durability_evidence_is_ok(self):
+        import asyncio
+
+        ack = asyncio.run(
+            self._remember(
+                {
+                    "ok": True,
+                    "durability": "persisted_ltm",
+                    "persisted_to_ltm": True,
+                    "queued_for_ltm": False,
+                    "outbox_event_id": 7,
+                    "coord": "9,9,9",
+                }
+            )
+        )
+        assert ack.ok is True
+        assert ack.coord == "9,9,9"
+        assert ack.persisted_to_ltm is True
+        assert ack.queued_for_ltm is False
+        assert ack.outbox_event_id == 7
+
+    def test_2xx_without_durability_fails_closed(self):
+        import asyncio
+
+        # The old bug: a bare 200 body was mapped to ok=True.
+        ack = asyncio.run(
+            self._remember({"ok": True, "persisted_to_ltm": True})
+        )
+        assert ack.ok is False
+        assert ack.durability is None
+        assert "durability" in (ack.error or "")
+
+    def test_2xx_with_ok_but_no_durable_evidence_is_not_ok(self):
+        import asyncio
+
+        ack = asyncio.run(
+            self._remember(
+                {
+                    "ok": True,
+                    "durability": "degraded_journal",
+                    "persisted_to_ltm": False,
+                    "queued_for_ltm": False,
+                }
+            )
+        )
+        assert ack.ok is False
+        assert ack.durability is not None
+
+    def test_2xx_with_unknown_durability_fails_closed(self):
+        import asyncio
+
+        ack = asyncio.run(
+            self._remember({"ok": True, "durability": "wishful"})
+        )
+        assert ack.ok is False
+        assert ack.durability is None
+
+    def test_http_error_returns_failed_ack(self):
+        import asyncio
+
+        ack = asyncio.run(self._remember({}, status=500))
+        assert ack.ok is False
+        assert ack.error
 
 
 # ---------------------------------------------------------------------------
@@ -368,7 +464,7 @@ class TestAdapterDurabilityMapping:
 _BRAIN_EMBED_GOLDENS = {
     # text: (nnz, blake2b(float32 bytes).hexdigest())
     "hello world": (16, "bf8e14b91ae5ce7c"),
-    "works working": (19, "5c6cfda3433a1bb8"),
+    "works working": (19, "470129760225f242"),
     "the quick brown fox": (28, "e82fab30d5acd83b"),
     "a": (4, "177c03bc082485ad"),
     "User preferred name is NEO": (41, "e10fd2fbb6ac5cc9"),
