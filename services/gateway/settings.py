@@ -264,17 +264,17 @@ SOMAFRACTALMEMORY_URL = get_optional_env(
 # services.common.memory_contract.DEFAULT_MEM_EMBED_DIM, and must equal
 # SFM's SOMA_VECTOR_DIM (ARCHITECTURE-INVARIANTS §2).
 MEM_EMBED_DIM = int(os.environ["MEM_EMBED_DIM"]) if os.environ.get("MEM_EMBED_DIM") else None
-MEM_HTTP_TIMEOUT = os.environ.get("MEM_HTTP_TIMEOUT")
-MEM_RECALL_TOP_K = os.environ.get("MEM_RECALL_TOP_K")
+MEM_HTTP_TIMEOUT = os.environ.get("MEM_HTTP_TIMEOUT") or "5.0"
+MEM_WRITE_TIMEOUT_S = os.environ.get("MEM_WRITE_TIMEOUT_S") or "10.0"
+MEM_RECALL_TIMEOUT_S = os.environ.get("MEM_RECALL_TIMEOUT_S") or "2.5"
+MEM_HISTORY_TIMEOUT_S = os.environ.get("MEM_HISTORY_TIMEOUT_S") or "2.5"
+MEM_RECALL_TOP_K = os.environ.get("MEM_RECALL_TOP_K") or "8"
 MEM_PROXIMITY_TOP_K = os.environ.get("MEM_PROXIMITY_TOP_K")
-MEM_HISTORY_LIMIT = os.environ.get("MEM_HISTORY_LIMIT")
+MEM_HISTORY_LIMIT = os.environ.get("MEM_HISTORY_LIMIT") or "12"
 MEM_CHAT_NAMESPACE = os.environ.get("MEM_CHAT_NAMESPACE", "chat_history")
 MEM_DEFAULT_KIND = os.environ.get("MEM_DEFAULT_KIND", "episodic")
 MEM_DEFAULT_SALIENCE = os.environ.get("MEM_DEFAULT_SALIENCE")
 MEM_DEFAULT_SOURCE = os.environ.get("MEM_DEFAULT_SOURCE", "agent-chat")
-MEM_WRITE_TIMEOUT_S = os.environ.get("MEM_WRITE_TIMEOUT_S")
-MEM_RECALL_TIMEOUT_S = os.environ.get("MEM_RECALL_TIMEOUT_S")
-MEM_HISTORY_TIMEOUT_S = os.environ.get("MEM_HISTORY_TIMEOUT_S")
 MEMORY_WAL_TOPIC = os.environ.get("MEMORY_WAL_TOPIC", "memory.wal")
 MEMORY_DEGRADED_TOPIC = os.environ.get("MEMORY_DEGRADED_TOPIC", "degradation.events")
 # Reward events (RewardEvent → learner) — Kafka-only reward lane (W1.5/R-04).
@@ -283,7 +283,11 @@ SOMABRAIN_TOPIC_REWARD_EVENTS = os.environ.get(
 )
 TOOL_REWARD_SUCCESS = os.environ.get("TOOL_REWARD_SUCCESS")
 TOOL_REWARD_FAILURE = os.environ.get("TOOL_REWARD_FAILURE")
-SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT = os.environ.get("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT")
+# R-VAL-04 declaration-site default — optional feedback utility, not a call-site
+# guess. Same value as config/settings.py so chat does not crash when unset.
+SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT = (
+    os.environ.get("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT") or "0.5"
+)
 
 # Temporal async-cycle schedule cadence. Deployment env may override at boot;
 # the schema default lives only on SettingsModel (R-VAL-01 — one number, one

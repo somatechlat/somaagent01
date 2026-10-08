@@ -918,6 +918,16 @@ export class SomaChat extends LitElement {
             color: #C4C4C4;
         }
 
+        .vital em.memory-queued-chip {
+            color: #F59E0B;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            border: 1px solid rgba(245, 158, 11, 0.45);
+            border-radius: 999px;
+            padding: 0 6px;
+        }
+
         .vital.text {
             font-variant-numeric: tabular-nums;
         }
@@ -1409,6 +1419,7 @@ export class SomaChat extends LitElement {
     @state() private _brainTooltip = 'Brain · Status unavailable';
     @state() private _memoryDot: StatusDotState = 'idle';
     @state() private _memoryTooltip = 'Memory · Status unavailable';
+    @state() private _memoryQueued = false;
     @state() private _sysCpu: { percent: number; cores: number } | null = null;
     @state() private _sysRam: { usedMb: number; totalMb: number; percent: number } | null = null;
     @state() private _channels: { id: string; kind: string; name: string; connected: boolean }[] = [];
@@ -1598,11 +1609,16 @@ export class SomaChat extends LitElement {
             if (ok) {
                 this._memoryDot = 'ok';
                 this._memoryTooltip = 'Memory ready';
+                this._memoryQueued = false;
             }
             this.requestUpdate();
         } catch {
+            // Honest degradation: memory down never blocks chat. Writes queue
+            // in the agent WAL until the brain recovers (T-6).
             this._memoryDot = 'warn';
-            this._memoryTooltip = 'Memory unavailable';
+            this._memoryTooltip =
+                'Memory unavailable — messages are queued and will sync when connected';
+            this._memoryQueued = true;
         }
     }
 
@@ -2874,6 +2890,9 @@ export class SomaChat extends LitElement {
                             <span class="vital" title=${this._memoryTooltip}>
                                 <soma-status-dot kind="memory" state=${this._memoryDot} title=${this._memoryTooltip} label="memory"></soma-status-dot>
                                 <em>Memory</em>
+                                ${this._memoryQueued
+                                    ? html`<em class="memory-queued-chip" title=${this._memoryTooltip}>queued</em>`
+                                    : nothing}
                             </span>
                             ${this._memoryHits.length
                                 ? html`<span class="vital text" title="Recall this turn">🧠 ${this._memoryHits.length}</span>`
