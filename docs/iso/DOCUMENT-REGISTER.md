@@ -207,6 +207,7 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-STD-CONFIG-001 | docs/standards/SOMA-STD-CONFIG-001.md | Configuration, Endpoints and Secret Resolution | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-STD-TEMPLATE-001 | docs/standards/SOMA-STD-TEMPLATE-001.md | SRS-{FEATURE} — {Title} | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-STD-TOKEN-001 | docs/standards/SOMA-STD-TOKEN-001.md | SOMA Token Format Standard (v1.0) | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-STD-TRIAD-001 | docs/standards/SOMA-STD-TRIAD-001.md | Shared triad rules (same stack, same rules, all three repos) | 1.0.0 | Draft | — | 2027-01-08 | Compliant |
 | SOMA-TASK-AGENTIQ-001 | docs/tasks/SOMA-TASK-AGENTIQ-001.md | TASK-AGENTIQ: Governor Control Loop Implementation | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-TASK-CONTEXT-001 | docs/tasks/SOMA-TASK-CONTEXT-001.md | TASK-CONTEXT-BUILDING: 5-Lane Context Assembly | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-TASK-FLOW-001 | docs/tasks/SOMA-TASK-FLOW-001.md | V3 FLOW MASTER TASK TRACKER — COMPLETE IMPLEMENTATION PLAN | 1.1.0 | Draft | — | 2027-01-03 | Compliant |
@@ -219,8 +220,8 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 
 | Metric | Count |
 |---|---|
-| Registered documents | 174 |
-| Compliant | 93 |
+| Registered documents | 175 |
+| Compliant | 94 |
 | Non-compliant (tracked gaps) | 16 |
 | Annexes (design artefacts) | 65 |
 
