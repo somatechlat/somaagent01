@@ -21,3 +21,4 @@
 | 2026-10-08T19:43:37Z | MiMoCode-somaAgent01 | COORD | Memory amber = brain OPA deny 403 on /memory/recall. Asked somabrain peer to allow agent memory routes. UI already shows queued amber. |
 | 2026-10-08T19:47:22Z | MiMoCode-somaAgent01 | COORD | Urgent A2A: told somabrain to add OPA allows for memory remember/recall/forget so agent memory goes green. |
 | 2026-10-08T20:18:38Z | MiMoCode-somaAgent01 | COMMIT | CTX fill % from model ctx_length; icon-only dock; attachment file cards. No invented % or emojis. |
+| 2026-10-08T21:12:15Z | MiMoCode-somaAgent01 | COMMIT | SOMA-ARCH-TOOLS-001 v1.1 + PathGuard + unlisted=approval + file_read jail. Granular authz section. Pushed. |
