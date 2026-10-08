@@ -6,7 +6,7 @@
 |---|---|
 | Document Title | User Interface Mockups Index |
 | Document Identifier | SOMA-UI-MOCKUPS-001 |
-| Version | 1.0.0 |
+| Version | 1.1.0 |
 | Date | 2026-09-28 |
 | Status | Draft |
 | Author | SomaTech Engineering |
@@ -24,6 +24,7 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Index derived from the mockups present on disk. |
+| 1.1.0 | 2026-10-08 | SomaTech Engineering | Sync index with implemented settings screens UI-S-54/55; add UI-S-56 SomaBrain and UI-S-57 Agent admin (tools & permissions). |
 
 ## Normative References
 
@@ -67,7 +68,7 @@ masked placeholder with a "rotate in Vault" note, never a value.
 |---|---|---|---|
 | UI-S-00 | Global chrome | — | `UI-S-00-chrome.md` |
 
-## 4. Routable screens — UI-S-01 … UI-S-53
+## 4. Routable screens — UI-S-01 … UI-S-57
 
 | ID | Title | Facet | Annex |
 |---|---|---|---|
@@ -124,6 +125,10 @@ masked placeholder with a "rotate in Vault" note, never a value.
 | UI-S-51 | Settings — Models | Settings | `UI-S-51-settings-models.md` |
 | UI-S-52 | Settings — Channels | Settings | `UI-S-52-settings-channels.md` |
 | UI-S-53 | Settings — External & Developer | Settings | `UI-S-53-settings-external-dev.md` |
+| UI-S-54 | Settings — Interface | Settings | `UI-S-54-settings-interface.md` |
+| UI-S-55 | Settings — Tools | Settings | `UI-S-55-settings-tools.md` |
+| UI-S-56 | Settings — SomaBrain | Settings | `UI-S-56-settings-somabrain.md` |
+| UI-S-57 | Settings — Agent admin (tools & permissions) | Settings / Hands | `UI-S-57-settings-agent-admin.md` |
 
 ## 5. Surfaces — UI-X-01 … UI-X-08
 
@@ -146,9 +151,9 @@ Not available today."* It is never a "coming soon" placeholder.
 
 | Metric | Count |
 |---|---|
-| Screen annexes (UI-S) | 54 |
+| Screen annexes (UI-S) | 58 |
 | Surface annexes (UI-X) | 8 |
-| **Total annexes** | **62** |
+| **Total annexes** | **66** |
 
 ## 7. Traceability
 

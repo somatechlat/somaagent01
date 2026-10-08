@@ -45,17 +45,18 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-ARCH-ADR-001 | docs/architecture/SOMA-ARCH-ADR-001.md | Architecture Decision: Shared Embedding Dimension is 768 | 1.0.0 | Draft | — | 2027-01-03 | Compliant |
 | SOMA-ARCH-INVARIANTS-001 | docs/architecture/SOMA-ARCH-INVARIANTS-001.md | ARCHITECTURE INVARIANTS — what must be perfect | 1.1.0 | Draft | — | 2027-01-03 | Compliant |
 | SOMA-ARCH-REDESIGN-001 | docs/architecture/SOMA-ARCH-REDESIGN-001.md | Enterprise Architecture Redesign | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
-| SOMA-ARCH-TOOLS-001 | docs/architecture/SOMA-ARCH-TOOLS-001.md | Agent tool framework — standardized implementation for assistant file/OS tools | 1.0.0 | Draft | — | 2027-01-08 | Compliant |
+| SOMA-ARCH-TOOLS-001 | docs/architecture/SOMA-ARCH-TOOLS-001.md | Agent tool framework — standardized implementation for assistant file/OS tools | 1.1.0 | Draft | — | 2027-01-08 | Compliant |
 | — | docs/design/SOMA-CHAT-UI-001.md | Chat UI/UX (Agent Soma) | — | — | — | MISSING | Non-compliant |
 | SOMA-UI-BINDINGS-001 | docs/design/SOMA-UI-BINDINGS-001.md | Agent Soma — UI mock control → live binding map | 1.0.0 | Draft | — | MISSING | Non-compliant |
 | SOMA-UI-CATALOG-001 | docs/design/SOMA-UI-CATALOG-001.md | Agent Soma — curated UI/UX catalog (every screen, click, field) | 1.0.0 | Draft | — | MISSING | Non-compliant |
 | SOMA-UI-CHAT-WORKSPACE-001 | docs/design/SOMA-UI-CHAT-WORKSPACE-001.md | Agent Soma — Complete Chat Workspace UI/UX | 1.0.0 | Draft | — | MISSING | Non-compliant |
 | SOMA-UI-IA-001 | docs/design/SOMA-UI-IA-001.md | Agent Soma — IA audit & single-home rules | 1.0.0 | **Authoritative for all mocks** | — | MISSING | Non-compliant |
 | SOMA-UI-IDREG-001 | docs/design/SOMA-UI-IDREG-001.md | Screen Identifier Allocation | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
-| SOMA-UI-MOCKUPS-001 | docs/design/SOMA-UI-MOCKUPS-001.md | User Interface Mockups Index | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-UI-MOCKUPS-001 | docs/design/SOMA-UI-MOCKUPS-001.md | User Interface Mockups Index | 1.1.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-UI-NAV-001 | docs/design/SOMA-UI-NAV-001.md | Agent Soma — complete UI navigation map | 1.0.0 | Draft | — | MISSING | Non-compliant |
 | SOMA-UI-NAV-AUDIT-001 | docs/design/SOMA-UI-NAV-AUDIT-001.md | Navigation audit — every mock vs `main.ts` routes | 1.0.0 | Draft | — | MISSING | Non-compliant |
 | SOMA-UI-PARITY-002 | docs/design/SOMA-UI-PARITY-002.md | PLAN — UI/UX Feature Parity with Agent Zero (clone & better) | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-UI-SCREENS-001 | docs/design/SOMA-UI-SCREENS-001.md | Implemented screens, agent flows, and mockup sync | 1.0.0 | Draft | — | 2027-01-08 | Compliant |
 | SOMA-UI-SKINS-001 | docs/design/SOMA-UI-SKINS-001.md | Capsule Skins — Theming Framework Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-UI-SPEC-001 | docs/design/SOMA-UI-SPEC-001.md | Soma Agent Definitive UI/UX Specification | 2.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-UI-SPEC-002 | docs/design/SOMA-UI-SPEC-002.md | Soma Agent UI/UX Complete Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
@@ -117,6 +118,8 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | UI-S-53-settings-external-dev | docs/design/mockups/UI-S-53-settings-external-dev.md | UI-S-53 — Settings — Advanced (External & Developer) | — | — | — | — | Annex |
 | UI-S-54-settings-interface | docs/design/mockups/UI-S-54-settings-interface.md | UI-S-54-settings-interface — Settings — Interface | — | — | — | — | Annex |
 | UI-S-55-settings-tools | docs/design/mockups/UI-S-55-settings-tools.md | UI-S-55-settings-tools — Settings — Tools | — | — | — | — | Annex |
+| UI-S-56-settings-somabrain | docs/design/mockups/UI-S-56-settings-somabrain.md | UI-S-56-settings-somabrain — Settings — SomaBrain | — | — | — | — | Annex |
+| UI-S-57-settings-agent-admin | docs/design/mockups/UI-S-57-settings-agent-admin.md | UI-S-57-settings-agent-admin — Settings — Agent admin (tools & permissions) | — | — | — | — | Annex |
 | UI-X-01-files | docs/design/mockups/UI-X-01-files.md | UI-X-01 — Files | — | — | — | — | Annex |
 | UI-X-02-tools | docs/design/mockups/UI-X-02-tools.md | UI-X-02 — Tools | — | — | — | — | Annex |
 | UI-X-03-browser | docs/design/mockups/UI-X-03-browser.md | UI-X-03 — Browser | — | — | — | — | Annex |
@@ -222,10 +225,10 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 
 | Metric | Count |
 |---|---|
-| Registered documents | 177 |
-| Compliant | 96 |
+| Registered documents | 180 |
+| Compliant | 97 |
 | Non-compliant (tracked gaps) | 16 |
-| Annexes (design artefacts) | 65 |
+| Annexes (design artefacts) | 67 |
 
 ## 4. Tracked remediation
 
