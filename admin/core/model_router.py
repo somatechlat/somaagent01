@@ -47,6 +47,8 @@ class SelectedModel:
     priority: int = 0  # Higher = preferred
     cost_tier: str = "standard"  # free, low, standard, premium
     reason: str = ""  # Selection reason for logging
+    # Real catalog ctx_length from LLMModelConfig — 0 means unknown, never invented.
+    ctx_length: int = 0
 
 
 # MIME type to capability mapping
@@ -225,6 +227,7 @@ async def select_model(
                 priority=_get_priority(preferred),
                 cost_tier=_get_tier(preferred),
                 reason=f"Capsule.chat_model id={preferred_model_id}",
+                ctx_length=int(_get_attr(preferred, "ctx_length", 0) or 0),
             )
         logger.warning(
             "Capsule.chat_model id=%s is not an active capable model — "
@@ -261,6 +264,7 @@ async def select_model(
         priority=_get_priority(best),
         cost_tier=_get_tier(best),
         reason=f"Selected from {len(capable_models)} capable models by priority",
+        ctx_length=int(_get_attr(best, "ctx_length", 0) or 0),
     )
 
 

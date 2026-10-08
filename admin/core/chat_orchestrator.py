@@ -1050,6 +1050,9 @@ class V3ChatOrchestrator:
                     else []
                 ),
                 "context_tokens": getattr(context, "total_tokens", 0),
+                # Real catalog window from LLMModelConfig.ctx_length (0 = unknown).
+                # UI computes fill % only when this is > 0 — never invents a %.
+                "context_window": int(getattr(model, "ctx_length", 0) or 0),
             },
         )
 

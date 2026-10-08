@@ -918,6 +918,18 @@ export class SomaChat extends LitElement {
             color: #C4C4C4;
         }
 
+        .vital.text.ctx-ok {
+            color: #34d399;
+        }
+
+        .vital.text.ctx-mid {
+            color: #fbbf24;
+        }
+
+        .vital.text.ctx-high {
+            color: #f87171;
+        }
+
         .vital em.memory-queued-chip {
             color: #F59E0B;
             font-size: 10px;
@@ -1411,6 +1423,8 @@ export class SomaChat extends LitElement {
     @state() private _turnLanes: Record<string, number> | null = null;
     @state() private _memoryHits: { text?: string; score?: number | null; kind?: string | null }[] = [];
     @state() private _contextTokens = 0;
+    /** Real LLMModelConfig.ctx_length; null/0 means unknown — never invent a %. */
+    @state() private _contextWindow = 0;
     @state() private _showRightPanel = false;
     @state() private _convFilter = '';
     @state() private _renamingId = '';
@@ -1873,6 +1887,7 @@ export class SomaChat extends LitElement {
                 lanes?: Record<string, number>;
                 memory_hits?: { text?: string; score?: number | null; kind?: string | null }[];
                 context_tokens?: number;
+                context_window?: number;
             });
         });
         this._wsClient.on('title_update', (data) => {
@@ -2161,6 +2176,7 @@ export class SomaChat extends LitElement {
         lanes?: Record<string, number>;
         memory_hits?: { text?: string; score?: number | null; kind?: string | null }[];
         context_tokens?: number;
+        context_window?: number;
     }) {
         if (p.model) {
             this._modelLabel = p.model;
@@ -2168,6 +2184,27 @@ export class SomaChat extends LitElement {
         this._turnLanes = p.lanes ?? null;
         this._memoryHits = Array.isArray(p.memory_hits) ? p.memory_hits : [];
         this._contextTokens = typeof p.context_tokens === 'number' ? p.context_tokens : 0;
+        // Only accept a positive catalog window. Missing/0 = unknown → no %.
+        this._contextWindow =
+            typeof p.context_window === 'number' && p.context_window > 0
+                ? p.context_window
+                : 0;
+    }
+
+    /** Real fill fraction. Null when the model catalog has no ctx_length. */
+    private get _contextFillPct(): number | null {
+        if (!this._contextWindow || !this._contextTokens) return null;
+        const pct = Math.round((this._contextTokens / this._contextWindow) * 100);
+        if (!Number.isFinite(pct)) return null;
+        return Math.max(0, Math.min(100, pct));
+    }
+
+    private get _contextFillClass(): string {
+        const pct = this._contextFillPct;
+        if (pct == null) return '';
+        if (pct >= 80) return 'ctx-high';
+        if (pct >= 50) return 'ctx-mid';
+        return 'ctx-ok';
     }
 
     private _handleToolDelta(p: ToolCallPayload) {
@@ -2895,16 +2932,29 @@ export class SomaChat extends LitElement {
                                     : nothing}
                             </span>
                             ${this._memoryHits.length
-                                ? html`<span class="vital text" title="Recall this turn">🧠 ${this._memoryHits.length}</span>`
+                                ? html`<span class="vital text" title="Recall this turn">
+                                      ${ICON('psychology', 14)} ${this._memoryHits.length}
+                                  </span>`
                                 : nothing}
-                            ${this._contextTokens
-                                ? html`<span class="vital text" title="Context tokens">⎘ ${this._contextTokens}</span>`
-                                : nothing}
+                            ${this._contextFillPct != null
+                                ? html`<span
+                                      class="vital text ${this._contextFillClass}"
+                                      title="Context fill — tokens used ÷ model catalog window"
+                                  >
+                                      ${ICON('data_object', 14)} CTX ${this._contextFillPct}%
+                                  </span>`
+                                : this._contextTokens
+                                  ? html`<span class="vital text" title="Context tokens (model window unknown — no % shown)">
+                                        ${ICON('data_object', 14)} ${this._contextTokens} tok
+                                    </span>`
+                                  : nothing}
                             ${this._modelLabel
                                 ? html`<span class="vital text" title="Model">${this._modelLabel}</span>`
                                 : nothing}
                             ${this._isStreaming
-                                ? html`<span class="vital text pulse">● working</span>`
+                                ? html`<span class="vital text pulse">
+                                      ${ICON('hourglass_top', 14)} working
+                                  </span>`
                                 : nothing}
                         </div>
                         <span

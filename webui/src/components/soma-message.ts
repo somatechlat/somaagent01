@@ -14,6 +14,25 @@ import type { ToolCallStep } from './soma-tool-timeline.js';
 import { renderMarkdown, renderCodeBlock, bindCodeCopy, formatTime, formatBytes } from '../utils/markdown.js';
 import './soma-tool-timeline.js';
 
+/** Material icon for a file attachment — no emojis. */
+function attachmentIcon(name: string, type?: string): string {
+    const n = (name || '').toLowerCase();
+    const t = (type || '').toLowerCase();
+    if (t.startsWith('image/') || /\.(png|jpe?g|gif|webp|avif|bmp)$/.test(n)) return 'image';
+    if (t === 'application/pdf' || n.endsWith('.pdf')) return 'picture_as_pdf';
+    if (t.startsWith('video/') || /\.(mp4|webm|mov)$/.test(n)) return 'movie';
+    if (t.startsWith('audio/') || /\.(mp3|wav|ogg|m4a)$/.test(n)) return 'audio_file';
+    if (/\.(zip|tar|gz|7z|rar)$/.test(n) || t.includes('zip')) return 'folder_zip';
+    if (/\.(md|txt|csv|json|yml|yaml)$/.test(n)) return 'description';
+    if (/\.(py|js|ts|tsx|go|rs|java)$/.test(n)) return 'code';
+    return 'attach_file';
+}
+
+function isImageAttachment(name: string, type?: string): boolean {
+    const t = (type || '').toLowerCase();
+    return t.startsWith('image/') || /\.(png|jpe?g|gif|webp|avif|bmp)$/.test((name || '').toLowerCase());
+}
+
 export type MessageRole = 'user' | 'assistant' | 'system';
 
 @customElement('soma-message')
@@ -393,41 +412,83 @@ export class SomaMessage extends LitElement {
         .attachments {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 10px;
             margin-bottom: 12px;
         }
 
-        .attachment-chip {
-            display: inline-flex;
+        .attachment-card {
+            display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            border-radius: 12px;
-            background: rgba(18, 18, 18, 0.72);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 12px;
-            color: #E5E5E5;
-            max-width: 260px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+            gap: 12px;
+            margin: 0;
+            padding: 10px 12px;
+            border-radius: 14px;
+            max-width: 280px;
+            background: linear-gradient(145deg, rgba(18, 18, 18, 0.92), rgba(10, 10, 10, 0.88));
+            border: 1px solid rgba(255, 77, 0, 0.22);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+            color: #E8E8E8;
         }
 
-        .attachment-chip .name {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+        .attachment-card.is-image {
+            border-color: rgba(52, 211, 153, 0.28);
         }
 
-        .attachment-chip .kind {
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
+        .attachment-card .file-icon {
+            flex: 0 0 auto;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: grid;
+            place-items: center;
+            background: rgba(255, 77, 0, 0.14);
             color: #FF7A3D;
         }
 
-        :host([message-role='user']) .attachment-chip {
-            background: rgba(255, 255, 255, 0.14);
+        .attachment-card.is-image .file-icon {
+            background: rgba(52, 211, 153, 0.14);
+            color: #34d399;
+        }
+
+        .attachment-card .file-icon .material-symbols-outlined {
+            font-size: 20px;
+        }
+
+        .attachment-card .file-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .attachment-card .name {
+            font-size: 12px;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #F5F5F5;
+        }
+
+        .attachment-card .sub {
+            font-size: 11px;
+            color: #A3A3A3;
+            text-transform: lowercase;
+            letter-spacing: 0.02em;
+        }
+
+        :host([message-role='user']) .attachment-card {
+            background: rgba(255, 255, 255, 0.1);
             border-color: rgba(255, 255, 255, 0.22);
-            color: #FFFFFF;
+            color: #fff;
+        }
+
+        :host([message-role='user']) .attachment-card .name {
+            color: #fff;
+        }
+
+        :host([message-role='user']) .attachment-card .sub {
+            color: rgba(255, 255, 255, 0.7);
         }
 
         .text :deep(.md-img),
@@ -541,38 +602,7 @@ export class SomaMessage extends LitElement {
             transform: rotate(90deg);
         }
 
-        /* ---------- attachments ---------- */
-        .attachments {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-bottom: 10px;
-        }
-
-        .attachment-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 5px 10px;
-            border-radius: 10px;
-            background: #1A1A1A;
-            border: 1px solid #2A2A2A;
-            font-size: 11.5px;
-            color: #cbd5e1;
-            max-width: 220px;
-        }
-
-        .attachment-chip .name {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        :host([message-role='user']) .attachment-chip {
-            background: rgba(0, 0, 0, 0.18);
-            border-color: rgba(255, 255, 255, 0.18);
-            color: #fff;
-        }
+        /* ---------- attachments: styles live with .attachment-card above ---------- */
 
         /* ---------- inline error ---------- */
         .inline-error {
@@ -762,13 +792,23 @@ export class SomaMessage extends LitElement {
 
                 ${this.attachments.length > 0 ? html`
                     <div class="attachments">
-                        ${this.attachments.map((a) => html`
-                            <span class="attachment-chip" title=${a.name}>
-                                <span class="material-symbols-outlined" style="font-size:14px">attach_file</span>
-                                <span class="name">${a.name}</span>
-                                ${a.size ? html`<span>${formatBytes(a.size)}</span>` : nothing}
-                            </span>
-                        `)}
+                        ${this.attachments.map((a) => {
+                            const icon = attachmentIcon(a.name, a.type);
+                            const isImage = isImageAttachment(a.name, a.type);
+                            return html`
+                            <figure class="attachment-card ${isImage ? 'is-image' : ''}" title=${a.name}>
+                                <span class="file-icon" aria-hidden="true">
+                                    <span class="material-symbols-outlined">${icon}</span>
+                                </span>
+                                <figcaption class="file-meta">
+                                    <span class="name">${a.name}</span>
+                                    <span class="sub">
+                                        ${(a.type || 'file').split('/').pop() || 'file'}
+                                        ${a.size ? html` · ${formatBytes(a.size)}` : nothing}
+                                    </span>
+                                </figcaption>
+                            </figure>`;
+                        })}
                     </div>
                 ` : nothing}
 
