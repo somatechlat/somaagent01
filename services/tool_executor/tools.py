@@ -8,7 +8,6 @@ import io
 import logging
 import os
 from contextlib import redirect_stdout
-from pathlib import Path
 from typing import Any, Dict
 
 import httpx
@@ -215,6 +214,8 @@ class FileReadTool(BaseTool):
             raise ToolExecutionError(str(exc)) from exc
 
         if not target.is_file():
+            from admin.common.messages import ErrorCode, get_message
+
             raise ToolExecutionError(get_message(ErrorCode.TOOL_FILE_NOT_FOUND, path=path_arg))
         content = await asyncio.to_thread(target.read_text)
         return {"path": path_arg, "content": content}
@@ -500,3 +501,14 @@ class IngestDocumentTool(BaseTool):
 
 # Register tool at import time
 AVAILABLE_TOOLS[IngestDocumentTool.name] = IngestDocumentTool()
+
+# Assistant file tools (SOMA-ARCH-TOOLS-001 W3.1-W3.2). The import direction
+# is tools -> assistant_tools only; that package must never import this one at
+# module scope, or the cycle breaks both import orders.
+from services.tool_executor.assistant_tools import (  # noqa: E402
+    FILE_ASSISTANT_TOOLS as _ASSISTANT_FILE_TOOLS,
+)
+
+for _tool in _ASSISTANT_FILE_TOOLS:
+    AVAILABLE_TOOLS[_tool.name] = _tool
+del _tool

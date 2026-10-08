@@ -13,7 +13,6 @@ This module is the single list of default tools. Agent creation and
 from __future__ import annotations
 
 import logging
-
 from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
@@ -34,6 +33,16 @@ DEFAULT_AGENT_TOOLS: List[str] = [
     "http_fetch",
     "document_ingest",
     "canvas_append",
+    # Assistant file tools (SOMA-ARCH-TOOLS-001). Appended last so an
+    # existing tool_count_limit keeps cutting them before the kit above.
+    "file_list",
+    "file_search",
+    "file_write",
+    "file_patch",
+    # Durable assistant jobs (SOMA-ARCH-TOOLS-001 §5/§6, W3.3). research_report
+    # starts a Temporal workflow; job_status reports a workflow id.
+    "research_report",
+    "job_status",
 ]
 
 # Tools that MUST NEVER be disabled by capsule policy.
@@ -60,6 +69,12 @@ DEFAULT_TOOL_DESCRIPTIONS: Dict[str, str] = {
     "http_fetch": "HTTP GET a URL and return body.",
     "document_ingest": "Ingest document bytes into memory/knowledge.",
     "canvas_append": "Append text to the session canvas.",
+    "file_list": "List entries of a directory in the work directory (name, type, size) — metadata only, no file content.",
+    "file_search": "Search files in the work directory for literal text; returns matching lines with path and line number, truncated.",
+    "file_write": "Create or overwrite a UTF-8 text file in the work directory; returns path, byte count, and SHA-256 hash. Approval-gated.",
+    "file_patch": "Replace one exact text fragment in a work-directory file; fails unless it occurs exactly once. Approval-gated.",
+    "research_report": "Start a durable research-report job on Temporal for a topic; returns the workflow id immediately (approval-gated). Poll with job_status.",
+    "job_status": "Report the status of a durable job by workflow id: Temporal execution status plus the workflow's progress query.",
 }
 
 
@@ -120,8 +135,25 @@ def select_tools_for_mode(
     return kept
 
 
+def _register_durable_tools() -> None:
+    """Put the durable-job tools (research_report, job_status) in AVAILABLE_TOOLS.
+
+    W3.3: they live in ``assistant_tools`` but are registered here (not in
+    ``tools.py``) so the registration shares one list with the kit they join.
+    """
+    from services.tool_executor.assistant_tools.research_report import (
+        JobStatusTool,
+        ResearchReportTool,
+    )
+    from services.tool_executor.tools import AVAILABLE_TOOLS
+
+    AVAILABLE_TOOLS.setdefault(ResearchReportTool.name, ResearchReportTool())
+    AVAILABLE_TOOLS.setdefault(JobStatusTool.name, JobStatusTool())
+
+
 def default_tool_definitions() -> List[Dict[str, Any]]:
     """LLM function-calling schemas for the default kit."""
+    _register_durable_tools()
     from services.tool_executor.tools import AVAILABLE_TOOLS
 
     out: List[Dict[str, Any]] = []
@@ -154,6 +186,8 @@ def ensure_default_tools(registry: Any) -> None:
         MemorySaveTool,
     )
     from services.tool_executor.tools import AVAILABLE_TOOLS
+
+    _register_durable_tools()
 
     for tool in (
         MemoryRecallTool(),

@@ -43,6 +43,12 @@ from services.common.telemetry import TelemetryPublisher
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
+from services.conversation_worker.research_workflow import (
+    ResearchReportWorkflow,
+    mark_complete_activity,
+    plan_outline_activity,
+    write_outline_file_activity,
+)
 
 LOGGER = logging.getLogger(__name__)
 # Django settings used instead
@@ -337,12 +343,16 @@ async def main() -> None:
             sleep_cycle_activity,
             advance_jobs_activity,
             outbox_replay_activity,
+            plan_outline_activity,
+            write_outline_file_activity,
+            mark_complete_activity,
         ],
         workflows=[
             ConversationWorkflow,
             SleepCycleWorkflow,
             JobAdvanceWorkflow,
             OutboxReplayWorkflow,
+            ResearchReportWorkflow,
         ],
     )
     await worker.run()

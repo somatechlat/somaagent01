@@ -181,6 +181,94 @@ def egress_permitted(iq: Any) -> bool:
     return level in {"whitelist", "expanded", "unrestricted"}
 
 
+@dataclass(frozen=True)
+class ToolSubject:
+    """The authenticated principal behind one tool call (SOMA-ARCH-TOOLS-001 §11.1).
+
+    ``roles`` follows the UnifiedGate contract exactly: ``None`` means
+    "resolve the membership record", an empty sequence means "this subject
+    holds nothing" and denies. ``gate`` is the UnifiedGate-compatible
+    authority to judge layered authorization; ``None`` uses the process-wide
+    shared gate so every caller talks to one instance (its policy clients
+    cache on it).
+    """
+
+    user_id: Optional[str] = None
+    tenant_id: Optional[str] = None
+    roles: Optional[Any] = None
+    gate: Any = None
+
+
+_SHARED_GATE: Any = None
+
+
+def _shared_gate() -> Any:
+    """Return the process-wide UnifiedGate, created on first use."""
+    global _SHARED_GATE
+    if _SHARED_GATE is None:
+        from admin.core.agentiq import UnifiedGate
+
+        _SHARED_GATE = UnifiedGate()
+    return _SHARED_GATE
+
+
+async def decide_and_authorize_tool(
+    subject: Any,
+    capsule: Any,
+    tool_name: str,
+    args: Any,
+    iq: Any,
+) -> str:
+    """The one policy choke every chat-loop tool call passes **before** it runs.
+
+    SOMA-ARCH-TOOLS-001 §11.1, fail-closed, cheapest layer first:
+
+    1. Capsule ``tool_policy`` (``ToolPolicy.decision``) — ``denied`` wins,
+       ``auto_execute`` only when deliberately listed, everything else
+       including unlisted tools is ``approval_required``.
+    2. Egress — a network tool (``_NETWORK_TOOLS``) with AgentIQ egress
+       denied is ``denied``. A policy listing cannot buy back the network.
+    3. UnifiedGate — RBAC role floor → OPA → SpiceDB → capsule scope
+       (``action="resource:tool_execute"``, ``resource=tool_name``), the same
+       layered check the rest of the product uses (§11.3 "one choke").
+
+    Returns ``"auto_execute" | "approval_required" | "denied"``. Any
+    exception — and a missing subject — returns ``denied``: fail-closed is
+    the contract, never a default grant.
+
+    ``args`` rides along for the shared contract with the Kafka executor
+    (path-scoped effects belong to PathGuard/OPA context there); this layer
+    decides on subject + capsule + tool name and never invents hosts or
+    setting names.
+    """
+    if subject is None:
+        logger.warning("tool choke: no subject for %s (FAIL-CLOSED)", tool_name)
+        return "denied"
+    try:
+        decision = resolve_tool_policy(capsule, iq).decision(tool_name)
+        if decision == "denied":
+            return "denied"
+
+        if tool_name in _NETWORK_TOOLS and not egress_permitted(iq):
+            return "denied"
+
+        gate = getattr(subject, "gate", None) or _shared_gate()
+        allowed = await gate.check(
+            capsule,
+            action="resource:tool_execute",
+            resource=tool_name,
+            user_id=getattr(subject, "user_id", None),
+            tenant_id=getattr(subject, "tenant_id", None),
+            roles=getattr(subject, "roles", None),
+        )
+        if not allowed:
+            return "denied"
+        return decision
+    except Exception as exc:  # noqa: BLE001 — fail-closed by contract
+        logger.warning("tool choke fail-closed for %s: %s", tool_name, exc)
+        return "denied"
+
+
 def _truncate_result(text: str, limit: int = _TOOL_RESULT_MAX_CHARS) -> str:
     if len(text) <= limit:
         return text
@@ -268,6 +356,7 @@ async def run_tool_loop(
     capsule: Any,
     iq: Any = None,
     approval_gate: Any = None,
+    subject: Any = None,
     max_iterations: int = MAX_TOOL_ITERATIONS,
     usage: Any = None,
 ) -> AsyncIterator[Union[str, ToolStreamEvent]]:
@@ -280,6 +369,10 @@ async def run_tool_loop(
     Every LLM round passes ``tools=tools_for_llm`` through to LiteLLM —
     native function calling only, never regex parsing.
 
+    ``subject`` is the ``ToolSubject`` (user/tenant/roles/gate) every tool
+    call is authorized under — SOMA-ARCH-TOOLS-001 §11. No subject means no
+    principal, and ``decide_and_authorize_tool`` fails closed to ``denied``.
+
     ``usage`` is an optional sink with ``.absorb(dict | None)`` (see
     ``TurnUsage``). After each LLM round the wrapper's provider-reported
     token counts are folded into it. The provider may report none — the
@@ -289,9 +382,6 @@ async def run_tool_loop(
         ToolCallDeltasChunk,
         ToolCallsChunk,
     )
-
-    policy = resolve_tool_policy(capsule, iq)
-    allow_egress = egress_permitted(iq)
 
     def _drain_llm_usage() -> None:
         if usage is None:
@@ -370,13 +460,24 @@ async def run_tool_loop(
                     "none",
                 ):
                     args = {**args, "tenant_id": ""}  # tool raises fail-closed
+            # Durable jobs: identity comes from the capsule, never the model
+            # (T-5). research_report starts a Temporal workflow under this
+            # tenant; an empty tenant makes the tool fail closed.
+            if name == "research_report" and isinstance(args, dict):
+                cap_tenant = getattr(capsule, "tenant_id", None)
+                cap_id = getattr(capsule, "id", None)
+                args = {
+                    **args,
+                    "tenant_id": str(cap_tenant or ""),
+                    "capsule_id": str(cap_id or ""),
+                }
             started = time.perf_counter()
-            decision = policy.decision(name)
-            # Egress is a separate axis from tool approval: a tool may be
-            # auto_execute and still be forbidden to reach the network this
-            # turn. egress_allowed was derived and enforced by nothing.
-            if not allow_egress and name in _NETWORK_TOOLS:
-                decision = "denied"
+            # ONE policy choke before anything executes (SOMA-ARCH-TOOLS-001
+            # §11): capsule tool_policy (unlisted = approval), egress for
+            # network tools, then RBAC → OPA → SpiceDB → capsule scope via
+            # UnifiedGate. Fail-closed: the choke returns "denied" on any
+            # error, and a denied tool is a terminal result, not a loop.
+            decision = await decide_and_authorize_tool(subject, capsule, name, args, iq)
             display_args = args if isinstance(args, dict) else {}
 
             if decision == "approval_required":
@@ -503,8 +604,11 @@ __all__ = [
     "TOOL_EVENT_DONE",
     "ToolPolicy",
     "ToolStreamEvent",
+    "ToolSubject",
     "build_assistant_tool_message",
     "build_tool_result_message",
+    "decide_and_authorize_tool",
+    "egress_permitted",
     "execute_tool_call",
     "resolve_tool_policy",
     "run_tool_loop",

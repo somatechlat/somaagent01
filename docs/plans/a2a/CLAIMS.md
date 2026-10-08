@@ -14,3 +14,19 @@
 | webui/src/views/soma-cognitive-panel.ts webui/src/views/soma-chat.ts | MiMoCode-somaAgent01 | W1.8 panel agent-id + data source | 2026-10-08T14:42:13Z | ACTIVE |
 | infra/aaas/aaas/docker-compose.yml services/conversation_worker/temporal_worker.py services/delegation_gateway/temporal_worker.py services/gateway/settings.py | MiMoCode-somaAgent01 | W1.10 Temporal host authority | 2026-10-08T14:42:13Z | ACTIVE |
 | services/common/adapters/somabrain_adapter.py | MiMoCode-somaAgent01 | W1.9 R-15 MemoryAck | 2026-10-08T14:42:13Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| admin/auth/ admin/common/auth.py | MiMoCode-somaAgent01 | login: local session + Keycloak /me independence | 2026-10-08T16:49:51Z | ACTIVE |
+| admin/somabrain/cognitive.py admin/core/somabrain_client.py | MiMoCode-somaAgent01 | cognitive state → neuromod + sleep proxy | 2026-10-08T16:49:51Z | ACTIVE |
+| tests/unit/test_identity_local_login.py tests/unit/test_role_superset.py tests/unit/test_spicedb_verb_coverage.py tests/unit/test_redis_pool_loop_restart.py | MiMoCode-somaAgent01 | triage remaining unit failures | 2026-10-08T16:49:51Z | ACTIVE |
+| tests/e2e/ webui/src/views/soma-login.ts | MiMoCode-somaAgent01 | login E2E + codeword gate prep | 2026-10-08T16:49:51Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| docs/architecture/SOMA-ARCH-TOOLS-001.md | MiMoCode-somaAgent01 | tool framework standard | 2026-10-08T21:07:07Z | ACTIVE |
+| services/common/path_guard.py services/tool_executor/path_guard.py | MiMoCode-somaAgent01 | PathGuard foundation | 2026-10-08T21:07:07Z | ACTIVE |
+| admin/core/tool_calling.py | MiMoCode-somaAgent01 | invert unlisted→approval + choke point | 2026-10-08T21:07:07Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| admin/core/tool_calling.py admin/core/chat_orchestrator.py | MiMoCode-somaAgent01 | W2.5 policy choke UnifiedGate per tool | 2026-10-08T21:19:56Z | ACTIVE |
+| services/tool_executor/tools.py services/tool_executor/assistant_tools/ services/common/path_guard.py | MiMoCode-somaAgent01 | W3.1-W3.2 file tools | 2026-10-08T21:19:56Z | ACTIVE |
+| services/conversation_worker/temporal_worker.py | MiMoCode-somaAgent01 | W3.3 ResearchReportWorkflow | 2026-10-08T21:19:56Z | ACTIVE |

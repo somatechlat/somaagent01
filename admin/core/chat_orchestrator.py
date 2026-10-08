@@ -43,6 +43,7 @@ from admin.core.tool_calling import (
     run_tool_loop,
     TOOL_EVENT_DONE,
     ToolStreamEvent,
+    ToolSubject,
 )
 from services.common.circuit_breaker import CircuitBreakerError, get_circuit_breaker
 from services.common.health_monitor import get_health_monitor
@@ -668,6 +669,14 @@ class V3ChatOrchestrator:
                 async for item in run_tool_loop(
                     iq=iq,
                     approval_gate=turn.approval_gate,
+                    # §11.1: the per-tool choke judges this principal
+                    # (roles=None resolves membership; [] denies).
+                    subject=ToolSubject(
+                        user_id=turn.user_id or None,
+                        tenant_id=tenant_id or None,
+                        roles=turn.roles,
+                        gate=self._unified_gate,
+                    ),
                     llm=llm,
                     messages=messages,
                     tools_for_llm=tools_for_llm,
@@ -1100,6 +1109,13 @@ class V3ChatOrchestrator:
                 tool_registry=turn.tool_registry,
                 capsule=capsule,
                 usage=usage,
+                # §11.1: one choke per tool, judged as this principal.
+                subject=ToolSubject(
+                    user_id=turn.user_id or None,
+                    tenant_id=tenant_id or None,
+                    roles=turn.roles,
+                    gate=self._unified_gate,
+                ),
             ):
                 if isinstance(item, ToolStreamEvent):
                     yield item
