@@ -83,14 +83,19 @@ class ToolPolicy:
     def decision(self, tool_name: str) -> str:
         """Return the execution decision for ``tool_name``.
 
-        Unlisted tools prefer auto_execute (C1: approval channel not wired
-        yet); explicitly denied / approval_required lists still win.
+        SOMA-ARCH-TOOLS-001: **unlisted = approval_required**. A new tool
+        (file_write, shell_exec, research_report) must never silently
+        auto-execute because the capsule JSON omitted it. Operators put a
+        tool in ``auto_execute`` deliberately; the absence of a list entry
+        is not consent.
         """
         if tool_name in self.denied:
             return "denied"
-        if tool_name in self.approval_required:
-            return "approval_required"
-        return "auto_execute"
+        if tool_name in self.auto_execute:
+            return "auto_execute"
+        # Unlisted and approval_required both require a human (or IQ floor
+        # that later moves them). Fail-closed default.
+        return "approval_required"
 
 
 def resolve_tool_policy(capsule: Any, iq: Any = None) -> ToolPolicy:

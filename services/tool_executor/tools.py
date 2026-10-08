@@ -197,29 +197,27 @@ class FileReadTool(BaseTool):
     name = "file_read"
 
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute run.
+        """Read a text file from the agent workroot via PathGuard (SOMA-ARCH-TOOLS-001)."""
+        from services.common.path_guard import PathGuard, PathGuardError
 
-        Args:
-            args: The args.
-        """
+        path_arg = str(args.get("path") or "").strip()
+        if not path_arg:
+            raise ToolExecutionError("path is required")
 
-        path_arg = args.get("path")
-        if not isinstance(path_arg, str):
-            from admin.common.messages import ErrorCode, get_message
+        workroot = os.environ.get("TOOL_WORK_DIR")
+        if not workroot or not str(workroot).strip():
+            raise ToolExecutionError(
+                "TOOL_WORK_DIR is not configured; file_read refuses without a workroot"
+            )
+        try:
+            target = PathGuard(workroot).resolve(path_arg)
+        except PathGuardError as exc:
+            raise ToolExecutionError(str(exc)) from exc
 
-            raise ToolExecutionError(get_message(ErrorCode.TOOL_MISSING_ARGUMENT, arg="path"))
-        base_dir = Path(os.environ.get("TOOL_WORK_DIR", "work_dir")).resolve()
-        target = (base_dir / path_arg).resolve()
-        if not str(target).startswith(str(base_dir)):
-            from admin.common.messages import ErrorCode, get_message
-
-            raise ToolExecutionError(get_message(ErrorCode.TOOL_PATH_NOT_ALLOWED))
-        if not target.exists() or not target.is_file():
-            from admin.common.messages import ErrorCode, get_message
-
+        if not target.is_file():
             raise ToolExecutionError(get_message(ErrorCode.TOOL_FILE_NOT_FOUND, path=path_arg))
         content = await asyncio.to_thread(target.read_text)
-        return {"path": str(target), "content": content}
+        return {"path": path_arg, "content": content}
 
     def input_schema(self) -> Dict[str, Any] | None:
         """Execute input schema."""
