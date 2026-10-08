@@ -64,8 +64,11 @@ services:
       - SA01_SOMA_BASE_URL=http://localhost:9696
       # OPA - use somastack_opa if deployed, else placeholder
       - SA01_OPA_URL=http://somastack_opa:8181
-      # Temporal (optional)
-      - SA01_TEMPORAL_URI=somastack_temporal:7233
+      # Temporal — one host authority: SA01_TEMPORAL_HOST (workers + gateway).
+      # Compose network topology (service DNS + container gRPC port), same
+      # pattern as POSTGRES_HOST / REDIS_HOST above. Not a secret.
+      # Queue names default only at services/gateway/settings.py (R-VAL-04).
+      - SA01_TEMPORAL_HOST=somastack_temporal:7233
       # Redis URL for legacy
       - SA01_REDIS_URL=redis://somastack_redis:6379/0
       # Multi-tenancy: Default tenant ID when not in JWT

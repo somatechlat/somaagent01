@@ -8,3 +8,5 @@
 | 2026-10-08T14:21:24Z | MiMoCode-somaAgent01 | COORD | GO wave: somaAgent01 MUST be fully wired to somabrain. Peer found: pid 24373 cwd somabrain. INBOX sent. No code this turn (Operator). |
 | 2026-10-08T14:21:24Z | MiMoCode-somaAgent01 | CLAIM | Wave-1 planning only: Temporal env contract, cognitive call-sites, R-15 adapter, webui cognitive panel — planning until coding ordered. |
 | 2026-10-08T14:22:22Z | MiMoCode-somaAgent01 | WAVE | ECC explore fan-out: docs authority, cognitive map, UI gaps, rapid plan architecture. Planning only — full wiring plan incoming. |
+| 2026-10-08T14:42:13Z | MiMoCode-somaAgent01 | WAVE | W1 CODE authorized by Operator. Spawn builders: wiring phantoms, UI panel, Temporal env + parallel adversarial skeptic. |
+| 2026-10-08T14:53:38Z | MiMoCode-somaAgent01 | LAND | W1.10 Temporal one host authority: compose SA01_TEMPORAL_URI→SA01_TEMPORAL_HOST; settings.py sole reader (no NAMESPACE); workers+providers use django TEMPORAL_HOST fail-closed; standalone registry temporal claim removed (out-of-scope). |

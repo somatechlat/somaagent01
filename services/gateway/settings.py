@@ -198,13 +198,18 @@ AAAS_DEFAULT_STORAGE_GB = os.environ.get("AAAS_DEFAULT_STORAGE_GB")
 # Redis
 REDIS_URL = get_required_env("SA01_REDIS_URL", "Redis connection for caching and channels")
 
-# Temporal
-# Empty when unconfigured — require_setting("temporal_host") refuses rather
-# than guess a scheduler. Namespace/queue names are schema identifiers, not
-# hosts; their names live here so one reader exists.
-TEMPORAL_HOST = os.environ.get("SA01_TEMPORAL_HOST") or ""
-TEMPORAL_NAMESPACE = os.environ.get("SA01_TEMPORAL_NAMESPACE") or "default"
-TEMPORAL_CONVERSATION_QUEUE = os.environ.get("SA01_TEMPORAL_CONVERSATION_QUEUE") or "conversation"
+# Temporal — ONE host authority: env key SA01_TEMPORAL_HOST.
+# This module is the sole reader of that key. Workers and the gateway
+# client resolve through django.conf.settings — never a second path
+# (registry.temporal_host was a duplicate connect authority; removed).
+# Empty host when unconfigured: consumers refuse (Rule 91). There is no
+# default scheduler and no TEMPORAL_NAMESPACE (zero readers).
+# Queue names are optional schema identifiers; the default lives ONLY
+# here (R-VAL-04). Call sites must not invent "conversation"/"a2a".
+TEMPORAL_HOST = (os.environ.get("SA01_TEMPORAL_HOST") or "").strip()
+TEMPORAL_CONVERSATION_QUEUE = (
+    os.environ.get("SA01_TEMPORAL_CONVERSATION_QUEUE") or "conversation"
+)
 TEMPORAL_A2A_QUEUE = os.environ.get("SA01_TEMPORAL_A2A_QUEUE") or "a2a"
 
 # Kafka

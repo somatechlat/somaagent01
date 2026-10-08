@@ -260,13 +260,15 @@ _STANDALONE_TOPOLOGY: Dict[str, Any] = {
     "sa01_tenant_id": "default",
     "sa01_memory_namespace": "wm",
     "sa01_default_token_budget": 4096,
-    "temporal_host": "temporal:7233",
+    # No Temporal service in infra/standalone/docker-compose.yml. Empty is the
+    # honest state (W4.3 out-of-scope until a service is added). Workers refuse
+    # when SA01_TEMPORAL_HOST is unset; do not invent a host here.
+    "temporal_host": "",
     "llm_base_url": "",
     # Only services that exist in infra/standalone/docker-compose.yml.
     # Postgres and Redis are connected to, not HTTP-probed.
     "service_health_endpoints": {
         "keycloak": "http://somaagent_keycloak:8080/health/ready",
-        "temporal": "http://temporal:7233/health",
     },
 }
 

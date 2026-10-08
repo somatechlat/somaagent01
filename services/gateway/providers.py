@@ -128,12 +128,14 @@ async def get_temporal_client():
 
     async with _TEMPORAL_LOCK:
         if _TEMPORAL_CLIENT is None:
-            host = (get_settings().temporal_host or "").strip()
+            # Single host authority: SA01_TEMPORAL_HOST, read once in
+            # services/gateway/settings.py. Do not use registry.temporal_host
+            # here — that was a second connect authority (F07).
+            host = (settings.TEMPORAL_HOST or "").strip()
             if not host:
                 raise RuntimeError(
-                    "temporal_host is not configured for this deployment mode. "
-                    "Set it in config/settings_registry.py topology or via "
-                    "InfrastructureConfig. There is no default scheduler."
+                    "SA01_TEMPORAL_HOST is not configured. It is deployment "
+                    "topology (operator parameter); there is no default scheduler."
                 )
             _TEMPORAL_CLIENT = await Client.connect(host)
         return _TEMPORAL_CLIENT

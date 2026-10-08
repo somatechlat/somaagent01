@@ -4,8 +4,18 @@ from __future__ import annotations
 
 import asyncio
 import os
+
+# Django setup so TEMPORAL_HOST / TEMPORAL_A2A_QUEUE resolve from
+# services/gateway/settings.py (single authority). Supervisord also sets
+# DJANGO_SETTINGS_MODULE; setdefault keeps direct `python -m` runs working.
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
+import django
+
+django.setup()
+
 from datetime import timedelta
 
+from django.conf import settings as django_settings
 from temporalio import activity, workflow
 from temporalio.client import Client
 from temporalio.worker import Worker
@@ -69,13 +79,14 @@ class A2AWorkflow:
 async def main() -> None:
     """Execute main."""
 
-    temporal_host = (os.environ.get("SA01_TEMPORAL_HOST") or "").strip()
+    # Single host + queue authority: services/gateway/settings.py (above).
+    temporal_host = (django_settings.TEMPORAL_HOST or "").strip()
     if not temporal_host:
         raise RuntimeError(
             "SA01_TEMPORAL_HOST is not configured. It is deployment "
             "topology (operator parameter); there is no default scheduler."
         )
-    task_queue = os.environ.get("SA01_TEMPORAL_A2A_QUEUE", "a2a")
+    task_queue = django_settings.TEMPORAL_A2A_QUEUE
     # outbox_flush removed - feature never implemented
     client = await Client.connect(temporal_host)
     worker = Worker(

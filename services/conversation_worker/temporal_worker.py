@@ -318,13 +318,15 @@ async def _ensure_schedules(client: Client, task_queue: str) -> None:
 
 
 async def main() -> None:
-    temporal_host = (os.environ.get("SA01_TEMPORAL_HOST") or "").strip()
+    # Single host + queue authority: services/gateway/settings.py reads
+    # SA01_TEMPORAL_HOST once (module-level django.setup above).
+    temporal_host = (django_settings.TEMPORAL_HOST or "").strip()
     if not temporal_host:
         raise RuntimeError(
             "SA01_TEMPORAL_HOST is not configured. It is deployment "
             "topology (operator parameter); there is no default scheduler."
         )
-    task_queue = os.environ.get("SA01_TEMPORAL_CONVERSATION_QUEUE", "conversation")
+    task_queue = django_settings.TEMPORAL_CONVERSATION_QUEUE
     client = await Client.connect(temporal_host)
     await _ensure_schedules(client, task_queue)
     worker = Worker(

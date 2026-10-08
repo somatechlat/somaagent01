@@ -302,10 +302,9 @@ parsed type at the read site. Code fallbacks, where they exist, are cited only a
 | `REDIS_HOST` | Env | str | Redis host | No | `config/settings.py:112`, `config/settings_registry.py:180` |
 | `REDIS_PORT` | Env | int | Redis port | No | `config/settings.py:113`, `config/settings_registry.py:183` |
 | `REDIS_DB` | Env | int | Redis logical DB | No | `config/settings_registry.py:184` |
-| `SA01_TEMPORAL_HOST` | Env | str | Temporal frontend `host:port` | No | `services/gateway/settings.py:217` |
-| `SA01_TEMPORAL_NAMESPACE` | Env | str | Temporal namespace | No | `services/gateway/settings.py:218` |
-| `SA01_TEMPORAL_CONVERSATION_QUEUE` | Env | str | Conversation workflow queue | No | `services/gateway/settings.py:219` |
-| `SA01_TEMPORAL_A2A_QUEUE` | Env | str | A2A workflow queue | No | `services/gateway/settings.py:220` |
+| `SA01_TEMPORAL_HOST` | Env | str | Temporal frontend `host:port` — sole host authority; workers + gateway read `settings.TEMPORAL_HOST` | No | `services/gateway/settings.py:209` |
+| `SA01_TEMPORAL_CONVERSATION_QUEUE` | Env | str | Conversation workflow queue (default only at settings.py) | No | `services/gateway/settings.py:210-212` |
+| `SA01_TEMPORAL_A2A_QUEUE` | Env | str | A2A workflow queue (default only at settings.py) | No | `services/gateway/settings.py:213` |
 | `KAFKA_BOOTSTRAP_SERVERS` / `SA01_KAFKA_BOOTSTRAP_SERVERS` | Env | str | Kafka brokers | No | `services/gateway/settings.py:223-225`, `config/settings_registry.py:201` |
 | `KAFKA_SECURITY_PROTOCOL` | Env | str | Kafka security protocol | No | `config/settings_registry.py:202` |
 | `KAFKA_SASL_MECHANISM` | Env | str | Kafka SASL mechanism | No | `config/settings_registry.py:203` |
