@@ -171,45 +171,55 @@ export class SomaSettingsModels extends LitElement {
         :host {
             display: block;
             min-height: 100%;
-            background: var(--soma-bg-page, #0a0a0a);
-            color: var(--soma-text-primary, #e5e5e5);
-            font-family: var(--soma-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+            background: var(--aaas-bg-page, #f5f5f5);
+            color: var(--aaas-text-primary, #1a1a1a);
+            font-family: var(--aaas-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
         }
         * { box-sizing: border-box; }
         .wrap { max-width: 1120px; margin: 0 auto; padding: 24px 20px 48px; }
+        .wrap.editor {
+            max-width: 960px;
+        }
         .head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
         h1 { font-size: 1.35rem; font-weight: 650; margin: 0; flex: 1; letter-spacing: -0.02em; }
-        .sub { color: var(--soma-text-secondary, #9ca3af); font-size: 0.9rem; margin-bottom: 20px; }
+        .sub { color: var(--aaas-text-secondary, #666666); font-size: 0.9rem; margin-bottom: 20px; }
         .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
         input, select, textarea {
-            background: var(--soma-bg-input, #1a1a1a);
-            border: 1px solid var(--soma-border, #2a2a2a);
-            color: inherit;
-            border-radius: 8px;
+            background: var(--aaas-bg-card, #ffffff);
+            border: 1px solid var(--aaas-border-light, #e0e0e0);
+            color: var(--aaas-text-primary, #1a1a1a);
+            border-radius: var(--aaas-radius-md, 8px);
             padding: 9px 12px;
             font-size: 0.9rem;
         }
         input:focus, select:focus, textarea:focus {
-            outline: 2px solid #3b82f6;
+            outline: 2px solid var(--aaas-info, #3b82f6);
             outline-offset: 1px;
         }
         .btn {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            border: 1px solid var(--soma-border, #2a2a2a);
-            background: var(--soma-bg-card, #141414);
-            color: inherit;
-            border-radius: 8px;
+            border: 1px solid var(--aaas-border-light, #e0e0e0);
+            background: var(--aaas-bg-card, #ffffff);
+            color: var(--aaas-text-primary, #1a1a1a);
+            border-radius: var(--aaas-radius-md, 8px);
             padding: 8px 14px;
             font-size: 0.88rem;
             font-weight: 550;
             cursor: pointer;
         }
-        .btn:hover { border-color: #3b82f6; }
-        .btn.primary { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+        .btn:hover { border-color: var(--aaas-accent, #1a1a1a); }
+        .btn.primary {
+            background: var(--aaas-accent, #1a1a1a);
+            border-color: var(--aaas-accent, #1a1a1a);
+            color: var(--aaas-text-inverse, #ffffff);
+        }
         .btn.ghost { background: transparent; }
-        .btn.danger { border-color: #ef4444; color: #ef4444; }
+        .btn.danger {
+            border-color: var(--aaas-danger, #ef4444);
+            color: var(--aaas-danger, #ef4444);
+        }
         .btn:disabled { opacity: 0.45; cursor: not-allowed; }
         .grid {
             display: grid;
@@ -217,9 +227,9 @@ export class SomaSettingsModels extends LitElement {
             gap: 14px;
         }
         .card {
-            background: var(--soma-bg-card, #141414);
-            border: 1px solid var(--soma-border, #2a2a2a);
-            border-radius: 12px;
+            background: var(--aaas-bg-card, #ffffff);
+            border: 1px solid var(--aaas-border-light, #e0e0e0);
+            border-radius: var(--aaas-radius-lg, 12px);
             padding: 16px;
             display: flex;
             flex-direction: column;
@@ -227,75 +237,92 @@ export class SomaSettingsModels extends LitElement {
             transition: border-color 0.15s, box-shadow 0.15s;
             cursor: pointer;
         }
-        .card:hover { border-color: #6366f1; }
-        .card.live {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 1px #3b82f655;
+        .card:hover {
+            border-color: var(--aaas-border-medium, #cccccc);
+            box-shadow: var(--aaas-shadow-md);
         }
-        .card-top { display: flex; align-items: center; gap: 8px; }
+        .card.live {
+            border-color: var(--aaas-info, #3b82f6);
+            box-shadow: 0 0 0 1px var(--aaas-info, #3b82f6);
+        }
+        .card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .chip {
             font-size: 0.68rem;
             font-weight: 650;
             letter-spacing: 0.02em;
             padding: 2px 8px;
-            border-radius: 999px;
-            background: #1f2937;
-            color: #cbd5e1;
+            border-radius: var(--aaas-radius-full, 9999px);
+            background: var(--aaas-bg-active, #f0f0f0);
+            color: var(--aaas-text-secondary, #666666);
         }
-        .chip.live { background: #1d4ed8; color: #fff; }
-        .chip.type { background: #312e81; color: #c7d2fe; }
-        .chip.warn { background: #78350f; color: #fcd34d; }
-        .chip.err { background: #7f1d1d; color: #fecaca; }
+        .chip.live {
+            background: var(--aaas-status-success, #22c55e);
+            color: var(--aaas-text-inverse, #ffffff);
+        }
+        .chip.type {
+            background: var(--aaas-bg-hover, #fafafa);
+            color: var(--aaas-text-primary, #1a1a1a);
+            border: 1px solid var(--aaas-border-light, #e0e0e0);
+        }
+        .chip.warn {
+            background: var(--aaas-status-warning, #eab308);
+            color: var(--aaas-text-inverse, #1a1a1a);
+        }
+        .chip.err {
+            background: var(--aaas-status-danger, #ef4444);
+            color: var(--aaas-text-inverse, #ffffff);
+        }
         .model-id { font-weight: 650; font-size: 1rem; letter-spacing: -0.01em; }
-        .meta { color: var(--soma-text-secondary, #9ca3af); font-size: 0.8rem; line-height: 1.45; }
+        .meta { color: var(--aaas-text-secondary, #666666); font-size: 0.8rem; line-height: 1.45; }
         .facts {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 4px 10px;
             font-size: 0.75rem;
-            color: var(--soma-text-secondary, #94a3b8);
+            color: var(--aaas-text-muted, #999999);
         }
-        .facts b { color: var(--soma-text-primary, #e5e5e5); font-weight: 550; }
+        .facts b { color: var(--aaas-text-primary, #1a1a1a); font-weight: 550; }
         .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
         .actions .btn { padding: 6px 10px; font-size: 0.78rem; }
         .empty {
-            border: 1px dashed var(--soma-border, #2a2a2a);
-            border-radius: 12px;
+            border: 1px dashed var(--aaas-border-light, #e0e0e0);
+            border-radius: var(--aaas-radius-lg, 12px);
             padding: 36px 20px;
             text-align: center;
-            color: var(--soma-text-secondary, #9ca3af);
+            color: var(--aaas-text-secondary, #666666);
         }
-        .modal-backdrop {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.55);
+        /* Full-screen model editor (not a modal). Modal is confirm-only. */
+        .editor {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 24px 20px 48px;
+        }
+        .editor-head {
             display: flex;
             align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            padding: 16px;
+            gap: 12px;
+            margin-bottom: 8px;
         }
-        .modal {
-            width: min(720px, 100%);
-            max-height: min(92vh, 900px);
-            overflow: auto;
-            background: var(--soma-bg-card, #121212);
-            border: 1px solid var(--soma-border, #2a2a2a);
-            border-radius: 14px;
-            padding: 20px 22px 22px;
+        .editor h2 { margin: 0 0 4px; font-size: 1.25rem; }
+        .tabs {
+            display: flex;
+            gap: 6px;
+            margin: 14px 0 16px;
+            border-bottom: 1px solid var(--aaas-border-light, #e0e0e0);
         }
-        .modal h2 { margin: 0 0 4px; font-size: 1.15rem; }
-        .tabs { display: flex; gap: 6px; margin: 14px 0 16px; border-bottom: 1px solid var(--soma-border, #2a2a2a); }
         .tab {
             background: transparent;
             border: none;
-            color: var(--soma-text-secondary, #9ca3af);
+            color: var(--aaas-text-secondary, #666666);
             padding: 10px 14px;
             font-weight: 600;
             cursor: pointer;
             border-bottom: 2px solid transparent;
         }
-        .tab.on { color: #fff; border-bottom-color: #3b82f6; }
+        .tab.on {
+            color: var(--aaas-text-primary, #1a1a1a);
+            border-bottom-color: var(--aaas-info, #3b82f6);
+        }
         .field {
             display: grid;
             grid-template-columns: 170px 1fr;
@@ -305,30 +332,30 @@ export class SomaSettingsModels extends LitElement {
         }
         .field label {
             font-size: 0.82rem;
-            color: var(--soma-text-secondary, #9ca3af);
+            color: var(--aaas-text-secondary, #666666);
             padding-top: 9px;
         }
         .field .hint {
             grid-column: 2;
             font-size: 0.72rem;
-            color: var(--soma-text-secondary, #64748b);
+            color: var(--aaas-text-muted, #999999);
             margin-top: -6px;
             margin-bottom: 6px;
         }
         .field input, .field select, .field textarea { width: 100%; }
         .field textarea { min-height: 88px; font-family: ui-monospace, monospace; font-size: 0.8rem; }
         .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .modal-foot {
+        .editor-foot {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
             margin-top: 18px;
             padding-top: 14px;
-            border-top: 1px solid var(--soma-border, #2a2a2a);
+            border-top: 1px solid var(--aaas-border-light, #e0e0e0);
         }
         .model-list {
-            border: 1px solid var(--soma-border, #2a2a2a);
-            border-radius: 8px;
+            border: 1px solid var(--aaas-border-light, #e0e0e0);
+            border-radius: var(--aaas-radius-md, 8px);
             max-height: 180px;
             overflow: auto;
             margin: 6px 0 2px;
@@ -339,16 +366,42 @@ export class SomaSettingsModels extends LitElement {
             text-align: left;
             background: transparent;
             border: none;
-            border-bottom: 1px solid var(--soma-border, #2a2a2a);
+            border-bottom: 1px solid var(--aaas-border-light, #e0e0e0);
             color: inherit;
             padding: 8px 12px;
             cursor: pointer;
             font-size: 0.85rem;
         }
-        .model-list button:hover, .model-list button.sel { background: #1e3a5f; }
+        .model-list button:hover, .model-list button.sel {
+            background: var(--aaas-bg-hover, #fafafa);
+        }
         .status { font-size: 0.85rem; min-height: 1.2em; margin: 8px 0; }
-        .status.err { color: #f87171; }
-        .status.ok { color: #34d399; }
+        .status.err { color: var(--aaas-danger, #ef4444); }
+        .status.ok { color: var(--aaas-success, #22c55e); }
+        /* Confirm dialog only (delete). Glassmorphism from system tokens. */
+        .confirm-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(var(--aaas-glass-blur, 16px));
+            -webkit-backdrop-filter: blur(var(--aaas-glass-blur, 16px));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: var(--aaas-z-modal, 200);
+            padding: 16px;
+        }
+        .confirm {
+            width: min(420px, 100%);
+            background: var(--aaas-glass-bg, rgba(255, 255, 255, 0.85));
+            border: 1px solid var(--aaas-glass-border, rgba(0, 0, 0, 0.08));
+            border-radius: var(--aaas-radius-lg, 12px);
+            box-shadow: var(--aaas-shadow-glass, 0 8px 32px rgba(0, 0, 0, 0.08));
+            padding: 20px 22px;
+            color: var(--aaas-text-primary, #1a1a1a);
+        }
+        .confirm h3 { margin: 0 0 8px; font-size: 1.05rem; }
+        .confirm .editor-foot { border-top: none; padding-top: 0; }
     `;
 
     @state() private _models: ModelRow[] = [];
@@ -413,7 +466,17 @@ export class SomaSettingsModels extends LitElement {
     }
 
     private _isLive(id: string): boolean {
-        return !!this._used && this._used.chat_model_id === id;
+        if (!this._used) return false;
+        if (this._used.chat_model_id === id) return true;
+        // Chat chips use provider/name (turn_meta.model). Match either form.
+        const row = this._models.find((m) => m.id === id);
+        if (row && this._used.chat_model_id) {
+            const key = `${row.provider}/${row.name}`;
+            if (this._used.chat_model_id === key || this._used.chat_model_id === row.name) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private async _activate(m: ModelRow): Promise<void> {
@@ -590,7 +653,7 @@ export class SomaSettingsModels extends LitElement {
                         ? html`<span class="chip warn">Needs key</span>`
                         : nothing}
                 </div>
-                <div class="model-id">${m.name}</div>
+                <div class="model-id">${m.provider && m.name ? `${m.provider}/${m.name}` : m.name}</div>
                 <div class="meta">
                     ${m.display_name || m.name} · ${m.provider}
                     ${m.api_base ? html`<br />${m.api_base}` : nothing}
@@ -611,7 +674,10 @@ export class SomaSettingsModels extends LitElement {
                               Activate
                           </button>`}
                     <button class="btn ghost" @click=${() => this._openEdit(m)}>Edit</button>
-                    <button class="btn ghost" @click=${() => this._openEdit(m)}>Test</button>
+                    <button class="btn ghost" @click=${() => {
+                        this._draft = draftFromModel(m);
+                        void this._testConnection();
+                    }}>Test</button>
                 </div>
             </article>
         `;
@@ -621,37 +687,40 @@ export class SomaSettingsModels extends LitElement {
         const d = this._draft;
         if (!d) return nothing;
         return html`
-            <div class="modal-backdrop" @click=${(e: Event) => {
-                if (e.target === e.currentTarget) this._draft = null;
-            }}>
-                <div class="modal" role="dialog" aria-label="Model editor">
-                    <h2>${d.id ? `Edit model — ${d.name}` : 'Add model'}</h2>
-                    <div class="meta">
-                        ${d.provider}
-                        ${this._isLive(d.id || '')
-                            ? html` · <span class="chip live">LIVE</span>`
-                            : nothing}
-                    </div>
-                    <div class="tabs">
-                        <button
-                            class="tab ${this._tab === 'normal' ? 'on' : ''}"
-                            @click=${() => (this._tab = 'normal')}
-                        >
-                            Normal
-                        </button>
-                        <button
-                            class="tab ${this._tab === 'advanced' ? 'on' : ''}"
-                            @click=${() => (this._tab = 'advanced')}
-                        >
-                            Advanced
-                        </button>
-                        <button
-                            class="tab ${this._tab === 'used' ? 'on' : ''}"
-                            @click=${() => (this._tab = 'used')}
-                        >
-                            Used for
-                        </button>
-                    </div>
+            <div class="editor" role="region" aria-label="Model editor">
+                <div class="editor-head">
+                    <button class="btn ghost" @click=${() => (this._draft = null)}>
+                        <span class="material-symbols-outlined">arrow_back</span>
+                        Back to models
+                    </button>
+                </div>
+                <h2>${d.id ? `Model — ${d.name}` : 'Add model'}</h2>
+                <div class="meta">
+                    ${d.provider}
+                    ${this._isLive(d.id || '')
+                        ? html` · <span class="chip live">LIVE</span>`
+                        : nothing}
+                </div>
+                <div class="tabs">
+                    <button
+                        class="tab ${this._tab === 'normal' ? 'on' : ''}"
+                        @click=${() => (this._tab = 'normal')}
+                    >
+                        Normal
+                    </button>
+                    <button
+                        class="tab ${this._tab === 'advanced' ? 'on' : ''}"
+                        @click=${() => (this._tab = 'advanced')}
+                    >
+                        Advanced
+                    </button>
+                    <button
+                        class="tab ${this._tab === 'used' ? 'on' : ''}"
+                        @click=${() => (this._tab = 'used')}
+                    >
+                        Used for
+                    </button>
+                </div>
 
                     ${this._tab === 'normal'
                         ? html`
@@ -924,7 +993,7 @@ export class SomaSettingsModels extends LitElement {
                         ? html`<div class="status ${this._statusOk ? 'ok' : 'err'}">${this._status}</div>`
                         : nothing}
 
-                    <div class="modal-foot">
+                    <div class="editor-foot">
                         <button class="btn primary" @click=${() => void this._saveModel()}>Save model</button>
                         <button class="btn" @click=${() => void this._testConnection()}>
                             Test connection
@@ -937,27 +1006,27 @@ export class SomaSettingsModels extends LitElement {
                                   Delete
                               </button>`
                             : nothing}
-                        <button class="btn ghost" @click=${() => (this._draft = null)}>Cancel</button>
+                        <button class="btn ghost" @click=${() => (this._draft = null)}>Close</button>
                     </div>
-                </div>
             </div>
         `;
     }
 
     render() {
+        if (this._draft) return this._editor();
         return html`
             <div class="wrap">
                 <div class="head">
                     <h1>Models</h1>
                     <button class="btn ghost" @click=${() => void this._reload()}>Refresh</button>
-                    <button class="btn" @click=${() => (window.location.hash = '#/settings')}>
-                        Manage keys
+                    <button class="btn" @click=${() => window.dispatchEvent(new CustomEvent('soma-navigate', { detail: { route: '/settings' } }))}>
+                        Settings
                     </button>
                     <button class="btn primary" @click=${() => this._openCreate()}>Add model</button>
                 </div>
                 <div class="sub">
-                    Cards show the whole model. Activate to make one live. Open a card for Normal /
-                    Advanced / Used for. Keys go to Vault only. Custom URL supports MiMo and gateways.
+                    Cards show the whole model. Activate to make one live. Open a card for the full
+                    model screen (Normal / Advanced / Used for). Keys go to Vault only.
                 </div>
                 <div class="toolbar">
                     <input
@@ -979,7 +1048,7 @@ export class SomaSettingsModels extends LitElement {
                         <option value="embedding">Embeddings</option>
                     </select>
                 </div>
-                ${this._status && !this._draft
+                ${this._status
                     ? html`<div class="status ${this._statusOk ? 'ok' : 'err'}">${this._status}</div>`
                     : nothing}
                 ${this._loading
@@ -991,7 +1060,6 @@ export class SomaSettingsModels extends LitElement {
                         </div>`
                       : html`<div class="grid">${this._visible.map((m) => this._card(m))}</div>`}
             </div>
-            ${this._editor()}
         `;
     }
 }

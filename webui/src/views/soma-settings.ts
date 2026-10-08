@@ -13,19 +13,27 @@
  * a visible inline element (SOMA-01-UIUX-001.md §2.3). Secrets are write-only:
  * this screen never renders a key value or fragment.
  *
- * Settings Tabs:
- * - Agent: Models hub (→ /settings/models)
- * - External: Vault-backed provider keys, MCP client flag
- * - Connectivity: Voice feature flag
- * - System: Feature flags, config export
+ * Settings Tabs (one shell):
+ * Agent · Models · Voice · Interface · Tools · Integrations · Advanced
  */
 
 import { LitElement, html, css } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
+import { applyTheme, getTheme } from '../services/theme-boot.js';
 import '../components/settings-form.js';
+import './soma-settings-models.js';
+import '../components/soma-agent-iq.js';
 
-type SettingsTab = 'agent' | 'external' | 'connectivity' | 'system';
+type SettingsTab =
+    | 'agent'
+    | 'models'
+    | 'voice'
+    | 'interface'
+    | 'tools'
+    | 'external'
+    | 'connectivity'
+    | 'system';
 
 interface BackendFlag {
     key: string;
@@ -602,6 +610,11 @@ export class SomaSettings extends LitElement {
     `;
 
     @state() private _activeTab: SettingsTab = 'agent';
+    /** Capsule for AgentIQ knobs (Settings › Agent). */
+    @state() private _activeCapsuleId = '';
+
+    /** Deep-link tab from the route (/settings/models, /settings/channels). */
+    @property({ type: String, attribute: 'active-tab' }) activeTab = '';
     @state() private _isDirty = false;
     @state() private _isSaving = false;
 
@@ -630,11 +643,19 @@ export class SomaSettings extends LitElement {
     @state() private _entities: { entity: string; name: string; icon: string }[] = [];
     @state() private _entitiesError = '';
 
+    /** Live tool catalog (Capability). */
+    @state() private _tools: { name: string; description: string; enabled: boolean }[] = [];
+    @state() private _toolsError = '';
+
     private _tabs: { id: SettingsTab; label: string; icon: string }[] = [
         { id: 'agent', label: 'Agent', icon: 'smart_toy' },
-        { id: 'external', label: 'External', icon: 'key' },
+        { id: 'models', label: 'Models', icon: 'deployed_code' },
+        { id: 'voice', label: 'Voice', icon: 'graphic_eq' },
+        { id: 'interface', label: 'Interface', icon: 'palette' },
+        { id: 'tools', label: 'Tools', icon: 'build' },
+        { id: 'external', label: 'Integrations', icon: 'key' },
         { id: 'connectivity', label: 'Connectivity', icon: 'cable' },
-        { id: 'system', label: 'System', icon: 'settings' },
+        { id: 'system', label: 'Advanced', icon: 'settings' },
     ];
 
     /**
@@ -732,12 +753,195 @@ export class SomaSettings extends LitElement {
         switch (this._activeTab) {
             case 'agent':
                 return this._renderAgentTab();
+            case 'models':
+                return this._renderModelsTab();
+            case 'voice':
+                return this._renderVoiceTab();
+            case 'interface':
+                return this._renderInterfaceTab();
+            case 'tools':
+                return this._renderToolsTab();
             case 'external':
                 return this._renderExternalTab();
             case 'connectivity':
                 return this._renderConnectivityTab();
             case 'system':
                 return this._renderSystemTab();
+        }
+    }
+
+    private _renderModelsTab() {
+        return html`
+            <div class="section" style="padding: 0; border: none; background: transparent;">
+                <h3 class="section-title">
+                    <span class="material-symbols-outlined">deployed_code</span>
+                    Models
+                </h3>
+                <p class="section-desc">
+                    Whole model cards with Activate, Custom URL, Load models, and Vault keys.
+                    Used for: Chat / Help / Memory.
+                </p>
+                <soma-settings-models></soma-settings-models>
+            </div>
+        `;
+    }
+
+    private _renderVoiceTab() {
+        return html`
+            <div class="section">
+                <h3 class="section-title">
+                    <span class="material-symbols-outlined">graphic_eq</span>
+                    Voice
+                </h3>
+                <p class="section-desc">
+                    How the agent speaks and listens. Personas, speech-to-text, and text-to-speech.
+                </p>
+                <button
+                    class="save-btn"
+                    @click=${() =>
+                        window.dispatchEvent(
+                            new CustomEvent('soma-navigate', { detail: { route: '/voice/personas' } }),
+                        )}
+                >
+                    <span class="material-symbols-outlined">mic</span>
+                    Open voice settings
+                </button>
+            </div>
+        `;
+    }
+
+    private _renderInterfaceTab() {
+        return html`
+            <div class="section">
+                <h3 class="section-title">
+                    <span class="material-symbols-outlined">palette</span>
+                    Interface
+                </h3>
+                <p class="section-desc">
+                    Theme, language, and how the workspace looks on this device.
+                </p>
+
+                <div class="toggle-row">
+                    <div>
+                        <div class="toggle-label">Theme</div>
+                        <div class="toggle-desc">Dark (default) or Light</div>
+                    </div>
+                    <select
+                        data-control="interface-theme"
+                        .value=${getTheme()}
+                        title=${this._canEditSettings ? 'Theme' : DISABLED_REASON}
+                        ?disabled=${!this._canEditSettings}
+                        @change=${(e: Event) => this._setInterface('theme', e)}
+                    >
+                        <option value="dark">Dark</option>
+                        <option value="light">Light</option>
+                    </select>
+                </div>
+
+                <div class="toggle-row">
+                    <div>
+                        <div class="toggle-label">Language</div>
+                        <div class="toggle-desc">Language for this interface</div>
+                    </div>
+                    <select
+                        data-control="interface-language"
+                        title=${this._canEditSettings ? 'Language' : DISABLED_REASON}
+                        ?disabled=${!this._canEditSettings}
+                        @change=${(e: Event) => this._setInterface('language', e)}
+                    >
+                        <option value="en">English</option>
+                        <option value="es">Español</option>
+                    </select>
+                </div>
+
+                <div class="toggle-row">
+                    <div>
+                        <div class="toggle-label">Timezone</div>
+                        <div class="toggle-desc">Shown in timestamps</div>
+                    </div>
+                    <select
+                        data-control="interface-timezone"
+                        title=${this._canEditSettings ? 'Timezone' : DISABLED_REASON}
+                        ?disabled=${!this._canEditSettings}
+                        @change=${(e: Event) => this._setInterface('timezone', e)}
+                    >
+                        <option value="UTC">UTC</option>
+                        <option value="America/Guayaquil">America/Guayaquil</option>
+                        <option value="America/New_York">America/New_York</option>
+                        <option value="Europe/Madrid">Europe/Madrid</option>
+                    </select>
+                </div>
+
+                <p class="honest-note">
+                    Density, clock, and panel defaults use this device until the server exposes
+                    those preferences.
+                </p>
+
+                ${this._renderDisabledReason()}
+            </div>
+        `;
+    }
+
+    private _setInterface(key: string, e: Event) {
+        const select = e.target as HTMLSelectElement;
+        const prefs = JSON.parse(localStorage.getItem('soma_interface') || '{}');
+        prefs[key] = select.value;
+        localStorage.setItem('soma_interface', JSON.stringify(prefs));
+        if (key === 'theme') {
+            applyTheme(select.value === 'light' ? 'light' : 'dark');
+        }
+        this._isDirty = true;
+    }
+
+    private _renderToolsTab() {
+        return html`
+            <div class="section">
+                <h3 class="section-title">
+                    <span class="material-symbols-outlined">build</span>
+                    Tools
+                </h3>
+                <p class="section-desc">
+                    Capabilities the agent can call. Names and enable state come from the live
+                    tool catalog.
+                </p>
+
+                ${this._toolsError
+                    ? html`<p class="disabled-reason" role="status">${this._toolsError}</p>`
+                    : this._tools.length === 0
+                        ? html`<p class="honest-note" role="status">No tools returned by the server.</p>`
+                        : this._tools.map(
+                              (t) => html`
+                                  <div class="toggle-row">
+                                      <div>
+                                          <div class="toggle-label">${t.name}</div>
+                                          <div class="toggle-desc">${t.description || 'No description'}</div>
+                                      </div>
+                                      <label class="toggle-switch">
+                                          <input
+                                              type="checkbox"
+                                              data-control="tool-${t.name}"
+                                              .checked=${t.enabled}
+                                              title=${this._canEditSettings ? t.name : DISABLED_REASON}
+                                              ?disabled=${!this._canEditSettings}
+                                              @change=${() => this._toggleTool(t.name)}>
+                                          <span class="toggle-slider"></span>
+                                      </label>
+                                  </div>
+                              `,
+                          )}
+
+                ${this._renderDisabledReason()}
+            </div>
+        `;
+    }
+
+    private async _loadCapsuleId(): Promise<void> {
+        try {
+            const data = await apiClient.get<{ agents?: { agent_id: string; capsule_id?: string }[] }>('/agents/');
+            const first = data?.agents?.[0];
+            if (first?.capsule_id) this._activeCapsuleId = first.capsule_id;
+        } catch {
+            /* AgentIQ shows its own empty state */
         }
     }
 
@@ -759,8 +963,8 @@ export class SomaSettings extends LitElement {
                     <span class="api-key-value">OpenAI, Anthropic, Google, Groq, Ollama, custom OpenAI-compatible</span>
                 </div>
                 <div class="api-key-row">
-                    <span class="api-key-name">Slots</span>
-                    <span class="api-key-value">Chat / Utility / Embedding — Capsule or tenant defaults</span>
+                    <span class="api-key-name">Used for</span>
+                    <span class="api-key-value">Chat / Help / Memory — Capsule or tenant defaults</span>
                 </div>
                 <div class="api-key-row">
                     <span class="api-key-name">Keys</span>
@@ -774,6 +978,19 @@ export class SomaSettings extends LitElement {
                     <span class="material-symbols-outlined">settings_suggest</span>
                     Open Models Settings
                 </button>
+            </div>
+
+            <!-- AgentIQ knobs: agent configuration, not chat chrome -->
+            <div class="section" style="margin-top: 16px;">
+                <h3 class="section-title">
+                    <span class="material-symbols-outlined">tune</span>
+                    Agent knobs (IQ)
+                </h3>
+                <p class="section-desc">
+                    Personality knobs for this capsule. Persisted to Capsule.persona_config.knobs.
+                    Derived values below are computed by the server.
+                </p>
+                <soma-agent-iq .capsuleId=${this._activeCapsuleId || ''}></soma-agent-iq>
             </div>
         `;
     }
@@ -817,7 +1034,6 @@ export class SomaSettings extends LitElement {
                         <div class="toggle-desc">Connect to external MCP servers</div>
                     </div>
                     <label class="toggle-switch">
-<label class="toggle-switch">
                         <input
                             type="checkbox"
                             data-control="feature-flag-mcp"
@@ -1006,12 +1222,54 @@ export class SomaSettings extends LitElement {
     }
 
     override async firstUpdated() {
+        if (this.activeTab === 'models' || this.activeTab === 'external' || this.activeTab === 'voice'
+            || this.activeTab === 'interface' || this.activeTab === 'tools' || this.activeTab === 'system'
+            || this.activeTab === 'agent' || this.activeTab === 'connectivity') {
+            this._activeTab = this.activeTab;
+        }
         await Promise.all([
             this._loadIdentity(),
             this._loadFeatureFlags(),
             this._loadSecretProviders(),
             this._loadEntities(),
+            this._loadTools(),
+            this._loadCapsuleId(),
         ]);
+    }
+
+    /** Tool catalog from GET /api/v2/tools/catalog (Capability). */
+    private async _loadTools() {
+        try {
+            const rows = await apiClient.get<{ name: string; description?: string; category?: string; enabled: boolean }[]>(
+                '/tools/catalog'
+            );
+            this._tools = (rows ?? []).map((t) => ({
+                name: t.name,
+                description: t.description ?? '',
+                enabled: t.enabled,
+            }));
+            this._toolsError = '';
+        } catch (error) {
+            this._tools = [];
+            this._toolsError = `Failed to load tools: ${error instanceof Error ? error.message : error}`;
+        }
+    }
+
+    private async _toggleTool(name: string) {
+        const tool = this._tools.find((t) => t.name === name);
+        if (!tool) return;
+        const next = !tool.enabled;
+        try {
+            await apiClient.put(`/tools/catalog/${encodeURIComponent(name)}`, {
+                name,
+                description: tool.description,
+                category: 'general',
+                enabled: next,
+            });
+            this._tools = this._tools.map((t) => (t.name === name ? { ...t, enabled: next } : t));
+        } catch (error) {
+            this._flash('error', `Failed to update ${name}: ${error instanceof Error ? error.message : error}`);
+        }
     }
 
     /** The configurable-service inventory is server-owned. */

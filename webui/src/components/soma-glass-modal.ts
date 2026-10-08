@@ -65,10 +65,10 @@ export class SomaGlassModal extends LitElement {
         }
 
         .modal {
-            background: var(--soma-glass-bg, rgba(255, 255, 255, 0.85));
-            border: 1px solid var(--soma-glass-border, rgba(0, 0, 0, 0.08));
+            background: var(--soma-glass-bg, rgba(18, 18, 18, 0.92));
+            border: 1px solid var(--soma-glass-border, rgba(255, 255, 255, 0.12));
             border-radius: var(--soma-radius-xl, 16px);
-            box-shadow: var(--soma-shadow-glass, 0 8px 32px rgba(0, 0, 0, 0.08));
+            box-shadow: var(--soma-shadow-glass, 0 24px 64px rgba(0, 0, 0, 0.55));
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             max-width: 100%;
@@ -105,6 +105,7 @@ export class SomaGlassModal extends LitElement {
         }
 
         .title {
+            color: #FFFFFF;
             font-size: var(--soma-text-lg, 18px);
             font-weight: var(--soma-font-semibold, 600);
             color: var(--soma-text-primary, #1a1a1a);
@@ -115,7 +116,7 @@ export class SomaGlassModal extends LitElement {
             font-size: var(--soma-text-sm, 13px);
             color: var(--soma-text-secondary, #666666);
             margin-top: 2px;
-        }
+         color: #C4C4C4; }
 
         .close-btn {
             width: 36px;

@@ -26,6 +26,7 @@ export { SomaCapsuleEditor } from './soma-capsule-editor.js';
 export { SomaMessage } from './soma-message.js';
 export { SomaToolTimeline } from './soma-tool-timeline.js';
 export { SomaChatTopbar } from './soma-chat-topbar.js';
+export { SomaStatusDot } from './soma-status-dot.js';
 export type { ToolCallStep, ToolStepStatus } from './soma-tool-timeline.js';
 export type { ComposerSendDetail } from './soma-composer.js';
 export type { ChatControlAction } from './soma-chat-topbar.js';

@@ -3,7 +3,7 @@
  *
  * 3-column workspace shell:
  *   Left  — brand, New Chat, searchable conversation list (rename/delete/export),
- *           user card (/auth/me), nav to Memory / Models / Channels / Settings
+ *           user card (/auth/me), nav to Memory / Settings only (IA-001)
  *   Center — topbar (title, model, pause/stop/reset), message stream + tool
  *           timeline, welcome empty state, composer
  *   Right  — the one surface registry (`soma-right-panel`, UI-X-01…08)
@@ -24,9 +24,12 @@ import { formatRelative } from '../utils/markdown.js';
 import '../components/soma-message.js';
 import '../components/soma-tool-timeline.js';
 import '../components/soma-chat-topbar.js';
-import '../components/soma-agent-iq.js';
 import '../components/soma-composer.js';
 import '../components/soma-right-panel.js';
+import '../components/soma-status-dot.js';
+import '../components/soma-glass-modal.js';
+import '../components/soma-agent-iq.js';
+import type { StatusDotState } from '../components/soma-status-dot.js';
 
 export interface ChatMessage {
     id: string;
@@ -77,7 +80,7 @@ export class SomaChat extends LitElement {
         :host {
             display: flex;
             height: 100vh;
-            background: var(--aaas-bg-void, #f5f5f5);
+            background: var(--aaas-bg-void, #0A0A0A);
             font-family: var(--aaas-font-sans, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
             color: var(--aaas-text-primary, #ffffff);
             overflow: hidden;
@@ -124,7 +127,7 @@ export class SomaChat extends LitElement {
            ========================= */
         .sidebar {
             width: 272px;
-            background: var(--aaas-bg-sidebar, #ffffff);
+            background: var(--aaas-bg-sidebar, #111111);
             border-right: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
             display: flex;
             flex-direction: column;
@@ -150,7 +153,7 @@ export class SomaChat extends LitElement {
         .brand-icon {
             width: 32px;
             height: 32px;
-            background: var(--aaas-accent, #e8e4dc);
+            background: var(--aaas-accent, #3B82F6);
             border-radius: 8px;
             display: flex;
             align-items: center;
@@ -175,7 +178,7 @@ export class SomaChat extends LitElement {
             margin: 4px 16px 12px;
             padding: 10px 14px;
             border-radius: var(--aaas-radius-md, 8px);
-            background: var(--aaas-accent, #e8e4dc);
+            background: var(--aaas-accent, #3B82F6);
             color: var(--aaas-bg-void, #f5f5f5);
             font-size: 13px;
             font-weight: 600;
@@ -189,7 +192,7 @@ export class SomaChat extends LitElement {
         }
 
         .new-chat-btn:hover {
-            background: var(--aaas-accent-hover, #ffffff);
+            background: var(--aaas-accent-hover, #2563EB);
         }
 
         .new-chat-btn .material-symbols-outlined {
@@ -216,7 +219,7 @@ export class SomaChat extends LitElement {
             padding: 8px 10px 8px 34px;
             border-radius: var(--aaas-radius-md, 8px);
             border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            background: var(--aaas-bg-card, #1e1e1e);
+            background: var(--aaas-bg-card, #1A1A1A);
             color: var(--aaas-text-primary, #ffffff);
             font-size: 13px;
             outline: none;
@@ -341,7 +344,7 @@ export class SomaChat extends LitElement {
             padding: 3px 6px;
             border-radius: 4px;
             border: 1px solid var(--aaas-info, #3b82f6);
-            background: var(--aaas-bg-card, #1e1e1e);
+            background: var(--aaas-bg-card, #1A1A1A);
             color: var(--aaas-text-primary, #ffffff);
             font-size: 12px;
             outline: none;
@@ -489,12 +492,12 @@ export class SomaChat extends LitElement {
             position: relative;
             overflow: hidden;
             min-width: 0;
-            background: var(--aaas-bg-void, #f5f5f5);
+            background: var(--aaas-bg-void, #0A0A0A);
         }
 
         .header {
             padding: 12px 24px;
-            background: var(--aaas-bg-void, #f5f5f5);
+            background: var(--aaas-bg-void, #0A0A0A);
             border-bottom: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
             display: flex;
             align-items: center;
@@ -541,7 +544,7 @@ export class SomaChat extends LitElement {
         .mode-badge {
             padding: 2px 6px;
             border-radius: 4px;
-            background: var(--aaas-accent, #e8e4dc);
+            background: var(--aaas-accent, #3B82F6);
             color: var(--aaas-bg-void, #f5f5f5);
             font-size: 10px;
             font-weight: 700;
@@ -551,7 +554,7 @@ export class SomaChat extends LitElement {
             position: absolute;
             top: calc(100% + 6px);
             right: 0;
-            background: var(--aaas-bg-card, #1e1e1e);
+            background: var(--aaas-bg-card, #1A1A1A);
             border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
             border-radius: var(--aaas-radius-lg, 12px);
             box-shadow: var(--aaas-shadow-lg, 0 8px 24px rgba(0,0,0,0.6));
@@ -618,107 +621,626 @@ export class SomaChat extends LitElement {
         .messages {
             flex: 1;
             overflow-y: auto;
-            padding: 28px 24px 16px;
             display: flex;
             flex-direction: column;
-            gap: 18px;
-            scroll-behavior: smooth;
+            gap: 14px;
+            padding: 18px 20px 12px;
         }
 
         @media (prefers-reduced-motion: reduce) {
             .messages { scroll-behavior: auto; }
         }
 
-        /* Welcome / empty state */
+        /* Welcome / empty state — A0-merged enterprise */
         .welcome {
-            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.35rem;
+            width: min(100%, 960px);
+            margin: 0 auto;
+            padding: 2.5rem 1.5rem 2rem;
+        }
+
+        .welcome-hero {
+            text-align: center;
+            padding-top: 1.5rem;
+        }
+
+        .welcome-hero h2 {
+            margin: 0;
+            font-size: clamp(1.85rem, 3.2vw, 2.45rem);
+            font-weight: 500;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #FF4D00 0%, #FF7A3D 55%, #FF4D00 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .welcome-hero p {
+            margin: 0.45rem 0 0;
+            font-size: 1.15rem;
+            color: var(--aaas-text-secondary, #a1a1aa);
+        }
+
+        .welcome-banner {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 8px;
+            border: 1px solid color-mix(in srgb, #f59e0b 35%, transparent);
+            background: color-mix(in srgb, #f59e0b 12%, transparent);
+            font-size: 13px;
+            color: var(--aaas-text-bright, #f8fafc);
+        }
+
+        .wb-action {
+            margin-left: auto;
+            border: 0;
+            border-radius: 8px;
+            padding: 6px 12px;
+            background: #FF4D00;
+            color: #fff;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .wb-dismiss {
+            border: 0;
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+            opacity: 0.7;
+        }
+
+        .welcome-quick {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+        }
+
+        .wq-card {
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 40px 24px;
             gap: 8px;
+            padding: 18px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--aaas-border-light, rgba(255, 255, 255, 0.06));
+            background: color-mix(in srgb, var(--aaas-bg-card, #1a1a1a) 88%, transparent);
+            color: var(--aaas-text-bright, #f8fafc);
+            cursor: pointer;
+            transition: transform 0.15s ease, border-color 0.15s ease;
         }
 
-        .welcome-icon {
-            width: 64px;
-            height: 64px;
-            background: var(--aaas-bg-card, #1e1e1e);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            border-radius: 18px;
+        .wq-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(255, 77, 0, 0.55);
+            box-shadow:
+                0 1px 0 rgba(255, 255, 255, 0.06) inset,
+                0 16px 36px rgba(255, 77, 0, 0.2);
+        }
+
+        .wq-card .material-symbols-outlined {
+            font-size: 22px;
+            color: #FF4D00;
+        }
+
+        .wq-glow {
+            box-shadow:
+                0 0 0 1px rgba(16, 185, 129, 0.35),
+                0 0 24px rgba(16, 185, 129, 0.18);
+        }
+
+        .wq-label {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .welcome-section {
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 16px;
+            padding: 16px 18px;
+            background: rgba(18, 18, 18, 0.5);
+            backdrop-filter: blur(18px) saturate(125%);
+            -webkit-backdrop-filter: blur(18px) saturate(125%);
+            box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+        }
+
+        .ws-head {
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
             margin-bottom: 12px;
         }
 
-        .welcome-icon .material-symbols-outlined {
-            font-size: 30px;
-            color: var(--aaas-accent, #e8e4dc);
-        }
-
-        .welcome h2 {
+        .ws-head h3 {
             margin: 0;
-            font-size: 22px;
-            font-weight: 600;
-            letter-spacing: -0.02em;
-        }
-
-        .welcome p {
-            margin: 0;
-            color: var(--aaas-text-secondary, #a1a1a1);
-            max-width: 440px;
-            line-height: 1.6;
-            font-size: 14px;
-        }
-
-        .welcome-actions {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 10px;
-            margin-top: 22px;
-            width: 100%;
-            max-width: 520px;
-        }
-
-        .welcome-action {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            padding: 14px;
-            border-radius: var(--aaas-radius-lg, 12px);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            background: var(--aaas-bg-card, #1e1e1e);
-            cursor: pointer;
-            text-align: left;
-            transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
-            color: inherit;
-            font: inherit;
-        }
-
-        .welcome-action:hover {
-            border-color: var(--aaas-border-medium, rgba(255,255,255,0.16));
-            background: var(--aaas-bg-hover, #141414);
-            transform: translateY(-1px);
-        }
-
-        .welcome-action .material-symbols-outlined {
-            font-size: 20px;
-            color: var(--aaas-accent, #e8e4dc);
-            margin-top: 1px;
-        }
-
-        .welcome-action .wa-title {
             font-size: 13px;
             font-weight: 600;
-            margin-bottom: 2px;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            color: var(--aaas-text-secondary, #a1a1aa);
         }
 
-        .welcome-action .wa-desc {
+        .ws-link {
+            border: 0;
+            background: transparent;
+            color: #FF4D00;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .ws-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .ws-card {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 14px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            background: rgba(10, 10, 10, 0.45);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .ws-card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--aaas-text-bright, #f8fafc);
+        }
+
+        .ws-card-desc {
+            font-size: 12px;
+            color: var(--aaas-text-secondary, #a1a1aa);
+            line-height: 1.4;
+            min-height: 2.6em;
+        }
+
+        .ws-cta {
+            align-self: flex-start;
+            margin-top: 4px;
+            border: 0;
+            border-radius: 8px;
+            padding: 7px 12px;
+            background: #FF4D00;
+            color: #fff;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .ws-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 4px;
+            font-size: 12px;
+            color: var(--aaas-text-secondary, #a1a1aa);
+        }
+
+        .ws-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #22c55e;
+        }
+
+        .sys-rows {
+            display: grid;
+            gap: 10px;
+        }
+
+        .sys-row {
+            display: grid;
+            grid-template-columns: 48px 1fr auto;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .sys-name {
+            font-size: 12px;
+            color: var(--aaas-text-secondary, #a1a1aa);
+        }
+
+        .sys-track {
+            height: 8px;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--aaas-border-light, rgba(255, 255, 255, 0.08)) 80%, transparent);
+            overflow: hidden;
+        }
+
+        .sys-fill {
+            display: block;
+            height: 100%;
+            border-radius: inherit;
+        }
+
+        .sys-val {
+            font-size: 12px;
+            font-variant-numeric: tabular-nums;
+            color: var(--aaas-text-secondary, #a1a1aa);
+            white-space: nowrap;
+        }
+
+        .welcome-footer {
+            text-align: center;
             font-size: 11px;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--aaas-text-secondary, #71717a);
+            padding: 8px 0 16px;
+        }
+
+
+
+        .dock {
+            border-top: 1px solid rgba(255, 255, 255, 0.07);
+            background: rgba(10, 10, 10, 0.78);
+            backdrop-filter: blur(22px) saturate(130%);
+            -webkit-backdrop-filter: blur(22px) saturate(130%);
+            box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.35);
+        }
+
+        .dock-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 48px;
+            padding: 0 12px 0 14px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .dock-vitals {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .vital {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            color: #94A3B8;
+            white-space: nowrap;
+        }
+
+        .vital em {
+            font-style: normal;
+            color: #C4C4C4;
+        }
+
+        .vital.text {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .vital.pulse {
+            color: #FF7A3D;
+        }
+
+        .dock-knobs-preview {
+            font-size: 11px;
+            color: #FF7A3D;
+            font-variant-numeric: tabular-nums;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: rgba(255, 77, 0, 0.12);
+            border: 1px solid rgba(255, 77, 0, 0.28);
+        }
+
+        .dock-handle {
+            border: 0;
+            background: rgba(255, 77, 0, 0.16);
+            color: #FF4D00;
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dock-panel {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .dock.open .dock-panel {
+            grid-template-rows: 1fr;
+        }
+
+        .dock-panel-inner {
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .dock.open .dock-panel-inner {
+            padding: 0 14px 14px;
+        }
+
+        .dock-panel-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0 0 10px;
+            color: #FFFFFF;
+            font-size: 13px;
+        }
+
+        .dock-status-row {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dock-panel-head .muted {
+            color: #94A3B8;
+            font-size: 11px;
+        }
+
+        .dock-panel-head .spacer {
+            flex: 1;
+        }
+
+        .dock-x {
+            border: 0;
+            background: transparent;
+            color: #94A3B8;
+            cursor: pointer;
+            display: inline-flex;
+            padding: 4px;
+        }
+        .chat-foot {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            height: 28px;
+            padding: 0 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(10, 10, 10, 0.7);
+            backdrop-filter: blur(18px) saturate(120%);
+            -webkit-backdrop-filter: blur(18px) saturate(120%);
+            font-size: 11px;
+            color: #64748B;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .foot-spacer {
+            flex: 1;
+        }
+
+        .foot-link {
+            border: 0;
+            background: transparent;
+            color: #FF4D00;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .del-body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 8px 4px;
+            text-align: center;
+        }
+
+        .del-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: grid;
+            place-items: center;
+            background: rgba(255, 77, 0, 0.14);
+            color: #FF4D00;
+            border: 1px solid rgba(255, 77, 0, 0.35);
+        }
+
+        .del-text {
+            margin: 0;
+            font-size: 15px;
+            color: #FFFFFF;
             line-height: 1.45;
+        }
+
+        .del-sub {
+            margin: 0;
+            font-size: 12.5px;
+            color: #B0B8C4;
+            line-height: 1.45;
+        }
+
+        .del-check {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 6px;
+            font-size: 12.5px;
+            color: #94A3B8;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .del-check input {
+            accent-color: #FF4D00;
+            width: 15px;
+            height: 15px;
+            cursor: pointer;
+        }
+
+        .del-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            width: 100%;
+            padding: 4px 2px 2px;
+        }
+
+        .del-btn {
+            border: 0;
+            border-radius: 12px;
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: 560;
+            cursor: pointer;
+            transition: transform 140ms ease, background 140ms ease, border-color 140ms ease;
+        }
+
+        .del-btn.ghost {
+            background: rgba(255, 255, 255, 0.06);
+            color: #E5E5E5;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .del-btn.ghost:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .del-btn.danger {
+            background: linear-gradient(135deg, #FF4D00 0%, #E64500 100%);
+            color: #FFFFFF;
+            box-shadow: 0 8px 20px rgba(255, 77, 0, 0.28);
+        }
+
+        .del-btn.danger:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 28px rgba(255, 77, 0, 0.36);
+        }
+
+        .chat-header-slim {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            padding: 8px 14px 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(10, 10, 10, 0.72);
+            backdrop-filter: blur(20px) saturate(130%);
+            -webkit-backdrop-filter: blur(20px) saturate(130%);
+        }
+
+        .chat-title-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 28px;
+        }
+
+        .chat-title {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--aaas-text-bright, #F8FAFC);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 42ch;
+        }
+
+        .model-chip {
+            font-size: 11px;
+            padding: 2px 10px;
+            border-radius: 999px;
+            background: rgba(255, 77, 0, 0.12);
+            border: 1px solid rgba(255, 77, 0, 0.35);
+            color: #FFB088;
+            white-space: nowrap;
+        }
+
+        .turn-state {
+            font-size: 11px;
+            color: var(--aaas-text-secondary, #a1a1aa);
+        }
+
+        .title-spacer {
+            flex: 1;
+        }
+
+        .hdr-btn {
+            border: 0;
+            background: transparent;
+            color: var(--aaas-text-secondary, #a1a1aa);
+            cursor: pointer;
+            display: inline-flex;
+            padding: 4px;
+            border-radius: 6px;
+        }
+
+        .hdr-btn:hover {
+            background: color-mix(in srgb, var(--aaas-border-light, rgba(255,255,255,0.08)) 80%, transparent);
+            color: var(--aaas-text-bright, #f8fafc);
+        }
+
+        .memory-ghost {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 4px;
+            font-size: 11px;
+            color: var(--aaas-text-secondary, #71717a);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .ghost-link {
+            border: 0;
+            background: transparent;
+            color: #FF4D00;
+            cursor: pointer;
+            font-size: 11px;
+            padding: 0;
+        }
+
+        .chat-top-strip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            height: 40px;
+            padding: 0 14px;
+            border-bottom: 1px solid var(--aaas-border-light, rgba(255, 255, 255, 0.06));
+            background: var(--aaas-bg-card, #141414);
+            width: 100%;
+        }
+
+        .strip-brand {
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--aaas-text-bright, #f8fafc);
+        }
+
+        .strip-clock {
+            font-size: 12px;
+            font-variant-numeric: tabular-nums;
+            color: var(--aaas-text-secondary, #a1a1aa);
+            margin-left: 8px;
+        }
+
+        .strip-spacer {
+            flex: 1;
+        }
+
+        .sidebar-toggle-hint {
+            border: 0;
+            background: transparent;
+            color: var(--aaas-text-secondary, #a1a1aa);
+            cursor: pointer;
+            display: inline-flex;
+            padding: 4px;
         }
 
         /* Message skeletons */
@@ -747,7 +1269,7 @@ export class SomaChat extends LitElement {
             display: flex;
             flex-direction: row;
             border-left: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            background: var(--aaas-bg-sidebar, #ffffff);
+            background: var(--aaas-bg-sidebar, #111111);
             height: 100vh;
             flex-shrink: 0;
         }
@@ -883,6 +1405,22 @@ export class SomaChat extends LitElement {
     @state() private _convFilter = '';
     @state() private _renamingId = '';
     @state() private _renameDraft = '';
+    @state() private _brainDot: StatusDotState = 'idle';
+    @state() private _brainTooltip = 'Brain · Status unavailable';
+    @state() private _memoryDot: StatusDotState = 'idle';
+    @state() private _memoryTooltip = 'Memory · Status unavailable';
+    @state() private _sysCpu: { percent: number; cores: number } | null = null;
+    @state() private _sysRam: { usedMb: number; totalMb: number; percent: number } | null = null;
+    @state() private _channels: { id: string; kind: string; name: string; connected: boolean }[] = [];
+    @state() private _channelsLoaded = false;
+    @state() private _welcomeWarning = '';
+    @state() private _pendingDelete: { id: string; title: string } | null = null;
+    @state() private _deleteSkipConfirm = localStorage.getItem('soma_skip_delete_confirm') === '1';
+    @state() private _deleteDontAsk = false;
+    @state() private _knobPanelOpen = false;
+    @state() private _knobCapsuleId = '';
+    @state() private _iqPreview: { iq: number; auto: number } | null = null;
+    private _iqUnsub: (() => void) | null = null;
 
     @query('.messages') private _messagesContainer!: HTMLElement;
     @query('.rename-input') private _renameInput!: HTMLInputElement;
@@ -907,15 +1445,23 @@ export class SomaChat extends LitElement {
         super.connectedCallback();
         await this._loadUser();
         await this._loadAgents();
+        void this._loadIqForAgent();
         await this._loadConversations();
         document.addEventListener('click', this._handleOutsideClick);
         // One health read on connect. No auto-poll: a poll interval is
         // latency policy and must come from a named setting.
         void this._pollBrainConnector();
+        this._syncIqPreview();
+        this._iqUnsub = iqStore.subscribe(() => this._syncIqPreview());
+        void this._loadSystemDiagnostics();
+        void this._loadChannels();
+        void this._loadMemoryStatus();
         window.addEventListener('keydown', this._onGlobalKeydown);
     }
 
     disconnectedCallback() {
+        this._iqUnsub?.();
+        this._iqUnsub = null;
         super.disconnectedCallback();
         if (this._wsClient) {
             this._wsClient.disconnect();
@@ -935,6 +1481,7 @@ export class SomaChat extends LitElement {
     }
 
     private _onGlobalKeydown = (e: KeyboardEvent) => {
+        if ((e as KeyboardEvent).key === 'Escape' && this._knobPanelOpen) { this._knobPanelOpen = false; }
         if (e.key === 'Escape') {
             this._showModeDropdown = false;
             if (this._renamingId) {
@@ -960,6 +1507,32 @@ export class SomaChat extends LitElement {
      * Availability banner is driven by the agent SomaBrain connector circuit
      * (admin/core/somabrain_connector.py) — not a raw browser probe of SomaBrain.
      */
+    private async _loadIqForAgent(): Promise<void> {
+        const agent = this._agents.find((a) => a.id === this._selectedAgentId);
+        const capsuleId = agent?.capsule_id;
+        if (!capsuleId) return;
+        try {
+            const payload = await apiClient.get<{
+                knobs?: Record<string, unknown>;
+                derived?: Record<string, unknown>;
+            }>(`/core/agentiq/${capsuleId}`);
+            iqStore.setFromServer(payload.knobs as never, payload.derived as never);
+            iqStore.markSaved();
+            this._syncIqPreview();
+        } catch {
+            /* dock shows — until AgentIQ is reachable */
+        }
+    }
+
+    private _syncIqPreview(): void {
+        const knobs = iqStore.knobs;
+        if (!knobs) return;
+        this._iqPreview = {
+            iq: knobs.intelligence_level,
+            auto: knobs.autonomy_level,
+        };
+    }
+
     private async _pollBrainConnector(): Promise<void> {
         try {
             const h = await apiClient.get<{
@@ -970,14 +1543,85 @@ export class SomaChat extends LitElement {
             if (h && h.connected && h.circuit === 'closed') {
                 this._connectionStatus = 'ok';
                 this._wsReconnecting = false;
+                this._brainDot = 'ok';
+                this._brainTooltip = 'Brain · Connected';
+                this._welcomeWarning = '';
             } else if (h && h.circuit === 'open') {
                 this._connectionStatus = 'degraded';
+                this._brainDot = 'warn';
+                this._brainTooltip = 'Brain · Degraded';
+                this._welcomeWarning = 'Brain connector degraded';
             } else {
                 this._connectionStatus = 'reconnecting';
+                this._brainDot = 'pending';
+                this._brainTooltip = 'Brain · Connecting…';
+                this._welcomeWarning = 'Brain connector disconnected';
             }
             this.requestUpdate();
         } catch {
             // Keep last state on poll failure; do not spam the banner.
+        }
+    }
+
+    private async _loadSystemDiagnostics(): Promise<void> {
+        try {
+            const d = await apiClient.get<{
+                system?: { cpu_percent?: number; cpu_count?: number };
+                memory?: { total_mb?: number; available_mb?: number; percent_used?: number };
+            }>('/somabrain/admin/diagnostics');
+            const cpu = d?.system;
+            const mem = d?.memory;
+            if (cpu && typeof cpu.cpu_percent === 'number') {
+                this._sysCpu = {
+                    percent: cpu.cpu_percent,
+                    cores: cpu.cpu_count ?? 0,
+                };
+            }
+            if (mem && typeof mem.percent_used === 'number' && mem.total_mb) {
+                const usedMb = (mem.total_mb - (mem.available_mb ?? 0)) || 0;
+                this._sysRam = {
+                    usedMb,
+                    totalMb: mem.total_mb,
+                    percent: mem.percent_used,
+                };
+            }
+            this.requestUpdate();
+        } catch {
+            // Diagnostics optional — hide the System block. Never invent meters.
+        }
+    }
+
+    private async _loadMemoryStatus(): Promise<void> {
+        try {
+            const rows = await apiClient.get<{ memories?: unknown[]; total?: number }>('/memory/');
+            const ok = !!(rows && Array.isArray(rows.memories));
+            if (ok) {
+                this._memoryDot = 'ok';
+                this._memoryTooltip = 'Memory ready';
+            }
+            this.requestUpdate();
+        } catch {
+            this._memoryDot = 'warn';
+            this._memoryTooltip = 'Memory unavailable';
+        }
+    }
+
+    private async _loadChannels(): Promise<void> {
+        try {
+            const data = await apiClient.get<
+                { channels?: { id?: string; kind?: string; name?: string; status?: string }[] } | { id?: string; kind?: string; name?: string; status?: string }[]
+            >('/bridges/channels');
+            const list = Array.isArray(data) ? data : (data.channels ?? []);
+            this._channels = list.map((c, i) => ({
+                id: c.id ?? String(i),
+                kind: (c.kind ?? '').toLowerCase(),
+                name: c.name ?? c.kind ?? 'channel',
+                connected: (c.status ?? '').toLowerCase() === 'active' || (c.status ?? '').toLowerCase() === 'connected',
+            }));
+            this._channelsLoaded = true;
+            this.requestUpdate();
+        } catch {
+            this._channelsLoaded = false;
         }
     }
 
@@ -1034,12 +1678,17 @@ export class SomaChat extends LitElement {
         this._conversationsLoading = true;
         this._conversationsError = '';
         try {
-            const response = await apiClient.get('/chat/conversations');
-            const items = Array.isArray(response)
-                ? response
-                : (response as { data?: Conversation[] }).data || [];
+            const response = await apiClient.get<unknown>('/chat/conversations');
+            // apiClient unwraps paginated_response → { items, total, … }.
+            // A raw array is also accepted. Never invent rows from an empty parse.
+            const items: Record<string, unknown>[] = Array.isArray(response)
+                ? (response as Record<string, unknown>[])
+                : ((response as { items?: Record<string, unknown>[]; data?: Record<string, unknown>[] })
+                      ?.items ??
+                  (response as { data?: Record<string, unknown>[] })?.data ??
+                  []);
 
-            this._conversations = items.map((conv: Record<string, unknown>) => ({
+            this._conversations = items.map((conv) => ({
                 id: String(conv.id ?? ''),
                 // No invented titles. A missing title renders as a dash.
                 title: typeof conv.title === 'string' ? conv.title : '',
@@ -1089,16 +1738,22 @@ export class SomaChat extends LitElement {
     }
 
     private async _deleteConversation(id: string) {
+        // Optimistic remove so the row disappears immediately.
+        const prev = this._conversations;
+        this._conversations = prev.filter((c) => c.id !== id);
+        if (id === this._activeConversationId) {
+            this._activeConversationId = '';
+            this._messages = [];
+            this._streamContent = '';
+            this._isStreaming = false;
+            this._chatTitle = 'New conversation';
+        }
         try {
             await apiClient.delete(`/chat/conversations/${id}`);
-            this._conversations = this._conversations.filter((c) => c.id !== id);
-            if (id === this._activeConversationId) {
-                this._activeConversationId = '';
-                this._messages = [];
-                this._chatTitle = 'New conversation';
-            }
+            await this._loadConversations();
         } catch (error) {
             console.error('[SomaChat] Delete failed:', error);
+            this._conversations = prev;
         }
     }
 
@@ -1802,32 +2457,44 @@ export class SomaChat extends LitElement {
     }
 
     private async _selectConversation(id: string) {
-        if (id === this._activeConversationId && this._messages.length > 0) return;
         this._activeConversationId = id;
         const conv = this._conversations.find((c) => c.id === id);
-        if (conv) this._chatTitle = conv.title;
+        this._chatTitle = conv?.title || 'Conversation';
+        this._streamContent = '';
+        this._isStreaming = false;
         await this._loadConversationMessages(id);
     }
 
     private async _loadConversationMessages(conversationId: string): Promise<void> {
         this._messagesLoading = true;
         try {
-            const response = await apiClient.get(`/chat/conversations/${conversationId}/messages`);
-            const items = Array.isArray(response)
-                ? response
-                : (response as { data?: ChatMessage[] }).data || [];
+            const response = await apiClient.get<unknown>(`/chat/conversations/${conversationId}/messages`);
+            // apiClient unwraps paginated_response → { items, total, … }.
+            // A raw array is also accepted. Do NOT read .data — that key is
+            // stripped by the unwrap and made every open conversation blank.
+            const raw: Record<string, unknown>[] = Array.isArray(response)
+                ? (response as Record<string, unknown>[])
+                : ((response as { items?: Record<string, unknown>[]; data?: Record<string, unknown>[] })
+                      ?.items ??
+                  (response as { data?: Record<string, unknown>[] })?.data ??
+                  []);
 
-            this._messages = items.map((msg: Record<string, unknown>) => ({
-                id: String(msg.id ?? `msg-${Date.now()}`),
-                role: (msg.role as ChatMessage['role']) ?? 'assistant',
-                content: String(msg.content ?? ''),
-                timestamp: String(msg.created_at ?? msg.timestamp ?? ''),
-                confidence: (msg.metadata as { confidence?: number } | undefined)?.confidence,
-            }));
+            this._messages = raw.map((msg: Record<string, unknown>) => {
+                const meta = msg.metadata;
+                const metaObj =
+                    meta && typeof meta === 'object' ? (meta as Record<string, unknown>) : null;
+                return {
+                    id: String(msg.id ?? `msg-${Date.now()}`),
+                    role: (msg.role as ChatMessage['role']) ?? 'assistant',
+                    content: String(msg.content ?? ''),
+                    timestamp: String(msg.created_at ?? msg.timestamp ?? ''),
+                    confidence: metaObj?.confidence as number | undefined,
+                };
+            });
             this.updateComplete.then(() => this._scrollToBottom());
         } catch (error) {
             console.error('[SomaChat] Failed to load messages:', error);
-            this._messages = [];
+            // Keep the previous transcript on a failed reload — do not wipe the UI.
         } finally {
             this._messagesLoading = false;
         }
@@ -1884,6 +2551,59 @@ export class SomaChat extends LitElement {
             ${this._renderSidebar()}
             ${this._renderMain()}
             ${this._renderCanvas()}
+            ${this._renderDeleteConfirm()}
+        `;
+    }
+
+    private _renderDeleteConfirm() {
+        const d = this._pendingDelete;
+        return html`
+            <soma-glass-modal
+                size="sm"
+                .open=${!!d}
+                title="Delete conversation"
+                subtitle="This cannot be undone"
+                @soma-modal-close=${() => (this._pendingDelete = null)}
+            >
+                <div class="del-body">
+                    <div class="del-icon">${ICON('delete_forever', 28)}</div>
+                    <p class="del-text">
+                        Delete <strong>${d?.title || 'this conversation'}</strong>?
+                    </p>
+                    <p class="del-sub">The chat transcript and local history will be removed.</p>
+                    <label class="del-check">
+                        <input
+                            type="checkbox"
+                            .checked=${this._deleteDontAsk}
+                            @change=${(e: Event) => {
+                                this._deleteDontAsk = (e.target as HTMLInputElement).checked;
+                            }}
+                        />
+                        <span>Don’t ask again</span>
+                    </label>
+                </div>
+                <div slot="footer" class="del-actions">
+                    <button class="del-btn ghost" @click=${() => (this._pendingDelete = null)}>Cancel</button>
+                    <button
+                        class="del-btn danger"
+                        @click=${() => {
+                            const id = this._pendingDelete?.id;
+                            if (this._deleteDontAsk) {
+                                this._deleteSkipConfirm = true;
+                                try {
+                                    localStorage.setItem('soma_skip_delete_confirm', '1');
+                                } catch {
+                                    /* storage blocked — session-only skip */
+                                }
+                            }
+                            this._pendingDelete = null;
+                            if (id) void this._deleteConversation(id);
+                        }}
+                    >
+                        Delete
+                    </button>
+                </div>
+            </soma-glass-modal>
         `;
     }
 
@@ -1951,12 +2671,6 @@ export class SomaChat extends LitElement {
                 <nav class="nav-links" aria-label="Workspace">
                     <button class="nav-link" @click=${() => this._navigate('/memory')}>
                         ${ICON('psychology', 18)} Memory
-                    </button>
-                    <button class="nav-link" @click=${() => this._navigate('/settings/models')}>
-                        ${ICON('memory', 18)} Models
-                    </button>
-                    <button class="nav-link" @click=${() => this._navigate('/settings/channels')}>
-                        ${ICON('forum', 18)} Channels
                     </button>
                     <button class="nav-link" @click=${() => this._navigate('/settings')}>
                         ${ICON('settings', 18)} Settings
@@ -2068,9 +2782,15 @@ export class SomaChat extends LitElement {
                                   aria-label="Delete conversation"
                                   @click=${(e: Event) => {
                                       e.stopPropagation();
-                                      if (confirm(`Delete “${conv.title || 'this conversation'}”?`)) {
+                                      if (this._deleteSkipConfirm) {
                                           void this._deleteConversation(conv.id);
+                                          return;
                                       }
+                                      this._deleteDontAsk = false;
+                                      this._pendingDelete = {
+                                          id: conv.id,
+                                          title: conv.title || 'this conversation',
+                                      };
                                   }}
                               >
                                   ${ICON('delete', 15)}
@@ -2087,147 +2807,6 @@ export class SomaChat extends LitElement {
     private _renderMain() {
         return html`
             <main class="main">
-                <header class="header">
-                    <soma-chat-topbar
-                        .title=${this._chatTitle}
-                        .modelLabel=${this._modelLabel}
-                        .busy=${this._isStreaming}
-                        .paused=${this._paused}
-                        .canNudge=${this._isStreaming}
-                        .connectionStatus=${this._connectionStatus}
-                        @soma-chat-control=${this._onChatControl}
-                    ></soma-chat-topbar>
-
-                    <soma-agent-iq
-                        .capsuleId=${this._agents.find((a) => a.id === this._selectedAgentId)
-                            ?.capsule_id ?? ''}
-                    ></soma-agent-iq>
-
-                    ${this._modelLabel || this._memoryHits.length || this._turnLanes
-                        ? html`
-                              <div class="turn-meta" data-control="turn-meta" style="
-                                  display:flex;flex-wrap:wrap;gap:12px;align-items:center;
-                                  padding:6px 16px;font-size:11px;color:var(--soma-text-secondary,#666);
-                                  border-bottom:1px solid var(--soma-border-light,#e0e0e0);
-                                  background:var(--soma-bg-card,#fff);">
-                                  ${this._modelLabel
-                                      ? html`<span><strong>Model</strong> ${this._modelLabel}</span>`
-                                      : nothing}
-                                  ${this._contextTokens
-                                      ? html`<span><strong>Context</strong> ${this._contextTokens} tokens</span>`
-                                      : nothing}
-                                  ${this._turnLanes
-                                      ? html`<span
-                                            title="5-lane allocation applied by the governor for this turn"
-                                            ><strong>Lanes</strong>
-                                            ${Object.entries(this._turnLanes)
-                                                .map(([k, v]) => `${k} ${v}`)
-                                                .join(' · ')}</span
-                                        >`
-                                      : nothing}
-                                  <span title="Memory recall results for this turn"
-                                      ><strong>Memory recall</strong>
-                                      ${this._memoryHits.length
-                                          ? html`${this._memoryHits.length} hit(s)`
-                                          : '—'}</span
-                                  >
-                              </div>
-                              ${this._memoryHits.length
-                                  ? html`
-                                        <details style="padding:4px 16px 8px;font-size:11px;">
-                                            <summary style="cursor:pointer;color:var(--soma-text-secondary,#666);">
-                                                Recall results
-                                            </summary>
-                                            <ul style="margin:6px 0 0;padding-left:18px;line-height:1.5;">
-                                                ${this._memoryHits.map(
-                                                    (h) => html`
-                                                        <li>
-                                                            ${h.kind ? html`[${h.kind}] ` : nothing}${h.text ?? '—'}
-                                                            ${typeof h.score === 'number'
-                                                                ? html` (${h.score})`
-                                                                : nothing}
-                                                        </li>
-                                                    `,
-                                                )}
-                                            </ul>
-                                        </details>
-                                    `
-                                  : nothing}
-                          `
-                        : nothing}
-
-                    <div class="header-right">
-                        ${this._agents.length > 1
-                            ? html`
-                                  <select
-                                      class="agent-select"
-                                      aria-label="Select agent"
-                                      @change=${this._handleAgentSelect}
-                                  >
-                                      ${this._agents.map(
-                                          (agent) => html`
-                                              <option
-                                                  value=${agent.id}
-                                                  ?selected=${agent.id === this._selectedAgentId}
-                                              >
-                                                  ${agent.name}
-                                              </option>
-                                          `,
-                                      )}
-                                  </select>
-                              `
-                            : nothing}
-
-                        <div class="mode-selector">
-                            <button
-                                class="mode-btn"
-                                @click=${this._toggleModeDropdown}
-                                aria-haspopup="listbox"
-                                aria-expanded=${this._showModeDropdown ? 'true' : 'false'}
-                                title="Agent mode"
-                            >
-                                <span class="mode-badge">${this._currentMode}</span>
-                                ${this.modeLabel}
-                                ${ICON('expand_more', 14)}
-                            </button>
-                            <div
-                                class="mode-dropdown ${this._showModeDropdown ? 'open' : ''}"
-                                role="listbox"
-                                aria-label="Agent mode"
-                            >
-                                ${this._modes.map(
-                                    (mode) => html`
-                                        <button
-                                            class="mode-option ${mode.id === this._currentMode
-                                                ? 'active'
-                                                : ''} ${mode.locked ? 'locked' : ''}"
-                                            role="option"
-                                            aria-selected=${mode.id === this._currentMode ? 'true' : 'false'}
-                                            ?disabled=${mode.locked}
-                                            @click=${() => this._selectMode(mode.id as AgentMode, mode.locked)}
-                                        >
-                                            <div class="mode-option-header">
-                                                <span
-                                                    class="mode-badge"
-                                                    style=${mode.id === this._currentMode
-                                                        ? 'background:var(--aaas-accent,#1a1a1a);color:var(--aaas-text-inverse,#ffffff)'
-                                                        : 'background:var(--aaas-bg-void,#f5f5f5);color:var(--aaas-text-muted,#999999)'}
-                                                    >${mode.id}</span
-                                                >
-                                                <span class="mode-option-title">${mode.name}</span>
-                                                ${mode.locked
-                                                    ? html`<span class="lock-icon">${ICON('lock', 12)}</span>`
-                                                    : nothing}
-                                            </div>
-                                            <div class="mode-option-desc">${mode.desc}</div>
-                                        </button>
-                                    `,
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </header>
-
                 <div class="messages" @tool-approval=${this._onToolApproval} role="log" aria-live="polite">
                     ${this._messagesLoading
                         ? html`
@@ -2237,7 +2816,10 @@ export class SomaChat extends LitElement {
                                   <div class="bar short"></div>
                               </div>
                           `
-                        : this._messages.length === 0 && !this._isStreaming
+                        : this._messages.length === 0 &&
+                            !this._isStreaming &&
+                            !this._messagesLoading &&
+                            !this._activeConversationId
                             ? this._renderWelcome()
                             : html`
                                   ${this._messages.map((msg) => this._renderMessage(msg))}
@@ -2257,12 +2839,97 @@ export class SomaChat extends LitElement {
                 <soma-composer
                     .busy=${this._isStreaming}
                     .placeholder=${this._selectedAgentId
-                        ? 'Describe what you want the agent to do…'
+                        ? 'Message Soma…'
                         : 'Select an agent to start chatting'}
                     @send-message=${this._onComposerSend}
                     @clear-chat=${this._onClearChat}
                     @export-chat=${this._onExportChat}
                 ></soma-composer>
+
+                <footer class="dock ${this._knobPanelOpen ? 'open' : ''}" data-control="chat-footer">
+                    <div class="dock-bar" @click=${() => (this._knobPanelOpen = !this._knobPanelOpen)}>
+                        <div class="dock-vitals">
+                            <span class="vital" title=${this._brainTooltip}>
+                                <soma-status-dot kind="brain" state=${this._brainDot} title=${this._brainTooltip} label="brain"></soma-status-dot>
+                                <em>Brain</em>
+                            </span>
+                            <span class="vital" title=${this._connectionStatus === 'ok' ? 'Sync · Connected' : 'Sync · Degraded'}>
+                                <soma-status-dot
+                                    kind="sync"
+                                    state=${this._connectionStatus === 'ok' ? 'ok' : this._connectionStatus === 'degraded' ? 'warn' : 'pending'}
+                                    title=${this._connectionStatus === 'ok' ? 'Sync · Connected' : this._connectionStatus === 'degraded' ? 'Sync · Degraded' : 'Sync · Reconnecting'}
+                                    label="sync"
+                                ></soma-status-dot>
+                                <em>Sync</em>
+                            </span>
+                            <span class="vital" title=${this._memoryTooltip}>
+                                <soma-status-dot kind="memory" state=${this._memoryDot} title=${this._memoryTooltip} label="memory"></soma-status-dot>
+                                <em>Memory</em>
+                            </span>
+                            ${this._memoryHits.length
+                                ? html`<span class="vital text" title="Recall this turn">🧠 ${this._memoryHits.length}</span>`
+                                : nothing}
+                            ${this._contextTokens
+                                ? html`<span class="vital text" title="Context tokens">⎘ ${this._contextTokens}</span>`
+                                : nothing}
+                            ${this._modelLabel
+                                ? html`<span class="vital text" title="Model">${this._modelLabel}</span>`
+                                : nothing}
+                            ${this._isStreaming
+                                ? html`<span class="vital text pulse">● working</span>`
+                                : nothing}
+                        </div>
+                        <span
+                            class="dock-knobs-preview"
+                            title="Live from AgentIQ · Capsule.persona_config.knobs"
+                            data-control="iq-preview"
+                            >${this._iqPreview
+                                ? html`IQ ${this._iqPreview.iq} · AUTO ${this._iqPreview.auto}`
+                                : html`IQ —`}</span
+                        >
+                        <button
+                            class="dock-handle"
+                            aria-expanded=${this._knobPanelOpen ? 'true' : 'false'}
+                            aria-label=${this._knobPanelOpen ? 'Hide agent knobs' : 'Show agent knobs'}
+                            @click=${(e: Event) => {
+                                e.stopPropagation();
+                                this._knobPanelOpen = !this._knobPanelOpen;
+                            }}
+                        >
+                            ${ICON(this._knobPanelOpen ? 'expand_more' : 'expand_less', 18)}
+                        </button>
+                    </div>
+
+                    <div class="dock-panel" aria-hidden=${this._knobPanelOpen ? 'false' : 'true'}>
+                        <div class="dock-panel-inner">
+                            <div class="dock-panel-head">
+                                <strong>Agent knobs</strong>
+                                <span class="dock-status-row">
+                                    <soma-status-dot kind="brain" state=${this._brainDot} title=${this._brainTooltip} label="brain"></soma-status-dot>
+                                    <soma-status-dot
+                                        kind="sync"
+                                        state=${this._connectionStatus === 'ok' ? 'ok' : this._connectionStatus === 'degraded' ? 'warn' : 'pending'}
+                                        title="sync"
+                                        label="sync"
+                                    ></soma-status-dot>
+                                    <soma-status-dot kind="memory" state=${this._memoryDot} title=${this._memoryTooltip} label="memory"></soma-status-dot>
+                                    <span class="muted">${this._brainTooltip}</span>
+                                </span>
+                                <span class="muted">tune live · saved to Capsule</span>
+                                <span class="spacer"></span>
+                                <button class="dock-x" aria-label="Close knobs" @click=${() => (this._knobPanelOpen = false)}>
+                                    ${ICON('close', 16)}
+                                </button>
+                            </div>
+                            <soma-agent-iq
+                                .capsuleId=${this._knobCapsuleId ||
+                                    this._agents.find((a) => a.id === this._selectedAgentId)?.capsule_id ||
+                                    ''}
+                                @click=${(e: Event) => e.stopPropagation()}
+                            ></soma-agent-iq>
+                        </div>
+                    </div>
+                </footer>
             </main>
         `;
     }
@@ -2270,44 +2937,144 @@ export class SomaChat extends LitElement {
     private _renderWelcome() {
         const firstName =
             this._userName && this._userName !== 'User' ? `, ${this._userName.split(' ')[0]}` : '';
+        const start = (text: string) => {
+            void this._startNewChat().then(() => {
+                const input = this.renderRoot.querySelector('soma-composer') as HTMLElement & {
+                    text?: string;
+                } | null;
+                if (input) {
+                    input.text = text;
+                    input.focus?.();
+                }
+            });
+        };
+        const channelCards = [
+            { kind: 'telegram', label: 'Telegram', desc: 'Chat on Telegram wherever you are.' },
+            { kind: 'whatsapp', label: 'WhatsApp', desc: 'Send and receive WhatsApp messages.' },
+            { kind: 'email', label: 'Email', desc: 'Let Soma read and send emails on your behalf.' },
+        ];
+        const known = new Map(this._channels.map((c) => [c.kind, c]));
         return html`
             <div class="welcome">
-                <div class="welcome-icon">${ICON('chat', 30)}</div>
-                <h2>Hello${firstName}</h2>
-                <p>
-                    Start a conversation with your Soma agent — tools, memory, and Capsule skills
-                    are live.
-                </p>
-                <div class="welcome-actions">
-                    <button class="welcome-action" @click=${() => this._startNewChat()}>
-                        ${ICON('add_comment', 20)}
-                        <span>
-                            <div class="wa-title">New chat</div>
-                            <div class="wa-desc">Spin up a fresh conversation with the agent</div>
-                        </span>
+                <div class="welcome-hero">
+                    <h2>Hello! I'm Soma</h2>
+                    <p>How can I help you today?</p>
+                </div>
+
+                ${this._welcomeWarning
+                    ? html`
+                          <div class="welcome-banner" role="status">
+                              <span class="wb-icon">${ICON('warning', 18)}</span>
+                              <span class="wb-text">${this._welcomeWarning}</span>
+                              <button class="wb-action" @click=${() => this._navigate('/settings')}>Open Settings</button>
+                              <button class="wb-dismiss" title="Dismiss" aria-label="Dismiss" @click=${() => (this._welcomeWarning = '')}>
+                                  ${ICON('close', 16)}
+                              </button>
+                          </div>
+                      `
+                    : nothing}
+
+                <div class="welcome-quick" role="navigation" aria-label="Quick actions">
+                    <button class="wq-card" @click=${() => this._toggleRightPanel()}>
+                        ${ICON('folder_open', 22)}
+                        <span class="wq-label">Files</span>
                     </button>
-                    <button class="welcome-action" @click=${() => this._navigate('/memory')}>
-                        ${ICON('psychology', 20)}
-                        <span>
-                            <div class="wa-title">Memory</div>
-                            <div class="wa-desc">Browse cognitive memories and recall</div>
-                        </span>
+                    <button class="wq-card" @click=${() => this._navigate('/settings/tools')}>
+                        ${ICON('extension', 22)}
+                        <span class="wq-label">Modules</span>
                     </button>
-                    <button class="welcome-action" @click=${() => this._navigate('/settings/models')}>
-                        ${ICON('tune', 20)}
-                        <span>
-                            <div class="wa-title">Models</div>
-                            <div class="wa-desc">Pick the chat provider and model tier</div>
-                        </span>
-                    </button>
-                    <button class="welcome-action" @click=${() => this._navigate('/settings/channels')}>
-                        ${ICON('forum', 20)}
-                        <span>
-                            <div class="wa-title">Channels</div>
-                            <div class="wa-desc">WhatsApp / Telegram Capsule bridges</div>
-                        </span>
+                    <button class="wq-card" @click=${() => this._startNewChat()}>
+                        ${ICON('add_comment', 22)}
+                        <span class="wq-label">New chat</span>
                     </button>
                 </div>
+
+                ${this._channelsLoaded
+                    ? html`
+                          <section class="welcome-section" aria-label="Connect channels">
+                              <div class="ws-head">
+                                  <h3>Connect channels</h3>
+                                  <button class="ws-link" @click=${() => this._navigate('/settings/channels')}>Manage ›</button>
+                              </div>
+                              <div class="ws-cards">
+                                  ${channelCards.map((ch) => {
+                                      const row = known.get(ch.kind);
+                                      const unconfigured = !row || !row.connected;
+                                      return html`
+                                          <div class="ws-card">
+                                              <div class="ws-card-title">${ch.label}</div>
+                                              <div class="ws-card-desc">${ch.desc}</div>
+                                              ${unconfigured
+                                                  ? html`<button
+                                                        class="ws-cta"
+                                                        @click=${() => this._navigate('/settings/channels')}
+                                                    >
+                                                        Connect
+                                                    </button>`
+                                                  : html`<span class="ws-chip"><i class="ws-dot"></i> Connected</span>`}
+                                          </div>
+                                      `;
+                                  })}
+                              </div>
+                          </section>
+                      `
+                    : nothing}
+
+                ${this._sysRam || this._sysCpu
+                    ? html`
+                          <section class="welcome-section" aria-label="System">
+                              <div class="ws-head">
+                                  <h3>System</h3>
+                              </div>
+                              <div class="sys-rows">
+                                  ${this._sysRam
+                                      ? html`
+                                            <div class="sys-row">
+                                                <span class="sys-name">RAM</span>
+                                                <span class="sys-track"
+                                                    ><span
+                                                        class="sys-fill"
+                                                        style="width:${Math.min(100, Math.max(0, this._sysRam.percent))}%;background:${this._sysRam.percent >= 85
+                                                            ? '#EF4444'
+                                                            : this._sysRam.percent >= 70
+                                                              ? '#F59E0B'
+                                                              : 'linear-gradient(90deg,#10B981,#34D399)'}"
+                                                    ></span
+                                                ></span>
+                                                <span class="sys-val"
+                                                    >${Math.round(this._sysRam.percent)}% · ${(this._sysRam.usedMb / 1024).toFixed(1)} / ${(
+                                                        this._sysRam.totalMb / 1024
+                                                    ).toFixed(1)} GB</span
+                                                >
+                                            </div>
+                                        `
+                                      : nothing}
+                                  ${this._sysCpu
+                                      ? html`
+                                            <div class="sys-row">
+                                                <span class="sys-name">CPU</span>
+                                                <span class="sys-track"
+                                                    ><span
+                                                        class="sys-fill"
+                                                        style="width:${Math.min(100, Math.max(0, this._sysCpu.percent))}%;background:${this._sysCpu.percent >= 85
+                                                            ? '#ef4444'
+                                                            : this._sysCpu.percent >= 70
+                                                              ? '#f59e0b'
+                                                              : '#22c55e'}"
+                                                    ></span
+                                                ></span>
+                                                <span class="sys-val"
+                                                    >${Math.round(this._sysCpu.percent)}%${this._sysCpu.cores ? ` · ${this._sysCpu.cores} cores` : ''}</span
+                                                >
+                                            </div>
+                                        `
+                                      : nothing}
+                              </div>
+                          </section>
+                      `
+                    : nothing}
+
+                <div class="welcome-footer">SomaTech · Cognitive AI Agent</div>
             </div>
         `;
     }

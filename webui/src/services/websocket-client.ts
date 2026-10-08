@@ -127,22 +127,27 @@ export class WebSocketClient {
         }
         this._pendingUrl = url;
 
-        // Prefer ephemeral WS token (sessionStorage). httpOnly cookies are
-        // invisible to JS, so subprotocol auth cannot use document.cookie.
-        let token = this._getCookie('access_token');
-        if (!token) {
-            try {
-                token = sessionStorage.getItem('soma_ws_token');
-            } catch {
-                token = null;
-            }
+        // Prefer the login session token (sessionStorage). A JS-readable
+        // access_token cookie is optional. NEVER connect without a token when
+        // one exists — cookie-only fallback drops auth because the session
+        // cookie is httpOnly and the server then says "Invalid or expired
+        // session" on every reconnect.
+        let token: string | null = null;
+        try {
+            token = sessionStorage.getItem('soma_ws_token');
+        } catch {
+            token = null;
         }
-        if (token && !this._fallbackWithoutSubprotocol) {
+        if (!token) {
+            token = this._getCookie('access_token');
+        }
+        if (token) {
             // P3-04: Pass token via Sec-WebSocket-Protocol header
             this.ws = new WebSocket(url, [`soma-auth.${token}`]);
             this._usingSubprotocol = true;
+            this._fallbackWithoutSubprotocol = false;
         } else {
-            // Fallback: cookie-only auth (sent automatically if browser allows)
+            // Last resort only when no token is available at all.
             this.ws = new WebSocket(url);
             this._usingSubprotocol = false;
         }
@@ -222,15 +227,24 @@ export class WebSocketClient {
             this._stopHeartbeat();
             this._emit('disconnected', { code: event.code, reason: event.reason });
 
-            // Backward compatibility: if subprotocol handshake failed on first attempt,
-            // retry without subprotocol (old servers rely on cookie only)
+            // Backward compatibility: if the first subprotocol handshake failed
+            // at the transport layer (1006) AND we have no token to retry with,
+            // try cookie-only. Never strip a live session token.
             if (this._usingSubprotocol && this.reconnectAttempts === 0 && event.code === 1006) {
-                console.log('[WebSocket] Subprotocol not supported, falling back to cookie auth');
-                this._usingSubprotocol = false;
-                this._fallbackWithoutSubprotocol = true;
-                this.ws = new WebSocket(this._pendingUrl);
-                this._setupEventHandlers();
-                return;
+                let hasToken = false;
+                try {
+                    hasToken = Boolean(sessionStorage.getItem('soma_ws_token'));
+                } catch {
+                    hasToken = false;
+                }
+                if (!hasToken) {
+                    console.log('[WebSocket] Subprotocol not supported, falling back to cookie auth');
+                    this._usingSubprotocol = false;
+                    this._fallbackWithoutSubprotocol = true;
+                    this.ws = new WebSocket(this._pendingUrl);
+                    this._setupEventHandlers();
+                    return;
+                }
             }
 
             if (this.config.reconnect && this.reconnectAttempts < this.config.maxReconnectAttempts) {

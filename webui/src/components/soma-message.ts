@@ -39,7 +39,27 @@ export class SomaMessage extends LitElement {
     static styles = css`
         :host {
             display: block;
-            max-width: min(85%, 820px);
+            max-width: min(88%, 860px);
+            animation: msgIn 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        }
+
+        @keyframes msgIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(0.97) blur(4px);
+                filter: blur(4px);
+            }
+            to {
+                opacity: 1;
+                transform: none;
+                filter: blur(0);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            :host {
+                animation: none;
+            }
         }
 
         :host([message-role='user']) {
@@ -48,43 +68,57 @@ export class SomaMessage extends LitElement {
 
         :host([message-role='system']) {
             align-self: center;
-            max-width: 90%;
+            max-width: 92%;
         }
 
         .bubble {
-            padding: 12px 16px;
-            border-radius: var(--aaas-radius-lg, 12px);
-            font-size: 14px;
-            line-height: 1.65;
+            padding: 14px 18px;
+            border-radius: 16px;
+            font-size: 14.5px;
+            line-height: 1.7;
             word-wrap: break-word;
             overflow-wrap: anywhere;
             position: relative;
+            overflow: hidden;
         }
 
         :host([message-role='user']) .bubble {
-            background: var(--aaas-accent, #e8e4dc);
-            color: var(--aaas-text-inverse, #1a1a1a);
-            border: 1px solid var(--aaas-border-color, rgba(255,255,255,0.06));
-            border-bottom-right-radius: 4px;
+            background: linear-gradient(135deg, #FF4D00 0%, #FF6A28 55%, #E64500 100%);
+            color: #F8FAFC;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-bottom-right-radius: 6px;
+            backdrop-filter: blur(18px) saturate(140%);
+            -webkit-backdrop-filter: blur(18px) saturate(140%);
+            box-shadow:
+                0 1px 0 rgba(255, 255, 255, 0.12) inset,
+                0 8px 28px rgba(59, 130, 246, 0.28);
         }
 
         :host([message-role='assistant']) .bubble {
-            background: var(--aaas-bg-card, #1e1e1e);
-            color: var(--aaas-text-main, #e2e8f0);
-            border: 1px solid var(--aaas-border-color, rgba(255,255,255,0.06));
-            border-bottom-left-radius: 4px;
+            background:
+                linear-gradient(145deg, rgba(26, 26, 26, 0.82) 0%, rgba(17, 17, 17, 0.92) 100%);
+            color: #E8EDF7;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom-left-radius: 6px;
+            backdrop-filter: blur(22px) saturate(130%);
+            -webkit-backdrop-filter: blur(22px) saturate(130%);
+            box-shadow:
+                0 1px 0 rgba(255, 255, 255, 0.05) inset,
+                0 12px 32px rgba(0, 0, 0, 0.35),
+                0 0 0 1px rgba(59, 130, 246, 0.04);
         }
 
         :host([message-role='system']) .bubble {
-            background: transparent;
-            color: var(--aaas-text-dim, #64748b);
+            background: #1A1A1A;
+            color: #94a3b8;
             font-size: 12px;
-            border: 1px dashed var(--aaas-border-color, rgba(255,255,255,0.06));
-            border-radius: var(--aaas-radius-full, 9999px);
+            border: 1px dashed rgba(148, 163, 184, 0.28);
+            border-radius: 999px;
             padding: 6px 14px;
+            box-shadow: none;
         }
 
-        /* ---------- markdown ---------- */
+        /* ---------- markdown body ---------- */
         .text {
             white-space: normal;
         }
@@ -94,7 +128,7 @@ export class SomaMessage extends LitElement {
         }
 
         .text :deep(p) {
-            margin: 0 0 0.7em;
+            margin: 0 0 0.75em;
         }
 
         .text :deep(p:last-child) {
@@ -102,72 +136,150 @@ export class SomaMessage extends LitElement {
         }
 
         .text :deep(.md-h) {
-            margin: 0.6em 0 0.35em;
-            font-weight: 600;
-            line-height: 1.3;
+            margin: 0.85em 0 0.4em;
+            font-weight: 650;
+            line-height: 1.25;
+            letter-spacing: -0.01em;
         }
 
-        .text :deep(.md-h1) { font-size: 1.35em; }
-        .text :deep(.md-h2) { font-size: 1.2em; }
-        .text :deep(.md-h3) { font-size: 1.08em; }
+        .text :deep(.md-h1) {
+            font-size: 1.4em;
+            background: linear-gradient(90deg, #FF4D00, #FF7A3D);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        :host([message-role='user']) .text :deep(.md-h1) {
+            background: none;
+            color: #fff;
+        }
+
+        .text :deep(.md-h2) { font-size: 1.22em; color: #dbeafe; }
+        .text :deep(.md-h3) { font-size: 1.1em; color: #e2e8f0; }
         .text :deep(.md-h4),
         .text :deep(.md-h5),
-        .text :deep(.md-h6) { font-size: 1em; }
+        .text :deep(.md-h6) {
+            font-size: 1em;
+            color: #cbd5e1;
+            text-transform: none;
+        }
+
+        :host([message-role='user']) .text :deep(.md-h),
+        :host([message-role='user']) .text :deep(.md-h2),
+        :host([message-role='user']) .text :deep(.md-h3) {
+            color: #fff;
+        }
+
+        .text :deep(strong),
+        .text :deep(b) {
+            font-weight: 650;
+            color: #fff;
+        }
+
+        :host([message-role='user']) .text :deep(strong) {
+            color: #fff;
+        }
+
+        .text :deep(em),
+        .text :deep(i) {
+            opacity: 0.92;
+        }
 
         .text :deep(.md-ul),
         .text :deep(.md-ol) {
-            margin: 0 0 0.7em;
-            padding-left: 1.35em;
+            margin: 0 0 0.75em;
+            padding-left: 1.25em;
         }
 
         .text :deep(li) {
-            margin: 0.2em 0;
+            margin: 0.28em 0;
+            padding-left: 0.15em;
+        }
+
+        .text :deep(.md-ul) {
+            list-style: none;
+        }
+
+        .text :deep(.md-ul > li) {
+            position: relative;
+        }
+
+        .text :deep(.md-ul > li::before) {
+            content: '';
+            position: absolute;
+            left: -0.9em;
+            top: 0.62em;
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            background: #FF4D00;
+        }
+
+        :host([message-role='user']) .text :deep(.md-ul > li::before) {
+            background: rgba(255, 255, 255, 0.75);
         }
 
         .text :deep(.md-quote) {
-            margin: 0 0 0.7em;
-            padding: 4px 12px;
-            border-left: 3px solid var(--aaas-accent, #e8e4dc);
-            color: var(--aaas-text-secondary, #a1a1a1);
-            opacity: 0.95;
+            margin: 0 0 0.8em;
+            padding: 10px 14px;
+            border-left: 3px solid transparent;
+            border-image: linear-gradient(180deg, #FF4D00, #FF7A3D) 1;
+            border-radius: 0 12px 12px 0;
+            background: linear-gradient(135deg, rgba(255, 77, 0, 0.1), rgba(255, 122, 61, 0.08));
+            color: #CBD5E1;
+            font-style: italic;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        :host([message-role='user']) .text :deep(.md-quote) {
+            background: rgba(255, 255, 255, 0.12);
+            border-left-color: rgba(255, 255, 255, 0.7);
+            color: #fff;
         }
 
         .text :deep(.md-hr) {
             border: none;
-            border-top: 1px solid var(--aaas-border-color, rgba(255,255,255,0.06));
-            margin: 0.9em 0;
+            height: 1px;
+            margin: 1em 0;
+            background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.35), transparent);
         }
 
         .text :deep(.md-code) {
-            font-family: var(--aaas-font-mono, 'JetBrains Mono', monospace);
-            font-size: 0.88em;
-            padding: 0.12em 0.38em;
-            border-radius: var(--aaas-radius-sm, 4px);
-            background: var(--aaas-bg-void, #f5f5f5);
-            border: 1px solid var(--aaas-border-color, rgba(255,255,255,0.06));
+            font-family: var(--aaas-font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
+            font-size: 0.86em;
+            padding: 0.14em 0.42em;
+            border-radius: 6px;
+            background: #0A0A0A;
+            border: 1px solid #2A2A2A;
+            color: #FFD0BA;
         }
 
         :host([message-role='user']) .text :deep(.md-code) {
-            background: rgba(0, 0, 0, 0.14);
-            border-color: rgba(0, 0, 0, 0.12);
+            background: rgba(0, 0, 0, 0.22);
+            border-color: rgba(255, 255, 255, 0.18);
+            color: #e0e7ff;
         }
 
         .text :deep(.md-pre) {
-            margin: 0 0 0.7em;
-            padding: 10px 12px;
-            background: var(--aaas-bg-void, #f5f5f5);
-            border: 1px solid var(--aaas-border-color, rgba(255,255,255,0.06));
-            border-radius: var(--aaas-radius-md, 8px);
+            margin: 0 0 0.85em;
+            padding: 12px 14px;
+            background: #0A0A0A;
+            border: 1px solid #2A2A2A;
+            border-radius: 12px;
             overflow-x: auto;
         }
 
-        /* Code block chrome produced by renderCodeBlock (onCodeBlock hook). */
         .text :deep(.md-codeblock-wrap) {
-            margin: 0 0 0.7em;
-            border: 1px solid var(--aaas-border-color, rgba(255,255,255,0.06));
-            border-radius: var(--aaas-radius-md, 8px);
+            margin: 0 0 0.9em;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
             overflow: hidden;
-            background: var(--aaas-bg-void, #f5f5f5);
+            background: rgba(10, 10, 10, 0.72);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
         }
 
         .text :deep(.md-codeblock-bar) {
@@ -175,71 +287,218 @@ export class SomaMessage extends LitElement {
             align-items: center;
             justify-content: space-between;
             gap: 8px;
-            padding: 4px 10px;
-            background: var(--aaas-bg-hover, rgba(0,0,0,0.12));
-            border-bottom: 1px solid var(--aaas-border-color, rgba(255,255,255,0.06));
+            padding: 7px 12px;
+            background: linear-gradient(90deg, #1A1A1A, #111111);
+            border-bottom: 1px solid #2A2A2A;
         }
 
         .text :deep(.md-codeblock-lang) {
-            font-family: var(--aaas-font-mono, 'JetBrains Mono', monospace);
+            font-family: var(--aaas-font-mono, ui-monospace, monospace);
             font-size: 11px;
-            letter-spacing: 0.03em;
-            color: var(--aaas-text-secondary, #a1a1a1);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #FF7A3D;
         }
 
         .text :deep(.md-copy-btn) {
-            border: 1px solid var(--aaas-border-color, rgba(255,255,255,0.10));
-            background: transparent;
-            color: var(--aaas-text-secondary, #a1a1a1);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            background: #1A1A1A;
+            color: #cbd5e1;
             font-size: 11px;
             line-height: 1;
-            padding: 3px 8px;
-            border-radius: var(--aaas-radius-sm, 4px);
+            padding: 5px 10px;
+            border-radius: 8px;
             cursor: pointer;
+            transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
         }
 
         .text :deep(.md-copy-btn:hover) {
-            background: var(--aaas-bg-active, rgba(0,0,0,0.18));
-            color: var(--aaas-text-main, #e2e8f0);
+            background: rgba(255, 77, 0, 0.28);
+            border-color: #FF4D00;
+            color: #e0e7ff;
         }
 
         .text :deep(.md-codeblock-wrap .md-pre) {
             margin: 0;
             border: 0;
             border-radius: 0;
+            background: transparent;
+            box-shadow: none;
         }
 
         .text :deep(.md-codeblock) {
-            font-family: var(--aaas-font-mono, 'JetBrains Mono', monospace);
-            font-size: 12px;
-            line-height: 1.55;
-            color: var(--aaas-text-main, #e2e8f0);
+            font-family: var(--aaas-font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
+            font-size: 12.5px;
+            line-height: 1.6;
+            color: #e2e8f0;
             white-space: pre;
         }
 
         .text :deep(.md-link) {
-            color: var(--aaas-info, #3b82f6);
+            color: #FFB088;
             text-decoration: underline;
-            text-underline-offset: 2px;
+            text-underline-offset: 3px;
+            text-decoration-thickness: 1px;
+        }
+
+        .text :deep(.md-link:hover) {
+            color: #FFD0BA;
         }
 
         :host([message-role='user']) .text :deep(.md-link) {
-            color: inherit;
+            color: #fff;
         }
 
-        /* ---------- streaming cursor ---------- */
+        /* tables / cards / generic HTML the model emits */
+        .text :deep(table) {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 0 0.85em;
+            font-size: 13px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #2A2A2A;
+        }
+
+        .text :deep(th),
+        .text :deep(td) {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+            text-align: left;
+        }
+
+        .text :deep(th) {
+            background: #1A1A1A;
+            color: #e2e8f0;
+            font-weight: 600;
+        }
+
+        .text :deep(tr:last-child td) {
+            border-bottom: 0;
+        }
+
+        .text :deep(pre),
+        .text :deep(code) {
+            font-family: var(--aaas-font-mono, ui-monospace, monospace);
+        }
+
+        .text :deep(img) {
+            max-width: 100%;
+            border-radius: 10px;
+            margin: 0.4em 0;
+        }
+
+
+        /* ---------- media / documents ---------- */
+        .attachments {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .attachment-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 12px;
+            background: rgba(18, 18, 18, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 12px;
+            color: #E5E5E5;
+            max-width: 260px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+        }
+
+        .attachment-chip .name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .attachment-chip .kind {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #FF7A3D;
+        }
+
+        :host([message-role='user']) .attachment-chip {
+            background: rgba(255, 255, 255, 0.14);
+            border-color: rgba(255, 255, 255, 0.22);
+            color: #FFFFFF;
+        }
+
+        .text :deep(.md-img),
+        .text :deep(img) {
+            display: block;
+            max-width: min(100%, 520px);
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin: 10px 0;
+            box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+        }
+
+        .text :deep(.md-file-card),
+        .text :deep(.file-card) {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 10px 0;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: linear-gradient(145deg, rgba(18, 18, 18, 0.9), rgba(10, 10, 10, 0.85));
+            border: 1px solid rgba(255, 77, 0, 0.18);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+        }
+
+        .text :deep(.file-card .icon) {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: grid;
+            place-items: center;
+            background: rgba(255, 77, 0, 0.14);
+            color: #FF4D00;
+            font-size: 20px;
+        }
+
+        .text :deep(.file-card .meta) {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .text :deep(.file-card .title) {
+            color: #FFFFFF;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .text :deep(.file-card .sub) {
+            color: #94A3B8;
+            font-size: 11px;
+        }
+
+        /* streaming cursor */
+
         .cursor {
             display: inline-block;
-            width: 7px;
-            height: 14px;
-            margin-left: 2px;
+            width: 8px;
+            height: 15px;
+            margin-left: 3px;
             vertical-align: text-bottom;
-            background: var(--aaas-accent, #e8e4dc);
+            border-radius: 2px;
+            background: linear-gradient(180deg, #FF4D00, #FF7A3D);
             animation: blink 1s step-end infinite;
         }
 
         @keyframes blink {
-            50% { opacity: 0; }
+            50% {
+                opacity: 0;
+            }
         }
 
         /* ---------- tools ---------- */
@@ -250,31 +509,32 @@ export class SomaMessage extends LitElement {
         .tools-toggle {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            padding: 3px 8px;
-            margin-bottom: 6px;
-            border-radius: var(--aaas-radius-full, 9999px);
-            border: 1px solid var(--aaas-border-color, rgba(255,255,255,0.06));
-            background: var(--aaas-bg-void, #f5f5f5);
-            color: var(--aaas-text-dim, #64748b);
-            font-size: 11px;
+            gap: 6px;
+            padding: 5px 10px;
+            margin-bottom: 8px;
+            border-radius: 999px;
+            border: 1px solid #2A2A2A;
+            background: #1A1A1A;
+            color: #94a3b8;
+            font-size: 11.5px;
             cursor: pointer;
-            transition: color 120ms ease, background 120ms ease;
+            transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
         }
 
         .tools-toggle:hover {
-            color: var(--aaas-text-main, #e2e8f0);
-            background: var(--aaas-bg-hover, #141414);
+            color: #e2e8f0;
+            background: #1A1A1A;
+            border-color: #FF4D00;
         }
 
         .tools-toggle:focus-visible {
-            outline: 2px solid var(--aaas-info, #3b82f6);
-            outline-offset: 1px;
+            outline: 2px solid #60a5fa;
+            outline-offset: 2px;
         }
 
         .tools-toggle .chev {
-            font-size: 10px;
-            transition: transform 120ms ease;
+            font-size: 11px;
+            transition: transform 160ms ease;
         }
 
         .tools-toggle .chev.open {
@@ -286,19 +546,19 @@ export class SomaMessage extends LitElement {
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
 
         .attachment-chip {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            padding: 4px 9px;
-            border-radius: var(--aaas-radius-md, 8px);
-            background: var(--aaas-bg-void, #f5f5f5);
-            border: 1px solid var(--aaas-border-color, rgba(255,255,255,0.06));
-            font-size: 11px;
-            color: var(--aaas-text-secondary, #a1a1a1);
+            gap: 6px;
+            padding: 5px 10px;
+            border-radius: 10px;
+            background: #1A1A1A;
+            border: 1px solid #2A2A2A;
+            font-size: 11.5px;
+            color: #cbd5e1;
             max-width: 220px;
         }
 
@@ -309,9 +569,9 @@ export class SomaMessage extends LitElement {
         }
 
         :host([message-role='user']) .attachment-chip {
-            background: rgba(0, 0, 0, 0.12);
-            border-color: rgba(0, 0, 0, 0.1);
-            color: inherit;
+            background: rgba(0, 0, 0, 0.18);
+            border-color: rgba(255, 255, 255, 0.18);
+            color: #fff;
         }
 
         /* ---------- inline error ---------- */
@@ -319,13 +579,13 @@ export class SomaMessage extends LitElement {
             display: flex;
             align-items: flex-start;
             gap: 8px;
-            margin-top: 8px;
-            padding: 8px 10px;
-            border-radius: var(--aaas-radius-md, 8px);
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 10px;
             background: rgba(239, 68, 68, 0.12);
-            border: 1px solid rgba(239, 68, 68, 0.32);
-            color: var(--aaas-danger, #ef4444);
-            font-size: 12px;
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            color: #fca5a5;
+            font-size: 12.5px;
             line-height: 1.45;
         }
 
@@ -346,20 +606,20 @@ export class SomaMessage extends LitElement {
 
         .time {
             font-size: 11px;
-            color: var(--aaas-text-dim, #64748b);
+            color: #64748b;
         }
 
         :host([message-role='user']) .time {
-            opacity: 0.7;
+            opacity: 0.75;
         }
 
         .stopped-badge {
             font-size: 10px;
             text-transform: uppercase;
             letter-spacing: 0.4px;
-            color: var(--aaas-warning, #eab308);
-            border: 1px solid var(--aaas-warning, #eab308);
-            border-radius: var(--aaas-radius-sm, 4px);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.45);
+            border-radius: 6px;
             padding: 1px 6px;
         }
 
@@ -368,61 +628,58 @@ export class SomaMessage extends LitElement {
             align-items: center;
             gap: 6px;
             font-size: 11px;
-            color: var(--aaas-text-dim, #64748b);
+            color: #64748b;
         }
 
         .confidence-bar {
             width: 56px;
             height: 3px;
-            background: var(--aaas-bg-void, #f5f5f5);
-            border-radius: var(--aaas-radius-full, 9999px);
+            background: rgba(148, 163, 184, 0.2);
+            border-radius: 999px;
             overflow: hidden;
         }
 
         .confidence-fill {
             height: 100%;
-            background: var(--aaas-success, #22c55e);
-            border-radius: var(--aaas-radius-full, 9999px);
+            background: linear-gradient(90deg, #10B981, #34D399);
+            border-radius: 999px;
         }
 
         .actions {
             margin-left: auto;
             display: flex;
             gap: 4px;
+            opacity: 0;
+            transition: opacity 140ms ease;
+        }
+
+        :host(:hover) .actions,
+        :host(:focus-within) .actions {
+            opacity: 1;
         }
 
         .action-btn {
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            padding: 2px 8px;
-            border-radius: var(--aaas-radius-sm, 4px);
+            padding: 3px 8px;
+            border-radius: 8px;
             border: none;
             background: transparent;
-            color: var(--aaas-text-dim, #64748b);
+            color: #64748b;
             font-size: 11px;
             cursor: pointer;
             transition: all 120ms ease;
         }
 
         .action-btn:hover {
-            background: var(--aaas-bg-hover, #141414);
-            color: var(--aaas-text-main, #e2e8f0);
+            background: #1A1A1A;
+            color: #e2e8f0;
         }
 
         .action-btn:focus-visible {
-            outline: 2px solid var(--aaas-info, #3b82f6);
+            outline: 2px solid #60a5fa;
             outline-offset: 1px;
-        }
-
-        :host([message-role='user']) .action-btn {
-            color: inherit;
-            opacity: 0.7;
-        }
-
-        :host([message-role='user']) .action-btn:hover {
-            opacity: 1;
-            background: rgba(0, 0, 0, 0.1);
         }
     `;
 

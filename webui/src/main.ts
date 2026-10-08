@@ -333,14 +333,22 @@ if (app) {
         }
 
         if (path === '/settings/models' || path === '/agent/models') {
-            await import('./views/soma-settings-models.js');
-            app.appendChild(document.createElement('soma-settings-models'));
+            await import('./views/soma-settings.js');
+            const el = document.createElement('soma-settings') as HTMLElement & {
+                activeTab?: string;
+            };
+            el.activeTab = 'models';
+            app.appendChild(el);
             return;
         }
 
         if (path === '/settings/channels' || path === '/agent/channels') {
-            await import('./views/soma-settings-channels.js');
-            app.appendChild(document.createElement('soma-settings-channels'));
+            await import('./views/soma-settings.js');
+            const el = document.createElement('soma-settings') as HTMLElement & {
+                activeTab?: string;
+            };
+            el.activeTab = 'external';
+            app.appendChild(el);
             return;
         }
 
