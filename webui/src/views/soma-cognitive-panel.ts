@@ -531,11 +531,32 @@ export class SomaCognitivePanel extends LitElement {
     // Empty until the server sends adaptation_params. A missing key is not 0.
     @state() private _params: AdaptationParams = {};
 
+    /** Real sleep state from GET /somabrain/cognitive/sleep/status/{agent_id}.
+     *  null = not loaded (no agent / fetch failed) — renders as "—". */
+    @state() private _sleepState: boolean | null = null;
+
     @state() private _activityLog: { message: string; time: string; icon: string }[] = [];
 
     async connectedCallback() {
         super.connectedCallback();
         await this._loadCognitiveState();
+    }
+
+    /** sessionStorage first, then localStorage — the exact key/order the chat
+     *  view writes (soma-chat.ts _persistSelectedAgentId). */
+    private _agentId(): string {
+        return sessionStorage.getItem('soma_agent_id') || localStorage.getItem('soma_agent_id') || '';
+    }
+
+    private _logActivity(message: string, icon: string) {
+        this._activityLog = [
+            { message, time: new Date().toLocaleTimeString(), icon },
+            ...this._activityLog,
+        ];
+    }
+
+    private _errorDetail(error: unknown): string {
+        return error instanceof Error ? error.message : String(error);
     }
 
     render() {
@@ -557,6 +578,12 @@ export class SomaCognitivePanel extends LitElement {
                         <span class="status-label">Sleep trigger</span>
                         <span class="status-value ${this._sleepTriggerInFlight ? 'warning' : 'online'}">
                             ${this._sleepTriggerInFlight ? 'In flight (this session)' : 'Idle'}
+                        </span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-label">Sleep state</span>
+                        <span class="status-value ${this._sleepState === false ? 'online' : 'warning'}">
+                            ${this._sleepState === null ? '—' : this._sleepState ? 'Sleeping' : 'Awake'}
                         </span>
                     </div>
                     <div class="status-row">
@@ -733,10 +760,11 @@ export class SomaCognitivePanel extends LitElement {
             // Real SomaBrain Cognitive API — agent-scoped state. The route
             // requires {agent_id}; without one we refuse rather than invent a
             // trailing-slash path the server does not serve.
-            const agentId = sessionStorage.getItem('soma_agent_id') || localStorage.getItem('soma_agent_id') || '';
+            const agentId = this._agentId();
             if (!agentId) {
                 this._brainConnected = false;
                 this._neuromodulators = [];
+                this._sleepState = null;
                 this._activityLog = [
                     { message: 'No agent selected — cognitive state cannot be read.', time: new Date().toLocaleTimeString(), icon: 'block' },
                     ...this._activityLog,
@@ -768,13 +796,30 @@ export class SomaCognitivePanel extends LitElement {
                     this._params = response.adaptation_params;
                 }
             }
+            await this._loadSleepState(agentId);
         } catch (error) {
             this._brainConnected = false;
             this._loadFailed = true;
             this._neuromodulators = [];
-            console.error('Failed to load cognitive state:', error);
+            this._logActivity(`Failed to load cognitive state: ${this._errorDetail(error)}`, 'error');
         } finally {
             this._isLoading = false;
+        }
+    }
+
+    /** GET /somabrain/cognitive/sleep/status/{agent_id}
+     *  (admin/somabrain/cognitive.py:388-416 → {is_sleeping, last_sleep,
+     *  next_scheduled}). Failure is isolated from the state load above and
+     *  surfaced in the activity log. */
+    private async _loadSleepState(agentId: string) {
+        try {
+            const sleep = await apiClient.get(`/somabrain/cognitive/sleep/status/${agentId}`) as {
+                is_sleeping?: boolean | null;
+            } | null;
+            this._sleepState = sleep && typeof sleep.is_sleeping === 'boolean' ? sleep.is_sleeping : null;
+        } catch (error) {
+            this._sleepState = null;
+            this._logActivity(`Failed to load sleep status: ${this._errorDetail(error)}`, 'error');
         }
     }
 
@@ -784,17 +829,21 @@ export class SomaCognitivePanel extends LitElement {
     }
 
     private async _saveParams() {
+        const agentId = this._agentId();
+        if (!agentId) {
+            this._logActivity('No agent selected — parameters were not saved.', 'block');
+            return;
+        }
         this._isSaving = true;
         try {
-            const _agentId = sessionStorage.getItem('soma_agent_id') || localStorage.getItem('soma_agent_id') || '';
-            await apiClient.patch(`/somabrain/cognitive/params/${_agentId}`, this._params);
+            await apiClient.patch(`/somabrain/cognitive/params/${agentId}`, this._params);
             this._isDirty = false;
             this._activityLog = [
                 { message: 'Parameters updated successfully', time: 'Just now', icon: 'check_circle' },
                 ...this._activityLog,
             ];
         } catch (error) {
-            console.error('Failed to save parameters:', error);
+            this._logActivity(`Failed to save parameters: ${this._errorDetail(error)}`, 'error');
         } finally {
             this._isSaving = false;
         }
@@ -803,11 +852,15 @@ export class SomaCognitivePanel extends LitElement {
     private async _triggerSleepCycle() {
         if (this._sleepTriggerInFlight) return;
 
+        const agentId = this._agentId();
+        if (!agentId) {
+            this._logActivity('No agent selected — sleep cycle was not triggered.', 'block');
+            return;
+        }
+
         this._sleepTriggerInFlight = true;
         try {
-            const agentId = sessionStorage.getItem('soma_agent_id') || localStorage.getItem('soma_agent_id') || '';
-            const path = agentId ? `/somabrain/cognitive/sleep/${agentId}` : '/somabrain/cognitive/sleep/';
-            await apiClient.post(path, {});
+            await apiClient.post(`/somabrain/cognitive/sleep/${agentId}`, {});
             this._activityLog = [
                 { message: 'Sleep cycle initiated', time: 'Just now', icon: 'bedtime' },
                 ...this._activityLog,
@@ -815,20 +868,24 @@ export class SomaCognitivePanel extends LitElement {
             this._sleepTriggerInFlight = false;
             await this._loadCognitiveState();
         } catch (error) {
-            console.error('Failed to trigger sleep cycle:', error);
+            this._logActivity(`Failed to trigger sleep cycle: ${this._errorDetail(error)}`, 'error');
             this._sleepTriggerInFlight = false;
         }
     }
 
     private async _resetAdaptation() {
+        const agentId = this._agentId();
+        if (!agentId) {
+            this._logActivity('No agent selected — adaptation was not reset.', 'block');
+            return;
+        }
+
         if (!confirm('Reset all adaptation parameters to defaults? This cannot be undone.')) {
             return;
         }
 
         try {
-            const agentId = sessionStorage.getItem('soma_agent_id') || localStorage.getItem('soma_agent_id') || '';
-            const path = agentId ? `/somabrain/cognitive/adaptation/reset/${agentId}` : '/somabrain/cognitive/adaptation/reset/';
-            await apiClient.post(path, {});
+            await apiClient.post(`/somabrain/cognitive/adaptation/reset/${agentId}`, {});
             this._isDirty = false;
             this._activityLog = [
                 { message: 'Adaptation parameters reset to defaults', time: 'Just now', icon: 'restart_alt' },
@@ -836,7 +893,7 @@ export class SomaCognitivePanel extends LitElement {
             ];
             await this._loadCognitiveState();
         } catch (error) {
-            console.error('Failed to reset adaptation:', error);
+            this._logActivity(`Failed to reset adaptation: ${this._errorDetail(error)}`, 'error');
         }
     }
 

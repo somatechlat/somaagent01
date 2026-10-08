@@ -1667,11 +1667,20 @@ export class SomaChat extends LitElement {
             }
 
             if (this._selectedAgentId) {
+                this._persistSelectedAgentId();
                 this._connectWebSocket();
             }
         } catch (error) {
             console.error('[SomaChat] Failed to load agents:', error);
         }
+    }
+
+    /** The cognitive panel (soma-cognitive-panel.ts:736+) reads
+     *  sessionStorage 'soma_agent_id' first, then localStorage — same key.
+     *  Persist here so the panel can act on the agent this chat selected. */
+    private _persistSelectedAgentId(): void {
+        if (!this._selectedAgentId) return;
+        sessionStorage.setItem('soma_agent_id', this._selectedAgentId);
     }
 
     private async _loadConversations(): Promise<void> {
@@ -3146,6 +3155,7 @@ export class SomaChat extends LitElement {
         const agentId = select.value;
         if (agentId && agentId !== this._selectedAgentId) {
             this._selectedAgentId = agentId;
+            this._persistSelectedAgentId();
             this._activeConversationId = '';
             this._messages = [];
             this._chatTitle = 'New conversation';
