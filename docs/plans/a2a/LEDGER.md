@@ -15,3 +15,6 @@
 | 2026-10-08T15:37:08Z | MiMoCode-somaAgent01 | COORD | Message to somabrain peer: W1 status, route-truth questions, ignore third process. |
 | 2026-10-08T15:50:01Z | MiMoCode-somaAgent01 | COMMIT | W1.5 phantoms eliminated (DELETE/405/real set_personality); reward topic registered; evaluate 0.5 fabrication removed. Pushed. |
 | 2026-10-08T16:19:29Z | MiMoCode-somaAgent01 | COMMIT | W1.9 R-15 adapter + 4 regression gate tests; golden embedder refresh. Vault up: 54 unit tests green on W1 pack. |
+| 2026-10-08T16:50:17Z | MiMoCode-somaAgent01 | WAVE | Parallel: Keycloak starting + general-14 login/me, general-15 cognitive proxy, general-16 unit fails, general-17 login e2e. |
+| 2026-10-08T17:04:10Z | MiMoCode-somaAgent01 | COORD | User chat internal_error: asked somabrain peer for recall 403 + cog health. Agent will implement honest degraded chat. |
+| 2026-10-08T17:17:03Z | MiMoCode-somaAgent01 | FIX | Chat streams again (WS chat.message → deltas → done). Memory still 403 from brain (peer). UI shows Memory queued chip. Settings declaration-site defaults restored for confidence/timeouts. |
