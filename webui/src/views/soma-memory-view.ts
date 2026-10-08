@@ -9,7 +9,7 @@
  * - NO EMOJIS - Google Material Symbols only
  */
 
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
 
@@ -229,6 +229,77 @@ export class SomaMemoryView extends LitElement {
 
         .stat-value {
             font-weight: 600;
+        }
+
+        .stat-value.queued {
+            color: #b45309;
+        }
+
+        .memory-queued-banner {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            margin: 12px 0 4px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(245, 158, 11, 0.45);
+            background: rgba(245, 158, 11, 0.12);
+            color: #92400e;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .memory-queued-banner .material-symbols-outlined {
+            font-size: 18px;
+            color: #d97706;
+            margin-top: 1px;
+        }
+
+        .memory-queued-banner strong {
+            display: block;
+            color: #b45309;
+            margin-bottom: 2px;
+        }
+
+        .memory-queued-banner p {
+            margin: 0;
+        }
+
+        .queued-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-right: 8px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #b45309;
+            border: 1px solid rgba(245, 158, 11, 0.5);
+            background: rgba(245, 158, 11, 0.15);
+        }
+
+        .memory-unavailable-bar {
+            margin: 0 0 16px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            background: rgba(245, 158, 11, 0.1);
+            color: #92400e;
+            font-size: 13px;
+        }
+
+        .empty-state.unavailable .empty-icon.warn {
+            background: rgba(245, 158, 11, 0.15);
+            color: #d97706;
+        }
+
+        .empty-state.unavailable .empty-title {
+            color: #b45309;
+        }
+
+        .empty-state .action-btn {
+            margin-top: 16px;
         }
 
         /* Back Button */
@@ -530,6 +601,8 @@ export class SomaMemoryView extends LitElement {
     @state() private _selectedMemory: Memory | null = null;
     /** Absent until the server reports a total. A failed load is not zero. */
     @state() private _totalCount: number | null = null;
+    /** True when the last list/recall failed (brain down). Not “zero memories”. */
+    @state() private _memoryUnavailable = false;
 
     async connectedCallback() {
         super.connectedCallback();
@@ -543,6 +616,15 @@ export class SomaMemoryView extends LitElement {
                 <div class="sidebar-header">
                     <h1 class="sidebar-title">Memory</h1>
                     <p class="sidebar-subtitle">Browse agent knowledge</p>
+                    ${this._memoryUnavailable
+                        ? html`<div class="memory-queued-banner" role="status">
+                              <span class="material-symbols-outlined">cloud_off</span>
+                              <div>
+                                  <strong>Memory unavailable</strong>
+                                  <p>New chat messages are <em>queued</em> and will sync when the brain is back.</p>
+                              </div>
+                          </div>`
+                        : nothing}
                 </div>
 
                 <!-- Search -->
@@ -588,7 +670,9 @@ export class SomaMemoryView extends LitElement {
                 <div class="stats">
                     <div class="stat-row">
                         <span class="stat-label">Total Memories</span>
-                        <span class="stat-value">${this._totalCount ?? '—'}</span>
+                        <span class="stat-value ${this._memoryUnavailable ? 'queued' : ''}">
+                            ${this._memoryUnavailable ? 'queued' : (this._totalCount ?? '—')}
+                        </span>
                     </div>
                 </div>
 
@@ -602,7 +686,11 @@ export class SomaMemoryView extends LitElement {
             <main class="main">
                 <header class="header">
                     <div class="header-left">
-                        <span class="result-count">${this._visibleMemories.length} memories</span>
+                        <span class="result-count">
+                            ${this._memoryUnavailable
+                                ? html`<span class="queued-pill">● Queued</span> ${this._visibleMemories.length} shown`
+                                : `${this._visibleMemories.length} memories`}
+                        </span>
                     </div>
                     <div class="header-actions">
                         <button class="action-btn" @click=${this._exportMemories}>
@@ -614,11 +702,18 @@ export class SomaMemoryView extends LitElement {
                     </div>
                 </header>
 
+                ${this._memoryUnavailable
+                    ? html`<div class="memory-unavailable-bar">
+                          Memory is offline. Chat keeps working — new writes stay in the agent queue until the brain reconnects.
+                      </div>`
+                    : nothing}
                 ${this._isLoading ? html`
                     <div class="loading">
                         <div class="spinner"></div>
                     </div>
-                ` : this._visibleMemories.length === 0 ? this._renderEmptyState() : html`
+                ` : this._visibleMemories.length === 0
+                    ? this._renderEmptyState()
+                    : html`
                     <div class="memory-grid">
                         ${this._visibleMemories.map(memory => this._renderMemoryCard(memory))}
                     </div>
@@ -628,6 +723,21 @@ export class SomaMemoryView extends LitElement {
     }
 
     private _renderEmptyState() {
+        if (this._memoryUnavailable) {
+            return html`
+                <div class="empty-state unavailable">
+                    <div class="empty-icon warn"><span class="material-symbols-outlined">cloud_off</span></div>
+                    <div class="empty-title">Memory unavailable — queued</div>
+                    <div class="empty-desc">
+                        The brain is not reachable right now. Existing memories cannot be listed.
+                        Chat still works: new messages are <strong>queued</strong> and will sync when memory is back.
+                    </div>
+                    <button class="action-btn primary" @click=${this._refreshMemories}>
+                        <span class="material-symbols-outlined">refresh</span> Try again
+                    </button>
+                </div>
+            `;
+        }
         return html`
             <div class="empty-state">
                 <div class="empty-icon"><span class="material-symbols-outlined">psychology</span></div>
@@ -714,10 +824,13 @@ export class SomaMemoryView extends LitElement {
             const hits = Array.isArray(response?.memories) ? response.memories : [];
             this._memories = hits.map(mapSomaHit);
             this._totalCount = typeof response.total === 'number' ? response.total : this._memories.length;
+            this._memoryUnavailable = false;
         } catch (error) {
-            // Failure is not zero memories. Keep the count absent.
+            // Failure is not zero memories — mark unavailable / queued.
             console.error('Failed to load memories:', error);
             this._memories = [];
+            this._totalCount = null;
+            this._memoryUnavailable = true;
         } finally {
             this._isLoading = false;
         }
