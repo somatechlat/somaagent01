@@ -17,6 +17,7 @@ from uuid import uuid4
 
 from django.utils import timezone
 from ninja import Router
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
@@ -287,26 +288,23 @@ async def update_cognitive_params(
     agent_id: str,
     params: dict,
 ) -> dict:
-    """Update agent's cognitive parameters.
+    """Refuse cognitive-parameter writes honestly.
 
-    REAL SomaBrain call - NO MOCK DATA.
+    SomaBrain exposes no route that accepts these params (checked against
+    ``somabrain/api/endpoints/*``: adaptation is only readable via
+    ``GET /context/adaptation/state`` and clearable via
+    ``POST /context/adaptation/reset``), and ``SomaBrainClient`` has no
+    method for it either. This used to call a phantom method and 500 with
+    ``AttributeError``. Same refusal pattern as ``core_brain.wake_agent``:
+    405, never a fake 200 and never a phantom proxy call.
     """
     await authorize(request, action="cognitive:edit", resource="cognitive")
-    client = get_somabrain_client()
-    if client is None:
-        raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
-
-    try:
-        result = await client.update_cognitive_params(agent_id, params)
-        return {
-            "agent_id": agent_id,
-            "updated_params": result,
-            "success": True,
-            "degraded": False,
-        }
-    except SomaBrainError as e:
-        logger.warning("Update params failed - DEGRADED: %s", e)
-        raise ServiceUnavailableError("somabrain", str(e))
+    raise HttpError(
+        405,
+        "Cognitive parameter writes are not implemented: SomaBrain has no "
+        "cognitive-params route. Read the current state via "
+        "GET /somabrain/cognitive/state/{agent_id} instead.",
+    )
 
 
 @router.post(

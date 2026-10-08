@@ -479,8 +479,6 @@ class V3ChatOrchestrator:
 
             # SomaBrain context evaluation (cognitive co-processor)
             brain_confidence = float(_mem_setting("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT"))
-            suggested_tools: List[str] = []
-            brain_suggested_tools: List[str] = []
             try:
                 brain_client = (
                     await SomaBrainClient.get_async()
@@ -506,13 +504,17 @@ class V3ChatOrchestrator:
                         ),
                     )
                     if eval_result:
-                        brain_confidence = eval_result.get("confidence", 0.5)
-                        suggested_tools = eval_result.get("suggested_tools", [])
-                        brain_suggested_tools = list(suggested_tools)
+                        # EvaluateResponse returns query/prompt/tenant_id/
+                        # memories/weights — no confidence, no suggested_tools.
+                        # Reading .get("confidence", 0.5) invented a score the
+                        # brain never gave and fed it to the adaptation loop.
+                        # Confidence stays at the declared setting
+                        # (SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT).
                         logger.info(
-                            "Brain context eval: confidence=%.2f, suggested_tools=%s",
-                            brain_confidence,
-                            suggested_tools,
+                            "Brain context eval: prompt=%s memories=%d weights=%d",
+                            bool(eval_result.get("prompt")),
+                            len(eval_result.get("memories") or []),
+                            len(eval_result.get("weights") or []),
                         )
             except Exception as brain_exc:
                 logger.debug("Brain context evaluation skipped: %s", brain_exc)
@@ -617,23 +619,6 @@ class V3ChatOrchestrator:
                             }
                         )
                         seen_tools.add(tool_def.name)
-
-            # SomaBrain suggests tools for this turn. Only names that actually
-            # exist are promoted - the brain cannot invent a tool. Suggestion
-            # reorders; it never adds.
-            if brain_suggested_tools:
-                wanted = {str(s) for s in brain_suggested_tools}
-                suggested = [
-                    t
-                    for t in tools_for_llm
-                    if (t.get("function") or {}).get("name") in wanted
-                ]
-                rest = [
-                    t
-                    for t in tools_for_llm
-                    if (t.get("function") or {}).get("name") not in wanted
-                ]
-                tools_for_llm = suggested + rest
 
             # Do not offer a tool the turn may not run. A network tool with
             # egress denied costs a model round-trip and returns a confusing
@@ -944,9 +929,17 @@ class V3ChatOrchestrator:
             memory_hits = None
         if isinstance(brain_eval, BaseException):
             brain_eval = None
-        brain_suggested_tools: List[str] = []
         if isinstance(brain_eval, dict):
-            brain_suggested_tools = list(brain_eval.get("suggested_tools") or [])
+            # Same contract as the non-stream path: prompt/memories/weights
+            # only. The brain returns no suggested_tools — an empty list here
+            # was a field it never sent, and the reorder branch it fed could
+            # never fire.
+            logger.info(
+                "Brain context eval (stream): prompt=%s memories=%d weights=%d",
+                bool(brain_eval.get("prompt")),
+                len(brain_eval.get("memories") or []),
+                len(brain_eval.get("weights") or []),
+            )
         if isinstance(body, BaseException):
             body = {}
         if isinstance(neuro, BaseException):
@@ -996,23 +989,6 @@ class V3ChatOrchestrator:
                         }
                     )
                     seen_tools.add(tool_def.name)
-
-        # SomaBrain suggests tools for this turn. Only names that actually
-        # exist are promoted - the brain cannot invent a tool. Suggestion
-        # reorders; it never adds. Same rule as process_turn (Phase 7).
-        if brain_suggested_tools:
-            wanted = {str(s) for s in brain_suggested_tools}
-            suggested = [
-                t
-                for t in tools_for_llm
-                if (t.get("function") or {}).get("name") in wanted
-            ]
-            rest = [
-                t
-                for t in tools_for_llm
-                if (t.get("function") or {}).get("name") not in wanted
-            ]
-            tools_for_llm = suggested + rest
 
         # Do not offer a tool the turn may not run. A network tool with
         # egress denied costs a model round-trip and returns a confusing
@@ -1187,7 +1163,10 @@ class V3ChatOrchestrator:
             persona_id=str(capsule.id) if capsule else "",
             user_message=turn.user_message,
             assistant_response=full_response,
-            confidence=0.5,
+            # The declared feedback-utility default, not a literal 0.5: the
+            # brain's EvaluateResponse carries no confidence, so this is the
+            # only honest number when it has not scored the turn.
+            confidence=float(_mem_setting("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT")),
             personality_traits=(
                 dict(capsule.personality_traits)
                 if capsule and getattr(capsule, "personality_traits", None)
@@ -1719,31 +1698,32 @@ class V3ChatOrchestrator:
     ) -> None:
         """Plan/suggest + thread cursor + personality — the three real cognition surfaces.
 
-        - ``POST /cognitive/plan/suggest``: gated on ``SOMABRAIN_USE_PLANNER``.
-          This code never defaults that flag on — it is an operator choice.
-          The useful pattern is: the turn already remembered the goal
-          (``_store_turn``), then plan with the same key.
+        - ``POST /cognitive/plan/suggest``: always called; the *brain* gates it
+          on its own ``SOMABRAIN_USE_PLANNER`` (declared in
+          ``somabrain/settings/cognitive.py``) and answers ``{"plan": []}``
+          when the operator has it off. Reading that flag through the agent's
+          settings chain was a second authority for one switch — the key is
+          not declared agent-side, so the lookup raised and, because this ran
+          inside one try block, silently skipped plan seeding AND personality
+          on every turn. The agent never defaults the brain's flag: enabling
+          the planner stays an operator choice on the brain.
         - ``/threads/*``: the plan becomes a resumable task cursor. The cursor
           lives in the brain's Postgres and survives agent restarts.
         - ``POST /cognitive/personality``: push the capsule's Big-5 traits.
         """
-        from services.common.memory_contract import get_memory_setting
-
-        planner_on = get_memory_setting("SOMABRAIN_USE_PLANNER")
-        if planner_on:
-            plan = await self._cb_somabrain.call(
-                brain_client.plan_suggest,
-                user_message,
+        plan = await self._cb_somabrain.call(
+            brain_client.plan_suggest,
+            user_message,
+        )
+        if plan:
+            await self._cb_somabrain.call(
+                brain_client.thread_create,
+                tenant_id,
+                list(plan),
             )
-            if plan:
-                await self._cb_somabrain.call(
-                    brain_client.thread_create,
-                    tenant_id,
-                    list(plan),
-                )
-                logger.info(
-                    "Task cursor seeded for tenant=%s steps=%d", tenant_id, len(plan)
-                )
+            logger.info(
+                "Task cursor seeded for tenant=%s steps=%d", tenant_id, len(plan)
+            )
         if personality_traits:
             await self._cb_somabrain.call(
                 brain_client.set_personality,

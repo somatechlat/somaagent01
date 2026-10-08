@@ -20,57 +20,7 @@ __all__ = [
     "SomaClientError",
     "clamp_neuromodulator",
     "store_memory",
-    "build_context_async",
-    "get_weights_async",
-    "publish_reward_async",
 ]
-
-
-async def build_context_async(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Build context via SomaBrain.
-
-    Args:
-        payload: Context building payload with ``session_id`` and ``messages`` keys
-
-    Returns:
-        List of context items (empty when SomaBrain is not configured)
-    """
-    client = SomaBrainClient.get()
-    if client is None:
-        LOGGER.debug("SomaBrain not configured; returning empty context")
-        return []
-    return await client.build_context(payload["session_id"], payload["messages"])
-
-
-async def get_weights_async() -> Dict[str, Any]:
-    """Retrieve model weights from SomaBrain.
-
-    Returns:
-        Weight configuration dictionary (empty when SomaBrain is not configured)
-    """
-    client = SomaBrainClient.get()
-    if client is None:
-        LOGGER.debug("SomaBrain not configured; returning empty weights")
-        return {}
-    return await client.get_weights()
-
-
-async def publish_reward_async(payload: Dict[str, Any]) -> bool:
-    """Publish reward signal to SomaBrain.
-
-    Args:
-        payload: Reward payload with ``session_id``, ``signal`` and ``value`` keys
-
-    Returns:
-        Reward acknowledgment (False when SomaBrain is not configured)
-    """
-    client = SomaBrainClient.get()
-    if client is None:
-        LOGGER.debug("SomaBrain not configured; skipping reward publish")
-        return False
-    return await client.publish_reward(
-        payload["session_id"], payload["signal"], payload["value"], payload.get("meta")
-    )
 
 
 # Neuromodulator clamping ranges (from SomaBrain neuromod.py)

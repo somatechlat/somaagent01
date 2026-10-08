@@ -91,7 +91,6 @@ MSG_PING = "ping"
 MSG_PONG = "pong"
 MSG_CONNECTED = "connected"
 MSG_TYPING = "typing"
-MSG_FEEDBACK = "feedback"
 
 # Tool timeline (native function calling) — C1 / CH-11. Emitted while the
 # orchestrator runs its model→tool→model loop so the UI can render a live
@@ -429,9 +428,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
             elif msg_type in {MSG_CHAT, MSG_CHAT_SEND, MSG_CHAT_LEGACY}:
                 await self._handle_chat(content)
-
-            elif msg_type == MSG_FEEDBACK:
-                await self._handle_feedback(content)
 
             elif msg_type in CONTROL_MSG_TYPES:
                 await self._handle_control(content)
@@ -843,42 +839,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             return
 
         await self._send_error(f"Unhandled control type: {msg_type}")
-
-    async def _handle_feedback(self, content: dict):
-        """Handle user feedback (thumbs up/down).
-
-        Publishes reward signal to SomaBrain for online learning.
-        """
-        payload = content.get("payload") or content.get("data") or {}
-        signal = payload.get("signal", "neutral")  # "positive", "negative", "neutral"
-        response_id = payload.get("response_id", "")
-
-        if not self.capsule:
-            return
-
-        try:
-            from admin.core.somabrain_client import SomaBrainClient
-
-            brain_client = await SomaBrainClient.get_async()
-            if brain_client:
-                await brain_client.publish_reward(
-                    self.session_id or "",
-                    "reward" if signal == "positive" else "punish",
-                    1.0 if signal == "positive" else -1.0,
-                    {
-                        "tenant_id": _require_tenant_id_value(self.tenant_id),
-                        "persona_id": str(self.capsule.id),
-                        "response_id": response_id,
-                        "original_signal": signal,
-                    },
-                )
-                logger.info(
-                    "Feedback published to Brain: signal=%s, capsule=%s",
-                    signal,
-                    self.capsule.id,
-                )
-        except Exception as exc:
-            logger.debug("Feedback publish skipped: %s", exc)
 
     # =========================================================================
     # HELPERS

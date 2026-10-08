@@ -277,6 +277,10 @@ MEM_RECALL_TIMEOUT_S = os.environ.get("MEM_RECALL_TIMEOUT_S")
 MEM_HISTORY_TIMEOUT_S = os.environ.get("MEM_HISTORY_TIMEOUT_S")
 MEMORY_WAL_TOPIC = os.environ.get("MEMORY_WAL_TOPIC", "memory.wal")
 MEMORY_DEGRADED_TOPIC = os.environ.get("MEMORY_DEGRADED_TOPIC", "degradation.events")
+# Reward events (RewardEvent → learner) — Kafka-only reward lane (W1.5/R-04).
+SOMABRAIN_TOPIC_REWARD_EVENTS = os.environ.get(
+    "SOMABRAIN_TOPIC_REWARD_EVENTS", "reward.events"
+)
 TOOL_REWARD_SUCCESS = os.environ.get("TOOL_REWARD_SUCCESS")
 TOOL_REWARD_FAILURE = os.environ.get("TOOL_REWARD_FAILURE")
 SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT = os.environ.get("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT")

@@ -10,14 +10,13 @@ import logging
 from datetime import UTC, datetime
 from typing import Optional
 
-from ninja import Query, Router
+from ninja import Router
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
 from services.common.authorization import authorize
 from admin.common.exceptions import UnauthorizedError
 from admin.common.messages import ErrorCode, get_message, SuccessCode
-from admin.core.somabrain_client import SomaBrainError
 
 router = Router(tags=["memory"])
 logger = logging.getLogger(__name__)
@@ -134,50 +133,6 @@ async def search_memories(request, payload: MemorySearchRequest) -> dict:
             "query": payload.query,
             "error": get_message(ErrorCode.SOMABRAIN_UNAVAILABLE),
         }
-
-
-@router.get(
-    "/recent",
-    summary="Get recent memories",
-    auth=AuthBearer(),
-)
-async def get_recent_memories(
-    request,
-    limit: int = Query(20, ge=1, le=100),
-) -> dict:
-    """Get recent memories for the current user.
-
-    Per SRS UC-05: GET /api/v2/memory/recent
-    """
-    await authorize(request, action="resource:memory_read", resource="memory")
-    from admin.core.somabrain_client import get_somabrain_client
-
-    if not getattr(request, "auth", None) or not request.auth.effective_tenant_id:
-        raise UnauthorizedError("Tenant context required for recent memories")
-    tenant_id = request.auth.effective_tenant_id
-    client = get_somabrain_client()
-    if client is None:
-        raise SomaBrainError("SomaBrain not configured", status_code=503)
-
-    try:
-        memories = await client.get_recent(tenant_id=tenant_id, limit=limit)
-
-        items = [
-            MemoryOut(
-                id=m.get("id", ""),
-                content=m.get("content", ""),
-                memory_type=m.get("memory_type", "episodic"),
-                created_at=m.get("created_at", ""),
-                metadata=m.get("metadata"),
-            ).model_dump()
-            for m in memories
-        ]
-
-        return {"memories": items}
-
-    except Exception as e:
-        logger.error("Get recent failed: %s", e)
-        return {"memories": [], "error": get_message(ErrorCode.SOMABRAIN_UNAVAILABLE)}
 
 
 @router.post(

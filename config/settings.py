@@ -187,6 +187,12 @@ SOMABRAIN_DEFAULT_TENANT = os.environ.get("SOMABRAIN_DEFAULT_TENANT") or "standa
 MEMORY_WAL_TOPIC = os.environ.get("MEMORY_WAL_TOPIC", "memory.wal")
 MEMORY_DEGRADED_TOPIC = os.environ.get("MEMORY_DEGRADED_TOPIC", "degradation.events")
 
+# Reward events (RewardEvent → learner). The reward signal travels Kafka-only
+# (SOMA-PM-RAPID-WIRING-001 W1.5 / R-04) — never a phantom HTTP call.
+SOMABRAIN_TOPIC_REWARD_EVENTS = os.environ.get(
+    "SOMABRAIN_TOPIC_REWARD_EVENTS", "reward.events"
+)
+
 # Cognitive / tool feedback rewards (SomaBrain FeedbackRequest.utility).
 
 

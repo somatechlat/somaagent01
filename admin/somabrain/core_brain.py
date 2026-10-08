@@ -74,15 +74,6 @@ class PersonalityResponse(BaseModel):
     degraded: bool = False
 
 
-class MemoryConfigRequest(BaseModel):
-    """Memory configuration update."""
-
-    consolidation_interval: Optional[int] = None  # minutes
-    recall_threshold: Optional[float] = None  # 0.0 - 1.0
-    max_episodic_count: Optional[int] = None
-    enable_semantic_linking: Optional[bool] = None
-
-
 class MemoryConfigResponse(BaseModel):
     """Memory configuration."""
 
@@ -360,13 +351,12 @@ async def personality_set(
         raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
 
     try:
-        result = await client.update_cognitive_params(
-            agent_id, {"personality": payload.personality}
-        )
+        # Real route: POST /cognitive/personality → PersonalityState {traits}.
+        result = await client.set_personality(payload.personality)
 
         return PersonalityResponse(
             agent_id=agent_id,
-            personality=result.get("personality", payload.personality),
+            personality=dict(result.get("traits") or {}),
             updated_at=timezone.now().isoformat(),
             degraded=False,
         )
@@ -408,67 +398,6 @@ async def memory_config_get(request, agent_id: str) -> MemoryConfigResponse:
 
     except SomaBrainError as e:
         logger.warning("Memory config get failed - DEGRADED: %s", e)
-        raise ServiceUnavailableError("somabrain", str(e))
-
-
-@router.patch(
-    "/config/memory/{agent_id}",
-    response=MemoryConfigResponse,
-    summary="Update memory configuration",
-    auth=AuthBearer(),
-)
-async def memory_config_patch(
-    request,
-    agent_id: str,
-    payload: MemoryConfigRequest,
-) -> MemoryConfigResponse:
-    """Update agent memory configuration.
-
-    REAL SomaBrain call - NO MOCK DATA.
-    """
-    await authorize(request, action="resource:memory_write", resource="brain")
-    client = get_somabrain_client()
-    if client is None:
-        raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
-
-    # Validate recall threshold
-    if payload.recall_threshold is not None:
-        if not 0.0 <= payload.recall_threshold <= 1.0:
-            raise BadRequestError("recall_threshold must be between 0.0 and 1.0")
-
-    try:
-        result = await client.update_cognitive_params(
-            agent_id,
-            {
-                "memory_config": {
-                    "consolidation_interval": payload.consolidation_interval,
-                    "recall_threshold": payload.recall_threshold,
-                    "max_episodic_count": payload.max_episodic_count,
-                    "enable_semantic_linking": payload.enable_semantic_linking,
-                }
-            },
-        )
-
-        memory_config = result.get("memory_config", {})
-
-        return MemoryConfigResponse(
-            agent_id=agent_id,
-            consolidation_interval=memory_config.get(
-                "consolidation_interval", payload.consolidation_interval or 0
-            ),
-            recall_threshold=memory_config.get("recall_threshold", payload.recall_threshold or 0.0),
-            max_episodic_count=memory_config.get(
-                "max_episodic_count", payload.max_episodic_count or 0
-            ),
-            enable_semantic_linking=memory_config.get(
-                "enable_semantic_linking", payload.enable_semantic_linking or False
-            ),
-            last_updated=timezone.now().isoformat(),
-            degraded=False,
-        )
-
-    except SomaBrainError as e:
-        logger.warning("Memory config patch failed - DEGRADED: %s", e)
         raise ServiceUnavailableError("somabrain", str(e))
 
 

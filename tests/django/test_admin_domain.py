@@ -42,11 +42,23 @@ class TestCoreAdminEndpoints:
 
         assert router is not None
 
-    def test_migrate_router_exists(self):
-        """Test migrate router is properly configured."""
-        from admin.core.api.migrate import router
+    def test_migrate_router_is_deleted(self):
+        """Memory migration export/import is gone, not stubbed.
 
-        assert router is not None
+        ``admin.core.api.migrate`` called ``SomaBrainClient.migrate_export``
+        and ``migrate_import`` — methods that never existed and server routes
+        the brain never served. The routes were deleted with their module
+        rather than left to 500.
+        """
+        import importlib.util
+
+        assert importlib.util.find_spec("admin.core.api.migrate") is None
+
+        from admin.core.api import router
+
+        # Ninja stores mounted children as (prefix, router, tags) tuples.
+        prefixes = [prefix for prefix, _router, _tags in router._routers]
+        assert "/migrate" not in prefixes
 
 
 class TestAgentAdminEndpoints:

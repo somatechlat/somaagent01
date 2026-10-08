@@ -11,3 +11,5 @@
 | 2026-10-08T14:42:13Z | MiMoCode-somaAgent01 | WAVE | W1 CODE authorized by Operator. Spawn builders: wiring phantoms, UI panel, Temporal env + parallel adversarial skeptic. |
 | 2026-10-08T14:53:38Z | MiMoCode-somaAgent01 | LAND | W1.10 Temporal one host authority: compose SA01_TEMPORAL_URI→SA01_TEMPORAL_HOST; settings.py sole reader (no NAMESPACE); workers+providers use django TEMPORAL_HOST fail-closed; standalone registry temporal claim removed (out-of-scope). |
 | 2026-10-08T15:23:10Z | MiMoCode-somaAgent01 | COMMIT | W1.8 cognitive panel: agent id writer, guards, sleep status route, visible failures (webui). |
+| 2026-10-08T15:36:21Z | MiMoCode-somaAgent01 | WAVE | Roster expanded: general-10 W1.5 phantoms + general-12 R-15 adapter + general-13 regression gates (parallel, non-colliding claims). |
+| 2026-10-08T15:37:08Z | MiMoCode-somaAgent01 | COORD | Message to somabrain peer: W1 status, route-truth questions, ignore third process. |

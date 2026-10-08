@@ -91,8 +91,6 @@ RESTRICTED_SURFACE: frozenset[str] = frozenset(
     {
         "admin/auth/api.py::impersonate_tenant",
         "admin/core/api/general.py::audit_export",
-        "admin/core/api/migrate.py::admin_migrate_export",
-        "admin/core/api/migrate.py::admin_migrate_import",
         "admin/gateway/api/gateway.py::list_keys",
         "admin/gateway/api/gateway.py::create_key",
         "admin/gateway/api/gateway.py::revoke_key",
