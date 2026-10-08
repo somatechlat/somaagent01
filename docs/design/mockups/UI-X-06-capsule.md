@@ -1,45 +1,108 @@
 # UI-X-06 — Capsule
 
-**Capsule** — Right-rail panel in context — route `right-rail surface [6]` — facet **Surface**.
-Chrome abbreviated (UI-S-00). Facet tabs and surface rail are visible.
+Surface **UI-X-06 Capsule** · Right canvas (Band D) · Facet: Surface · Chrome: UI-S-00 abbreviated
+Registry: `webui/src/components/soma-right-panel.ts` → `SURFACES` key `capsule`
+Backing (live): `<soma-capsule-editor>` — `GET` / `PATCH /agents/{agent_id}/capsule`
+Nav: `SOMA-UI-NAV-001.md` §2 canvas · Capsule screens UI-S-11…14
+
+**Status: LIVE.** Present and available. No `blockedReason`.
+
+---
+
+## 1. ASCII wireframe — docked in the canvas
 
 ```
-┌─ chrome (abbrev) ──────────────────────┬ RIGHT RAIL · UI-X-06 Capsule                                                                   ┐
-│  capsule <capsule.name> v<version>     │ Surface: Capsule                                                                               │
-│  <lifecycle>  knobs (IQ <v>)(auto <v>)(│ ┌─ capsule summary ───────────────────────────────────────────────────────┐                    │
-│  derived AgentIQ RO: <readouts, greyed>│ │ name <capsule.name>                                                      │                   │
-│  facets [Soul][Brain][Hands][Memory][Bo│ │ version <version>   lifecycle <lifecycle>                                │                   │
-│  <Cmd-K>                               │ │ parent <version-or->                                                     │                   │
-│                                        │ │ checksum <checksum>                                                      │                   │
-│  WORKSPACE (abbrev)                    │ └──────────────────────────────────────────────────────────────────────────┘                   │
-│  ┌────────────────────────────────┐    │ ┌─ version rail ──────────────────────────────────────────────────────────┐                    │
-│  │ screen content in context        │  │ │ v<version>  (current)                                                    │                   │
-│  │ (see UI-S-07 chat workspace)     │  │ │ v<version>  [diff to parent]                                             │                   │
-│  │ surface rail select: UI-X-06 Capsule│ │ v<version>  [diff to parent]                                             │                   │
-│  └────────────────────────────────┘    │ └──────────────────────────────────────────────────────────────────────────┘                   │
-│                                        │ ┌─ instances ─────────────────────────────────────────────────────────────┐                    │
-│  instance <session_id> <state>         │ │ <session_id> <state> <started>                                           │                   │
-│  neuro RO DA <v> 5-HT <v> NE <v> ACh <v│ └──────────────────────────────────────────────────────────────────────────┘                   │
-│                                        │ [inspect] [archive]                                                                            │
-└────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ chrome (abbrev) ──────────────────────┬ RIGHT CANVAS · UI-X-06 Capsule                                ┐
+│  chat workspace (UI-S-07)              │ [📁 Files][🔧 Tools][🌐 Browser†][💻 Editor]                  │
+│  ┌────────────────────────────────┐    │ [🐞 Debug][📦 Capsule][🧠 Brain][🖥 Desktop†]                  │
+│  │ screen content in context      │    ├──────────────────────────────────────────────────────────────┤
+│  │ surface rail select: Capsule   │    │  Capsule  UI-X-06                                            │
+│  └────────────────────────────────┘    │  [ Soul ] [ Learning ]                    [Save] [Reset]     │
+│                                        │                                                                │
+│                                        │  ┌─ Soul tab ──────────────────────────────────────────────┐  │
+│                                        │  │  system_prompt                                         │  │
+│                                        │  │  ‹system_prompt›                                       │  │
+│                                        │  │                                                          │  │
+│                                        │  │  personality_traits                                    │  │
+│                                        │  │  ‹key›  [number input ‹value›]                         │  │
+│                                        │  │  …  (or: “This capsule stores no personality traits.”) │  │
+│                                        │  │                                                          │  │
+│                                        │  │  neuromodulator_baseline                               │  │
+│                                        │  │  ‹key›  [number input ‹value›]                         │  │
+│                                        │  └─────────────────────────────────────────────────────────┘  │
+│                                        │                                                                │
+│                                        │  ┌─ Learning tab ─────────────────────────────────────────┐  │
+│                                        │  │  learning_config (free-form JSON)                      │  │
+│                                        │  │  ‹server object›                                       │  │
+│                                        │  └─────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────┴──────────────────────────────────────────────────────────────┘
 ```
 
-**Control map.**
+---
 
-| # | UI-C-* | control | notes |
+## 2. Control map
+
+| # | Control | API / behavior | Live? |
 |---|---|---|---|
-| 1 | UI-C-113 | capsule summary panel | Name/version/lifecycle/checksum are `‹ live value ›` from the capsule record. Checksum is never invented. |
-| 2 | UI-C-118 | version rail with diff-to-parent | Edit always spawns a child version; the rail never shows an in-place mutation. |
-| 3 | UI-C-102 | instance row | Real CapsuleInstance rows (session_id, state, started). |
-| 4 | UI-C-068 | inspect (secondary) | Opens UI-M-01 drawer with the full capsule record. |
-| 5 | UI-C-069 | archive (destructive) | Opens UI-M-03. disabled-when: lifecycle is already archived — disabled-reason: "This capsule version is already archived." |
+| 1 | Tab: Soul | `system_prompt` · `personality_traits` · `neuromodulator_baseline` — the PERSONALITY fields the API stores. | live |
+| 2 | Tab: Learning | `learning_config` — free-form JSON object; no invented schema. | live |
+| 3 | system_prompt | Text area bound to the server string. | live |
+| 4 | personality_traits rows | One number input per **server-sent key**. Empty → “This capsule stores no personality traits.” | live |
+| 5 | neuromodulator_baseline rows | One number input per server-sent key. | live |
+| 6 | Save | `PATCH /agents/{agent_id}/capsule` with the four fields. Disabled until dirty. | live |
+| 7 | Reset | Restores buffers from the last `GET` response. | live |
 
-**State variants.**
+**Not on this surface (honest omissions):** version rail, checksum, lifecycle chips, archive, instance rows, five-tab Soul/Body/Hands/Memory/Governance fiction — those are not what `CapsuleConfigOut` serves and are not drawn. Identity/capsule list lives in UI-S-11…14.
 
-- **Loading.** Skeleton rows plus a `loading` chip in the workspace header. No counts, charts or metrics are drawn while loading.
-- **Empty.** "No capsule version selected. Pick a version from the rail."
-- **Error.** "Couldn't load the capsule. ‹ reason from API ›"
-- **Permission-denied.** "You don't have access to this capsule. Ask the owner for read access."
-- **Offline.** You're offline. Changes will not be saved until the connection returns.
+---
 
-**Modal overlays.** UI-M-01 Drawer — capsule inspect (full record, lineage). UI-M-03 Dialog — "Archive capsule version <version>?" (destructive).
+## 3. States
+
+| State | Verbatim / behavior |
+|---|---|
+| loading | Spinner in the surface body. |
+| empty (traits) | “This capsule stores no personality traits.” |
+| error (load) | Surface error text; no fake defaults. |
+| dirty | Save enabled. |
+| saving | Save disabled; no optimistic flash of unconfirmed values. |
+| no agent | Editor cannot bind `agent_id` — shows the missing-selection reason, not a guess. |
+
+---
+
+## 4. Modal overlays
+
+| Trigger | Modal | Contents |
+|---|---|---|
+| Reset with dirty buffers | UI-M-03 | “Discard unsaved capsule changes?” Cancel / Discard. |
+
+---
+
+## 5. Navigation
+
+| In | Out |
+|---|---|
+| Canvas tab **Capsule** (registry order 6/8) | UI-S-11…14 Capsule list/detail (full capsule IA) |
+
+Cross-link: `SOMA-UI-NAV-001.md` §2 canvas · §5 acceptance.
+**No Memory tab in the canvas** — Memory records are UI-S-04 only.
+
+---
+
+## 6. Honesty
+
+- Only the four PERSONALITY fields the API classifies are edited (`admin/core/helpers/capsule_settings.py`).
+- Keys come from the server object; nothing is pre-seeded.
+- A previous five-tab version with invented model names, recall limits, and a fake “Certified (Ed25519)” claim is gone — not kept as decoration.
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/components/soma-capsule-editor.ts` | Live editor (embedded by `soma-right-panel`) |
+| `GET /agents/{agent_id}/capsule` | `CapsuleConfigOut` |
+| `PATCH /agents/{agent_id}/capsule` | `CapsuleConfigUpdate` |
+| `CapsuleConfig` | `agent_id, capsule_id, name, description, status, system_prompt, personality_traits, neuromodulator_baseline, learning_config` |
+
+End of Document

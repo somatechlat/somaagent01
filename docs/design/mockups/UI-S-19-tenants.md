@@ -1,70 +1,91 @@
 # UI-S-19 — Tenants
 
-Screen UI-S-19 · Facet: Platform · Route: `/saas/tenants`
-Source view per `SOMA-UI-IDREG-001.md`: `saas-tenants` (`webui/src/views/saas-tenants.ts`).
-Route matches `webui/src/main.ts:199`.
+Screen UI-S-19 · Chrome: **UI-S-00 thin** (abbrev) · Catalog: `SOMA-UI-CATALOG-001.md` §2 Platform
 
-## 1. ASCII wireframe — whole screen inside UI-S-00 chrome
+**Status: GATED / future — does not ship on this deployment.**
+
+> **Blocking reason:** This is a **standalone agent** deployment. `webui/src/main.ts:131-132`
+> states it directly: *“No Soma or billing routes: this is a standalone agent, and the admin
+> surface administers the agent only.”* There is **no tenant route** in `main.ts` and no tenant
+> list API. ORPH-M1 (`SOMA-UI-NAV-AUDIT-001.md` §5).
+
+Unknown paths fall through to `soma-chat` (`main.ts:408`) — never to this screen. Do not present
+tenants as a shipped destination.
+
+---
+
+## 1. ASCII wireframe — future sketch (not routable)
 
 ```
-┌─[capsule ▾] ‹capsule.name› [v‹semver›][‹lifecycle›]───────── IQ[──●──] AUTO[─●─] BUDGET[─●─] ⌘K─┐
-│ derived (RO): temp ‹› max_tok ‹› rlm ‹› recall ‹› tier ‹› hitl ‹› tokens ‹› cost ‹› think ‹›      │
-├─ Soul  Brain  Hands  Memory  Body  Governance ──────────────────────────────────────────────────┤
-│ LEFT NAV │ WORKSPACE — Tenants [1]                                      │ SURFACES x8             │
-│  Chat    │ ┌────────────────────────────────────────────────────────┐  │ [Files][Tools][Browser] │
-│  Capsule │ │ SEARCH [2] ‹filter.tenants…│  STATUS [3] ‹status ▾│    │  │ [Editor][Debug][Capsule]│
-│  Module  │ │ [ + New tenant ] [4]                                   │  │ [Brain][Desktop†] †GATED│
-│  Platform│ │ ┌────────────────────────────────────────────────────┐ │  │                         │
-│  Ops     │ │ │ TENANT TABLE [5]                                   │ │  │                         │
-│  Settings│ │ │ ‹tenant.name›  ‹tenant.id›  ‹status›  ‹plan›  [⋯] │ │  │                         │
-│          │ │ │ ‹tenant.name›  ‹tenant.id›  ‹status›  ‹plan›  [⋯] │ │  │                         │
-│          │ │ │ ‹tenant.name›  ‹tenant.id›  ‹status›  ‹plan›  [⋯] │ │  │                         │
-│          │ │ │ (scroll)                                           │ │  │                         │
-│          │ │ └────────────────────────────────────────────────────┘ │  │                         │
-│          │ │ total: ‹ live value › tenants · page ‹page› of ‹pages› │  │                         │
-│          │ └────────────────────────────────────────────────────────┘  │                         │
-├──────────┴──────────────────────────────────────────────────────────────┴─────────────────────────┤
-│ INSTANCES ‹instance.id› ‹instance.status› │ NEURO: DA ‹› 5-HT ‹› NE ‹› ACh ‹› │ synced ‹ts›      │
-└───────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│  ┌─ GATED ───────────────────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                                           │  │
+│  │   Tenant administration is not available on this deployment.                              │  │
+│  │                                                                                           │  │
+│  │   Blocking reason: standalone agent — no tenant routes in main.ts                          │  │
+│  │   (main.ts:131-132). No tenant list API.                                                   │  │
+│  │                                                                                           │  │
+│  └───────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                  │
+│  (no tenant table · no New tenant · no Suspend)                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. Control map
+A future multi-tenant deployment would render a tenant table here. **No fields are specified** —
+there is no tenant schema in `somaAgent01`, so any column list would be invented.
 
-| # | UI-C-* | control | notes |
+---
+
+## 2. Real data
+
+**None.** No tenant API exists on this deployment. Nothing is drawn from a store.
+
+---
+
+## 3. Control map
+
+| # | Control | Behavior | Live? |
 |---|---|---|---|
-| 1 | — | Workspace region (Tenants) | Screen shell. |
-| 2 | UI-C-021 | Search | Filters the table live. |
-| 3 | UI-C-069 | Status filter select | Tenant states as stored. |
-| 4 | UI-A-049 | Create tenant | Navigates to UI-S-20 wizard. |
-| 5 | UI-C-100 | Tenant table | Rows `‹tenant.name›` / `‹tenant.id›` / `‹status›` / `‹plan›`. |
-| 5 | UI-C-028 | Row action menu (⋯) | Open / Suspend / Settings. Suspend opens UI-M-03. |
-| — | UI-A-050 | Suspend tenant | DESTRUCTIVE — always opens UI-M-03. |
+| 1 | Gated notice | Blocking reason verbatim. | live (notice) |
+| — | Tenant table / Create / Suspend | **Not rendered** — no API, no route. | GATED |
 
-## 3. State variants
+---
 
-- **loading** — Table shows 5 skeleton rows. Verbatim label: "Loading tenants…"
-- **empty** — `UI-C-023` verbatim: "No tenants yet. Create the first tenant to get started."
-  Empty under a filter verbatim: "No tenants match this filter. Clear the filter to see all."
-- **error** — `UI-C-024` verbatim: "Tenants could not be loaded. Retry, or check that the
-  somaAgent01 API is reachable."
-- **permission-denied** — Create/Suspend disabled with inline reason
-  "Tenant administration requires the platform-admin role." `UI-C-025` verbatim:
-  "You do not have permission to manage tenants. Ask a platform admin for the platform-admin role."
-- **offline** — Table shows last cached page ("Showing the last synced page."); Create/Suspend
-  disabled with reason "Tenant actions are unavailable offline."
+## 4. Numbered journey (stops at the gate)
 
-## 4. Modal overlays
+| Step | Where | Action | Result |
+|---|---|---|---|
+| **1** | anywhere | Look for a Tenants nav entry | None — tenants are not in the nav (standalone agent). |
+| **2** | (bookmark) | Navigate to a tenant URL | Not routed; fallthrough → `soma-chat`. |
+| **3** | here | Read the blocking reason | Understands multi-tenancy is out of scope for this deployment. |
 
-| Trigger | Modal | Contents |
-|---|---|---|
-| UI-A-050 Suspend tenant | UI-M-03 Dialog | "Suspend ‹tenant.name›? Users will lose access until it is resumed." Cancel / Suspend. |
-| Row → Open | — | Navigates to UI-S-21; no modal. |
-| Row → Settings | UI-M-01 Drawer (420px) | Tenant settings summary; ESC closes, focus trap. |
-| — | UI-M-02 | Not used by this screen. |
+---
 
-## 5. Honesty notes
+## 5. States
 
-Tenant names, ids, statuses and plans are store placeholders (`‹tenant.name›` style). Totals and
-page counts are `‹ live value ›` — never fabricated numbers.
+| State | Behavior |
+|---|---|
+| default | GATED notice + blocking reason. |
+
+No loading / empty / error — the feature never reaches an API.
+
+---
+
+## 6. Honesty
+
+No invented tenant names, ids, statuses, plans, or counts. This mock exists to record the gap
+(ORPH-M1), not to pretend the screen ships.
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/main.ts:131-132` | “No Soma or billing routes: this is a standalone agent” |
+| `SOMA-UI-NAV-AUDIT-001.md` §5 ORPH-M1 | Tenant mocks have no route |
 
 End of Document

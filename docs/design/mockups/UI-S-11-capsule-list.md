@@ -1,72 +1,107 @@
 # UI-S-11 — Capsule list
 
-Screen UI-S-11 · Facet: Capsule · Route: `/workspace`
-Source view per `SOMA-UI-IDREG-001.md`: `saas-workspace` (`webui/src/views/saas-workspace.ts`).
-Route matches `webui/src/main.ts:396`.
+Screen UI-S-11 · Route: **`/admin/agents`** (`main.ts:258` → `soma-agents-view`)
+Chrome: **UI-S-00 thin** (abbrev) · Catalog: `SOMA-UI-CATALOG-001.md` §3 Capsule
+Live view: `webui/src/views/soma-entity-views.ts` (`soma-agents-view`)
 
-## 1. ASCII wireframe — whole screen inside UI-S-00 chrome
+**Status: LIVE.** Capsule is per-agent: `GET /api/v2/agents/{agent_id}/capsule`.
+The list shows each agent’s primary capsule — **`CapsuleConfigOut` fields only**.
+
+---
+
+## 1. ASCII wireframe — capsule list (workspace)
 
 ```
-┌─[capsule ▾] ‹capsule.name› [v‹semver›][‹lifecycle›]───────── IQ[──●──] AUTO[─●─] BUDGET[─●─] ⌘K─┐
-│ derived (RO): temp ‹› max_tok ‹› rlm ‹› recall ‹› tier ‹› hitl ‹› tokens ‹› cost ‹› think ‹›      │
-├─ Soul  Brain  Hands  Memory  Body  Governance ──────────────────────────────────────────────────┤
-│ LEFT NAV │ WORKSPACE — Capsules [1]                                     │ SURFACES x8             │
-│  Chat    │ ┌────────────────────────────────────────────────────────┐  │ [Files][Tools][Browser] │
-│  Capsule*│ │ SEARCH [2] ‹filter.capsules…│  STATUS [3] ‹status ▾│   │  │ [Editor][Debug][Capsule]│
-│  Module  │ │ SORT [4] ‹sort ▾│        [ + New capsule ] [5]         │  │ [Brain][Desktop†] †GATED│
-│  Platform│ │ ┌────────────────────────────────────────────────────┐ │  │                         │
-│  Ops     │ │ │ CAPSULE GRID [6]                                   │ │  │                         │
-│  Settings│ │ │ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐   │ │  │                         │
-│          │ │ │ │‹capsule.name│ │‹capsule.name│ │‹capsule.name│   │ │  │                         │
-│          │ │ │ │v‹semver›    │ │v‹semver›    │ │v‹semver›    │   │ │  │                         │
-│          │ │ │ │‹lifecycle›  │ │‹lifecycle›  │ │‹lifecycle›  │   │ │  │                         │
-│          │ │ │ │  [ Open ]   │ │  [ Open ]   │ │  [ Open ]   │   │ │  │                         │
-│          │ │ │ │  [⋯]        │ │  [⋯]        │ │  [⋯]        │   │ │  │                         │
-│          │ │ │ └─────────────┘ └─────────────┘ └─────────────┘   │ │  │                         │
-│          │ │ └────────────────────────────────────────────────────┘ │  │                         │
-│          │ └────────────────────────────────────────────────────────┘  │                         │
-├──────────┴──────────────────────────────────────────────────────────────┴─────────────────────────┤
-│ INSTANCES ‹instance.id› ‹instance.status› │ NEURO: DA ‹› 5-HT ‹› NE ‹› ACh ‹› │ synced ‹ts›      │
-└───────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  CAPSULES — agent primary capsules                                       [⟳ Refresh]            │
+│  [Search agents…                    ]  status [all ▾]                                            │
+│                                                                                                  │
+│  ┌─ CAPSULE TABLE (server order) ─────────────────────────────────────────────────────────────┐  │
+│  │ agent_id        capsule_id     name                 status        description              │  │
+│  │ ‹agent_id›      ‹capsule_id›   ‹name›               ‹status›      ‹description | —›        │  │
+│  │ ‹agent_id›      ‹capsule_id›   ‹name›               ‹status›      ‹description | —›        │  │
+│  │ (scroll)                                                                                   │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                  │
+│  total: ‹n | —› agents                                                         [Open]          │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. Control map
+Columns are exactly the `CapsuleConfigOut` scalars (`admin/agents/api/schemas.py:75-87`).
+No semver chip, no lifecycle chip, no IQ/AUTO/BUDGET knobs, no facet tabs, no instance strip —
+those are not capsule fields and not enterprise chrome (`UI-S-00` §3).
 
-| # | UI-C-* | control | notes |
-|---|---|---|---|
-| 1 | — | Workspace region (Capsule list) | Screen shell. |
-| 2 | UI-C-021 | Search | Filters the grid live. |
-| 3 | UI-C-069 | Status filter select | Lifecycle states as stored. |
-| 4 | UI-C-073 | Sort select | Fields actually sortable by the store. |
-| 5 | UI-A-031 | Create capsule | Opens UI-M-03 dialog (name + confirm) → routes to UI-S-12. |
-| 6 | UI-C-074 | Capsule card grid | Cards show `‹capsule.name›`, `v‹semver›`, `‹lifecycle›` only. |
-| 6 | UI-C-028 | Card row menu (⋯) | Open / Duplicate / Archive. Archive opens UI-M-03. |
+---
 
-## 3. State variants
+## 2. Real data — `CapsuleConfigOut`
 
-- **loading** — Grid shows 6 skeleton cards. Verbatim label: "Loading capsules…"
-- **empty** — `UI-C-023` verbatim: "No capsules yet. Create your first capsule to get started."
-  Empty under a filter verbatim: "No capsules match this filter. Clear the filter to see all."
-- **error** — `UI-C-024` verbatim: "Capsules could not be loaded. Retry, or check that the
-  somaAgent01 API is reachable."
-- **permission-denied** — Create disabled with inline reason
-  "Create capsule requires the capsule-editor role." Grid remains readable; `UI-C-025` verbatim:
-  "You do not have permission to manage capsules. Ask a platform admin for the capsule-editor role."
-- **offline** — Grid shows last cached page ("Showing the last synced page."); Create/Archive
-  disabled with reason "Capsule actions are unavailable offline."
-
-## 4. Modal overlays
-
-| Trigger | Modal | Contents |
+| UI column | API field | Notes |
 |---|---|---|
-| UI-A-031 Create capsule | UI-M-03 Dialog | Name field + Create / Cancel. |
-| Card menu → Archive | UI-M-03 Dialog | "Archive ‹capsule.name›?" Cancel / Archive. |
-| Card Open | — | Navigates to UI-S-12; no modal. |
-| — | UI-M-01 / UI-M-02 | Not used by this screen. |
+| Agent | `agent_id` | path key of `GET /api/v2/agents/{agent_id}/capsule` |
+| Capsule | `capsule_id` | `str(capsule.id)` |
+| Name | `name` | |
+| Status | `status` | as stored — no invented lifecycle enum |
+| Description | `description` | `Optional` → `—` when null |
 
-## 5. Honesty notes
+Route: `GET /api/v2/agents/{agent_id}/capsule` (one capsule per agent).
+There is **no list-all-capsules endpoint** — the list is built from the agents view
+(`/admin/agents` → `soma-agents-view`) and each row’s capsule read.
 
-Card values are placeholders from the capsule store. Version chips show store values only —
-no invented semver strings.
+---
+
+## 3. Control map
+
+| # | Control | API / behavior | Live? |
+|---|---|---|---|
+| 1 | Search | Client filter over loaded agents. | live |
+| 2 | Status filter | Filter on `status` as stored. | live |
+| 3 | Capsule row | Shows `agent_id · capsule_id · name · status · description`. | live |
+| 4 | Open | `router →` UI-S-12 for that `agent_id` (capsule editor). | live |
+| 5 | Refresh | Re-fetch the agents + capsule reads. | live |
+| 6 | Total | `—` until the server reports. Never `0` on failure. | live |
+
+---
+
+## 4. Numbered journey — find a capsule and open it
+
+| Step | Where | Action | API | Result |
+|---|---|---|---|---|
+| **1** | `/admin/agents` | Screen loads | agents view + `GET …/capsule` per agent | Table rows with real `CapsuleConfigOut` scalars. |
+| **2** | list | Search `name` / filter `status` | client filter | Table narrows. |
+| **3** | list | Click a row’s **Open** | `router →` UI-S-12 | Capsule editor for that `agent_id`. |
+| **4** | list | Row with no capsule | `GET …/capsule` 404 | Row shows `—` / “No capsule”; Open disabled. |
+
+---
+
+## 5. States
+
+| State | Verbatim / behavior |
+|---|---|
+| loading | Skeleton rows. “Loading capsules…” |
+| empty | “No capsules yet. Open an agent to create its capsule.” |
+| empty (filter) | “No capsules match this filter. Clear the filter to see all.” |
+| error | “Capsules could not be loaded. Retry, or check that the somaAgent01 API is reachable.” |
+| 404 (one agent) | That row: “No capsule” — other rows unaffected. |
+| permission-denied | Read-only; “You do not have permission to manage capsules. Ask a platform admin for the capsule-editor role.” |
+| offline | “Capsule actions are unavailable offline.” |
+
+---
+
+## 6. Honesty
+
+Card values are `CapsuleConfigOut` fields only. No invented semver, lifecycle, or metric chips.
+Totals are `—` until the server reports.
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/views/soma-entity-views.ts` | Live agents view |
+| `GET /api/v2/agents/{agent_id}/capsule` | `CapsuleConfigOut` (`schemas.py:75-87`) |
+| `SOMA-UI-CATALOG-001.md` §3 | Real capsule fields |
 
 End of Document

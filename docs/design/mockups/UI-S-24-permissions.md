@@ -1,70 +1,103 @@
-# UI-S-24 — Permissions
+# UI-S-24 — Permissions (matrix pane)
 
-Screen UI-S-24 · Facet: Platform · Route: `/saas/permissions`
-Source view per `SOMA-UI-IDREG-001.md`: `saas-permissions` (`webui/src/views/saas-permissions.ts`).
-Route matches `webui/src/main.ts:160`.
+Screen UI-S-24 · Same route as UI-S-23: **`/platform/roles`** · **`/platform/role-matrix`** ·
+**`/soma/permissions`** · **`/platform/permissions`** (`main.ts:164-166` → `soma-admin-roles-list`)
+Chrome: **UI-S-00 thin** (abbrev) · Catalog: `SOMA-UI-CATALOG-001.md` §2 Platform
+Live view: `webui/src/views/soma-admin-roles-list.ts` (`soma-admin-roles-list`)
 
-## 1. ASCII wireframe — whole screen inside UI-S-00 chrome
+**Status: LIVE — as a pane, not a destination.** The permission matrix is the **secondary pane**
+of the same roles screen (UI-S-23 is the role catalogue pane). One live view serves every alias
+(DUP-7). Do not present this as a second nav target.
+
+---
+
+## 1. ASCII wireframe — permission matrix (secondary pane)
 
 ```
-┌─[capsule ▾] ‹capsule.name› [v‹semver›][‹lifecycle›]───────── IQ[──●──] AUTO[─●─] BUDGET[─●─] ⌘K─┐
-│ derived (RO): temp ‹› max_tok ‹› rlm ‹› recall ‹› tier ‹› hitl ‹› tokens ‹› cost ‹› think ‹›      │
-├─ Soul  Brain  Hands  Memory  Body  Governance ──────────────────────────────────────────────────┤
-│ LEFT NAV │ WORKSPACE — Permissions [1]                                   │ SURFACES x8             │
-│  Chat    │ ┌────────────────────────────────────────────────────────┐  │ [Files][Tools][Browser] │
-│  Capsule │ │ SEARCH [2] ‹filter.perms…│  GROUP [3] ‹group ▾│         │  │ [Editor][Debug][Capsule]│
-│  Module  │ │ SCOPE [4] ‹scope ▾│                                    │  │ [Brain][Desktop†] †GATED│
-│  Platform│ │ ┌────────────────────────────────────────────────────┐ │  │                         │
-│  Ops     │ │ │ PERMISSION TABLE [5]                               │ │  │                         │
-│  Settings│ │ │ ‹perm.name›  ‹group›  ‹scope›  ‹state›  [⋯]       │ │  │                         │
-│          │ │ │ ‹perm.name›  ‹group›  ‹scope›  ‹state›  [⋯]       │ │  │                         │
-│          │ │ │ ‹perm.name›  ‹group›  ‹scope›  ‹state›  [⋯]       │ │  │                         │
-│          │ │ │ (scroll)                                           │ │  │                         │
-│          │ │ └────────────────────────────────────────────────────┘ │  │                         │
-│          │ │ [ Grant ] [6]   [ Revoke ] [7]                          │  │                         │
-│          │ └────────────────────────────────────────────────────────┘  │                         │
-├──────────┴──────────────────────────────────────────────────────────────┴─────────────────────────┤
-│ INSTANCES ‹instance.id› ‹instance.status› │ NEURO: DA ‹› 5-HT ‹› NE ‹› ACh ‹› │ synced ‹ts›      │
-└───────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  ROLES · PERMISSIONS                                        [Save matrix]  [⟳ Refresh]          │
+│                                                                                                  │
+│  ┌─ ROLE LIST (UI-S-23 pane) ───┐  ┌─ PERMISSION MATRIX (this pane) ────────────────────────┐  │
+│  │  ‹role.name›              ●  │  │  perm              ‹role.a›   ‹role.b›   ‹role.c›      │  │
+│  │  ‹role.name›                 │  │  ─────────────     ────────   ────────   ────────      │  │
+│  │  ‹role.name›                 │  │  ‹perm.name›         [x]        [ ]        [x]         │  │
+│  │  [+ New role]                │  │  ‹perm.name›         [x]        [x]        [ ]         │  │
+│  └──────────────────────────────┘  │  ‹perm.name›         [ ]        [ ]        [ ]         │  │
+│                                    │  ‹perm.name›         [x]        [ ]        [ ]         │  │
+│                                    │  (scroll)                                                 │  │
+│                                    │                                                             │  │
+│                                    │  [ Save matrix ]  ← enabled while dirty                    │  │
+│                                    └─────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. Control map
+---
 
-| # | UI-C-* | control | notes |
-|---|---|---|---|
-| 1 | — | Workspace region (Permissions) | Screen shell. |
-| 2 | UI-C-021 | Search | Filters the table live. |
-| 3 | UI-C-114 | Group filter select | Permission groups as stored. |
-| 4 | UI-C-115 | Scope select | Scope values as stored (tenant / platform / …). |
-| 5 | UI-C-116 | Permission table | Rows `‹perm.name›` / `‹group›` / `‹scope›` / `‹state›`. |
-| 5 | UI-C-028 | Row action menu (⋯) | Grant / Revoke / Open detail. Revoke opens UI-M-03. |
-| 6 | UI-A-059 | Grant permission | Grants the selection to the current role/scope context. |
-| 7 | UI-A-060 | Revoke permission | DESTRUCTIVE — always opens UI-M-03. |
+## 2. Real data
 
-## 3. State variants
-
-- **loading** — Table shows 5 skeleton rows. Verbatim label: "Loading permissions…"
-- **empty** — `UI-C-023` verbatim: "No permissions match this filter. Clear the filter to see all."
-  With no data at all: "No permissions are defined for this scope yet."
-- **error** — `UI-C-024` verbatim: "Permissions could not be loaded. Retry, or check that the
-  somaAgent01 API is reachable."
-- **permission-denied** — Grant/Revoke disabled with inline reason
-  "Permission changes require the platform-admin role." Table remains readable; `UI-C-025` verbatim:
-  "You do not have permission to change permissions. Ask a platform admin for the platform-admin role."
-- **offline** — Table shows last cached page ("Showing the last synced page."); Grant/Revoke
-  disabled with reason "Permission changes are unavailable offline."
-
-## 4. Modal overlays
-
-| Trigger | Modal | Contents |
+| UI field | Source | Absent handling |
 |---|---|---|
-| UI-A-060 Revoke permission | UI-M-03 Dialog | "Revoke ‹perm.name› from ‹scope›?" Cancel / Revoke. |
-| Row → Open detail | UI-M-01 Drawer (420px) | Full permission record; ESC closes, focus trap. |
-| — | UI-M-02 | Not used by this screen. |
+| Permission name | permission record | required |
+| Role column header | role record | required |
+| Cell checked | role↔permission assignment | unchecked when not assigned |
 
-## 5. Honesty notes
+Same `soma-admin-roles-list` view as UI-S-23 — no second endpoint, no second store.
 
-Permission names, groups and scopes are store placeholders. The table shows stored grants only —
-no assumed effective-permission calculations are drawn.
+---
+
+## 3. Control map
+
+| # | Control | API / behavior | Live? |
+|---|---|---|---|
+| 1 | Role columns | From the role list (UI-S-23 pane). | live |
+| 2 | Permission rows | From the permission record set. | live |
+| 3 | Cell toggle | Marks role↔permission assignment dirty. | live |
+| 4 | Save matrix | Persist all assignment edits. Disabled until dirty. | live |
+| 5 | Refresh | Re-fetch roles + assignments. | live |
+
+---
+
+## 4. Numbered journey — toggle a permission
+
+| Step | Where | Action | API | Result |
+|---|---|---|---|---|
+| **1** | `/platform/roles` | Screen loads | roles admin API | Matrix pane shows assignments. |
+| **2** | matrix | Toggle a cell for the selected role | — | Cell dirty → **Save matrix** enabled. |
+| **3** | matrix | Toggle more cells | — | All edits stay dirty. |
+| **4** | matrix | Click **Save matrix** | roles admin API | Assignments persisted; dirty cleared. |
+| **5** | matrix | **Refresh** | roles admin API | Server truth repainted. |
+
+---
+
+## 5. States
+
+| State | Verbatim / behavior |
+|---|---|
+| loading | “Loading permissions…” — skeleton rows. |
+| empty | “No permissions defined yet.” |
+| error | “Permissions could not be loaded. Retry, or check that the somaAgent01 API is reachable.” |
+| dirty | **Save matrix** enabled. |
+| save fail | “Matrix was not saved. Your edits are still here — try again.” |
+| permission-denied | Read-only toggles; “Role administration requires the platform-admin role.” |
+| offline | “Permission changes are unavailable offline.” |
+
+---
+
+## 6. Honesty
+
+Permission names and assignments come from the store. No invented permission catalogue, no
+derived policy labels. This pane never appears as its own nav entry (DUP-7).
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/main.ts:164-166` | All four aliases → `soma-admin-roles-list` |
+| `webui/src/views/soma-admin-roles-list.ts` | Live screen (catalogue + matrix panes) |
+| `SOMA-UI-NAV-AUDIT-001.md` §3 DUP-7 | UI-S-23 + UI-S-24 are panes of one screen |
 
 End of Document

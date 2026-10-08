@@ -1,69 +1,117 @@
-# UI-S-17 — Capability registry
+# UI-S-17 — Capability registry (tools catalog)
 
-Screen UI-S-17 · Facet: Module · Route: NEW (not present in `webui/src/main.ts` today).
-Source view per `SOMA-UI-IDREG-001.md`: NEW.
+Screen UI-S-17 · Subview of **`/admin/agents`** (`main.ts:258` → `soma-agents-view`)
+Chrome: **UI-S-00 thin** (abbrev) · Catalog: `SOMA-UI-CATALOG-001.md` §3 Tools
+Live: `GET /tools/catalog` → `ToolCatalogItem[]`
 
-## 1. ASCII wireframe — whole screen inside UI-S-00 chrome
+**Status: LIVE.** The **catalog registry** of every capability — `ToolCatalogItem` fields only:
+`name` · `description` · `category` · `enabled` (`admin/tools/api/tools.py:33-39`).
+
+One canonical store: `admin.core.models.Capability` (`is_enabled`, `category`, `schema`).
+Same store powers UI-S-15/16 (runtime `ToolInfo`) and Settings › Tools (UI-S-55) — this screen is
+the full registry with category + enable; it is **not** a second inventory.
+
+---
+
+## 1. ASCII wireframe — capability registry
 
 ```
-┌─[capsule ▾] ‹capsule.name› [v‹semver›][‹lifecycle›]───────── IQ[──●──] AUTO[─●─] BUDGET[─●─] ⌘K─┐
-│ derived (RO): temp ‹› max_tok ‹› rlm ‹› recall ‹› tier ‹› hitl ‹› tokens ‹› cost ‹› think ‹›      │
-├─ Soul  Brain  Hands  Memory  Body  Governance ──────────────────────────────────────────────────┤
-│ LEFT NAV │ WORKSPACE — Capability registry [1]                           │ SURFACES x8             │
-│  Chat    │ ┌────────────────────────────────────────────────────────┐  │ [Files][Tools][Browser] │
-│  Capsule │ │ SEARCH [2] ‹filter.capabilities…│  KIND [3] ‹kind ▾│   │  │ [Editor][Debug][Capsule]│
-│  Module* │ │ ┌────────────────────────────────────────────────────┐ │  │ [Brain][Desktop†] †GATED│
-│  Platform│ │ │ CAPABILITY TABLE [4]                               │ │  │                         │
-│  Ops     │ │ │ ‹capability.name›  ‹kind›  ‹provider›  ‹state›    │ │  │                         │
-│  Settings│ │ │ ‹capability.name›  ‹kind›  ‹provider›  ‹state›    │ │  │                         │
-│          │ │ │ ‹capability.name›  ‹kind›  ‹provider›  ‹state›    │ │  │                         │
-│          │ │ │ (scroll)                                           │ │  │                         │
-│          │ │ └────────────────────────────────────────────────────┘ │  │                         │
-│          │ │ [ Register capability ] [5]   [ Refresh ] [6]          │  │                         │
-│          │ │ source: ‹registry.source›   last scan ‹ timestamp ›   │  │                         │
-│          │ └────────────────────────────────────────────────────────┘  │                         │
-├──────────┴──────────────────────────────────────────────────────────────┴─────────────────────────┤
-│ INSTANCES ‹instance.id› ‹instance.status› │ NEURO: DA ‹› 5-HT ‹› NE ‹› ACh ‹› │ synced ‹ts›      │
-└───────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  CAPABILITIES — tools catalog                                                [⟳ Refresh]        │
+│  [Search capabilities…              ]  category [all ▾]                                          │
+│                                                                                                  │
+│  ┌─ CATALOG TABLE (server order) ────────────────────────────────────────────────────────────┐  │
+│  │ name               description                    category        enabled                 │  │
+│  │ ‹name›             ‹description | —›              ‹category | —›  [● on / ○ off]           │  │
+│  │ ‹name›             ‹description | —›              ‹category | —›  [● on / ○ off]           │  │
+│  │ (scroll)                                                                                   │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                  │
+│  total: ‹n | —› capabilities                                                 [Open]             │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. Control map
+No “Register capability” button, no registry-source line, no last-scan timestamp — none of those
+are `ToolCatalogItem` fields and no such endpoint exists.
 
-| # | UI-C-* | control | notes |
+---
+
+## 2. Real data — `ToolCatalogItem`
+
+| UI column | API field | Type | Absent handling |
 |---|---|---|---|
-| 1 | — | Workspace region (Capability registry) | Screen shell. |
-| 2 | UI-C-021 | Capability search | Filters the table live. |
-| 3 | UI-C-094 | Kind filter select | Kinds as the registry stores them. |
-| 4 | UI-C-095 | Capability table | Rows `‹capability.name›` / `‹kind›` / `‹provider›` / `‹state›`. |
-| 4 | UI-C-028 | Row action menu (⋯) | Open / Bind / Unbind. Unbind opens UI-M-03. |
-| 5 | UI-A-045 | Register capability | Opens UI-M-03 dialog with the registration fields. |
-| 6 | UI-A-004 | Refresh | Re-scans the registry; updates `last scan ‹ timestamp ›`. |
+| Name | `name` | `str` | required |
+| Description | `description` | `Optional[str]` | `—` |
+| Category | `category` | `Optional[str]` | `—` |
+| Enabled | `enabled` | `bool` (default true) | toggle state |
 
-## 3. State variants
-
-- **loading** — Table shows 5 skeleton rows. Verbatim label: "Loading capabilities…"
-- **empty** — `UI-C-023` verbatim: "No capabilities registered. Register a capability, or install a module that provides one."
-  Empty under a filter verbatim: "No capabilities match this filter. Clear the filter to see all."
-- **error** — `UI-C-024` verbatim: "Capability registry could not be loaded. Retry, or check that the
-  somaAgent01 API is reachable."
-- **permission-denied** — Register/Unbind disabled with inline reason
-  "Registry changes require the operator role." Table remains readable; `UI-C-025` verbatim:
-  "You do not have permission to change the capability registry. Ask a platform admin for the operator role."
-- **offline** — Table shows last cached page ("Showing the last synced page."); Register/Refresh
-  disabled with reason "Registry actions are unavailable offline."
-
-## 4. Modal overlays
-
-| Trigger | Modal | Contents |
+| Action | Endpoint | Payload |
 |---|---|---|
-| UI-A-045 Register capability | UI-M-03 Dialog | Name / kind / provider fields + Register / Cancel. |
-| Row → Unbind | UI-M-03 Dialog | "Unbind ‹capability.name› from its hook?" Cancel / Unbind. |
-| Row → Open | — | Navigates to UI-S-18; no modal. |
-| — | UI-M-01 / UI-M-02 | Not used by this screen. |
+| List | `GET /tools/catalog` | — → `ToolCatalogItem[]` (from `Capability.objects.all()`) |
+| Enable/Disable | `PUT /tools/catalog/{name}` | `ToolCatalogItem` (`enabled`, `category`, `description`) |
 
-## 5. Honesty notes
+Note the path shape: `GET /tools/catalog` · `PUT /tools/catalog/{name}` (the catalog router, not
+`/api/v2/tools` — that one is the runtime `ToolInfo` list, UI-S-15).
 
-Capability names, kinds, providers and states are store placeholders. Registry source and scan
-timestamps are placeholders too — no invented catalogue statistics.
+---
+
+## 3. Control map
+
+| # | Control | API / behavior | Live? |
+|---|---|---|---|
+| 1 | Search | Client filter over loaded rows. | live |
+| 2 | Category filter | Filter on `category` as stored. | live |
+| 3 | Catalog row | `name` · `description` · `category` · `enabled`. | live |
+| 4 | Enabled toggle | `PUT /tools/catalog/{name}` with `{name, description, category, enabled}`. | live |
+| 5 | Open | `router →` UI-S-18 for that `name`. | live |
+| 6 | Refresh | `GET /tools/catalog` again. | live |
+| 7 | Total | `—` until the server reports. | live |
+
+---
+
+## 4. Numbered journey — toggle a capability
+
+| Step | Where | Action | API | Result |
+|---|---|---|---|---|
+| **1** | `/admin/agents` | Open Capabilities | `GET /tools/catalog` | Registry rows with real fields. |
+| **2** | registry | Filter `category` / search `name` | client filter | Table narrows. |
+| **3** | registry | Flip **enabled** on a row | `PUT /tools/catalog/{name}` | Toggle reflects the saved `enabled`. |
+| **4** | registry | Click **Open** | `router →` UI-S-18 | Detail/edit for that name. |
+| **5** | registry | Need runtime-only view | — | UI-S-15 (`GET /api/v2/tools`). Not a second registry. |
+
+---
+
+## 5. States
+
+| State | Verbatim / behavior |
+|---|---|
+| loading | “Loading capabilities…” — skeleton rows. |
+| empty | “No capabilities registered.” |
+| empty (filter) | “No capabilities match this filter. Clear the filter to see all.” |
+| error | “Capability registry could not be loaded. Retry, or check that the tools service is reachable.” |
+| save fail (toggle) | “Could not update this capability. Nothing was changed.” |
+| offline | “Capability actions are unavailable offline.” |
+
+---
+
+## 6. Honesty
+
+Rows are `ToolCatalogItem` fields only. No invented kind/provider/state columns, no registry
+source, no scan timestamps, no install counts. `category` and `description` render `—` when the
+server omits them.
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `GET /tools/catalog` | `ToolCatalogItem[]` (`tools.py:74-91`) |
+| `PUT /tools/catalog/{name}` | Upsert enable/category/description (`tools.py:93-110`) |
+| `admin/tools/api/tools.py:33-39` | `ToolCatalogItem` schema |
+| `admin.core.models.Capability` | Canonical store |
+| `SOMA-UI-CATALOG-001.md` §3 | Real tool fields |
 
 End of Document

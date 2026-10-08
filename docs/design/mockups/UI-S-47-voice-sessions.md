@@ -1,60 +1,125 @@
-# UI-S-47 — Voice sessions
+# UI-S-47 — Voice sessions (run surface)
 
-**Voice sessions** — Voice workspace column (alias /platform/voice/sessions) — route `/voice/sessions` — facet **Voice**.
-Chrome abbreviated (UI-S-00). Facet tabs and surface rail are visible.
+Screen UI-S-47 · Routes: **`/voice/sessions`** · **`/platform/voice/sessions`**
+(`main.ts:401` → `soma-voice-sessions`)
+Chrome: **UI-S-00 thin** (abbrev) · Catalog: `SOMA-UI-CATALOG-001.md` §2 Voice
+Live view: `webui/src/views/soma-voice-sessions.ts` (`soma-voice-sessions`)
+
+**Status: LIVE — run surface only.**
+
+> **Voice config home = Settings › Voice (UI-S-48-settings-voice) ONLY** (DUP-6).
+> This screen lists past voice runs. It holds **no persona editor** — management lives in
+> Settings › Voice.
+
+---
+
+## 1. ASCII wireframe — voice sessions workspace
 
 ```
-┌─ UI-S-00 chrome (abbrev) ────────────────────────────────────────────────────────────────────────┐
-│ capsule: <capsule.name>                                                                         │
-│ version: <version>    lifecycle: <lifecycle>                                                    │
-│ persona knobs: (IQ <val>)(auto <val>)(budget <val>)                                             │
-│ derived AgentIQ RO (greyed, never inputs):                                                      │
-│   temperature <v>  max_tokens <v>  rlm_iterations <v>                                           │
-│   recall_limit <v>  model_tier <v>  brain_query_enabled <v>                                     │
-│   require_hitl <v>  tool_approval <v>  egress_allowed <v>                                       │
-│   token_limit <v>  cost_tier <v>  thinking_budget <v>                                           │
-├─────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ facet tabs x6:  [Soul][Brain][Hands][Memory][Body][Governance]                                  │
-│ command palette: <Cmd-K>                                                                        │
-├────────────────────────────────────────────────────────────────────────┼────────────────────────┤
-│ WORKSPACE  facet: Voice                                                │ SURFACE RAIL x8        │
-│  route: /voice/sessions                                                │  [1] Files             │
-│  Voice sessions     filter: [state]  window: [24h][7d] [custom]        │  [2] Tools             │
-│                                                                        │  [3] Browser           │
-│  | session id | persona | state | started | duration | [open][x] |     │  [4] Editor            │
-│  | <id>       | <name>  | <st>  | <ts>    | <dur>    | [open][x] |     │  [5] Debug             │
-│  | <id>       | <name>  | <st>  | <ts>    | <dur>    | [open][x] |     │  [6] Capsule           │
-│  | <id>       | <name>  | <st>  | <ts>    | <dur>    | [open][x] |     │  [7] Brain             │
-│  | <id>       | <name>  | <st>  | <ts>    | <dur>    | [open][x] |     │  [8] Desktop           │
-│                                                                        │       GATED (UI-X-08)  │
-│  page <n> of <n>              [prev] [next]                            │                        │
-│                                                                        │                        │
-│  Note: session rows come from the voice session API.                   │                        │
-│  No session is drawn that the API did not return.                      │                        │
-├────────────────────────────────────────────────────────────────────────┼────────────────────────┤
-│ instance strip: <session_id>  state: <state>  started: <ts>                                     │
-│ neuro meters x4 (RO): DA <v>  5-HT <v>  NE <v>  ACh <v>                                         │
-│   neuromodulator synced_at: <ts>   (no value without a real sync)                               │
-└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  VOICE SESSIONS          filter: [state ▾]  window: [24h][7d][custom]          [⟳ Refresh]      │
+│                                                                                                  │
+│  ┌─ SESSION TABLE (server order) ────────────────────────────────────────────────────────────┐  │
+│  │  session id        persona           state            started           duration          │  │
+│  │  ‹id›              ‹name | —›        ‹state›          ‹ts›              ‹dur | —›         │  │
+│  │  ‹id›              ‹name | —›        ‹state›          ‹ts›              ‹dur | —›         │  │
+│  │  (scroll)                                                              [open] [Delete…]   │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                  │
+│  page ‹n› of ‹n | —›                                    [prev] [next]                            │
+│                                                                                                  │
+│  Note: session rows come from the voice session API.                                             │
+│  No session is drawn that the API did not return.                                                │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Control map.**
+No facet tabs, no surface rail, no IQ/AUTO/BUDGET knobs, no instance strip (`UI-S-00` §3).
 
-| # | UI-C-* | control | notes |
+---
+
+## 2. Real data
+
+| UI field | Source | Absent handling |
+|---|---|---|
+| session id | session record | required |
+| persona | session record (`name`) | `—` |
+| state | session record | as stored |
+| started | session record | `—` |
+| duration | session record | `—` |
+| page / total | list response | `—` (never `0` on failure) |
+
+| Action | Endpoint / behavior |
+|---|---|
+| List | voice session API (filter by state · window) |
+| Open | UI-M-01 drawer — session detail / transcript |
+| Delete | UI-M-03 confirm → voice session API |
+
+---
+
+## 3. Control map
+
+| # | Control | API / behavior | Live? |
 |---|---|---|---|
-| 1 | UI-C-063 | state filter | Filters on the real session state values the API reports. |
-| 2 | UI-C-094 | time-window selector | Passed to the API as-is. |
-| 3 | UI-C-102 | voice session row | session id, persona, state, started, duration all `‹ live value ›`. |
-| 4 | UI-C-068 | open (secondary) | Opens UI-M-01 drawer with the session detail/transcript. |
-| 5 | UI-C-069 | delete session (destructive) | Opens UI-M-03. disabled-when: caller lacks voice-admin role — disabled-reason: "Requires the voice-admin role." |
-| 6 | UI-C-078 | pagination | Disabled when the API reports no further page — disabled-reason: "No further page." |
+| 1 | State filter | Filters on real session states the API reports. | live |
+| 2 | Time window | `24h` · `7d` · `custom` — passed to the API as-is. | live |
+| 3 | Session row | `id` · `persona` · `state` · `started` · `duration`. | live |
+| 4 | Open | UI-M-01 drawer with detail / transcript. | live |
+| 5 | Delete… | UI-M-03 confirm (destructive). Disabled with reason without voice-admin. | live |
+| 6 | Pagination | Disabled when the API reports no further page. | live |
+| 7 | Refresh | Re-fetch the list. | live |
 
-**State variants.**
+---
 
-- **Loading.** Skeleton rows plus a `loading` chip in the workspace header. No counts, charts or metrics are drawn while loading.
-- **Empty.** "No voice sessions in this window."
-- **Error.** "Couldn't load voice sessions. ‹ reason from API ›"
-- **Permission-denied.** "You don't have access to voice sessions. Requires the voice-user role."
-- **Offline.** You're offline. Changes will not be saved until the connection returns.
+## 4. Numbered journey — find and inspect a past run
 
-**Modal overlays.** UI-M-01 Drawer — session detail (transcript, timing, persona used). UI-M-03 Dialog — "Delete voice session <session_id>?" (destructive).
+| Step | Where | Action | API | Result |
+|---|---|---|---|---|
+| **1** | `/voice/sessions` | Screen loads | voice session API | Session rows paint. |
+| **2** | sessions | Filter by `state` / pick a window | voice session API | Table narrows. |
+| **3** | sessions | Click **open** on a row | — | UI-M-01 drawer with detail / transcript. |
+| **4** | sessions | **Delete…** → confirm | UI-M-03 → voice session API | Row removed. |
+| **5** | sessions | **Next** page | voice session API | More rows, or button disabled. |
+| **6** | sessions | Need to **manage** personas | — | **Settings › Voice** (UI-S-48-settings-voice) — never here (DUP-6). |
+
+---
+
+## 5. States
+
+| State | Verbatim / behavior |
+|---|---|
+| loading | “Loading voice sessions…” — skeleton rows. |
+| empty | “No voice sessions in this window.” |
+| error | “Couldn’t load voice sessions. ‹ reason from API ›” |
+| permission-denied | “You don’t have access to voice sessions. Requires the voice-user role.” |
+| delete denied | Delete disabled: “Requires the voice-admin role.” |
+| offline | “You’re offline. Session data may be stale.” |
+
+---
+
+## 6. Modal overlays
+
+| Trigger | Modal | Contents |
+|---|---|---|
+| Open row | UI-M-01 Drawer | Session detail (transcript, timing, persona used). |
+| Delete… | UI-M-03 | “Delete voice session ‹id›?” Cancel / Delete (destructive). |
+
+---
+
+## 7. Honesty
+
+Rows are session-record fields only. No invented utterances, durations, or counts. Persona CRUD is
+**not** duplicated here (DUP-6).
+
+---
+
+## 8. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/main.ts:401` | `/voice/sessions` · `/platform/voice/sessions` → `soma-voice-sessions` |
+| `webui/src/views/soma-voice-sessions.ts` | Live run surface |
+| `UI-S-48-settings-voice.md` | The one voice **config** home (DUP-6) |
+
+End of Document

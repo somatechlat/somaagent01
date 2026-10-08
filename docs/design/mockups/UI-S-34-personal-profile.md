@@ -1,63 +1,132 @@
-# UI-S-34 — Personal profile
+# UI-S-34 — Personal profile (Agent Soma)
 
-**Personal profile** — Authenticated workspace column — route `/profile` — facet **Auth**.
-Chrome abbreviated (UI-S-00). Facet tabs and surface rail are visible.
+Screen UI-S-34 · Route: `/profile` · Authenticated  
+Live: `webui/src/views/soma-personal-profile.ts` · Router: `webui/src/main.ts`  
+Entry: chat left rail → **👤 user** → `/profile`. Not a Settings section.
+
+**Product:** Agent Soma account profile. Thin workspace chrome.  
+Forbidden on screen: the word "slot" · SaaS / Eye of God branding · fake metrics · facet tabs · surface rail · IQ knobs · chat left rail · canvas.
+
+---
+
+## 1. Purpose
+
+View and edit the signed-in user's identity, manage account security (password, MFA), and review active sessions. Own workspace chrome — no chat rail (only `/chat` mounts the chat rail).
+
+---
+
+## 2. ASCII wireframe — `/profile` (desktop)
 
 ```
-┌─ UI-S-00 chrome (abbrev) ────────────────────────────────────────────────────────────────────────┐
-│ capsule: <capsule.name>                                                                         │
-│ version: <version>    lifecycle: <lifecycle>                                                    │
-│ persona knobs: (IQ <val>)(auto <val>)(budget <val>)                                             │
-│ derived AgentIQ RO (greyed, never inputs):                                                      │
-│   temperature <v>  max_tokens <v>  rlm_iterations <v>                                           │
-│   recall_limit <v>  model_tier <v>  brain_query_enabled <v>                                     │
-│   require_hitl <v>  tool_approval <v>  egress_allowed <v>                                       │
-│   token_limit <v>  cost_tier <v>  thinking_budget <v>                                           │
-├─────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ facet tabs x6:  [Soul][Brain][Hands][Memory][Body][Governance]                                  │
-│ command palette: <Cmd-K>                                                                        │
-├────────────────────────────────────────────────────────────────────────┼────────────────────────┤
-│ WORKSPACE  facet: Auth                                                 │ SURFACE RAIL x8        │
-│  route: /profile                                                       │  [1] Files             │
-│  Personal profile                           [Save] [Cancel]            │  [2] Tools             │
-│                                                                        │  [3] Browser           │
-│  Identity                                                              │  [4] Editor            │
-│  ┌── avatar ──┐  Display name  ┌─────────────────────┐                 │  [5] Debug             │
-│  │  <avatar>  │  │ <user.name>    │                                    │  [6] Capsule           │
-│  └────────────┘  └─────────────────────┘                               │  [7] Brain             │
-│  [Upload avatar]  Email  <user.email>  (read-only)                     │  [8] Desktop           │
-│                                                                        │       GATED (UI-X-08)  │
-│  Security                                                              │                        │
-│  [Change password]  [Manage MFA -> /mfa/setup]  [Sign out everywhere]  │                        │
-│                                                                        │                        │
-│  Active sessions                                                       │                        │
-│  | device | ip | last seen | current | [revoke] |                      │                        │
-│  | <ua>   | <ip> | <ts>  | yes/no  | [revoke] |                        │                        │
-│  | <ua>   | <ip> | <ts>  | yes/no  | [revoke] |                        │                        │
-├────────────────────────────────────────────────────────────────────────┼────────────────────────┤
-│ instance strip: <session_id>  state: <state>  started: <ts>                                     │
-│ neuro meters x4 (RO): DA <v>  5-HT <v>  NE <v>  ACh <v>                                         │
-│   neuromodulator synced_at: <ts>   (no value without a real sync)                               │
-└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────────┐
+│ [←]  SOMA · Profile                                    [Save] [Cancel]                        │
+├──────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                              │
+│  Personal profile                                                                            │
+│                                                                                              │
+│  Identity                                                                                    │
+│  ┌── avatar ──┐  Display name  ┌─────────────────────┐                                        │
+│  │  <avatar>  │  │ <user.name>    │                                       │
+│  └────────────┘  └─────────────────────┘                                        │
+│  [Upload avatar]  Email  <user.email>  (read-only)                                          │
+│                                                                                              │
+│  Security                                                                                    │
+│  [Change password]  [Manage MFA → /mfa/setup]  [Sign out everywhere]                         │
+│                                                                                              │
+│  Active sessions                                                                             │
+│  | device | ip | last seen | current | [revoke] |                                            │
+│  | <ua>   | <ip> | <ts>    | yes/no  | [revoke] |                                            │
+│  | <ua>   | <ip> | <ts>    | yes/no  | [revoke] |                                            │
+│                                                                                              │
+├──────────────────────────────────────────────────────────────────────────────────────────────┤
+│ status: <save state> · permission: own account only                                          │
+└──────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Control map.**
+**Chrome law.** Thin workspace top ([←] back · brand · Save/Cancel). No chat left rail, no canvas, no facet tabs, no surface rail. Only `/chat` mounts the chat rail.
 
-| # | UI-C-* | control | notes |
-|---|---|---|---|
-| 1 | UI-C-087 | avatar / identity display | Avatar is a real upload or a letter fallback — never a stock image. |
-| 2 | UI-C-061 | display name input | Editable. |
-| 3 | UI-C-073 | email readout | Read-only here. Email change is a separate verified flow and is not drawn as editable. |
-| 4 | UI-C-067 | Save (primary) | disabled-while: request in flight. |
-| 5 | UI-C-088 | active sessions list | Rows come from the sessions API. No session rows are invented. |
-| 6 | UI-C-069 | Sign out everywhere (destructive) | Opens UI-M-03. |
+---
 
-**State variants.**
+## 3. User journey (numbered clicks)
 
-- **Loading.** Skeleton rows plus a `loading` chip in the workspace header. No counts, charts or metrics are drawn while loading.
-- **Empty.** "No active sessions to show."
-- **Error.** "Couldn't load your profile. ‹ reason from API ›"
-- **Permission-denied.** "You don't have access to this profile. Sign in with your own account."
-- **Offline.** You're offline. Changes will not be saved until the connection returns.
+1. In chat (UI-S-07) → click **👤 user** in left rail → `/profile`.
+2. Edit **Display name**.
+3. Click **Upload avatar** → pick image → avatar previews.
+4. Click **Save** → spinner `Saving...` → confirmation.
+5. Click **Manage MFA** → `/mfa/setup` (UI-S-32).
+6. Click **Change password** → password dialog → current + new + confirm → Save.
+7. In **Active sessions** → click **[revoke]** on a row → confirm dialog → session revoked.
+8. Click **Sign out everywhere** → confirm dialog → all sessions revoked → `/login`.
+9. Click **[←]** → back to `/chat`.
 
-**Modal overlays.** UI-M-03 Dialog — "Sign out of all sessions, including this one?" (destructive). Per-row [revoke] uses the same dialog pattern.
+---
+
+## 4. Control map
+
+| # | Control | Binding |
+|---|---|---|
+| 1 | Avatar display / Upload avatar | Real upload or letter fallback — never a stock image. |
+| 2 | Display name input | Editable. `PUT /api/v2/auth/me` or profile endpoint. |
+| 3 | Email readout | Read-only. Email change is a separate verified flow — never drawn as editable here. |
+| 4 | Save (primary, header) | Saves identity fields. disabled-while: request in flight. |
+| 5 | Cancel (secondary, header) | Restores last saved values. |
+| 6 | Change password | Opens password dialog (UI-M-01). |
+| 7 | Manage MFA | href `/mfa/setup` → UI-S-32. |
+| 8 | Active sessions list | `GET /api/v2/auth/sessions`. No session rows invented. |
+| 9 | [revoke] (per row) | `DELETE /api/v2/auth/sessions/{id}` via UI-M-03 confirm. |
+| 10 | Sign out everywhere (destructive) | `POST /api/v2/auth/logout-all`. Opens UI-M-03. |
+
+---
+
+## 5. Field / behavior
+
+| Field | Source | Behavior |
+|---|---|---|
+| avatar | upload / letter fallback | Real upload or first-letter fallback. Never a stock image. |
+| display name | `_displayName` | Editable. Required. |
+| email | `GET /api/v2/auth/me` | Read-only on this screen. |
+| sessions | `GET /api/v2/auth/sessions` | Rows: device · ip · last seen · current. |
+| password change | `POST /api/v2/auth/change-password` | Current + new + confirm. Write-only. |
+
+---
+
+## 6. States (verbatim)
+
+| State | Verbatim |
+|---|---|
+| loading | `Loading profile...` |
+| empty | `No active sessions to show.` |
+| error | `Couldn't load your profile. ‹ reason from API ›` |
+| permission | `You don't have access to this profile. Sign in with your own account.` |
+| offline | `You're offline. Changes will not be saved until the connection returns.` |
+| save ok | `Profile updated.` |
+
+---
+
+## 7. Navigation in / out
+
+| Direction | Target | Notes |
+|---|---|---|
+| In | `/profile` | From chat left rail 👤 user chip. |
+| Out | `/chat` | [←] back. |
+| Out | `/mfa/setup` | Manage MFA → UI-S-32. |
+| Out | `/login` | Sign out everywhere / session revoked. |
+
+---
+
+## 8. Modal overlays
+
+- **UI-M-01** Drawer — Change password (current + new + confirm, all write-only).
+- **UI-M-03** Dialog — `Sign out of all sessions, including this one?` (destructive). Per-row [revoke] uses the same dialog pattern.
+
+---
+
+## 9. Acceptance
+
+- [ ] No facet tabs, surface rail, IQ knobs, chat left rail, or canvas
+- [ ] Real routes: `/profile`, `/mfa/setup`
+- [ ] Email is read-only on this screen
+- [ ] Sessions list from real API — no invented rows
+- [ ] All copy verbatim per §6
+
+End of Document

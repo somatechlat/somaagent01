@@ -1,63 +1,141 @@
-# UI-S-46 — Voice chat
+# UI-S-46 — Voice chat (run surface)
 
-**Voice chat** — Voice workspace column (aliases /platform/voice/chat, /voice) — route `/voice/chat` — facet **Voice**.
-Chrome abbreviated (UI-S-00). Facet tabs and surface rail are visible.
+Screen UI-S-46 · Routes: **`/voice`** · **`/voice/chat`** · **`/platform/voice/chat`**
+(`main.ts:407` → `soma-voice-chat`)
+Chrome: **UI-S-00 thin** (abbrev) · Catalog: `SOMA-UI-CATALOG-001.md` §2 Voice
+Live view: `webui/src/views/soma-voice-chat.ts` (`soma-voice-chat`)
+
+**Status: LIVE — run surface only.**
+
+> **Voice config home = Settings › Voice (UI-S-48-settings-voice) ONLY** (DUP-6).
+> This screen is where a voice run happens. It is **not** a persona library and holds **no config
+> editor** — create/edit/default/delete live only in Settings › Voice.
+
+---
+
+## 1. ASCII wireframe — voice run workspace
 
 ```
-┌─ UI-S-00 chrome (abbrev) ────────────────────────────────────────────────────────────────────────┐
-│ capsule: <capsule.name>                                                                         │
-│ version: <version>    lifecycle: <lifecycle>                                                    │
-│ persona knobs: (IQ <val>)(auto <val>)(budget <val>)                                             │
-│ derived AgentIQ RO (greyed, never inputs):                                                      │
-│   temperature <v>  max_tokens <v>  rlm_iterations <v>                                           │
-│   recall_limit <v>  model_tier <v>  brain_query_enabled <v>                                     │
-│   require_hitl <v>  tool_approval <v>  egress_allowed <v>                                       │
-│   token_limit <v>  cost_tier <v>  thinking_budget <v>                                           │
-├─────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ facet tabs x6:  [Soul][Brain][Hands][Memory][Body][Governance]                                  │
-│ command palette: <Cmd-K>                                                                        │
-├────────────────────────────────────────────────────────────────────────┼────────────────────────┤
-│ WORKSPACE  facet: Voice                                                │ SURFACE RAIL x8        │
-│  route: /voice/chat                                                    │  [1] Files             │
-│  Voice chat            persona: [<persona.name> v]  [End session]      │  [2] Tools             │
-│                                                                        │  [3] Browser           │
-│  ┌── transcript ─────────────────────────────────────────┐             │  [4] Editor            │
-│  │ you   : <utterance>                     <ts>           │            │  [5] Debug             │
-│  │ agent : <utterance>                     <ts>           │            │  [6] Capsule           │
-│  │ you   : <utterance>                     <ts>           │            │  [7] Brain             │
-│  └────────────────────────────────────────────────────────┘            │  [8] Desktop           │
-│                                                                        │       GATED (UI-X-08)  │
-│  mic: [state machine: idle|listening|thinking|speaking]                │                        │
-│  ┌──────────────────────────────────────────────┐                      │                        │
-│  │ level meter: ‹ live level ›                   │                     │                        │
-│  └──────────────────────────────────────────────┘                      │                        │
-│  [Hold to talk]  [Mute]  [Type instead]                                │                        │
-│                                                                        │                        │
-│  Composer: [type a message...                ] [Send]                  │                        │
-├────────────────────────────────────────────────────────────────────────┼────────────────────────┤
-│ instance strip: <session_id>  state: <state>  started: <ts>                                     │
-│ neuro meters x4 (RO): DA <v>  5-HT <v>  NE <v>  ACh <v>                                         │
-│   neuromodulator synced_at: <ts>   (no value without a real sync)                               │
-└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  VOICE CHAT          persona: [‹persona.name› ▾]   [End session]         ← Back to chat        │
+│                       ▲ pick only — manage in Settings › Voice (UI-S-48-settings-voice)          │
+│                                                                                                  │
+│  ┌─ TRANSCRIPT ──────────────────────────────────────────────────────────────────────────────┐  │
+│  │  you   : ‹utterance›                                                   ‹ts›               │  │
+│  │  agent : ‹utterance›                                                   ‹ts›               │  │
+│  │  you   : ‹utterance›                                                   ‹ts›               │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                  │
+│  mic state: [ idle | listening | thinking | speaking ]                                            │
+│  ┌─ level meter (drawn only while the mic is open) ──────────────────────────────────────────┐  │
+│  │  ‹ live level ›                                                                            │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                  │
+│  [Hold to talk]   [Mute]   [Type instead]                                                        │
+│                                                                                                  │
+│  ┌─ TEXT COMPOSER (fallback) ────────────────────────────────────────────────────────────────┐  │
+│  │  [type a message…                                              ] [Send]                    │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Control map.**
+No facet tabs, no surface rail, no IQ/AUTO/BUDGET knobs, no instance strip, no chat left rail
+(`UI-S-00` §3). Persona management is **not** on this screen.
 
-| # | UI-C-* | control | notes |
+---
+
+## 2. Real data
+
+| UI element | Source | Absent handling |
+|---|---|---|
+| Persona options | `GET /api/v2/voice/personas` (`VoicePersonaOut`) | empty list → call disabled with its reason |
+| Persona label | `name` · `voice_id` · `is_default` · `is_active` | — |
+| Transcript rows | voice session events | no row is drawn the API did not return |
+| Level meter | live mic levels | empty (not animated) when the mic is closed |
+| Mic state | idle · listening · thinking · speaking | one state at a time |
+
+Synthesis / transcription run against the real voice API:
+
+| Action | Endpoint |
+|---|---|
+| Speak | `POST /api/v2/voice/synthesize` |
+| Listen | `POST /api/v2/voice/transcribe` |
+| List personas | `GET /api/v2/voice/personas` |
+
+Streaming transcription stays disabled: `POST /voice/transcribe/stream` is 503 until Django
+Channels is wired (`voice/api.py:150-154`).
+
+---
+
+## 3. Control map
+
+| # | Control | API / behavior | Live? |
 |---|---|---|---|
-| 1 | UI-C-063 | persona selector | Options from the real persona list (UI-S-48). Empty list disables the call with its reason. |
-| 2 | UI-C-098 | mic / voice capture control | Implements the mic/TTS state machine (idle/listening/thinking/speaking). One state at a time; no visual implies capture when the mic is not open. |
-| 3 | UI-C-099 | audio level / waveform meter | Draws only while the mic is open and levels are live. Otherwise the meter is empty, not animated. |
-| 4 | UI-C-065 | Mute toggle | Local mute. Reflects real device state. |
-| 5 | UI-C-067 | Send (primary) | For the text composer fallback. |
-| 6 | UI-C-069 | End session (destructive) | Opens UI-M-03. disabled-when: no active session — disabled-reason: "No active voice session." |
+| 1 | Persona selector | Options from `GET /api/v2/voice/personas`. Pick only — no CRUD. | live |
+| 2 | Hold to talk / mic | Mic state machine (idle/listening/thinking/speaking). One state at a time. | live |
+| 3 | Level meter | Draws only while the mic is open and levels are live. | live |
+| 4 | Mute | Local mute; reflects real device state. | live |
+| 5 | Type instead / Send | Text composer fallback → `chat.message` / voice run. | live |
+| 6 | End session | UI-M-03 confirm. Disabled with reason when no active session. | live |
+| 7 | Manage in Settings › Voice | `router → /settings` (Voice section) — config home (DUP-6). | live |
 
-**State variants.**
+---
 
-- **Loading.** Skeleton rows plus a `loading` chip in the workspace header. No counts, charts or metrics are drawn while loading.
-- **Empty.** "No voice session yet. Press Hold to talk to start."
-- **Error.** "Couldn't start the voice session. ‹ reason from API ›"
-- **Permission-denied.** "You don't have access to voice chat. Requires the voice-user role."
-- **Offline.** "You're offline. Voice chat needs a connection."
+## 4. Numbered journey — run a voice conversation
 
-**Modal overlays.** UI-M-02 Full-screen — transcript focus (explicit dismiss only). UI-M-03 Dialog — "End this voice session?" (destructive).
+| Step | Where | Action | API | Result |
+|---|---|---|---|---|
+| **1** | `/voice` | Screen loads | `GET /api/v2/voice/personas` | Persona picker filled with real personas. |
+| **2** | run | Pick a persona (or use `is_default`) | — | Selector shows `name`. |
+| **3** | run | **Hold to talk** | mic opens | State → listening; level meter draws. |
+| **4** | run | Release | `POST /api/v2/voice/transcribe` | Utterance lands in the transcript; state → thinking. |
+| **5** | run | Agent replies | `POST /api/v2/voice/synthesize` | State → speaking; audio plays. |
+| **6** | run | **Type instead** → Send | text fallback | Message lands without the mic. |
+| **7** | run | **End session** → confirm | UI-M-03 | Session closed. |
+| **8** | run | Need to **manage** personas | — | **Settings › Voice** (UI-S-48-settings-voice) — never here (DUP-6). |
+
+---
+
+## 5. States
+
+| State | Verbatim / behavior |
+|---|---|
+| loading | Skeleton transcript + `loading` chip. No counts while loading. |
+| empty | “No voice session yet. Press Hold to talk to start.” |
+| error | “Couldn’t start the voice session. ‹ reason from API ›” |
+| no personas | Selector disabled: “No voice personas yet. Create one in Settings › Voice.” |
+| permission-denied | “You don’t have access to voice chat. Requires the voice-user role.” |
+| offline | “You’re offline. Voice chat needs a connection.” |
+| gated stream | Streaming transcription disabled (503 until Channels is wired). |
+
+---
+
+## 6. Modal overlays
+
+| Trigger | Modal | Contents |
+|---|---|---|
+| End session | UI-M-03 | “End this voice session?” Cancel / End (destructive). |
+| Transcript focus | UI-M-02 | Full-screen transcript (explicit dismiss only). |
+
+---
+
+## 7. Honesty
+
+Transcript rows and persona names come from real API values. No invented utterances, no fake level
+animation when the mic is closed. Persona CRUD is **not** duplicated here (DUP-6).
+
+---
+
+## 8. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/main.ts:407` | `/voice` · `/voice/chat` · `/platform/voice/chat` → `soma-voice-chat` |
+| `webui/src/views/soma-voice-chat.ts` | Live run surface |
+| `GET /api/v2/voice/personas` | Persona picker |
+| `POST /api/v2/voice/synthesize` · `transcribe` | Speak / listen |
+| `UI-S-48-settings-voice.md` | The one voice **config** home (DUP-6) |
+
+End of Document

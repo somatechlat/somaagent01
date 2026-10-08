@@ -1,56 +1,113 @@
-# UI-S-31 — Forgot password
+# UI-S-31 — Forgot password (Agent Soma)
 
-**Forgot password** — Public pre-auth workspace (chrome shown signed-out) — route `/forgot-password` — facet **Auth**.
-Chrome abbreviated (UI-S-00). Facet tabs and surface rail are visible.
+Screen UI-S-31 · Route: `/forgot-password` · Facet: Auth · Public (no session)  
+Live: `webui/src/views/soma-forgot-password.ts` · Router: `webui/src/main.ts`  
+Next: email link → `/reset-password` → `/login` (UI-S-29).
+
+**Product:** Agent Soma. Standalone auth screen (not the signed-in workspace chrome).  
+Forbidden on screen: the word "slot" · SaaS / Eye of God branding · fake metrics · facet tabs · surface rail · IQ knobs.
+
+---
+
+## 1. Purpose
+
+Request a password-reset link by email. Response is deliberately generic — the UI must not reveal whether the account exists.
+
+---
+
+## 2. ASCII wireframe — `/forgot-password` (desktop)
 
 ```
-┌─ UI-S-00 chrome (abbrev) ────────────────────────────────────────────────────────────────────────┐
-│ capsule: <capsule.name>                                                                         │
-│ version: <version>    lifecycle: <lifecycle>                                                    │
-│ persona knobs: (IQ -)(auto -)(budget -)   [signed out]                                          │
-│ derived AgentIQ RO: -   (no session)                                                            │
-├─────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ facet tabs x6:  [Soul][Brain][Hands][Memory][Body][Governance]                                  │
-│ command palette: <Cmd-K>                                                                        │
-├────────────────────────────────────────────────────────────────────────┼────────────────────────┤
-│ WORKSPACE  facet: Auth                                                 │ SURFACE RAIL x8        │
-│  route: /forgot-password                                               │  [1] Files             │
-│             ┌────────────────────────────────┐                         │  [2] Tools             │
-│             │  Reset your password           │                         │  [3] Browser           │
-│             │                                │                         │  [4] Editor            │
-│             │  Enter the email you signed up │                         │  [5] Debug             │
-│             │  with. We'll send a reset link │                         │  [6] Capsule           │
-│             │  if the account exists.        │                         │  [7] Brain             │
-│             │                                │                         │  [8] Desktop           │
-│             │  Email                         │                         │       GATED (UI-X-08)  │
-│             │  ┌──────────────────────────┐  │                         │                        │
-│             │  │ <user.email>              │  │                        │                        │
-│             │  └──────────────────────────┘  │                         │                        │
-│             │                                │                         │                        │
-│             │  [ Send reset link           ] │                         │                        │
-│             │                                │                         │                        │
-│             │  Back to sign in               │                         │                        │
-│             └────────────────────────────────┘                         │                        │
-├────────────────────────────────────────────────────────────────────────┼────────────────────────┤
-│ instance strip: <session_id>  state: <signed out>                                               │
-│ neuro meters x4 (RO): DA -  5-HT -  NE -  ACh -   synced -                                      │
-└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                                                                              │
+│                         ┌────────────────────────────────┐                                   │
+│                         │  SOMA                          │                                   │
+│                         │  Cognitive AI Agent            │                                   │
+│                         │                                │                                   │
+│                         │  Reset your password           │                                   │
+│                         │                                │                                   │
+│                         │  Enter the email you signed up │                                   │
+│                         │  with. We'll send a reset link │                                   │
+│                         │  if the account exists.        │                                   │
+│                         │                                │                                   │
+│                         │  Email                         │                                   │
+│                         │  ┌──────────────────────────┐  │                                   │
+│                         │  │ name@company.com         │  │                                   │
+│                         │  └──────────────────────────┘  │                                   │
+│                         │                                │                                   │
+│                         │  [ Send reset link           ] │                                   │
+│                         │                                │                                   │
+│                         │  Back to sign in               │                                   │
+│                         └────────────────────────────────┘                                   │
+│                                                                                              │
+└──────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Control map.**
+**Chrome law.** Standalone auth screen. No chat top, no left rail, no canvas, no facet tabs, no surface rail.
 
-| # | UI-C-* | control | notes |
-|---|---|---|---|
-| 1 | UI-C-061 | email input | type=email. Required. |
-| 2 | UI-C-067 | Send reset link (primary) | Response is deliberately generic — the UI must not reveal whether the account exists. |
-| 3 | UI-C-076 | Back to sign in link | Routes to /login (UI-S-29). |
+---
 
-**State variants.**
+## 3. User journey (numbered clicks)
 
-- **Loading.** Skeleton rows plus a `loading` chip in the workspace header. No counts, charts or metrics are drawn while loading.
-- **Empty.** Not applicable — the form is always present.
-- **Error.** "Couldn't send the reset link. ‹ reason from API ›"
-- **Permission-denied.** "Password reset is disabled for this deployment. Contact your administrator."
-- **Offline.** "You're offline. Password reset needs a connection."
+1. `/forgot-password` (logged-out) → form renders, Email focused.
+2. Type email address.
+3. Click **Send reset link** → spinner `Sending...`.
+4. Success → generic confirmation `If that email is registered, a reset link is on its way.` (never reveals account existence).
+5. Click **Back to sign in** → `/login` (UI-S-29).
+6. (Off-screen) User opens email link → `/reset-password` → sets new password → `/login`.
 
-**Modal overlays.** None. This screen opens no overlay.
+---
+
+## 4. Control map
+
+| # | Control | Binding |
+|---|---|---|
+| 1 | Email input | `type=email`. Required. RFC 5322 check. |
+| 2 | Send reset link (primary) | `POST /api/v2/auth/forgot-password`. Response is deliberately generic. disabled-while: request in flight. |
+| 3 | Back to sign in link | href `/login` → UI-S-29. |
+
+---
+
+## 5. Field / behavior
+
+| Field | Source | Behavior |
+|---|---|---|
+| email | `_email` | Required. Inline "Please enter a valid email address" on blur. |
+| request | `POST /api/v2/auth/forgot-password` | Body: email. Response is generic regardless of account existence. |
+| success | generic copy | `If that email is registered, a reset link is on its way.` |
+| failure | API error message | Inline banner. Never a fabricated reason. |
+
+---
+
+## 6. States (verbatim)
+
+| State | Verbatim |
+|---|---|
+| loading | `Sending...` |
+| default | Form always present — empty state N/A |
+| field error | `Please enter a valid email address` |
+| success (generic) | `If that email is registered, a reset link is on its way.` |
+| error | `Couldn't send the reset link. ‹ reason from API ›` |
+| permission | `Password reset is disabled for this deployment. Contact your administrator.` |
+| offline | `You're offline. Password reset needs a connection.` |
+
+---
+
+## 7. Navigation in / out
+
+| Direction | Target | Notes |
+|---|---|---|
+| In | `/forgot-password` | Public path. From UI-S-29 "Forgot?" link. |
+| Out | `/login` | UI-S-29. Back to sign in. |
+| Out | `/reset-password` | Via email link (off-screen). |
+| — | `/memory` | Not reachable from this screen before auth. |
+
+---
+
+## 8. Acceptance
+
+- [ ] No facet tabs, surface rail, IQ knobs, or workspace chrome
+- [ ] Generic success copy — never reveals account existence
+- [ ] All copy verbatim per §6
+
+End of Document

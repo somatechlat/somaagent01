@@ -1,59 +1,107 @@
-# UI-S-44 — Audit log
+# UI-S-44 — Audit log (pane)
 
-**Audit log** — Ops workspace column (aliases /admin/audit) — route `/audit` — facet **Ops**.
-Chrome abbreviated (UI-S-00). Facet tabs and surface rail are visible.
+Screen UI-S-44 · Same routes as UI-S-43: **`/platform/audit`** · **`/soma/audit`** · **`/audit`** ·
+**`/admin/audit`** (`main.ts:265`, `main.ts:308` → `soma-audit-dashboard`)
+Chrome: **UI-S-00 thin** (abbrev) · Catalog: `SOMA-UI-CATALOG-001.md` §2 Platform
+Live view: `webui/src/views/soma-audit-dashboard.ts` (`soma-audit-dashboard`)
+
+**Status: LIVE — as a pane, not a destination.** The event log is the **log pane** of the same
+audit screen (UI-S-43 is the dashboard chrome). One live view serves every alias (DUP-4).
+Do not present this as a second nav target.
+
+---
+
+## 1. ASCII wireframe — event log (pane of UI-S-43)
 
 ```
-┌─ UI-S-00 chrome (abbrev) ────────────────────────────────────────────────────────────────────────┐
-│ capsule: <capsule.name>                                                                         │
-│ version: <version>    lifecycle: <lifecycle>                                                    │
-│ persona knobs: (IQ <val>)(auto <val>)(budget <val>)                                             │
-│ derived AgentIQ RO (greyed, never inputs):                                                      │
-│   temperature <v>  max_tokens <v>  rlm_iterations <v>                                           │
-│   recall_limit <v>  model_tier <v>  brain_query_enabled <v>                                     │
-│   require_hitl <v>  tool_approval <v>  egress_allowed <v>                                       │
-│   token_limit <v>  cost_tier <v>  thinking_budget <v>                                           │
-├─────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ facet tabs x6:  [Soul][Brain][Hands][Memory][Body][Governance]                                  │
-│ command palette: <Cmd-K>                                                                        │
-├────────────────────────────────────────────────────────────────────────┼────────────────────────┤
-│ WORKSPACE  facet: Ops                                                  │ SURFACE RAIL x8        │
-│  route: /audit                                                         │  [1] Files             │
-│  Audit log     filter: [actor][action][result]  search: [____]         │  [2] Tools             │
-│                                                                        │  [3] Browser           │
-│  | time | actor | action | target | result | [inspect] |               │  [4] Editor            │
-│  | <ts> | <who> | <act>  | <tgt>  | ok/err | [inspect] |               │  [5] Debug             │
-│  | <ts> | <who> | <act>  | <tgt>  | ok/err | [inspect] |               │  [6] Capsule           │
-│  | <ts> | <who> | <act>  | <tgt>  | ok/err | [inspect] |               │  [7] Brain             │
-│  | <ts> | <who> | <act>  | <tgt>  | ok/err | [inspect] |               │  [8] Desktop           │
-│  | <ts> | <who> | <act>  | <tgt>  | ok/err | [inspect] |               │       GATED (UI-X-08)  │
-│                                                                        │                        │
-│  page <n> of <n>              [prev] [next]  page size [<n>]           │                        │
-│                                                                        │                        │
-│  Note: log rows are append-only. The UI never edits them.              │                        │
-├────────────────────────────────────────────────────────────────────────┼────────────────────────┤
-│ instance strip: <session_id>  state: <state>  started: <ts>                                     │
-│ neuro meters x4 (RO): DA <v>  5-HT <v>  NE <v>  ACh <v>                                         │
-│   neuromodulator synced_at: <ts>   (no value without a real sync)                               │
-└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  AUDIT                                                                     [⟳ Refresh]          │
+│  [Search events…                     ]  actor [all ▾]   action [all ▾]   range [▾]              │
+│                                                                                                  │
+│  ┌─ EVENT LOG (this pane) ───────────────────────────────────────────────────────────────────┐  │
+│  │  ts                  actor              action              target            [inspect]   │  │
+│  │  ─────────────────   ──────────────     ──────────────      ──────────────                 │  │
+│  │  ‹ts›                ‹actor›            ‹action›            ‹target | —›                  │  │
+│  │  ‹ts›                ‹actor›            ‹action›            ‹target | —›                  │  │
+│  │  ‹ts›                ‹actor›            ‹action›            ‹target | —›                  │  │
+│  │  (scroll)                                                                                   │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                  │
+│  total: ‹n | —› events                                                           [Export]       │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Control map.**
+Inspect opens the event-detail drawer (UI-M-01) over the same screen.
 
-| # | UI-C-* | control | notes |
+---
+
+## 2. Real data
+
+| UI column | Source | Absent handling |
+|---|---|---|
+| ts | audit record | `—` |
+| actor | audit record | `—` |
+| action | audit record | `—` |
+| target | audit record | `—` |
+| total | list response | `—` (never `0` on failure) |
+
+Same `soma-audit-dashboard` view as UI-S-43 — no second endpoint, no second store.
+
+---
+
+## 3. Control map
+
+| # | Control | API / behavior | Live? |
 |---|---|---|---|
-| 1 | UI-C-070 | filter / search input | actor/action/result filters plus free text. Sent to the API; no client-side invention of rows. |
-| 2 | UI-C-100 | audit event row | One row per real event. result is ok/err from the event record, never inferred. |
-| 3 | UI-C-068 | inspect (secondary) | Opens UI-M-01 drawer with the event detail. |
-| 4 | UI-C-078 | pagination | page/page-size. Disabled when the API reports no further page — disabled-reason: "No further page." |
-| 5 | UI-C-080 | copy event id | Copies the real event id to the clipboard. |
+| 1 | Search / filters | Query the audit API (actor · action · range). | live |
+| 2 | Event rows | `ts` · `actor` · `action` · `target`. | live |
+| 3 | inspect | UI-M-01 drawer with the full event record. | live |
+| 4 | Export | Client download of the loaded rows. | live |
+| 5 | Refresh | Re-fetch the list. | live |
+| 6 | Total | `—` until the server reports. | live |
 
-**State variants.**
+---
 
-- **Loading.** Skeleton rows plus a `loading` chip in the workspace header. No counts, charts or metrics are drawn while loading.
-- **Empty.** "No audit events match this filter."
-- **Error.** "Couldn't load the audit log. ‹ reason from API ›"
-- **Permission-denied.** "You don't have access to the audit log. Requires the audit-admin role."
-- **Offline.** You're offline. Changes will not be saved until the connection returns.
+## 4. Numbered journey — read and inspect events
 
-**Modal overlays.** UI-M-01 Drawer — event detail (actor, action, target, result, metadata). UI-M-02 Full-screen — raw event payload for copy/inspection (explicit dismiss only).
+| Step | Where | Action | API | Result |
+|---|---|---|---|---|
+| **1** | `/platform/audit` | Screen loads | audit API | Log rows paint. |
+| **2** | log | Filter by `action` | audit API | Rows narrow. |
+| **3** | log | Click **inspect** on a row | — | UI-M-01 drawer with the full record. |
+| **4** | log | **Export** | client download | JSON of loaded rows. |
+| **5** | log | **Refresh** | audit API | Server truth repainted. |
+
+---
+
+## 5. States
+
+| State | Verbatim / behavior |
+|---|---|
+| loading | “Loading events…” — skeleton rows. |
+| empty | “No audit events yet.” |
+| empty (filter) | “No events match this filter. Clear the filter to see all.” |
+| error | “Couldn’t load the audit log. ‹ reason from API ›” |
+| permission-denied | Read-only; “You don’t have access to the audit log. Requires the platform-admin role.” |
+| offline | “You’re offline. The log may be stale.” |
+
+---
+
+## 6. Honesty
+
+Event fields come from the record. No invented actors, actions, or totals. This pane never appears
+as its own nav entry (DUP-4).
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/main.ts:265` · `308` | All four aliases → `soma-audit-dashboard` |
+| `webui/src/views/soma-audit-dashboard.ts` | Live view (chrome + log pane) |
+| `SOMA-UI-NAV-AUDIT-001.md` §3 DUP-4 | UI-S-43 + UI-S-44 are one screen |
+
+End of Document

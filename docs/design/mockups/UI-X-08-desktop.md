@@ -1,54 +1,101 @@
 # UI-X-08 — Desktop
 
-**Desktop** — Right-rail panel in context — GATED — route `right-rail surface [8]` — facet **Surface**.
-Chrome abbreviated (UI-S-00). Facet tabs and surface rail are visible.
+Surface **UI-X-08 Desktop** · Right canvas (Band D) · Facet: Surface · Chrome: UI-S-00 abbreviated
+Registry: `webui/src/components/soma-right-panel.ts` → `SURFACES` key `desktop`
+Nav: `SOMA-UI-NAV-001.md` §2 canvas († gated)
 
-GATED — drawn present-but-disabled. Every control prints its blocking reason inline. This is not a "coming soon" placeholder and not a working-looking panel over nothing. Blocking reason (verbatim): "Requires a remote-desktop capability in somaAgent01. Not available today."
+**Status: GATED (present-but-disabled).** `blockedReason` (verbatim):
+**“Requires a remote-desktop capability in somaAgent01. Not available today.”**
+
+REQ-UIX-020 / REQ-UIX-007: the tab stays on the rail and stays selectable so the surface set is
+complete. It is never omitted, never presented as working, and never a “coming soon” placeholder.
+Every control is disabled and prints the blocking reason inline. The banned placeholder phrase of §2.3
+does not appear.
+
+---
+
+## 1. ASCII wireframe — gated frame in the canvas
 
 ```
-┌─ chrome (abbrev) ──────────────────────┬ RIGHT RAIL · UI-X-08 Desktop (GATED)                                                           ┐
-│  capsule <capsule.name> v<version>     │ Surface: Desktop   STATE: present but DISABLED                                                 │
-│  <lifecycle>  knobs (IQ <v>)(auto <v>)(│                                                                                                │
-│  derived AgentIQ RO: <readouts, greyed>│ VIEWPORT (GATED)                                                                               │
-│  facets [Soul][Brain][Hands][Memory][Bo│   [1] connect     DISABLED                                                                     │
-│  <Cmd-K>                               │         reason: Requires a remote-desktop capability in somaAgent01. Not available today.      │
-│                                        │   [2] viewport    DISABLED                                                                     │
-│  WORKSPACE (abbrev)                    │         reason: Requires a remote-desktop capability in somaAgent01. Not available today.      │
-│  ┌────────────────────────────────┐    │                                                                                                │
-│  │ screen content in context        │  │ CONTROLS (all DISABLED)                                                                        │
-│  │ (see UI-S-07 chat workspace)     │  │   [3] pointer     DISABLED                                                                     │
-│  │ surface rail select: UI-X-08 Desktop│         reason: Requires a remote-desktop capability in somaAgent01. Not available today.      │
-│  └────────────────────────────────┘    │   [4] keyboard    DISABLED                                                                     │
-│                                        │         reason: Requires a remote-desktop capability in somaAgent01. Not available today.      │
-│  instance <session_id> <state>         │   [5] clipboard   DISABLED                                                                     │
-│  neuro RO DA <v> 5-HT <v> NE <v> ACh <v│         reason: Requires a remote-desktop capability in somaAgent01. Not available today.      │
-│                                        │   [6] screenshot  DISABLED                                                                     │
-│                                        │         reason: Requires a remote-desktop capability in somaAgent01. Not available today.      │
-│                                        │                                                                                                │
-│                                        │ This panel is present in the rail so the surface set is                                        │
-│                                        │ complete. It is NOT a working panel and it is NOT a                                            │
-│                                        │ "coming soon" placeholder. Every control is disabled and                                       │
-│                                        │ prints its blocking reason inline.                                                             │
-└────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ chrome (abbrev) ──────────────────────┬ RIGHT CANVAS · UI-X-08 Desktop (GATED)                        ┐
+│  chat workspace (UI-S-07)              │ [📁 Files][🔧 Tools][🌐 Browser†][💻 Editor]                  │
+│  ┌────────────────────────────────┐    │ [🐞 Debug][📦 Capsule][🧠 Brain][🖥 Desktop†]                  │
+│  │ screen content in context      │    ├──────────────────────────────────────────────────────────────┤
+│  │ surface rail select: Desktop   │    │  Desktop  UI-X-08          (tab shown disabled)              │
+│  └────────────────────────────────┘    │                                                                │
+│                                        │  ┌─ disabled frame (aria-disabled) ────────────────────────┐  │
+│                                        │  │                                                          │  │
+│                                        │  │  Requires a remote-desktop capability in somaAgent01.    │  │
+│                                        │  │  Not available today.                                    │  │
+│                                        │  │                                                          │  │
+│                                        │  │  [ Open desktop session ]   DISABLED                     │  │
+│                                        │  │   reason: Requires a remote-desktop capability in        │  │
+│                                        │  │   somaAgent01. Not available today.                      │  │
+│                                        │  │                                                          │  │
+│                                        │  └──────────────────────────────────────────────────────────┘  │
+│                                        │                                                                │
+│  instance ‹session_id› ‹state›         │  No VNC viewport. No pointer/keyboard/clipboard/screenshot.   │
+│                                        │  Nothing that could be mistaken for a live desktop.           │
+└────────────────────────────────────────┴──────────────────────────────────────────────────────────────┘
 ```
 
-**Control map.**
+---
 
-| # | UI-C-* | control | notes |
+## 2. Control map
+
+| # | Control | Behavior | Live? |
 |---|---|---|---|
-| 1 | UI-C-115 | connect (DISABLED) | disabled-when: always — disabled-reason: "Requires a remote-desktop capability in somaAgent01. Not available today." |
-| 2 | UI-C-115 | viewport (DISABLED) | disabled-when: always — disabled-reason: "Requires a remote-desktop capability in somaAgent01. Not available today." |
-| 3 | UI-C-115 | pointer (DISABLED) | disabled-when: always — disabled-reason: "Requires a remote-desktop capability in somaAgent01. Not available today." |
-| 4 | UI-C-115 | keyboard (DISABLED) | disabled-when: always — disabled-reason: "Requires a remote-desktop capability in somaAgent01. Not available today." |
-| 5 | UI-C-115 | clipboard (DISABLED) | disabled-when: always — disabled-reason: "Requires a remote-desktop capability in somaAgent01. Not available today." |
-| 6 | UI-C-115 | screenshot (DISABLED) | disabled-when: always — disabled-reason: "Requires a remote-desktop capability in somaAgent01. Not available today." |
+| 1 | Tab (Desktop) | Visible + selectable; `aria-disabled="true"`. Tooltip/label = the blocking reason. | gated |
+| 2 | Disabled frame | Prints `blockedReason`. No interactive working children. | gated |
+| 3 | Open desktop session | Rendered `disabled` with `title` / `aria-label` = the blocking reason. | gated |
+| 4 | Pointer / keyboard / clipboard / screenshot / VNC viewport | **Not drawn.** A gated surface has no working-looking controls. | absent |
 
-**State variants.**
+---
 
-- **Loading.** No loading state. A gated control never shows a spinner or progress.
-- **Empty.** Not applicable — the surface is gated, not empty. The gate reason is always shown: "Requires a remote-desktop capability in somaAgent01. Not available today."
-- **Error.** Not applicable — no request is made from a gated control. The gate reason is always shown: "Requires a remote-desktop capability in somaAgent01. Not available today."
-- **Permission-denied.** "Requires a remote-desktop capability in somaAgent01. Not available today."
-- **Offline.** "Requires a remote-desktop capability in somaAgent01. Not available today." (the gate is capability-based, not connectivity-based).
+## 3. States
 
-**Modal overlays.** None. This surface opens no overlay while gated.
+| State | Behavior |
+|---|---|
+| gated (always) | Disabled frame + disabled button, both with the verbatim reason. |
+| loading | **None.** A gated control never shows a spinner or progress. |
+| empty | **None.** The surface is gated, not empty. |
+| error | **None.** No request is made from a gated control. |
+| permission-denied | Same gate reason. |
+| offline | Same gate reason (the gate is capability-based, not connectivity-based). |
+
+---
+
+## 4. Modal overlays
+
+None. This surface opens no overlay while gated.
+
+---
+
+## 5. Navigation
+
+| In | Out |
+|---|---|
+| Canvas tab **Desktop** (registry order 8/8) — selectable, disabled content | — (no destination while gated) |
+
+Cross-link: `SOMA-UI-NAV-001.md` §2 canvas (†) · §5 “Gated surfaces carry blocking reason”.
+**No Memory tab in the canvas.**
+
+---
+
+## 6. Honesty
+
+- Blocking reason is the registry string, not a paraphrase.
+- No fake desktop frame, no “coming soon” chrome, no demo screenshot.
+- The surface remains in the rail so the eight-surface set is complete and auditable.
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/components/soma-right-panel.ts` | `SURFACES` `desktop.blockedReason` + `_renderDesktop` |
+| REQ-UIX-007 | Desktop capability does not exist in somaAgent01 today |
+| REQ-UIX-020 | Present-but-disabled with reason |
+
+End of Document

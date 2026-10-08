@@ -1,68 +1,101 @@
-# UI-S-16 — Module detail & config
+# UI-S-16 — Tool detail
 
-Screen UI-S-16 · Facet: Module · Route: NEW (not present in `webui/src/main.ts` today).
-Source view per `SOMA-UI-IDREG-001.md`: NEW.
+Screen UI-S-16 · Subview of **`/admin/agents`** (from UI-S-15) · Chrome: **UI-S-00 thin** (abbrev)
+Catalog: `SOMA-UI-CATALOG-001.md` §3 Tools · Live: `GET /api/v2/tools` → `ToolInfo`
 
-## 1. ASCII wireframe — whole screen inside UI-S-00 chrome
+**Status: LIVE.** Read-only detail of one runtime tool — **`ToolInfo` fields only**:
+`name` · `description` · `parameters` (`admin/tools/api/tools.py:25-30`).
+
+No config form, no dependencies, no health readout, no uninstall — those are not `ToolInfo` fields.
+Enabling/disabling is UI-S-17/UI-S-18 (`GET/PUT /tools/catalog`) and Settings › Tools (UI-S-55).
+
+---
+
+## 1. ASCII wireframe — tool detail
 
 ```
-┌─[capsule ▾] ‹capsule.name› [v‹semver›][‹lifecycle›]───────── IQ[──●──] AUTO[─●─] BUDGET[─●─] ⌘K─┐
-│ derived (RO): temp ‹› max_tok ‹› rlm ‹› recall ‹› tier ‹› hitl ‹› tokens ‹› cost ‹› think ‹›      │
-├─ Soul  Brain  Hands  Memory  Body  Governance ──────────────────────────────────────────────────┤
-│ LEFT NAV │ WORKSPACE — Module detail [1]                                 │ SURFACES x8             │
-│  Chat    │ ┌────────────────────────────────────────────────────────┐  │ [Files][Tools][Browser] │
-│  Capsule │ │ ‹module.name›  ‹module.ver›  ‹module.state›  [on/off] [2]│  │ [Editor][Debug][Capsule]│
-│  Module* │ │ ABOUT [3]  ‹module.description›                          │  │ [Brain][Desktop†] †GATED│
-│  Platform│ │ CONFIG [4]                                               │  │                         │
-│  Ops     │ │  ‹config.key›  ‹config.value›                            │  │                         │
-│  Settings│ │  ‹config.key›  sk-••••••••aBcD   (rotate in Vault)       │  │                         │
-│          │ │  ‹config.key›  ‹config.value›                            │  │                         │
-│          │ │ DEPENDENCIES [5]  ‹dep.name› ‹dep.state›  ‹dep.name› ‹dep.state›│                   │
-│          │ │ HEALTH [6]  ‹ live value ›   as of ‹ timestamp ›         │  │                         │
-│          │ │ [ Save config ] [7]    [ Uninstall ] [8]                 │  │                         │
-│          │ └────────────────────────────────────────────────────────┘  │                         │
-├──────────┴──────────────────────────────────────────────────────────────┴─────────────────────────┤
-│ INSTANCES ‹instance.id› ‹instance.status› │ NEURO: DA ‹› 5-HT ‹› NE ‹› ACh ‹› │ synced ‹ts›      │
-└───────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  TOOL   ‹name›                                                     ← Back to tools list         │
+│                                                                                                  │
+│  ┌─ ABOUT ───────────────────────────────────────────────────────────────────────────────────┐  │
+│  │  name         ‹name›                                                                       │  │
+│  │  description  ‹description | —›                                                            │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                  │
+│  ┌─ PARAMETERS (schema dict) ────────────────────────────────────────────────────────────────┐  │
+│  │  ┌──────────────────────────────────────────────────────────────────────────────────────┐  │  │
+│  │  │ ‹parameters›  (JSON schema as the server sent it)                                   │  │  │
+│  │  │ or “No schema” when parameters is null/absent                                        │  │  │
+│  │  └──────────────────────────────────────────────────────────────────────────────────────┘  │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. Control map
+---
 
-| # | UI-C-* | control | notes |
+## 2. Real data — `ToolInfo`
+
+| UI block | API field | Type | Absent handling |
 |---|---|---|---|
-| 1 | — | Workspace region (Module detail) | Screen shell. |
-| 2 | UI-C-088 | Module enable toggle | Bound to `‹module.state›`. |
-| 3 | UI-C-089 | About panel | Read-only `‹module.description›`. |
-| 4 | UI-C-090 | Config form | One row per `‹config.key›`. Secret-typed keys render masked (see wireframe). |
-| 5 | UI-C-091 | Dependency list | Read-only `‹dep.name›` / `‹dep.state›` chips. |
-| 6 | UI-C-092 | Health readout | READ-ONLY `‹ live value ›` + `‹ timestamp ›`. |
-| 7 | UI-A-042 | Save config | Writes module config; secrets are never written back in clear. |
-| 8 | UI-A-041 | Uninstall module | DESTRUCTIVE — always opens UI-M-03. |
+| Name | `name` | `str` | required |
+| Description | `description` | `Optional[str]` | `—` |
+| Parameters | `parameters` | `Optional[dict]` | “No schema” |
 
-## 3. State variants
+Endpoint: `GET /api/v2/tools` (filter to `name`). Source query
+`Capability.objects.filter(is_enabled=True).values("name", "description", "schema")` — `schema`
+is returned as `parameters`.
 
-- **loading** — Config form skeleton. Verbatim label: "Loading module…"
-- **empty** — Config section verbatim: "This module has no configuration."
-  Dependencies verbatim: "No dependencies recorded."
-- **error** — `UI-C-024` verbatim: "Module could not be loaded. It may have been uninstalled."
-  Save failure verbatim: "Config was not saved. Your values are still here — try again."
-- **permission-denied** — Config read-only; Save/Uninstall disabled with inline reason
-  "Module changes require the operator role." `UI-C-025` verbatim:
-  "You do not have permission to configure this module. Ask a platform admin for the operator role."
-- **offline** — Save/Uninstall/toggle disabled with inline reason "Module actions are unavailable offline."
-  Health readout keeps its last value and timestamp.
+---
 
-## 4. Modal overlays
+## 3. Control map
 
-| Trigger | Modal | Contents |
-|---|---|---|
-| UI-A-041 Uninstall module | UI-M-03 Dialog | "Uninstall ‹module.name›? Capabilities it provides will be removed." Cancel / Uninstall. |
-| Secret config key "reveal" | UI-M-03 Dialog | Refused inline instead: the row shows "Rotate in Vault" — the UI never reveals a secret. |
-| — | UI-M-01 / UI-M-02 | Not used by this screen. |
+| # | Control | API / behavior | Live? |
+|---|---|---|---|
+| 1 | About panel | Read-only `name` · `description`. | live |
+| 2 | Parameters panel | Renders the `parameters` schema dict verbatim. | live |
+| 3 | Back to tools list | `router →` UI-S-15. | live |
+| — | Enable/Disable | **Not here** — UI-S-18 / UI-S-55. | — |
 
-## 5. Honesty notes
+---
 
-Secret-typed config values render as `sk-••••••••aBcD` with a "rotate in Vault" note — never a
-real value, and never a reveal control. Health figures are `‹ live value ›` placeholders.
+## 4. Numbered journey — read a tool’s schema
+
+| Step | Where | Action | API | Result |
+|---|---|---|---|---|
+| **1** | UI-S-15 | Click **Open** on a row | `router →` UI-S-16 | Detail loads. |
+| **2** | detail | Read `description` | from `ToolInfo` | `—` if the server omitted it. |
+| **3** | detail | Read `parameters` | from `ToolInfo` | Schema dict, or “No schema”. |
+| **4** | detail | Need enable/category edit | — | UI-S-18 or Settings › Tools (UI-S-55). |
+| **5** | detail | Back | `router →` UI-S-15 | List. |
+
+---
+
+## 5. States
+
+| State | Verbatim / behavior |
+|---|---|
+| loading | “Loading tool…” — skeleton blocks. |
+| not found | “Tool could not be loaded. It may have been disabled or removed.” |
+| no schema | Parameters panel: “No schema”. |
+| offline | “Tool data is unavailable offline.” |
+
+---
+
+## 6. Honesty
+
+Only `ToolInfo` fields render. No config keys, no dependency chips, no health metric, no masked
+secrets — those fields do not exist on `ToolInfo`. `parameters` is shown as the server sent it.
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `GET /api/v2/tools` | `ToolInfo[]` (`tools.py:51-68`) |
+| `admin/tools/api/tools.py:25-30` | `ToolInfo` schema |
+| `SOMA-UI-CATALOG-001.md` §3 | Real tool fields |
 
 End of Document

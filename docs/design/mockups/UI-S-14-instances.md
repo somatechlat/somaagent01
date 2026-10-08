@@ -1,69 +1,116 @@
-# UI-S-14 — Instances
+# UI-S-14 — Capsule instances
 
-Screen UI-S-14 · Facet: Capsule · Route: NEW (not present in `webui/src/main.ts` today).
-Source view per `SOMA-UI-IDREG-001.md`: NEW. Related: the chrome instance strip (UI-C-015).
+Screen UI-S-14 · Subview of **`/admin/agents`** (from UI-S-11/12) · Chrome: **UI-S-00 thin** (abbrev)
+Catalog: `SOMA-UI-CATALOG-001.md` §3 Capsule
 
-## 1. ASCII wireframe — whole screen inside UI-S-00 chrome
+**Status: GATED / future.** `CapsuleConfigOut` has **no instance fields** and there is **no
+instance-management endpoint**. The live capsule read returns one configuration per agent
+(`GET /api/v2/agents/{agent_id}/capsule`) — not a set of running instances.
+
+> **Blocking reason:** Capsule instance management is not implemented. There is no instance list
+> API, no instance id field on `CapsuleConfigOut`, and no restart/stop route. This screen cannot
+> show real data until an instance API ships.
+
+**`CapsuleConfigOut` fields only** — it contains none of `instance.id`, `instance.status`,
+`started_at`. Do not draw them.
+
+---
+
+## 1. ASCII wireframe — gated surface
 
 ```
-┌─[capsule ▾] ‹capsule.name› [v‹semver›][‹lifecycle›]───────── IQ[──●──] AUTO[─●─] BUDGET[─●─] ⌘K─┐
-│ derived (RO): temp ‹› max_tok ‹› rlm ‹› recall ‹› tier ‹› hitl ‹› tokens ‹› cost ‹› think ‹›      │
-├─ Soul  Brain  Hands  Memory  Body  Governance ──────────────────────────────────────────────────┤
-│ LEFT NAV │ WORKSPACE — Instances [1]                                    │ SURFACES x8             │
-│  Chat    │ ┌────────────────────────────────────────────────────────┐  │ [Files][Tools][Browser] │
-│  Capsule*│ │ FILTER [2] ‹status ▾│   SEARCH [3] ‹filter.instances…│  │  │ [Editor][Debug][Capsule]│
-│  Module  │ │ ┌────────────────────────────────────────────────────┐ │  │ [Brain][Desktop†] †GATED│
-│  Platform│ │ │ INSTANCE TABLE [4]                                 │ │  │                         │
-│  Ops     │ │ │ ‹instance.id›  ‹status›  ‹ts›  ‹capsule.name›  [⋯]│ │  │                         │
-│  Settings│ │ │ ‹instance.id›  ‹status›  ‹ts›  ‹capsule.name›  [⋯]│ │  │                         │
-│          │ │ │ ‹instance.id›  ‹status›  ‹ts›  ‹capsule.name›  [⋯]│ │  │                         │
-│          │ │ │ (scroll)                                           │ │  │                         │
-│          │ │ └────────────────────────────────────────────────────┘ │  │                         │
-│          │ │ DETAIL [5]  ‹instance.id› · ‹instance.status›          │  │                         │
-│          │ │ [ Restart ] [6]     [ Stop ] [7]                       │  │                         │
-│          │ └────────────────────────────────────────────────────────┘  │                         │
-├──────────┴──────────────────────────────────────────────────────────────┴─────────────────────────┤
-│ INSTANCES ‹instance.id› ‹instance.status› │ NEURO: DA ‹› 5-HT ‹› NE ‹› ACh ‹› │ synced ‹ts›      │
-└───────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  CAPSULE · INSTANCES   ‹name› · ‹capsule_id›                              ← Back to list        │
+│                                                                                                  │
+│  ┌─ GATED ───────────────────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                                           │  │
+│  │   Instance management is not available on this deployment.                                │  │
+│  │                                                                                           │  │
+│  │   Blocking reason: Capsule instance management is not implemented. There is no            │  │
+│  │   instance list API and no instance fields on CapsuleConfigOut                            │  │
+│  │   (GET /api/v2/agents/{agent_id}/capsule returns one configuration per agent).            │  │
+│  │                                                                                           │  │
+│  │   [ Back to list ]                                                                       │  │
+│  │                                                                                           │  │
+│  └───────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                  │
+│  (no instance table · no Restart / Stop · no instance strip)                                     │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. Control map
+There is no chrome instance strip either — UI-S-00 forbids an instance strip on chrome (§3).
 
-| # | UI-C-* | control | notes |
-|---|---|---|---|
-| 1 | — | Workspace region (Instances) | Screen shell. |
-| 2 | UI-C-069 | Status filter select | Instance states as stored. |
-| 3 | UI-C-021 | Search | Filters the table live. |
-| 4 | UI-C-084 | Instance table | Rows `‹instance.id›` / `‹status›` / `‹ts›` / `‹capsule.name›`. |
-| 5 | UI-C-085 | Instance detail panel | Read-only fields from the instance record. |
-| 5 | UI-C-028 | Row action menu (⋯) | Restart / Stop / Copy id. Stop opens UI-M-03. |
-| 6 | UI-A-038 | Restart instance | Restarts the selection. |
-| 7 | UI-A-039 | Stop instance | DESTRUCTIVE — always opens UI-M-03. |
+---
 
-## 3. State variants
+## 2. Real data
 
-- **loading** — Table shows 5 skeleton rows. Verbatim label: "Loading instances…"
-- **empty** — `UI-C-023` verbatim: "No instances are running for this capsule."
-  Empty under a filter verbatim: "No instances match this filter. Clear the filter to see all."
-- **error** — `UI-C-024` verbatim: "Instances could not be loaded. Retry, or check that the
-  somaAgent01 API is reachable."
-- **permission-denied** — Restart/Stop disabled with inline reason
-  "Instance actions require the operator role." `UI-C-025` verbatim:
-  "You do not have permission to manage instances. Ask a platform admin for the operator role."
-- **offline** — Table shows last cached page ("Showing the last synced page."); actions disabled
-  with reason "Instance actions are unavailable offline." Chrome instance strip does the same.
+**None.** No instance schema exists on the capsule API:
 
-## 4. Modal overlays
-
-| Trigger | Modal | Contents |
+| Concept an instance screen would need | Real field? | Handling |
 |---|---|---|
-| UI-A-039 Stop instance | UI-M-03 Dialog | "Stop ‹instance.id›? Running work will be interrupted." Cancel / Stop. |
-| Table row open | UI-M-01 Drawer (420px) | Full instance record; ESC closes, focus trap. |
-| — | UI-M-02 | Not used by this screen. |
+| instance id | **not in `CapsuleConfigOut`** | not drawn |
+| instance status | **not in schema** | not drawn |
+| started_at / session | **not in schema** | not drawn |
+| restart / stop | **no route** | not drawn |
 
-## 5. Honesty notes
+The only capsule read is `GET /api/v2/agents/{agent_id}/capsule` → live config scalars
+(`agent_id` · `capsule_id` · `name` · `description` · `status` · `system_prompt` ·
+`personality_traits` · `neuromodulator_baseline` · `learning_config`).
 
-Instance ids, statuses and timestamps are store placeholders. The chrome instance strip and this
-table read the same store — neither invents counts.
+Note: `status` here is the **capsule’s** status, not an instance state.
+
+---
+
+## 3. Control map
+
+| # | Control | Behavior | Live? |
+|---|---|---|---|
+| 1 | Gated notice | Blocking reason verbatim above. | live (notice) |
+| 2 | Back to list | `router →` UI-S-11. | live |
+| — | Instance table / Restart / Stop | **Not rendered** — no API. | GATED |
+
+---
+
+## 4. Numbered journey (stops at the gate)
+
+| Step | Where | Action | Result |
+|---|---|---|---|
+| **1** | UI-S-11 | Look for “Instances” | No such control — instance management is not offered on this deployment. |
+| **2** | UI-S-11/12 | (if surfaced) click Instances | This screen opens with the GATED notice. |
+| **3** | here | Read the blocking reason | Understands instance management is unimplemented. |
+| **4** | here | **Back to list** | `router →` UI-S-11. |
+
+There is no step 5 — nothing to restart or stop.
+
+---
+
+## 5. States
+
+| State | Behavior |
+|---|---|
+| default | GATED notice + blocking reason. |
+| offline | Same notice (the gate is not network-dependent). |
+
+No loading, no empty table, no error — the feature does not reach the API.
+
+---
+
+## 6. Honesty
+
+- No invented instance ids, statuses, timestamps, or counts.
+- No chrome instance strip (UI-S-00 §3 forbids it).
+- The gate reason names the real API shape (one capsule config per agent).
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `admin/agents/api/schemas.py:75-97` | `CapsuleConfigOut` — no instance fields |
+| `GET /api/v2/agents/{agent_id}/capsule` | Single live config (UI-S-12) |
+| `UI-S-00-chrome.md` §3 | No instance strip on chrome |
 
 End of Document

@@ -1,66 +1,110 @@
 # UI-S-13 — Version rail & diff
 
-Screen UI-S-13 · Facet: Capsule · Route: NEW (not present in `webui/src/main.ts` today).
-Source view per `SOMA-UI-IDREG-001.md`: NEW. Also reachable from the chrome version chip
-(UI-C-003) as a UI-M-01 drawer preview.
+Screen UI-S-13 · Subview of **`/admin/agents`** (from UI-S-12) · Chrome: **UI-S-00 thin** (abbrev)
+Catalog: `SOMA-UI-CATALOG-001.md` §3 Capsule
 
-## 1. ASCII wireframe — whole screen inside UI-S-00 chrome
+**Status: GATED / future.** `CapsuleConfigOut` has **no version fields** — `version`, `deployed_at`
+and `deployed_by` were removed from the agent schemas as the wrong schema’s fields
+(`admin/agents/api/schemas.py:46-49`). There is **no version-history endpoint**.
+
+> **Blocking reason:** Capsule versioning is not implemented. `GET/PATCH /api/v2/agents/{agent_id}/capsule`
+> returns a single live config with no version list, no author, and no diff base. This screen cannot
+> show real data until a version API ships.
+
+Do not invent semver chips, author rows, or diff lines. **`CapsuleConfigOut` fields only** — and it
+has none of the above.
+
+---
+
+## 1. ASCII wireframe — gated surface
 
 ```
-┌─[capsule ▾] ‹capsule.name› [v‹semver›][‹lifecycle›]───────── IQ[──●──] AUTO[─●─] BUDGET[─●─] ⌘K─┐
-│ derived (RO): temp ‹› max_tok ‹› rlm ‹› recall ‹› tier ‹› hitl ‹› tokens ‹› cost ‹› think ‹›      │
-├─ Soul  Brain  Hands  Memory  Body  Governance ──────────────────────────────────────────────────┤
-│ LEFT NAV │ WORKSPACE — Version rail & diff [1]                           │ SURFACES x8             │
-│  Chat    │ ┌──────────────┐ ┌──────────────────────────────────────┐  │ [Files][Tools][Browser] │
-│  Capsule*│ │ VERSION RAIL │ │ DIFF [4]                             │  │ [Editor][Debug][Capsule]│
-│  Module  │ │ [2]          │ │  compare ‹version.a› → ‹version.b›   │  │ [Brain][Desktop†] †GATED│
-│  Platform│ │ ‹v› ‹ts› [x] │ │  ┌────────────────────────────────┐  │  │                         │
-│  Ops     │ │ ‹v› ‹ts› [ ] │ │  │ - ‹removed.line›               │  │  │                         │
-│  Settings│ │ ‹v› ‹ts› [ ] │ │  │ + ‹added.line›                 │  │  │                         │
-│  │ │ ‹v› ‹ts› [ ] │ │  │ ~ ‹changed.line›               │  │  │                         │
-│          │ │ (scroll)     │ │  └────────────────────────────────┘  │  │                         │
-│          │ │ COMPARE [3]  │ │ [ Restore this version ] [5]         │  │                         │
-│          │ │ a ‹v ▾│ b ‹v ▾│ │ author ‹user.name› · ‹ts›           │  │                         │
-│          │ └──────────────┘ └──────────────────────────────────────┘  │                         │
-├──────────┴──────────────────────────────────────────────────────────────┴─────────────────────────┤
-│ INSTANCES ‹instance.id› ‹instance.status› │ NEURO: DA ‹› 5-HT ‹› NE ‹› ACh ‹› │ synced ‹ts›      │
-└───────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  CAPSULE · VERSIONS   ‹name› · ‹capsule_id›                            ← Back to editor         │
+│                                                                                                  │
+│  ┌─ GATED ───────────────────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                                           │  │
+│  │   Version history is not available on this deployment.                                    │  │
+│  │                                                                                           │  │
+│  │   Blocking reason: Capsule versioning is not implemented. The capsule API                  │  │
+│  │   returns one live configuration (GET /api/v2/agents/{agent_id}/capsule) with             │  │
+│  │   no version list, no author, and no diff base.                                           │  │
+│  │                                                                                           │  │
+│  │   [ Back to editor ]                                                                     │  │
+│  │                                                                                           │  │
+│  └───────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                  │
+│  (no version rail · no diff pane · no Restore)                                                   │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. Control map
+---
 
-| # | UI-C-* | control | notes |
-|---|---|---|---|
-| 1 | — | Workspace region (Version rail) | Screen shell. |
-| 2 | UI-C-080 | Version list | Rows `‹version›` + `‹ts›` + author; selection marks the compare side. |
-| 3 | UI-C-081 | Compare selectors (a / b) | Two version picks bound to the diff pane. |
-| 4 | UI-C-082 | Diff viewer | Read-only line diff; `-` / `+` / `~` markers only. |
-| 5 | UI-A-036 | Restore this version | DESTRUCTIVE — always opens UI-M-03. |
+## 2. Real data
 
-## 3. State variants
+**None.** There is no version endpoint and `CapsuleConfigOut` carries no version fields:
 
-- **loading** — Rail skeleton rows; diff pane verbatim: "Loading versions…"
-- **empty** — `UI-C-023` verbatim: "No published versions yet. Publish a version from the capsule editor."
-  Diff pane with nothing selected verbatim: "Select two versions to compare."
-- **error** — `UI-C-024` verbatim: "Version history could not be loaded. Retry, or check that the
-  somaAgent01 API is reachable." Diff failure verbatim: "Diff could not be computed for these versions."
-- **permission-denied** — Restore disabled with inline reason "Restore requires the capsule-editor role."
-  Rail and diff remain readable; `UI-C-025` verbatim:
-  "You do not have permission to restore versions. Ask a platform admin for the capsule-editor role."
-- **offline** — Rail shows last cached page ("Showing the last synced page."); Restore disabled
-  with reason "Restore is unavailable offline."
-
-## 4. Modal overlays
-
-| Trigger | Modal | Contents |
+| Concept a version screen would need | Real field? | Handling |
 |---|---|---|
-| UI-A-036 Restore this version | UI-M-03 Dialog | "Restore ‹version.a›? A new version is created; history is kept." Cancel / Restore. |
-| Chrome version chip (UI-C-003) entry | UI-M-01 Drawer (420px) | Compact rail; link to this full screen. ESC closes, focus trap. |
-| — | UI-M-02 | Not used by this screen. |
+| version id / semver | **not in schema** | not drawn |
+| author / deployed_by | **removed** (`schemas.py:46-49`) | not drawn |
+| timestamp | **not in schema** | not drawn |
+| diff base document | **not in schema** | not drawn |
 
-## 5. Honesty notes
+The only capsule read is `GET /api/v2/agents/{agent_id}/capsule` → the **live** config (UI-S-12).
 
-Version identifiers, timestamps and authors are store placeholders. Diff lines are shape markers
-(`‹added.line›`) — no fabricated document content.
+---
+
+## 3. Control map
+
+| # | Control | Behavior | Live? |
+|---|---|---|---|
+| 1 | Gated notice | Blocking reason verbatim above. | live (notice) |
+| 2 | Back to editor | `router →` UI-S-12. | live |
+| — | Version rail / Diff / Restore | **Not rendered** — no API. | GATED |
+
+---
+
+## 4. Numbered journey (stops at the gate)
+
+| Step | Where | Action | Result |
+|---|---|---|---|
+| **1** | UI-S-12 | Look for “History / Versions” | No such control — versioning is not offered on this deployment. |
+| **2** | UI-S-12 | (if surfaced) click Versions | This screen opens with the GATED notice. |
+| **3** | here | Read the blocking reason | Understands versioning is unimplemented. |
+| **4** | here | **Back to editor** | `router →` UI-S-12 (live config). |
+
+There is no step 5 — nothing to diff, nothing to restore.
+
+---
+
+## 5. States
+
+| State | Behavior |
+|---|---|
+| default | GATED notice + blocking reason. |
+| offline | Same notice (the gate is not network-dependent). |
+
+No loading, no empty rail, no error — the feature does not reach the API.
+
+---
+
+## 6. Honesty
+
+- No invented semver strings, authors, timestamps, or diff lines.
+- The gate reason names the real API shape (`GET …/capsule` returns one live config).
+- When a version API ships, this screen fills from **that** API — never from placeholders.
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `admin/agents/api/schemas.py:46-49` | `version` / `deployed_at` / `deployed_by` removed |
+| `GET /api/v2/agents/{agent_id}/capsule` | Single live config (UI-S-12) |
+| `SOMA-UI-CATALOG-001.md` §3 | Capsule fields = `CapsuleConfigOut` only |
 
 End of Document

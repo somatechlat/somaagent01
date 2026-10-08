@@ -1,45 +1,100 @@
 # UI-X-01 — Files
 
-**Files** — Right-rail panel in context — route `right-rail surface [1]` — facet **Surface**.
-Chrome abbreviated (UI-S-00). Facet tabs and surface rail are visible.
+Surface **UI-X-01 Files** · Right canvas (Band D) · Facet: Surface · Chrome: UI-S-00 abbreviated
+Registry: `webui/src/components/soma-right-panel.ts` → `SURFACES` key `files`
+Backing (live): `GET /api/v2/filesv2/` (`FileListResponse`)
+Nav: `SOMA-UI-NAV-001.md` §2 canvas (no Memory tab) · §3 Files one-home
+
+**Status: LIVE.** Present and available. No `blockedReason` on this surface.
+
+---
+
+## 1. ASCII wireframe — docked in the canvas
 
 ```
-┌─ chrome (abbrev) ──────────────────────┬ RIGHT RAIL · UI-X-01 Files                                                                     ┐
-│  capsule <capsule.name> v<version>     │ Surface: Files                       [upload] [new folder]                                     │
-│  <lifecycle>  knobs (IQ <v>)(auto <v>)(│ ┌─ path bar ──────────────────────────────────────────────────────────────┐                    │
-│  derived AgentIQ RO: <readouts, greyed>│ │ <path/breadcrumb>                                                        │                   │
-│  facets [Soul][Brain][Hands][Memory][Bo│ └──────────────────────────────────────────────────────────────────────────┘                   │
-│  <Cmd-K>                               │ ┌─ tree ────────────────────────┬─ preview ───────────────────────────────┐                    │
-│                                        │ │ v <dir>                        │ <file.name>                              │                  │
-│  WORKSPACE (abbrev)                    │ │   <file>  <size>               │ <mime> <size>                            │                  │
-│  ┌────────────────────────────────┐    │ │   <file>  <size>               │ ┌────────────────────────────────────┐   │                  │
-│  │ screen content in context        │  │ │   v <dir>                      │ │ preview body (text / image)         │   │                 │
-│  │ (see UI-S-07 chat workspace)     │  │ │     <file>  <size>             │ │ <content or the reason it cannot>   │   │                 │
-│  │ surface rail select: UI-X-01 Files  │ │   <dir>                        │ └────────────────────────────────────┘   │                  │
-│  └────────────────────────────────┘    │ └────────────────────────────────┴──────────────────────────────────────────┘                  │
-│                                        │ [rename] [download] [delete]  search [__________]                                              │
-│  instance <session_id> <state>         │                                                                                                │
-│  neuro RO DA <v> 5-HT <v> NE <v> ACh <v│                                                                                                │
-└────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ chrome (abbrev) ──────────────────────┬ RIGHT CANVAS · UI-X-01 Files                                 ┐
+│  chat workspace (UI-S-07)              │ [📁 Files][🔧 Tools][🌐 Browser†][💻 Editor]                  │
+│  ┌────────────────────────────────┐    │ [🐞 Debug][📦 Capsule][🧠 Brain][🖥 Desktop†]                  │
+│  │ screen content in context      │    ├──────────────────────────────────────────────────────────────┤
+│  │ surface rail select: Files     │    │  Files  UI-X-01                                              │
+│  └────────────────────────────────┘    │                                                                │
+│                                        │  ┌─ file list ─────────────────────────────────────────────┐  │
+│                                        │  │ 📄 ‹original_name | name›                               │  │
+│                                        │  │    ‹mime_type | —› · v‹version›          ‹size_bytes›   │  │
+│                                        │  │ 📄 ‹original_name | name›                               │  │
+│                                        │  │    ‹mime_type | —› · v‹version›          ‹size_bytes›   │  │
+│                                        │  │ …                                                         │  │
+│                                        │  └─────────────────────────────────────────────────────────┘  │
+│                                        │  showing ‹n› of ‹total›          (only when total > shown)   │
+│                                        │                                                                │
+│  instance ‹session_id› ‹state›         │  Click / Enter → open in UI-X-04 Editor (same file).         │
+└────────────────────────────────────────┴──────────────────────────────────────────────────────────────┘
+† GATED surfaces — see UI-X-03 / UI-X-08. They stay on the rail with the reason.
 ```
 
-**Control map.**
+---
 
-| # | UI-C-* | control | notes |
+## 2. Control map
+
+| # | Control | Behavior | Live? |
 |---|---|---|---|
-| 1 | UI-C-105 | file tree | Real tree from the workspace FS API. Nodes are `‹ live value ›`; no folder structure is invented. |
-| 2 | UI-C-106 | path / breadcrumb bar | Shows the real current path. |
-| 3 | UI-C-107 | preview pane | Text/image preview when the mime is supported. Otherwise the pane states why it cannot preview. |
-| 4 | UI-C-077 | upload (file picker) | disabled-while: upload in flight. |
-| 5 | UI-C-069 | delete (destructive) | Opens UI-M-03. disabled-when: selection is read-only — disabled-reason: "This path is read-only." |
-| 6 | UI-C-070 | search input | Searches the real tree. No results are fabricated. |
+| 1 | File row list | Real `FileOut` rows: `original_name \|\| name`, `mime_type`, `version`, `size_bytes`. Lazy-loaded on first open of the surface. | live |
+| 2 | Row open (click / Enter / Space) | Opens the file in **UI-X-04 Editor** (read-only). | live |
+| 3 | “showing N of total” | Rendered only when `total > files.length`. Never a guessed remainder. | live |
+| 4 | Upload / new folder | **Not in this surface today.** No upload control is drawn. | absent |
+| 5 | Delete / rename | **Not in this surface today.** No destructive control is drawn. | absent |
 
-**State variants.**
+No tree is invented when the API returns a flat list. No preview pane until a preview path exists.
 
-- **Loading.** Skeleton rows plus a `loading` chip in the workspace header. No counts, charts or metrics are drawn while loading.
-- **Empty.** "No files here yet. Upload a file or create a folder."
-- **Error.** "Couldn't load files. ‹ reason from API ›"
-- **Permission-denied.** "You don't have access to these files. Ask the capsule owner for read access."
-- **Offline.** You're offline. Changes will not be saved until the connection returns.
+---
 
-**Modal overlays.** UI-M-02 Full-screen — file preview focus (explicit dismiss only). UI-M-03 Dialog — "Delete <file.name>?" (destructive).
+## 3. States
+
+| State | Verbatim |
+|---|---|
+| idle / loading | “Loading files…” |
+| empty | “No files in the working set.” |
+| error | “Files could not be listed.” |
+| denied | “You need `files:read` to browse files.” |
+| offline | Chrome offline banner; list keeps last painted rows. |
+
+No counts, charts, or metrics while loading.
+
+---
+
+## 4. Modal overlays
+
+None from this surface. Opening a file selects **UI-X-04** in the same canvas (not a modal).
+
+---
+
+## 5. Navigation
+
+| In | Out |
+|---|---|
+| Canvas tab **Files** (registry order 1/8) | UI-X-04 Editor (file open) |
+| Attach menu (drawer of the same list — not a second tree) | — |
+
+Cross-link: `SOMA-UI-NAV-001.md` §2 canvas · §3 Files one-home · §5 acceptance.
+**No Memory tab in the canvas** — Memory is only `/memory` (UI-S-04).
+
+---
+
+## 6. Honesty
+
+- Every row is a `FileOut` from the API. Missing `mime_type` renders `—`.
+- `size_bytes` is formatted only for display; the number is the server’s.
+- No upload/delete chrome while those endpoints are not wired on this surface.
+- A failed load is not an empty workspace — it is the error state.
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/components/soma-right-panel.ts` | Registry + `_renderFiles` + `_openFileInEditor` |
+| `GET /api/v2/filesv2/` | `FileListResponse` `{files, total, page, per_page}` |
+| `FileOut` | `id, name, original_name, mime_type, size_bytes, version, storage_backend, metadata, tags, created_at, updated_at` |
+
+End of Document

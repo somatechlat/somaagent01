@@ -1,65 +1,123 @@
-# UI-S-35 — Platform profile
+# UI-S-35 — Platform profile (Agent Soma)
 
-**Platform profile** — Platform-admin workspace column (same view as /platform/profile) — route `/admin/profile` — facet **Auth**.
-Chrome abbreviated (UI-S-00). Facet tabs and surface rail are visible.
+Screen UI-S-35 · Route: `/admin/profile` (same view as `/platform/profile`) · Platform-admin only  
+Live: `webui/src/views/soma-platform-profile.ts` · Router: `webui/src/main.ts`  
+Entry: platform admin nav → `/admin/profile`. Not a Settings section.
+
+**Product:** Agent Soma platform identity. Thin workspace chrome.  
+Forbidden on screen: the word "slot" · SaaS / Eye of God branding · fake metrics · facet tabs · surface rail · IQ knobs · chat left rail · canvas.
+
+---
+
+## 1. Purpose
+
+Manage platform-level identity (name, support contact) and the platform signing key. Platform-admin only. Own workspace chrome — no chat rail.
+
+---
+
+## 2. ASCII wireframe — `/admin/profile` (desktop)
 
 ```
-┌─ UI-S-00 chrome (abbrev) ────────────────────────────────────────────────────────────────────────┐
-│ capsule: <capsule.name>                                                                         │
-│ version: <version>    lifecycle: <lifecycle>                                                    │
-│ persona knobs: (IQ <val>)(auto <val>)(budget <val>)                                             │
-│ derived AgentIQ RO (greyed, never inputs):                                                      │
-│   temperature <v>  max_tokens <v>  rlm_iterations <v>                                           │
-│   recall_limit <v>  model_tier <v>  brain_query_enabled <v>                                     │
-│   require_hitl <v>  tool_approval <v>  egress_allowed <v>                                       │
-│   token_limit <v>  cost_tier <v>  thinking_budget <v>                                           │
-├─────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ facet tabs x6:  [Soul][Brain][Hands][Memory][Body][Governance]                                  │
-│ command palette: <Cmd-K>                                                                        │
-├────────────────────────────────────────────────────────────────────────┼────────────────────────┤
-│ WORKSPACE  facet: Auth                                                 │ SURFACE RAIL x8        │
-│  route: /admin/profile                                                 │  [1] Files             │
-│  Platform profile                           [Save] [Cancel]            │  [2] Tools             │
-│                                                                        │  [3] Browser           │
-│  Platform identity                                                     │  [4] Editor            │
-│  Name            ┌──────────────────────────┐                          │  [5] Debug             │
-│                  │ <platform.name>          │                          │  [6] Capsule           │
-│  Support contact └──────────────────────────┘                          │  [7] Brain             │
-│                  │ <platform.support_email> │                          │  [8] Desktop           │
-│                  ┌──────────────────────────┐                          │       GATED (UI-X-08)  │
-│                                                                        │                        │
-│  Operator identity (this account)                                      │                        │
-│  Role chips: <role>  <role>   Display name ┌────────────────┐          │                        │
-│                                 │ <user.name>    │                     │                        │
-│                                 ┌────────────────┐                     │                        │
-│                                                                        │                        │
-│  Danger zone                                                           │                        │
-│  [Rotate platform signing key]  (opens UI-M-03)                        │                        │
-│  secrets render masked sk-***...aBcD  note: rotate in Vault            │                        │
-├────────────────────────────────────────────────────────────────────────┼────────────────────────┤
-│ instance strip: <session_id>  state: <state>  started: <ts>                                     │
-│ neuro meters x4 (RO): DA <v>  5-HT <v>  NE <v>  ACh <v>                                         │
-│   neuromodulator synced_at: <ts>   (no value without a real sync)                               │
-└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────────┐
+│ [←]  SOMA · Platform profile                           [Save] [Cancel]                        │
+├──────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                              │
+│  Platform profile                                                                            │
+│                                                                                              │
+│  Platform identity                                                                           │
+│  Name            ┌──────────────────────────┐                                                 │
+│                  │ <platform.name>          │                                                 │
+│  Support contact └──────────────────────────┘                                                 │
+│                  │ <platform.support_email> │                                                 │
+│                  ┌──────────────────────────┐                                                 │
+│                                                                                              │
+│  Operator identity (this account)                                                            │
+│  Role chips: <role>  <role>   Display name ┌────────────────┐                                 │
+│                                 │ <user.name>    │                                          │
+│                                 ┌────────────────┘                                          │
+│                                                                                              │
+│  Danger zone                                                                                 │
+│  [Rotate platform signing key]  (opens UI-M-03)                                              │
+│  secrets render masked ••••••••••••aBcD  note: rotate in Vault                               │
+│                                                                                              │
+├──────────────────────────────────────────────────────────────────────────────────────────────┤
+│ status: <save state> · permission: platform-admin required                                   │
+└──────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Control map.**
+**Chrome law.** Thin workspace top ([←] back · brand · Save/Cancel). No chat left rail, no canvas, no facet tabs, no surface rail.
 
-| # | UI-C-* | control | notes |
-|---|---|---|---|
-| 1 | UI-C-061 | platform name input | Platform display name. No default value invented. |
-| 2 | UI-C-061 | support contact input | type=email. |
-| 3 | UI-C-087 | operator identity display | Current account; role chips come from the session. |
-| 4 | UI-C-067 | Save (primary) | disabled-while: request in flight. |
-| 5 | UI-C-084 | signing key readout (masked) | Renders `sk-••••••••aBcD` with a "rotate in Vault" note. Never a real value, never an editable field. |
-| 6 | UI-C-069 | Rotate platform signing key (destructive) | Opens UI-M-03. disabled-when: not platform admin — disabled-reason: "Requires the platform-admin role." |
+---
 
-**State variants.**
+## 3. User journey (numbered clicks)
 
-- **Loading.** Skeleton rows plus a `loading` chip in the workspace header. No counts, charts or metrics are drawn while loading.
-- **Empty.** "No platform profile stored yet. Fill in the name and support contact."
-- **Error.** "Couldn't load the platform profile. ‹ reason from API ›"
-- **Permission-denied.** "You don't have access to platform profile. Requires the platform-admin role."
-- **Offline.** You're offline. Changes will not be saved until the connection returns.
+1. Platform admin nav → `/admin/profile`.
+2. Edit **Name** and **Support contact**.
+3. Click **Save** → spinner `Saving...` → confirmation.
+4. Click **Rotate platform signing key** → UI-M-03 confirm dialog → key rotated (new key shown masked once).
+5. Click **[←]** → back to platform admin nav.
 
-**Modal overlays.** UI-M-03 Dialog — "Rotate the platform signing key? Existing signatures will need re-signing." (destructive).
+---
+
+## 4. Control map
+
+| # | Control | Binding |
+|---|---|---|
+| 1 | Platform name input | Platform display name. No default value invented. |
+| 2 | Support contact input | `type=email`. |
+| 3 | Operator identity display | Current account; role chips from the session. |
+| 4 | Save (primary, header) | Saves platform identity fields. disabled-while: request in flight. |
+| 5 | Cancel (secondary, header) | Restores last saved values. |
+| 6 | Signing key readout (masked) | Renders `••••••••••••aBcD` with "rotate in Vault" note. Never a real value, never editable. |
+| 7 | Rotate platform signing key (destructive) | Opens UI-M-03. disabled-when: not platform admin — disabled-reason: `Requires the platform-admin role.` |
+
+---
+
+## 5. Field / behavior
+
+| Field | Source | Behavior |
+|---|---|---|
+| platform name | `GET/PUT /api/v2/platform/profile` | Editable. |
+| support contact | `GET/PUT /api/v2/platform/profile` | `type=email`. Editable. |
+| operator roles | session / `GET /api/v2/auth/me` | Read-only chips. |
+| signing key | Vault | Always masked. Rotate via UI-M-03 confirm. |
+
+---
+
+## 6. States (verbatim)
+
+| State | Verbatim |
+|---|---|
+| loading | `Loading platform profile...` |
+| empty | `No platform profile stored yet. Fill in the name and support contact.` |
+| error | `Couldn't load the platform profile. ‹ reason from API ›` |
+| permission | `You don't have access to platform profile. Requires the platform-admin role.` |
+| offline | `You're offline. Changes will not be saved until the connection returns.` |
+| save ok | `Platform profile updated.` |
+
+---
+
+## 7. Navigation in / out
+
+| Direction | Target | Notes |
+|---|---|---|
+| In | `/admin/profile` | Platform admin nav. Alias: `/platform/profile`. |
+| Out | platform admin nav | [←] back. |
+| Out | `/login` | If session expired. |
+
+---
+
+## 8. Modal overlays
+
+- **UI-M-03** Dialog — `Rotate the platform signing key? Existing signatures will need re-signing.` (destructive).
+
+---
+
+## 9. Acceptance
+
+- [ ] No facet tabs, surface rail, IQ knobs, chat left rail, or canvas
+- [ ] Real routes: `/admin/profile` · `/platform/profile`
+- [ ] Signing key always masked — never a real value
+- [ ] All copy verbatim per §6
+
+End of Document

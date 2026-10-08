@@ -1,70 +1,111 @@
-# UI-S-23 — Roles & role matrix
+# UI-S-23 — Roles
 
-Screen UI-S-23 · Facet: Platform · Route: `/platform/roles`
-Source view per `SOMA-UI-IDREG-001.md`: `saas-admin-roles-list` (`webui/src/views/saas-admin-roles-list.ts`).
-Route matches `webui/src/main.ts:140`. Note: a separate role-matrix view (`saas-role-matrix`) is
-routed at `/platform/role-matrix` (`main.ts:147`) and is not listed as its own screen in
-`SOMA-UI-IDREG-001.md`; this mockup shows the matrix as a secondary pane of the same screen.
+Screen UI-S-23 · Routes: **`/platform/roles`** · **`/platform/role-matrix`** · **`/soma/permissions`**
+· **`/platform/permissions`** (all `main.ts:164-166` → `soma-admin-roles-list`)
+Chrome: **UI-S-00 thin** (abbrev) · Catalog: `SOMA-UI-CATALOG-001.md` §2 Platform
+Live view: `webui/src/views/soma-admin-roles-list.ts` (`soma-admin-roles-list`)
 
-## 1. ASCII wireframe — whole screen inside UI-S-00 chrome
+**Status: LIVE.** One roles screen. This file is the **role catalogue pane**; the permission matrix
+is the secondary pane (**UI-S-24**) of the **same** screen — not a second destination (DUP-7).
+
+---
+
+## 1. ASCII wireframe — roles catalogue (primary pane)
 
 ```
-┌─[capsule ▾] ‹capsule.name› [v‹semver›][‹lifecycle›]───────── IQ[──●──] AUTO[─●─] BUDGET[─●─] ⌘K─┐
-│ derived (RO): temp ‹› max_tok ‹› rlm ‹› recall ‹› tier ‹› hitl ‹› tokens ‹› cost ‹› think ‹›      │
-├─ Soul  Brain  Hands  Memory  Body  Governance ──────────────────────────────────────────────────┤
-│ LEFT NAV │ WORKSPACE — Roles [1]                                        │ SURFACES x8             │
-│  Chat    │ ┌──────────────┐ ┌──────────────────────────────────────┐  │ [Files][Tools][Browser] │
-│  Capsule │ │ ROLE LIST [2]│ │ ROLE MATRIX [3]                      │  │ [Editor][Debug][Capsule]│
-│  Module  │ │  ‹role.name› │ │  perms        ‹role.a› ‹role.b› ‹role.c›│ │ [Brain][Desktop†] †GATED│
-│  Platform│ │ › ‹role.name› │ │  ─────────    ────── ────── ──────  │  │                         │
-│  Ops     │ │  ‹role.name› │ │  ‹perm.name›    [x]     [ ]     [x] │  │                         │
-│  Settings│ │  ‹role.name› │ │  ‹perm.name›    [x]     [x]     [ ] │  │  [4] cell toggles       │
-│          │ │ [+ New role] │ │  ‹perm.name›    [ ]     [ ]     [ ] │  │                         │
-│          │ │              │ │  ‹perm.name›    [x]     [ ]     [ ] │  │                         │
-│          │ │              │ │  (scroll)                            │  │                         │
-│          │ │              │ │ [ Save matrix ] [5]  [ Delete role ] [6]│                         │
-│          │ └──────────────┘ └──────────────────────────────────────┘  │                         │
-├──────────┴──────────────────────────────────────────────────────────────┴─────────────────────────┤
-│ INSTANCES ‹instance.id› ‹instance.status› │ NEURO: DA ‹› 5-HT ‹› NE ‹› ACh ‹› │ synced ‹ts›      │
-└───────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  ROLES · PERMISSIONS                                        [Save matrix]  [⟳ Refresh]          │
+│                                                                                                  │
+│  ┌─ ROLE LIST ─────────────┐  ┌─ PERMISSION MATRIX (UI-S-24 pane) ──────────────────────────┐  │
+│  │  ‹role.name›         ●  │  │  perm              ‹role.a›   ‹role.b›   ‹role.c›           │  │
+│  │  ‹role.name›            │  │  ─────────────     ────────   ────────   ────────           │  │
+│  │  ‹role.name›            │  │  ‹perm.name›         [x]        [ ]        [x]              │  │
+│  │  ‹role.name›            │  │  ‹perm.name›         [x]        [x]        [ ]              │  │
+│  │                         │  │  ‹perm.name›         [ ]        [ ]        [ ]              │  │
+│  │  [+ New role]           │  │  (scroll)                                                    │  │
+│  │  [Delete role…]         │  │                                                               │  │
+│  └─────────────────────────┘  └───────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. Control map
+---
 
-| # | UI-C-* | control | notes |
+## 2. Real data
+
+| UI field | Source | Absent handling |
+|---|---|---|
+| Role name | role record | required |
+| Permission name | permission record | required |
+| Cell checked | role↔permission assignment | unchecked when not assigned |
+
+One live view (`soma-admin-roles-list`) for all four aliases (`main.ts:164-166`).
+Do not present the matrix as a separate nav destination (DUP-7).
+
+---
+
+## 3. Control map
+
+| # | Control | API / behavior | Live? |
 |---|---|---|---|
-| 1 | — | Workspace region (Roles) | Screen shell. |
-| 2 | UI-C-111 | Role list | Rows `‹role.name›`; selection drives the matrix columns. |
-| 2 | UI-A-056 | Create role | Adds a role via UI-M-03 dialog (name + confirm). |
-| 3 | UI-C-112 | Role matrix grid | Permissions × roles; cells are UI-C-113. |
-| 4 | UI-C-113 | Permission cell toggle | Enables/disables one permission for one role. |
-| 5 | UI-A-057 | Save matrix | Writes all cell edits. (ID note: UI-A-057 is Save here; delete is UI-A-058.) |
-| 6 | UI-A-058 | Delete role | DESTRUCTIVE — always opens UI-M-03. |
+| 1 | Role list | Roles as stored. Selecting one highlights its matrix column. | live |
+| 2 | New role | Create via the roles admin API → row appears. | live |
+| 3 | Delete role… | Destructive confirm (UI-M-03) → roles admin API. | live |
+| 4 | Matrix cells | Toggle role↔permission assignment (UI-S-24 pane). | live |
+| 5 | Save matrix | Persist all assignment edits. Disabled until dirty. | live |
+| 6 | Refresh | Re-fetch roles + assignments. | live |
 
-## 3. State variants
+---
 
-- **loading** — Role list and matrix skeleton. Verbatim label: "Loading roles…"
-- **empty** — Role list verbatim: "No roles defined. Create a role to start a matrix."
-  Matrix with no selection verbatim: "Select a role to see its permissions."
-- **error** — `UI-C-024` verbatim: "Roles could not be loaded. Retry, or check that the
-  somaAgent01 API is reachable." Save failure verbatim: "Matrix was not saved. Your changes are still here."
-- **permission-denied** — Cell toggles locked; Create/Delete/Save disabled with inline reason
-  "Role administration requires the platform-admin role." `UI-C-025` verbatim:
-  "You do not have permission to manage roles. Ask a platform admin for the platform-admin role."
-- **offline** — Matrix remains visible read-only; write actions disabled with reason
-  "Role changes are unavailable offline."
+## 4. Numbered journey — create a role and assign a permission
 
-## 4. Modal overlays
+| Step | Where | Action | API | Result |
+|---|---|---|---|---|
+| **1** | `/platform/roles` | Screen loads | roles admin API | Role list + matrix panes. |
+| **2** | list | Click **New role** → name it | roles admin API | New row in the list. |
+| **3** | matrix | Toggle a permission cell for that role | — | Cell dirty → **Save matrix** enabled. |
+| **4** | matrix | Click **Save matrix** | roles admin API | Assignments persisted. |
+| **5** | list | **Delete role…** → confirm | UI-M-03 → roles admin API | Role removed; its column drops. |
+
+---
+
+## 5. States
+
+| State | Verbatim / behavior |
+|---|---|
+| loading | “Loading roles…” — skeleton rows. |
+| empty | “No roles defined yet. Create the first role to get started.” |
+| error | “Roles could not be loaded. Retry, or check that the somaAgent01 API is reachable.” |
+| dirty | **Save matrix** enabled. |
+| save fail | “Matrix was not saved. Your edits are still here — try again.” |
+| permission-denied | Read-only; “Role administration requires the platform-admin role.” |
+| offline | “Role actions are unavailable offline.” |
+
+---
+
+## 6. Modal overlays
 
 | Trigger | Modal | Contents |
 |---|---|---|
-| UI-A-056 Create role | UI-M-03 Dialog | Role name field + Create / Cancel. |
-| UI-A-058 Delete role | UI-M-03 Dialog | "Delete ‹role.name›? Users with only this role lose access." Cancel / Delete. |
+| Delete role… | UI-M-03 | “Delete ‹role.name›? Assignments will be removed.” Cancel / Delete (destructive). |
 | — | UI-M-01 / UI-M-02 | Not used by this screen. |
 
-## 5. Honesty notes
+---
 
-Role and permission names are store placeholders. Cell states show only what the role store
-holds — no assumed defaults are painted as real grants.
+## 7. Honesty
+
+Role and permission names come from the store. No invented permission sets or counts.
+One surface for all four route aliases (DUP-7).
+
+---
+
+## 8. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/main.ts:164-166` | `/platform/roles` · `/platform/role-matrix` · `/soma/permissions` · `/platform/permissions` → `soma-admin-roles-list` |
+| `webui/src/views/soma-admin-roles-list.ts` | Live screen (catalogue + matrix panes) |
+| `SOMA-UI-NAV-AUDIT-001.md` §3 DUP-7 | Roles/permissions are panes of one screen |
 
 End of Document

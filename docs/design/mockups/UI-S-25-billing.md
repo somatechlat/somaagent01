@@ -1,72 +1,82 @@
 # UI-S-25 — Billing
 
-Screen UI-S-25 · Facet: Platform · Route: `/admin/billing`
-Source view per `SOMA-UI-IDREG-001.md`: `saas-tenant-billing` (`webui/src/views/saas-tenant-billing.ts`).
-Route matches `webui/src/main.ts:317`. (A separate `/saas/billing` route mounts `saas-billing`
-at `main.ts:309` and is not listed in `SOMA-UI-IDREG-001.md`.)
+Screen UI-S-25 · Chrome: **UI-S-00 thin** (abbrev) · Catalog: `SOMA-UI-CATALOG-001.md` §2 Platform
 
-## 1. ASCII wireframe — whole screen inside UI-S-00 chrome
+**Status: GATED / future — does not ship on this deployment.**
+
+> **Blocking reason:** Standalone agent — **no billing routes** in `main.ts`
+> (`main.ts:131-132`: “No Soma or billing routes: this is a standalone agent, and the admin
+> surface administers the agent only.”). No billing API. ORPH-M2
+> (`SOMA-UI-NAV-AUDIT-001.md` §5). Out of scope for this deployment.
+
+---
+
+## 1. ASCII wireframe — future sketch (not routable)
 
 ```
-┌─[capsule ▾] ‹capsule.name› [v‹semver›][‹lifecycle›]───────── IQ[──●──] AUTO[─●─] BUDGET[─●─] ⌘K─┐
-│ derived (RO): temp ‹› max_tok ‹› rlm ‹› recall ‹› tier ‹› hitl ‹› tokens ‹› cost ‹› think ‹›      │
-├─ Soul  Brain  Hands  Memory  Body  Governance ──────────────────────────────────────────────────┤
-│ LEFT NAV │ WORKSPACE — Billing [1]                                      │ SURFACES x8             │
-│  Chat    │ ┌────────────────────────────────────────────────────────┐  │ [Files][Tools][Browser] │
-│  Capsule │ │ PLAN CARD [2]                                          │  │ [Editor][Debug][Capsule]│
-│  Module  │ │  ‹plan.name› · ‹status› · renews ‹ts›                  │  │ [Brain][Desktop†] †GATED│
-│  Platform│ │  [ Change plan ] [3]                                    │  │                         │
-│  Ops     │ │ PAYMENT METHOD [4]  ‹brand›  sk-••••••••aBcD (rotate in Vault)│                    │
-│  Settings│ │ INVOICES [5]                                            │  │                         │
-│          │ │ ┌────────────────────────────────────────────────────┐ │  │                         │
-│          │ │ │ ‹invoice.id›  ‹ts›  ‹amount›  ‹status›  [ Download ]│ │  │                         │
-│          │ │ │ ‹invoice.id›  ‹ts›  ‹amount›  ‹status›  [ Download ]│ │  │                         │
-│          │ │ │ (scroll)                                           │ │  │                         │
-│          │ │ └────────────────────────────────────────────────────┘ │  │                         │
-│          │ │ balance: ‹ live value ›   as of ‹ timestamp ›           │  │                         │
-│          │ └────────────────────────────────────────────────────────┘  │                         │
-├──────────┴──────────────────────────────────────────────────────────────┴─────────────────────────┤
-│ INSTANCES ‹instance.id› ‹instance.status› │ NEURO: DA ‹› 5-HT ‹› NE ‹› ACh ‹› │ synced ‹ts›      │
-└───────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│  ┌─ GATED ───────────────────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                                           │  │
+│  │   Billing is not available on this deployment.                                            │  │
+│  │                                                                                           │  │
+│  │   Blocking reason: standalone agent — no billing routes in main.ts                         │  │
+│  │   (main.ts:131-132). No billing API.                                                       │  │
+│  │                                                                                           │  │
+│  └───────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                  │
+│  (no invoices · no payment methods · no plan table)                                              │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. Control map
+---
 
-| # | UI-C-* | control | notes |
+## 2. Real data
+
+**None.** No billing schema or endpoint exists. Any invoice, amount, or plan name would be invented.
+
+---
+
+## 3. Control map
+
+| # | Control | Behavior | Live? |
 |---|---|---|---|
-| 1 | — | Workspace region (Billing) | Screen shell. |
-| 2 | UI-C-117 | Plan summary card | Read-only `‹plan.name›` / `‹status›` / `‹ts›`. |
-| 3 | UI-A-061 | Change plan | Navigates to UI-S-26 / plan picker. |
-| 4 | UI-C-118 | Payment method row | Masked instrument only — `sk-••••••••aBcD` + "rotate in Vault". Never a real value. |
-| 5 | UI-C-119 | Invoice table | Rows `‹invoice.id›` / `‹ts›` / `‹amount›` / `‹status›`. |
-| 5 | UI-A-048 | Download invoice | Per-row action; enabled when `‹status›` says the invoice exists. |
-| — | UI-C-028 | Row action menu (⋯) | Download / View. |
+| 1 | Gated notice | Blocking reason verbatim. | live (notice) |
+| — | Invoices / payments / plans | **Not rendered** — no API, no route. | GATED |
 
-## 3. State variants
+---
 
-- **loading** — Invoice table skeleton; plan card verbatim label: "Loading billing…"
-- **empty** — Invoices `UI-C-023` verbatim: "No invoices yet. Invoices appear after the first billing cycle."
-  Payment method verbatim: "No payment method on file."
-- **error** — `UI-C-024` verbatim: "Billing could not be loaded. Retry, or check that the
-  billing service is reachable." Download failure verbatim: "Invoice download failed. Try again."
-- **permission-denied** — Download/Change plan disabled with inline reason
-  "Billing requires the tenant-admin role." `UI-C-025` verbatim:
-  "You do not have permission to view billing. Ask a platform admin for the tenant-admin role."
-- **offline** — Table shows last cached page ("Showing the last synced page."); Download/Change
-  plan disabled with reason "Billing actions are unavailable offline."
+## 4. Numbered journey (stops at the gate)
 
-## 4. Modal overlays
+| Step | Where | Action | Result |
+|---|---|---|---|
+| **1** | anywhere | Look for a Billing nav entry | None — billing is not in the nav (standalone agent). |
+| **2** | (bookmark) | Navigate to a billing URL | Not routed; fallthrough → `soma-chat`. |
+| **3** | here | Read the blocking reason | Understands billing is out of scope for this deployment. |
 
-| Trigger | Modal | Contents |
-|---|---|---|
-| UI-A-061 Change plan | UI-M-01 Drawer (420px) | Plan comparison against stored plan records; ESC closes, focus trap. |
-| Payment method "update" | UI-M-02 Full-screen | Hosted payment-element hand-off; explicit dismiss only. Never an in-page card form. |
-| — | UI-M-03 | Not used by this screen. |
+---
 
-## 5. Honesty notes
+## 5. States
 
-Amounts, invoice ids and balances are `‹ live value ›` / store placeholders — no fabricated money
-figures. The payment instrument is always masked (`sk-••••••••aBcD`) with a "rotate in Vault"
-note. Plan prices come from the plan store (UI-S-28 tier builder), never from this mockup.
+| State | Behavior |
+|---|---|
+| default | GATED notice + blocking reason. |
+
+---
+
+## 6. Honesty
+
+No invented invoices, amounts, plans, or payment states. This mock records the gap (ORPH-M2).
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/main.ts:131-132` | Standalone agent — no billing routes |
+| `SOMA-UI-NAV-AUDIT-001.md` §5 ORPH-M2 | Billing mocks have no route |
 
 End of Document

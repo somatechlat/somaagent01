@@ -1,44 +1,96 @@
 # UI-X-05 — Debug
 
-**Debug** — Right-rail panel in context — route `right-rail surface [5]` — facet **Surface**.
-Chrome abbreviated (UI-S-00). Facet tabs and surface rail are visible.
+Surface **UI-X-05 Debug** · Right canvas (Band D) · Facet: Surface · Chrome: UI-S-00 abbreviated
+Registry: `webui/src/components/soma-right-panel.ts` → `SURFACES` key `debug`
+Backing (live): real WS frame ring buffer (`websocket-client.ts` `wsFrameLog` / `onWsFrame`)
+Nav: `SOMA-UI-NAV-001.md` §2 canvas
+
+**Status: LIVE (developer mode).** Present and available. No `blockedReason`.
+
+---
+
+## 1. ASCII wireframe — docked in the canvas
 
 ```
-┌─ chrome (abbrev) ──────────────────────┬ RIGHT RAIL · UI-X-05 Debug                                                                     ┐
-│  capsule <capsule.name> v<version>     │ Surface: Debug     filter [__________]  [pause] [clear]                                        │
-│  <lifecycle>  knobs (IQ <v>)(auto <v>)(│ ┌─ event stream ──────────────────────────────────────────────────────────┐                    │
-│  derived AgentIQ RO: <readouts, greyed>│ │ <ts> <event.type> <summary>  [inspect]                                   │                   │
-│  facets [Soul][Brain][Hands][Memory][Bo│ │ <ts> <event.type> <summary>  [inspect]                                   │                   │
-│  <Cmd-K>                               │ │ <ts> <event.type> <summary>  [inspect]                                   │                   │
-│                                        │ │ <ts> <event.type> <summary>  [inspect]                                   │                   │
-│  WORKSPACE (abbrev)                    │ └──────────────────────────────────────────────────────────────────────────┘                   │
-│  ┌────────────────────────────────┐    │ ┌─ request inspector ─────────────────────────────────────────────────────┐                    │
-│  │ screen content in context        │  │ │ request <id>  status <code>  dur <ts>                                    │                   │
-│  │ (see UI-S-07 chat workspace)     │  │ │ headers (read-only)  body (truncated)                                    │                   │
-│  │ surface rail select: UI-X-05 Debug  │ └──────────────────────────────────────────────────────────────────────────┘                   │
-│  └────────────────────────────────┘    │ [WS frame log] [open full-screen (UI-M-02)]                                                    │
-│                                        │                                                                                                │
-│  instance <session_id> <state>         │                                                                                                │
-│  neuro RO DA <v> 5-HT <v> NE <v> ACh <v│                                                                                                │
-└────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ chrome (abbrev) ──────────────────────┬ RIGHT CANVAS · UI-X-05 Debug                                  ┐
+│  chat workspace (UI-S-07)              │ [📁 Files][🔧 Tools][🌐 Browser†][💻 Editor]                  │
+│  ┌────────────────────────────────┐    │ [🐞 Debug][📦 Capsule][🧠 Brain][🖥 Desktop†]                  │
+│  │ screen content in context      │    ├──────────────────────────────────────────────────────────────┤
+│  │ surface rail select: Debug     │    │  Debug  UI-X-05                                              │
+│  └────────────────────────────────┘    │  [filter frames__________]  [Clear stream]                   │
+│                                        │                                                                │
+│                                        │  ┌─ WS frame log (newest first) ───────────────────────────┐  │
+│                                        │  │ ‹ts›  ←  ‹type›  ‹payload preview…›                     │  │
+│                                        │  │ ‹ts›  →  ‹type›  ‹payload preview…›                     │  │
+│                                        │  │ ‹ts›  ←  ‹type›  ‹payload preview…›                     │  │
+│                                        │  └─────────────────────────────────────────────────────────┘  │
+│                                        │                                                                │
+│  instance ‹session_id› ‹state›         │  ← inbound   → outbound                                      │
+│                                        │  Hover row → full JSON payload (title).                      │
+└────────────────────────────────────────┴──────────────────────────────────────────────────────────────┘
 ```
 
-**Control map.**
+---
 
-| # | UI-C-* | control | notes |
+## 2. Control map
+
+| # | Control | Behavior | Live? |
 |---|---|---|---|
-| 1 | UI-C-111 | debug event stream | Real WS/API events only. Frames are `‹ live value ›`; nothing is synthesised to fill the pane. |
-| 2 | UI-C-112 | request inspector | Read-only echo of the selected request/response. |
-| 3 | UI-C-070 | filter input | Filters the live stream. |
-| 4 | UI-C-065 | pause toggle | Pauses rendering of new events. Does not stop collection. |
-| 5 | UI-C-068 | WS frame log (secondary) | Opens UI-M-01 drawer with the frame log. |
+| 1 | Frame log | Real frames from `wsFrameLog`, reversed (newest first). Columns: `ts` · `dir` (`←` in / `→` out) · `type` · payload preview (120 chars + `…`). | live |
+| 2 | Filter frames | Matches `type` or stringified `payload` (case-insensitive). Filters the real buffer only. | live |
+| 3 | Clear stream | Local view buffer only (`clearedBefore = now`). Does **not** stop collection or clear the server. | live |
+| 4 | Payload title | Full JSON on hover via `title` attribute. | live |
+| 5 | Pause toggle / request inspector drawer | **Not drawn** in this surface today. | absent |
 
-**State variants.**
+Nothing is synthesised to fill the pane. An empty log is an empty log.
 
-- **Loading.** Skeleton rows plus a `loading` chip in the workspace header. No counts, charts or metrics are drawn while loading.
-- **Empty.** "No events yet. Interact with the agent to see traffic."
-- **Error.** "Couldn't attach to the event stream. ‹ reason from API ›"
-- **Permission-denied.** "You don't have access to the debug surface. Requires the developer role."
-- **Offline.** You're offline. Changes will not be saved until the connection returns.
+---
 
-**Modal overlays.** UI-M-01 Drawer — event/frame inspector. UI-M-02 Full-screen — raw frame payload (explicit dismiss only).
+## 3. States
+
+| State | Verbatim |
+|---|---|
+| empty | “No events yet.” |
+| empty (after clear) | “No events yet.” (local clear only) |
+| empty (filter) | “No events yet.” |
+| loading | Not applicable — frames append as they arrive. |
+| error | Not applicable — the buffer is client-local. |
+| offline | New frames stop; painted rows remain. |
+
+No counts, charts, or metrics.
+
+---
+
+## 4. Modal overlays
+
+None. Full payload is the row `title` (hover), not a drawer.
+
+---
+
+## 5. Navigation
+
+| In | Out |
+|---|---|
+| Canvas tab **Debug** (registry order 5/8) | — (self-contained read surface) |
+
+Cross-link: `SOMA-UI-NAV-001.md` §2 canvas · §5 acceptance.
+**No Memory tab in the canvas.**
+
+---
+
+## 6. Honesty
+
+- Every row is a real WS frame with its real timestamp and direction.
+- Preview truncation is display-only; the full payload is available on hover.
+- Clear is explicitly local — never claimed to stop the stream.
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/components/soma-right-panel.ts` | `_renderDebug` · `_payloadPreview` · `_payloadTitle` |
+| `webui/src/services/websocket-client.ts` | `wsFrameLog` · `onWsFrame` · `WsFrame` |
+
+End of Document

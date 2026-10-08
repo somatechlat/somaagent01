@@ -1,64 +1,106 @@
 # UI-S-41 — Integrations dashboard
 
-**Integrations dashboard** — Ops workspace column (alias /saas/settings/integrations) — route `/platform/integrations` — facet **Ops**.
-Chrome abbreviated (UI-S-00). Facet tabs and surface rail are visible.
+Screen UI-S-41 · Routes: **`/platform/integrations`** · **`/soma/settings/integrations`**
+(`main.ts:156` → `soma-integrations-dashboard`)
+Chrome: **UI-S-00 thin** (abbrev) · Catalog: `SOMA-UI-CATALOG-001.md` §2 Platform
+Live view: `webui/src/views/soma-integrations-dashboard.ts` (`soma-integrations-dashboard`)
+
+**Status: LIVE.** **Platform integrations catalogue** (audience: platform admin).
+
+Distinct from (DUP-3):
+- **UI-S-52** Settings · Integrations — agent-owner provider keys + channels (`/settings/channels`).
+- **UI-S-53** Settings · Advanced / External & Developer — platform API keys (`/platform/api-keys`).
+
+Names must stay distinct in nav. This screen does **not** hold agent-owner Vault keys.
+
+---
+
+## 1. ASCII wireframe — platform integrations workspace
 
 ```
-┌─ UI-S-00 chrome (abbrev) ────────────────────────────────────────────────────────────────────────┐
-│ capsule: <capsule.name>                                                                         │
-│ version: <version>    lifecycle: <lifecycle>                                                    │
-│ persona knobs: (IQ <val>)(auto <val>)(budget <val>)                                             │
-│ derived AgentIQ RO (greyed, never inputs):                                                      │
-│   temperature <v>  max_tokens <v>  rlm_iterations <v>                                           │
-│   recall_limit <v>  model_tier <v>  brain_query_enabled <v>                                     │
-│   require_hitl <v>  tool_approval <v>  egress_allowed <v>                                       │
-│   token_limit <v>  cost_tier <v>  thinking_budget <v>                                           │
-├─────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ facet tabs x6:  [Soul][Brain][Hands][Memory][Body][Governance]                                  │
-│ command palette: <Cmd-K>                                                                        │
-├────────────────────────────────────────────────────────────────────────┼────────────────────────┤
-│ WORKSPACE  facet: Ops                                                  │ SURFACE RAIL x8        │
-│  route: /platform/integrations                                         │  [1] Files             │
-│  Integrations dashboard                          [+ Connect]           │  [2] Tools             │
-│                                                                        │  [3] Browser           │
-│  ┌───────────────────┐ ┌───────────────────┐ ┌───────────────────┐     │  [4] Editor            │
-│  │ <integration.name>│ │ <integration.name>│ │ <integration.name>│     │  [5] Debug             │
-│  │ <state>           │ │ <state>           │ │ <state>           │     │  [6] Capsule           │
-│  │ connected <ts>    │ │ not connected     │ │ error <reason>    │     │  [7] Brain             │
-│  │ [configure][x]    │ │ [connect]         │ │ [configure][x]    │     │  [8] Desktop           │
-│  └───────────────────┘ └───────────────────┘ └───────────────────┘     │       GATED (UI-X-08)  │
-│                                                                        │                        │
-│  ┌───────────────────┐ ┌───────────────────┐                           │                        │
-│  │ <integration.name>│ │ <integration.name>│                           │                        │
-│  │ <state>           │ │ <state>           │                           │                        │
-│  │ [configure][x]    │ │ [connect]         │                           │                        │
-│  └───────────────────┘ └───────────────────┘                           │                        │
-│                                                                        │                        │
-│  Credential note: values render masked (sk-***...aBcD)                 │                        │
-│  with a rotate-in-Vault note. Never echoed in full.                    │                        │
-├────────────────────────────────────────────────────────────────────────┼────────────────────────┤
-│ instance strip: <session_id>  state: <state>  started: <ts>                                     │
-│ neuro meters x4 (RO): DA <v>  5-HT <v>  NE <v>  ACh <v>                                         │
-│   neuromodulator synced_at: <ts>   (no value without a real sync)                               │
-└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  PLATFORM INTEGRATIONS                                                   [⟳ Refresh]            │
+│  [Search integrations…                  ]  status [all ▾]                                        │
+│                                                                                                  │
+│  ┌─ INTEGRATION CATALOGUE (server order) ────────────────────────────────────────────────────┐  │
+│  │  name                  category             status                  [⋯]                    │  │
+│  │  ‹name›                ‹category | —›       ‹status | —›                                  │  │
+│  │  ‹name›                ‹category | —›       ‹status | —›                                  │  │
+│  │  (scroll)                                                                                   │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                  │
+│  total: ‹n | —› integrations                                                     [Open]          │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Control map.**
+---
 
-| # | UI-C-* | control | notes |
+## 2. Real data
+
+| UI field | Source | Absent handling |
+|---|---|---|
+| name | integration record | required |
+| category | record | `—` |
+| status | record | `—` |
+| total | list response | `—` (never `0` on failure) |
+
+No secret material is shown here. Provider keys live in UI-S-52 (Vault-backed, write-only).
+
+---
+
+## 3. Control map
+
+| # | Control | API / behavior | Live? |
 |---|---|---|---|
-| 1 | UI-C-081 | integration card | Name and state from the integrations API. A card never shows a connected state without a real connection record. |
-| 2 | UI-C-073 | connection state chip | connected / not connected / error. Error shows `‹ reason from API ›`, not a made-up code. |
-| 3 | UI-C-068 | configure / connect | configure opens UI-M-01 drawer. connect starts the real OAuth/API flow. |
-| 4 | UI-C-084 | masked credential display | Where a secret exists: `sk-••••••••aBcD` + "rotate in Vault". Write-only — never echoed back from the server. |
-| 5 | UI-C-069 | disconnect (destructive) | Opens UI-M-03. disabled-when: not connected — disabled-reason: "No live connection to disconnect." |
+| 1 | Search | Client filter over loaded rows. | live |
+| 2 | Status filter | Filter on `status` as stored. | live |
+| 3 | Integration row | `name` · `category` · `status`. | live |
+| 4 | Open | Detail of that integration (same view). | live |
+| 5 | Refresh | Re-fetch the list. | live |
+| 6 | Total | `—` until the server reports. | live |
 
-**State variants.**
+---
 
-- **Loading.** Skeleton rows plus a `loading` chip in the workspace header. No counts, charts or metrics are drawn while loading.
-- **Empty.** "No integrations connected. Connect a service to see it here."
-- **Error.** "Couldn't load integrations. ‹ reason from API ›"
-- **Permission-denied.** "You don't have access to integrations. Requires the platform-admin role."
-- **Offline.** You're offline. Changes will not be saved until the connection returns.
+## 4. Numbered journey — browse platform integrations
 
-**Modal overlays.** UI-M-01 Drawer — integration configuration (fields per integration, secrets write-only). UI-M-03 Dialog — "Disconnect <integration.name>?" (destructive).
+| Step | Where | Action | API | Result |
+|---|---|---|---|---|
+| **1** | `/platform/integrations` | Screen loads | integrations API | Catalogue rows paint. |
+| **2** | catalogue | Search / filter `status` | client filter | Table narrows. |
+| **3** | catalogue | Click **Open** | same view | Detail of that integration. |
+| **4** | catalogue | Need **agent-owner** keys/channels | — | UI-S-52 (`/settings/channels`). Not here. |
+| **5** | catalogue | Need **API keys** | — | UI-S-53 (`/platform/api-keys`). Not here. |
+
+---
+
+## 5. States
+
+| State | Verbatim / behavior |
+|---|---|
+| loading | “Loading integrations…” — skeleton rows. |
+| empty | “No platform integrations configured.” |
+| empty (filter) | “No integrations match this filter. Clear the filter to see all.” |
+| error | “Couldn’t load platform integrations. ‹ reason from API ›” |
+| permission-denied | “You don’t have access to platform integrations. Requires the platform-admin role.” |
+| offline | “You’re offline. Integration data may be stale.” |
+
+---
+
+## 6. Honesty
+
+Rows are catalogue fields only. No secret values, no invented status enums, no fabricated counts.
+The three integrations surfaces (UI-S-41 / UI-S-52 / UI-S-53) stay audience-distinct (DUP-3).
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/main.ts:156` | `/platform/integrations` · `/soma/settings/integrations` → `soma-integrations-dashboard` |
+| `webui/src/views/soma-integrations-dashboard.ts` | Live view |
+| `SOMA-UI-NAV-AUDIT-001.md` §3 DUP-3 | Split by audience: 41 / 52 / 53 |
+
+End of Document

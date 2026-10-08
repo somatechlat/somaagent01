@@ -37,13 +37,16 @@ Soma Muted       #666666    Secondary text, labels
 Soma Text        #E5E5E5    Primary text
 Soma White       #FFFFFF    Headings, emphasis
 
-ACCENT COLORS (from Yachaq gradient)
+ACCENT COLORS (live somatech.dev + yachaq.ai — measured 2026-10-07)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Soma Blue        #3B82F6    Primary action, links, focus
-Soma Indigo      #6366F1    Secondary accent, gradients
-Soma Violet      #8B5CF6    Tertiary accent, badges
-Soma Gradient    linear-gradient(135deg, #3B82F6, #8B5CF6)
+Soma Orange      #FF4D00    Primary accent (205× on somatech.dev). CTAs, focus, brand
+Soma Orange Soft #FF7A3D    Hover / gradient end
+Soma Orange Deep #E64500    Pressed / danger-adjacent brand
+Soma Gradient    linear-gradient(135deg, #FF4D00, #FF7A3D)
+
+Note: #3B82F6/#6366F1/#8B5CF6 are UI-utility blues only (links in long text).
+Brand chrome is black + #FF4D00. Do not paint primary UI violet.
 
 STATUS COLORS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

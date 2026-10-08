@@ -1,63 +1,98 @@
 # UI-S-40 — Rate limits
 
-**Rate limits** — Ops workspace column (alias /platform/ratelimits) — route `/platform/infrastructure/redis/ratelimits` — facet **Ops**.
-Chrome abbreviated (UI-S-00). Facet tabs and surface rail are visible.
+Screen UI-S-40 · Routes: **`/platform/ratelimits`** · **`/platform/infrastructure/redis/ratelimits`**
+(`main.ts:147` → `soma-infrastructure-dashboard`, `activeTab='ratelimits'`)
+Chrome: **UI-S-00 thin** (abbrev) · Catalog: `SOMA-UI-CATALOG-001.md` §2 Platform
+Live view: `webui/src/views/soma-infrastructure-dashboard.ts` (same view as UI-S-39)
+
+**Status: LIVE — as a tab, not a separate dashboard.** Per `main.ts:147-152`: “Rate Limits live on
+the Infrastructure dashboard (one surface).” This file documents the rate-limits **tab** of
+UI-S-39. There is no standalone rate-limits view.
+
+---
+
+## 1. ASCII wireframe — rate-limits tab (of UI-S-39)
 
 ```
-┌─ UI-S-00 chrome (abbrev) ────────────────────────────────────────────────────────────────────────┐
-│ capsule: <capsule.name>                                                                         │
-│ version: <version>    lifecycle: <lifecycle>                                                    │
-│ persona knobs: (IQ <val>)(auto <val>)(budget <val>)                                             │
-│ derived AgentIQ RO (greyed, never inputs):                                                      │
-│   temperature <v>  max_tokens <v>  rlm_iterations <v>                                           │
-│   recall_limit <v>  model_tier <v>  brain_query_enabled <v>                                     │
-│   require_hitl <v>  tool_approval <v>  egress_allowed <v>                                       │
-│   token_limit <v>  cost_tier <v>  thinking_budget <v>                                           │
-├─────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ facet tabs x6:  [Soul][Brain][Hands][Memory][Body][Governance]                                  │
-│ command palette: <Cmd-K>                                                                        │
-├────────────────────────────────────────────────────────────────────────┼────────────────────────┤
-│ WORKSPACE  facet: Ops                                                  │ SURFACE RAIL x8        │
-│  route: /platform/infrastructure/redis/ratelimits                      │  [1] Files             │
-│  Rate limits              scope: [global][tenant][user]                │  [2] Tools             │
-│                                                                        │  [3] Browser           │
-│  | rule | window | limit | used | remaining | reset | [edit] |         │  [4] Editor            │
-│  | <id> | <win>  | <n>   | <n>  | <n>       | <ts>  | [edit] |         │  [5] Debug             │
-│  | <id> | <win>  | <n>   | <n>  | <n>       | <ts>  | [edit] |         │  [6] Capsule           │
-│  | <id> | <win>  | <n>   | <n>  | <n>       | <ts>  | [edit] |         │  [7] Brain             │
-│                                                                        │  [8] Desktop           │
-│  Counters are live. No counter value is drawn from the design.         │       GATED (UI-X-08)  │
-│                                                                        │                        │
-│  ┌── rule detail (selected) ────────────────────────────┐              │                        │
-│  │ id <rule.id>                                         │              │                        │
-│  │ bucket <rule.bucket>   key <rule.key>                │              │                        │
-│  │ strategy <rule.strategy>                             │              │                        │
-│  └────────────────────────────────────────────────────────┘            │                        │
-│                                                                        │                        │
-│  [Reset counters] (UI-M-03 destructive)                                │                        │
-├────────────────────────────────────────────────────────────────────────┼────────────────────────┤
-│ instance strip: <session_id>  state: <state>  started: <ts>                                     │
-│ neuro meters x4 (RO): DA <v>  5-HT <v>  NE <v>  ACh <v>                                         │
-│   neuromodulator synced_at: <ts>   (no value without a real sync)                               │
-└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  INFRASTRUCTURE                                                      [⟳ Refresh]                │
+│  tabs: [ Overview ][ Redis ][ Rate limits ● ]                                                    │
+│                                                                                                  │
+│  ┌─ RATE LIMITS (API values only) ───────────────────────────────────────────────────────────┐  │
+│  │  key / scope          limit              window            current                         │  │
+│  │  ‹key›                ‹limit | —›        ‹window | —›     ‹current | —›                    │  │
+│  │  ‹key›                ‹limit | —›        ‹window | —›     ‹current | —›                    │  │
+│  │  (scroll)                                                                                   │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                  │
+│  values from the infrastructure API — `—` when the server omits a figure                         │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Control map.**
+---
 
-| # | UI-C-* | control | notes |
+## 2. Real data
+
+| UI column | Source | Absent handling |
+|---|---|---|
+| key / scope | rate-limit record | required |
+| limit | record | `—` |
+| window | record | `—` |
+| current | record | `—` (never `0` on failure) |
+
+Same view and API as UI-S-39 — no second endpoint, no second store.
+
+---
+
+## 3. Control map
+
+| # | Control | API / behavior | Live? |
 |---|---|---|---|
-| 1 | UI-C-072 | scope tab strip | global / tenant / user. Switching re-fetches; no cross-scope numbers are cached on screen. |
-| 2 | UI-C-096 | rate-limit counter row | limit/used/remaining/reset are `‹ live value ›` from the rate-limit API. |
-| 3 | UI-C-068 | edit (secondary) | Opens UI-M-01 drawer to change the rule. |
-| 4 | UI-C-071 | rule detail panel | Read-only echo of the selected rule. Not a second editor. |
-| 5 | UI-C-069 | Reset counters (destructive) | Opens UI-M-03. disabled-when: caller lacks infrastructure-admin role — disabled-reason: "Requires the infrastructure-admin role." |
+| 1 | Rate-limits tab | `activeTab='ratelimits'` on `soma-infrastructure-dashboard`. | live |
+| 2 | Rate-limit rows | Values from the infrastructure API. | live |
+| 3 | Refresh | Re-fetch in place. | live |
+| 4 | Overview / Redis tabs | Back to the other panes of UI-S-39. | live |
 
-**State variants.**
+---
 
-- **Loading.** Skeleton rows plus a `loading` chip in the workspace header. No counts, charts or metrics are drawn while loading.
-- **Empty.** "No rate-limit rules configured."
-- **Error.** "Couldn't load rate limits. ‹ reason from API ›"
-- **Permission-denied.** "You don't have access to rate limits. Requires the infrastructure-admin role."
-- **Offline.** You're offline. Changes will not be saved until the connection returns.
+## 4. Numbered journey — inspect rate limits
 
-**Modal overlays.** UI-M-01 Drawer — rule editor. UI-M-03 Dialog — "Reset counters for rule <rule.id>?" (destructive).
+| Step | Where | Action | API | Result |
+|---|---|---|---|---|
+| **1** | `/platform/ratelimits` | Screen loads | `soma-infrastructure-dashboard` `activeTab='ratelimits'` | Rate-limits tab paints. |
+| **2** | tab | Read a row | — | `—` when the server omits a figure. |
+| **3** | tab | Click **Refresh** | re-fetch | Values repainted. |
+| **4** | tab | Click **Overview** | same view | UI-S-39 overview pane. |
+
+---
+
+## 5. States
+
+| State | Verbatim / behavior |
+|---|---|
+| loading | Skeleton rows. No values while loading. |
+| empty | “No rate limits configured.” |
+| error | “Couldn’t load rate limits. ‹ reason from API ›” |
+| permission-denied | “You don’t have access to rate limits. Requires the platform-admin role.” |
+| offline | “You’re offline. Values may be stale.” |
+
+---
+
+## 6. Honesty
+
+Values are API numbers only; `—` when absent. This is **one surface** with UI-S-39
+(`main.ts:147-152`) — do not present it as a separate dashboard.
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/main.ts:147-152` | `/platform/ratelimits` → `soma-infrastructure-dashboard` + `activeTab='ratelimits'` |
+| `webui/src/views/soma-infrastructure-dashboard.ts` | Same live view as UI-S-39 |
+| `SOMA-UI-NAV-AUDIT-001.md` §1 #26 | Route OK |
+
+End of Document

@@ -1,67 +1,81 @@
 # UI-S-21 — Tenant dashboard
 
-Screen UI-S-21 · Facet: Platform · Route: `/admin/dashboard`
-Source view per `SOMA-UI-IDREG-001.md`: `saas-tenant-dashboard` (`webui/src/views/saas-tenant-dashboard.ts`).
-Route matches `webui/src/main.ts:356`.
+Screen UI-S-21 · Chrome: **UI-S-00 thin** (abbrev) · Catalog: `SOMA-UI-CATALOG-001.md` §2 Platform
 
-## 1. ASCII wireframe — whole screen inside UI-S-00 chrome
+**Status: GATED / future — does not ship on this deployment.**
+
+> **Blocking reason:** Standalone agent — **no tenant routes** in `main.ts`
+> (`main.ts:131-132`: “No Soma or billing routes: this is a standalone agent”). No tenant-detail
+> API. ORPH-M1 (`SOMA-UI-NAV-AUDIT-001.md` §5). No UI-S-19 row opens this screen.
+
+---
+
+## 1. ASCII wireframe — future sketch (not routable)
 
 ```
-┌─[capsule ▾] ‹capsule.name› [v‹semver›][‹lifecycle›]───────── IQ[──●──] AUTO[─●─] BUDGET[─●─] ⌘K─┐
-│ derived (RO): temp ‹› max_tok ‹› rlm ‹› recall ‹› tier ‹› hitl ‹› tokens ‹› cost ‹› think ‹›      │
-├─ Soul  Brain  Hands  Memory  Body  Governance ──────────────────────────────────────────────────┤
-│ LEFT NAV │ WORKSPACE — Tenant dashboard [1]                               │ SURFACES x8             │
-│  Chat    │ ┌────────────────────────────────────────────────────────┐  │ [Files][Tools][Browser] │
-│  Capsule │ │ ‹tenant.name›  ·  ‹plan.name›  ·  ‹status›              │  │ [Editor][Debug][Capsule]│
-│  Module  │ │ KPI TILES [2]                                            │  │ [Brain][Desktop†] †GATED│
-│  Platform│ │ ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────┐│  │                         │
-│  Ops     │ │ │ users      │ │ capsules   │ │ messages   │ │ spend  ││  │                         │
-│  Settings│ │ │ ‹ live ›   │ │ ‹ live ›   │ │ ‹ live ›   │ │ ‹ live ›││  │                         │
-│          │ │ └────────────┘ └────────────┘ └────────────┘ └────────┘│  │                         │
-│          │ │ ACTIVITY [3]                  QUICK ACTIONS [4]         │  │                         │
-│          │ │  ‹ts› ‹activity.text›          [ Invite user ]         │  │                         │
-│          │ │  ‹ts› ‹activity.text›          [ New capsule ]         │  │                         │
-│          │ │  ‹ts› ‹activity.text›          [ View billing ]        │  │                         │
-│          │ │  (scroll)                      [ View usage ]          │  │                         │
-│          │ └────────────────────────────────────────────────────────┘  │                         │
-├──────────┴──────────────────────────────────────────────────────────────┴─────────────────────────┤
-│ INSTANCES ‹instance.id› ‹instance.status› │ NEURO: DA ‹› 5-HT ‹› NE ‹› ACh ‹› │ synced ‹ts›      │
-└───────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│  ┌─ GATED ───────────────────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                                           │  │
+│  │   Tenant dashboards are not available on this deployment.                                 │  │
+│  │                                                                                           │  │
+│  │   Blocking reason: standalone agent — no tenant routes in main.ts                          │  │
+│  │   (main.ts:131-132). No tenant-detail API.                                                 │  │
+│  │                                                                                           │  │
+│  └───────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                  │
+│  (no KPI tiles · no usage charts · no tenant settings)                                           │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. Control map
+---
 
-| # | UI-C-* | control | notes |
+## 2. Real data
+
+**None.** No tenant metrics API. Any KPI tile or chart would be a fabricated metric.
+
+---
+
+## 3. Control map
+
+| # | Control | Behavior | Live? |
 |---|---|---|---|
-| 1 | — | Workspace region (Tenant dashboard) | Screen shell. |
-| 2 | UI-C-105 | KPI tile grid | Each tile is a READ-ONLY `‹ live value ›` from the analytics store. Never invented numbers. |
-| 3 | UI-C-106 | Activity feed | Rows `‹ts›` + `‹activity.text›` from the audit/activity store. |
-| 4 | UI-C-107 | Quick actions | Links to UI-S-22, UI-S-11, UI-S-25, UI-S-27. |
-| — | UI-A-053 | Open quick action | Navigation only; the destination screens own their actions. |
+| 1 | Gated notice | Blocking reason verbatim. | live (notice) |
+| — | KPI tiles / charts / settings | **Not rendered** — no API, no route. | GATED |
 
-## 3. State variants
+---
 
-- **loading** — Tiles show skeleton blocks; feed shows 4 skeleton rows. Verbatim label: "Loading dashboard…"
-- **empty** — Tiles show `—` with helper (verbatim): "No data yet for this tenant."
-  Feed verbatim: "No activity recorded yet."
-- **error** — `UI-C-024` verbatim: "Dashboard data could not be loaded. Retry, or check that the
-  somaAgent01 API is reachable."
-- **permission-denied** — `UI-C-025` verbatim:
-  "You do not have permission to view this tenant dashboard. Ask a platform admin for the member role."
-  Chrome still frames the app.
-- **offline** — Tiles keep last painted values with note "Showing the last synced values."
-  Quick actions that navigate to write screens are disabled with reason "Unavailable offline."
+## 4. Numbered journey (stops at the gate)
 
-## 4. Modal overlays
+| Step | Where | Action | Result |
+|---|---|---|---|
+| **1** | UI-S-19 | Click a tenant row | UI-S-19 is itself gated — no entry point ships. |
+| **2** | (bookmark) | Navigate to a tenant-dashboard URL | Not routed; fallthrough → `soma-chat`. |
+| **3** | here | Read the blocking reason | Understands tenant dashboards are out of scope. |
 
-| Trigger | Modal | Contents |
-|---|---|---|
-| KPI tile drill-down | — | Navigates to the owning screen (UI-S-22 / UI-S-25 / UI-S-27); no modal. |
-| — | UI-M-01 / UI-M-02 / UI-M-03 | Not used by this screen. |
+---
 
-## 5. Honesty notes
+## 5. States
 
-Every KPI tile is a placeholder (`‹ live value ›`). No counts, percentages or spend figures are
-fabricated anywhere on this screen.
+| State | Behavior |
+|---|---|
+| default | GATED notice + blocking reason. |
+
+---
+
+## 6. Honesty
+
+No invented KPIs, charts, or tenant settings. This mock records the gap (ORPH-M1).
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/main.ts:131-132` | Standalone agent — no tenant routes |
+| `SOMA-UI-NAV-AUDIT-001.md` §5 ORPH-M1 | Tenant mocks have no route |
 
 End of Document

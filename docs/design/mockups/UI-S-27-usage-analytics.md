@@ -1,70 +1,85 @@
 # UI-S-27 — Usage analytics
 
-Screen UI-S-27 · Facet: Platform · Route: `/platform/usage`
-Source view per `SOMA-UI-IDREG-001.md`: `saas-usage-analytics` (`webui/src/views/saas-usage-analytics.ts`).
-Route matches `webui/src/main.ts:121`.
+Screen UI-S-27 · Chrome: **UI-S-00 thin** (abbrev) · Catalog: `SOMA-UI-CATALOG-001.md` §2 Platform
 
-## 1. ASCII wireframe — whole screen inside UI-S-00 chrome
+**Status: GATED / future — does not ship on this deployment.**
+
+> **Blocking reason:** Standalone agent — **no billing/usage routes** in `main.ts`
+> (`main.ts:131-132`: “No Soma or billing routes: this is a standalone agent”). No usage-metering
+> API. ORPH-M2 (`SOMA-UI-NAV-AUDIT-001.md` §5). Out of scope for this deployment.
+
+Agent-level metrics (if any) belong to **UI-S-45 agent metrics** (`/admin/metrics`), not to a
+billing usage screen. Do not fabricate a metering story here.
+
+---
+
+## 1. ASCII wireframe — future sketch (not routable)
 
 ```
-┌─[capsule ▾] ‹capsule.name› [v‹semver›][‹lifecycle›]───────── IQ[──●──] AUTO[─●─] BUDGET[─●─] ⌘K─┐
-│ derived (RO): temp ‹› max_tok ‹› rlm ‹› recall ‹› tier ‹› hitl ‹› tokens ‹› cost ‹› think ‹›      │
-├─ Soul  Brain  Hands  Memory  Body  Governance ──────────────────────────────────────────────────┤
-│ LEFT NAV │ WORKSPACE — Usage analytics [1]                                │ SURFACES x8             │
-│  Chat    │ ┌────────────────────────────────────────────────────────┐  │ [Files][Tools][Browser] │
-│  Capsule │ │ DATE RANGE [2] [ ‹from› ] … [ ‹to› ]   METRIC [3] ‹metric ▾│ │ [Editor][Debug][Capsule]│
-│  Module  │ │ [ Apply ] [4]   [ Export CSV ] [5]                       │  │ [Brain][Desktop†] †GATED│
-│  Platform│ │ CHART [6]                                                 │  │                         │
-│  Ops     │ │ ┌────────────────────────────────────────────────────┐ │  │                         │
-│  Settings│ │ │        ‹ live value › over ‹date range›             │ │  │                         │
-│          │ │ │        (line chart — no fabricated series)          │ │  │                         │
-│          │ │ │        ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·       │ │  │                         │
-│          │ │ └────────────────────────────────────────────────────┘ │  │                         │
-│          │ │ BREAKDOWN TABLE [7]                                    │  │                         │
-│          │ │  ‹dimension›  ‹ live value ›  ‹ live value ›           │  │                         │
-│          │ │  ‹dimension›  ‹ live value ›  ‹ live value ›           │  │                         │
-│          │ └────────────────────────────────────────────────────────┘  │                         │
-├──────────┴──────────────────────────────────────────────────────────────┴─────────────────────────┤
-│ INSTANCES ‹instance.id› ‹instance.status› │ NEURO: DA ‹› 5-HT ‹› NE ‹› ACh ‹› │ synced ‹ts›      │
-└───────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│  ┌─ GATED ───────────────────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                                           │  │
+│  │   Usage analytics are not available on this deployment.                                   │  │
+│  │                                                                                           │  │
+│  │   Blocking reason: standalone agent — no billing routes in main.ts                         │  │
+│  │   (main.ts:131-132). No usage-metering API.                                                │  │
+│  │                                                                                           │  │
+│  └───────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                  │
+│  (no usage charts · no quota meters · no cost breakdown)                                         │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. Control map
+---
 
-| # | UI-C-* | control | notes |
+## 2. Real data
+
+**None.** No usage-metering schema or endpoint exists. Any chart or quota number would be a
+fabricated metric.
+
+---
+
+## 3. Control map
+
+| # | Control | Behavior | Live? |
 |---|---|---|---|
-| 1 | — | Workspace region (Usage analytics) | Screen shell. |
-| 2 | UI-C-120 | Date range fields | From/to bound to the analytics store query. (Shared numeric/date field id.) |
-| 3 | UI-C-083 | Metric select | Metrics the analytics store actually exposes. (Shared select id.) |
-| 4 | UI-A-065 | Apply date range | Re-runs the query; refreshes chart and table. |
-| 5 | UI-A-064 | Export usage CSV | Produces a file for the current range and metric. |
-| 6 | UI-C-099 | Usage chart | READ-ONLY visualisation of `‹ live value ›` series. No fabricated points. |
-| 7 | UI-C-022 | Breakdown table | Rows `‹dimension›` + `‹ live value ›` columns. |
+| 1 | Gated notice | Blocking reason verbatim. | live (notice) |
+| — | Usage charts / quotas | **Not rendered** — no API, no route. | GATED |
 
-## 3. State variants
+---
 
-- **loading** — Chart shows a skeleton grid; table shows 5 skeleton rows. Verbatim label: "Loading usage…"
-- **empty** — Chart area `UI-C-023` verbatim: "No usage recorded for this date range."
-  Table verbatim: "No breakdown rows for this date range."
-- **error** — `UI-C-024` verbatim: "Usage could not be loaded. Retry, or check that the
-  analytics service is reachable." Export failure verbatim: "CSV export failed. Try again."
-- **permission-denied** — Export disabled; `UI-C-025` verbatim:
-  "You do not have permission to view usage analytics. Ask a platform admin for the tenant-admin role."
-  Chart remains visible if the role can read, otherwise the whole workspace is replaced by the notice.
-- **offline** — Chart and table show the last synced window with note "Showing the last synced window."
-  Apply/Export disabled with reason "Usage actions are unavailable offline."
+## 4. Numbered journey (stops at the gate)
 
-## 4. Modal overlays
+| Step | Where | Action | Result |
+|---|---|---|---|
+| **1** | anywhere | Look for a Usage nav entry | None — not in the nav (standalone agent). |
+| **2** | (bookmark) | Navigate to a usage URL | Not routed; fallthrough → `soma-chat`. |
+| **3** | here | Read the blocking reason | Understands usage metering is out of scope. |
 
-| Trigger | Modal | Contents |
-|---|---|---|
-| Chart point drill-down | UI-M-01 Drawer (420px) | Row detail for that point's dimension; ESC closes, focus trap. |
-| Export CSV with a large range | UI-M-03 Dialog | "This export may be large. Continue?" Cancel / Export. |
-| — | UI-M-02 | Not used by this screen. |
+---
 
-## 5. Honesty notes
+## 5. States
 
-Chart series, axis values and table cells are all `‹ live value ›` placeholders. No usage numbers,
-percentages or trends are invented in this mockup.
+| State | Behavior |
+|---|---|
+| default | GATED notice + blocking reason. |
+
+---
+
+## 6. Honesty
+
+No invented usage numbers, charts, or quota figures. This mock records the gap (ORPH-M2).
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/main.ts:131-132` | Standalone agent — no billing routes |
+| `SOMA-UI-NAV-AUDIT-001.md` §5 ORPH-M2 | Billing mocks have no route |
 
 End of Document

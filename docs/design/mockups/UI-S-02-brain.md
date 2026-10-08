@@ -1,74 +1,138 @@
-# UI-S-02 — Brain — model & IQ
+# UI-S-02 — Brain / Cognitive (full route host)
 
-Screen UI-S-02 · Facet: Brain · Route: `/cognitive`
-Source view per `SOMA-UI-IDREG-001.md`: `saas-cognitive-panel` (`webui/src/views/saas-cognitive-panel.ts`).
-Route matches `webui/src/main.ts:329`.
+Screen UI-S-02 · Routes: **`/cognitive`** · **`/training`** (`main.ts:271` → `soma-cognitive-panel`)
+Chrome: **UI-S-00 thin** (abbrev) — own workspace chrome, no chat left-rail (`UI-S-00` §2)
+Live view: `webui/src/views/soma-cognitive-panel.ts` (`soma-cognitive-panel`)
+IA: `SOMA-UI-IA-001.md` §2.4 · Catalog: `SOMA-UI-CATALOG-001.md` §2 Brain
 
-## 1. ASCII wireframe — whole screen inside UI-S-00 chrome
+**Status: LIVE.**
 
-```
-┌─[capsule ▾] ‹capsule.name› [v‹semver›][‹lifecycle›]───────── IQ[──●──] AUTO[─●─] BUDGET[─●─] ⌘K─┐
-│ derived (RO): temp ‹› max_tok ‹› rlm ‹› recall ‹› tier ‹› hitl ‹› tokens ‹› cost ‹› think ‹›      │
-├─ Soul  ( Brain )  Hands  Memory  Body  Governance ──────────────────────────────────────────────┤
-│ LEFT NAV │ WORKSPACE — Brain [1]                                       │ SURFACES x8             │
-│  Chat    │ ┌────────────────────────────────────────────────────────┐  │ [Files][Tools][Browser] │
-│  Capsule │ │ MODEL [2] ‹model.provider ▾│  ‹model.id ▾│             │  │ [Editor][Debug][Capsule]│
-│  Module  │ │ EMBEDDING [3] ‹embedding.model ▾│   DIM ‹embedding.dim›│  │ [Brain][Desktop†] †GATED│
-│  Platform│ │ CONTEXT WINDOW [4] ‹context_window›                     │  │                         │
-│  Ops     │ │ RECALL STRATEGY [5] ‹recall.strategy ▾│                 │  │                         │
-│  Settings│ │                                                            │  │                         │
-│          │ │ ── derived AgentIQ (READ-ONLY) [6] ─────────────────────│  │                         │
-│          │ │ temperature ‹›   max_tokens ‹›   rlm_iterations ‹›      │  │                         │
-│          │ │ recall_limit ‹›  model_tier ‹›   brain_query_enabled ‹› │  │                         │
-│          │ │ require_hitl ‹›  tool_approval ‹› egress_allowed ‹›     │  │                         │
-│          │ │ token_limit ‹›   cost_tier ‹›    thinking_budget ‹›     │  │                         │
-│          │ │                                                            │  │                         │
-│          │ │ EVAL READOUT [7]  last_run ‹ts›  result ‹live value ›    │  │                         │
-│          │ │ [ Run eval ] [8]     [ Reset knobs to saved ] [9]        │  │                         │
-│          │ └────────────────────────────────────────────────────────┘  │                         │
-├──────────┴──────────────────────────────────────────────────────────────┴─────────────────────────┤
-│ INSTANCES ‹instance.id› ‹instance.status› │ NEURO: DA ‹› 5-HT ‹› NE ‹› ACh ‹› │ synced ‹ts›      │
-└───────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
+## 0. One-home rule (binding)
 
-## 2. Control map
+**Brain has one UI: canvas surface UI-X-07.** This route mounts the **same**
+`<soma-cognitive-panel>` as a full window. It is a second *host*, not a second Brain.
 
-| # | UI-C-* | control | notes |
-|---|---|---|---|
-| 1 | — | Workspace region (Brain) | Screen shell; all rows below live inside it. |
-| 2 | UI-C-035 | Model provider / model select | Live options from the model store; shows `‹model.id›`. |
-| 3 | UI-C-036 | Embedding model select | Adjacent dim chip is a read-only store value, not an input. |
-| 4 | UI-C-037 | Context window field | Numeric; validated against the model's documented limit. |
-| 5 | UI-C-038 | Recall strategy select | Options come from the memory store. |
-| 6 | UI-C-008 | Derived AgentIQ readout block | READ-ONLY, greyed. Never editable here (house rule). |
-| 7 | UI-C-039 | Eval readout | READ-ONLY: `‹ timestamp ›` + `‹ live value ›`. |
-| 8 | UI-A-011 | Run eval | Starts an eval run; results land in UI-C-039. |
-| 9 | UI-A-012 | Reset knobs to saved | Resets IQ/AUTO/BUDGET (UI-C-005…007) to last saved values. |
-
-## 3. State variants
-
-- **loading** — Model and embedding selects show "Loading models…" with `UI-C-027` skeletons
-  for the derived block. Eval readout shows "No eval run yet."
-- **empty** — Model select placeholder (verbatim): "Select a model for this capsule."
-  Eval readout verbatim: "No eval run yet. Run an eval to see a result here."
-- **error** — `UI-C-024`, verbatim: "Brain settings could not be loaded. Retry, or check that the
-  somaAgent01 API is reachable." Eval failure verbatim: "Eval did not finish. Nothing was changed."
-- **permission-denied** — Selects read-only; `UI-C-025`, verbatim:
-  "You do not have permission to change brain settings. Ask a platform admin for the capsule-editor role."
-- **offline** — Chrome offline banner; Run eval disabled with inline reason
-  "Run eval is unavailable offline." Derived readouts keep last painted values.
-
-## 4. Modal overlays
-
-| Trigger | Modal | Contents |
+| Home | What it is | Count |
 |---|---|---|
-| Change model with unsaved eval state | UI-M-03 Dialog | "Switch model and discard the current eval draft?" Cancel / Switch. |
-| UI-A-012 with unsaved knob edits | UI-M-03 Dialog | Destructive confirm: "Reset persona knobs to saved values?" |
-| — | UI-M-01 / UI-M-02 | Not used by this screen. |
+| **UI-X-07 canvas surface** | The Brain UI — **owns the field & control map** | **1** |
+| `/cognitive` · `/training` (this file) | Same component, full route | same UI |
+| Status-strip neuromod readout | Readout → opens UI-X-07 | not a UI |
 
-## 5. Honesty notes
+**No third home.** Forbidden: left-rail Brain · welcome card · facet tab · a second neuromod
+control set · an orphan Brain widget (`SOMA-UI-IA-001` §2.4).
 
-The derived block (temperature … thinking_budget) is drawn greyed and labelled READ-ONLY, per
-`SOMA-UI-TEMPLATE-001.md`. No numeric defaults are printed; every value is `‹ live value ›`.
+**Control map and field map live in UI-X-07 and are not restated here** (anti-triplication).
+This file documents only the route chrome, journey, and route-level states.
+
+---
+
+## 1. ASCII wireframe — full-route host (workspace chrome)
+
+```
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  COGNITIVE / TRAINING — /cognitive · /training                        [Apply Changes]           │
+│  (soma-cognitive-panel — same component as canvas UI-X-07)            ← Back to chat            │
+│                                                                                                  │
+│  ┌─ NEUROMODULATOR READINGS (raw) ────────────────────────────────────────────────────────────┐  │
+│  │  DA ‹v›   5-HT ‹v›   NE ‹v›   ACh ‹v›    (raw values — no % meters: no min/max/unit/sync) │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                  │
+│  ┌─ ADAPTATION PARAMETERS ─────────────────┐  ┌─ MEMORY PARAMETERS ──────────────────────────┐  │
+│  │ Learning Rate            ‹v›            │  │ Consolidation Rate           ‹v›             │  │
+│  │ Exploration Rate         ‹v›            │  │ Emotional Sensitivity        ‹v›             │  │
+│  │ Attention Span           ‹v›            │  └────────────────────────────────────────────┘  │
+│  └──────────────────────────────────────────┘                                                    │
+│                                                                                                  │
+│  ┌─ ACTIVITY LOG ─────────────────────────────────────────────────────────────────────────────┐  │
+│  │  ‹icon›  ‹message›                                                      ‹time›             │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+Wireframe shows the **host** only. The component body (readouts, params, actions) is specified
+once in **UI-X-07 §1–§3** — same pixels, same fields, same endpoints.
+
+---
+
+## 2. Real data
+
+Specified once in **UI-X-07 §2** (fields) and **§3** (control map). Summary of the binding:
+
+| Action | Endpoint |
+|---|---|
+| Read state | `GET /api/v2/somabrain/cognitive/state/{agent_id}` |
+| Save params | `PATCH /api/v2/somabrain/cognitive/params/{agent_id}` |
+| Sleep cycle | `POST /api/v2/somabrain/cognitive/sleep/{agent_id}` |
+| Reset adaptation | `POST /api/v2/somabrain/cognitive/adaptation/reset/{agent_id}` |
+
+Neuromodulators: **DA · 5-HT · NE · ACh — raw values only** (no fake % meters).
+Not on this screen: model binding (Settings › Models, UI-S-51) · memory records (`/memory`, UI-S-04).
+
+---
+
+## 3. Numbered journey — full-route tune
+
+| Step | Where | Action | API | Result |
+|---|---|---|---|---|
+| **1** | `/chat` status strip | Click the neuromod readout | opens **UI-X-07** (the canvas surface) | The one Brain UI opens in the canvas. |
+| **2** | UI-X-07 | Click **open full route** | `router → /cognitive` | This screen — same component, full window. |
+| **3** | `/cognitive` | Read neuromodulator values | `GET …/state/{agent_id}` | DA · 5-HT · NE · ACh raw. No meters. |
+| **4** | `/cognitive` | Edit `learningRate` → **Apply Changes** | `PATCH …/params/{agent_id}` | Saved; activity-log row. |
+| **5** | `/cognitive` | **Trigger Sleep Cycle** (dirty → confirm) | `POST …/sleep/{agent_id}` | “In flight (this session)” → Idle. |
+| **6** | `/cognitive` | **Reset Adaptation** (confirm) | `POST …/adaptation/reset/{agent_id}` | Params reset. |
+| **7** | `/cognitive` | ← Back to chat | `router → /chat` | Chat workspace. |
+
+There is no step that opens a third Brain — status click → UI-X-07 → (optional) `/cognitive`.
+
+---
+
+## 4. States
+
+Shared with UI-X-07 §5 (same component): loading · empty neuro · empty params (`—`) · error load ·
+no agent · dirty · saving · save fail · offline.
+
+Route-specific:
+
+| State | Behavior |
+|---|---|
+| direct load `/cognitive` | Component runs its own state fetch; no agent → “No agent selected — cognitive state cannot be read.” |
+| leave with dirty params | Warn only via the Reset/Sleep confirms — no separate route-guard modal. |
+
+---
+
+## 5. Modal overlays
+
+Same as **UI-X-07 §6** (Reset confirm · Sleep-with-dirty confirm). No route-only modal.
+
+---
+
+## 6. Navigation
+
+| In | Out |
+|---|---|
+| `/cognitive` · `/training` (`main.ts:271`) | ← Back to chat (`/chat`) |
+| UI-X-07 **open full route** | Settings › Models (model binding — not Brain) |
+
+**No left-rail Brain entry.** Band E neuromod readout opens UI-X-07, not this route.
+
+---
+
+## 7. Honesty
+
+Identical to **UI-X-07 §7**: raw numbers · no `cognitiveLoad` · untyped dict shows only sent keys ·
+no sliders without min/max · missing `agent_id` refuses the read.
+
+---
+
+## 8. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/views/soma-cognitive-panel.ts` | The single Brain implementation (this route + UI-X-07) |
+| **`UI-X-07-brain.md`** | Canonical field map, control map, wireframe body |
+| `SOMA-UI-IA-001.md` §2.4 | Brain once · no third home |
+| `webui/src/main.ts:271` | `/cognitive` · `/training` → `soma-cognitive-panel` |
 
 End of Document

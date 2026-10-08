@@ -1,44 +1,95 @@
 # UI-X-04 — Editor
 
-**Editor** — Right-rail panel in context — route `right-rail surface [4]` — facet **Surface**.
-Chrome abbreviated (UI-S-00). Facet tabs and surface rail are visible.
+Surface **UI-X-04 Editor** · Right canvas (Band D) · Facet: Surface · Chrome: UI-S-00 abbreviated
+Registry: `webui/src/components/soma-right-panel.ts` → `SURFACES` key `editor`
+Backing (live): file content opened from **UI-X-01** (read-only)
+Nav: `SOMA-UI-NAV-001.md` §2 canvas
+
+**Status: LIVE (read-only).** Present and available. No `blockedReason`.
+Honesty (verbatim in UI): “This deployment exposes no file-write endpoint; the buffer is read-only.”
+
+---
+
+## 1. ASCII wireframe — docked in the canvas
 
 ```
-┌─ chrome (abbrev) ──────────────────────┬ RIGHT RAIL · UI-X-04 Editor                                                                    ┐
-│  capsule <capsule.name> v<version>     │ Surface: Editor          <file.name>  [save] [discard]                                         │
-│  <lifecycle>  knobs (IQ <v>)(auto <v>)(│ ┌─ tabs ──────────────────────────────────────────────────────────────────┐                    │
-│  derived AgentIQ RO: <readouts, greyed>│ │ <file.name>* │ <file.name> │                                            │                    │
-│  facets [Soul][Brain][Hands][Memory][Bo│ └──────────────────────────────────────────────────────────────────────────┘                   │
-│  <Cmd-K>                               │ ┌─ buffer ────────────────────────────────────────────────────────────────┐                    │
-│                                        │ │ 1 │ <buffer line>                                                        │                   │
-│  WORKSPACE (abbrev)                    │ │ 2 │ <buffer line>                                                        │                   │
-│  ┌────────────────────────────────┐    │ │ 3 │ <buffer line>                                                        │                   │
-│  │ screen content in context        │  │ │ 4 │ <buffer line>                                                        │                   │
-│  │ (see UI-S-07 chat workspace)     │  │ │ 5 │ <buffer line>                                                        │                   │
-│  │ surface rail select: UI-X-04 Editor │ └──────────────────────────────────────────────────────────────────────────┘                   │
-│  └────────────────────────────────┘    │ dirty: yes/no   encoding <enc>   lang <lang>                                                   │
-│                                        │ * marks an unsaved buffer. Save writes through the real                                        │
-│  instance <session_id> <state>         │ FS API. Nothing is persisted in the UI alone.                                                  │
-│  neuro RO DA <v> 5-HT <v> NE <v> ACh <v│                                                                                                │
-└────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ chrome (abbrev) ──────────────────────┬ RIGHT CANVAS · UI-X-04 Editor                                 ┐
+│  chat workspace (UI-S-07)              │ [📁 Files][🔧 Tools][🌐 Browser†][💻 Editor]                  │
+│  ┌────────────────────────────────┐    │ [🐞 Debug][📦 Capsule][🧠 Brain][🖥 Desktop†]                  │
+│  │ screen content in context      │    ├──────────────────────────────────────────────────────────────┤
+│  │ surface rail select: Editor    │    │  Editor  UI-X-04                                             │
+│  └────────────────────────────────┘    │  ‹original_name | name›                    ‹lang›           │
+│                                        │                                                                │
+│                                        │  This deployment exposes no file-write endpoint; the         │
+│                                        │  buffer is read-only.                                        │
+│                                        │                                                                │
+│                                        │  ┌─ code (pre) ────────────────────────────────────────────┐  │
+│                                        │  │ ‹file content›                                         │  │
+│                                        │  │ …                                                       │  │
+│                                        │  └─────────────────────────────────────────────────────────┘  │
+│                                        │                                                                │
+│  instance ‹session_id› ‹state›         │  No save. No discard. No dirty mark — the buffer cannot change.│
+└────────────────────────────────────────┴──────────────────────────────────────────────────────────────┘
 ```
 
-**Control map.**
+---
 
-| # | UI-C-* | control | notes |
+## 2. Control map
+
+| # | Control | Behavior | Live? |
 |---|---|---|---|
-| 1 | UI-C-110 | code editor buffer | Buffer content is the real file. Dirty state is tracked from edits, never assumed. |
-| 2 | UI-C-072 | file tab strip | Tabs for open files. `*` marks unsaved. |
-| 3 | UI-C-067 | save (primary) | Writes through the FS API. disabled-when: buffer is not dirty — disabled-reason: "No unsaved changes." |
-| 4 | UI-C-069 | discard (destructive) | Opens UI-M-03. disabled-when: buffer is not dirty — disabled-reason: "No unsaved changes." |
-| 5 | UI-C-073 | dirty / encoding / lang readout | Read-only status line. |
+| 1 | File name + language chip | From the opened `FileOut` (`original_name \|\| name`); `languageOf()` derives the chip from the filename only. | live |
+| 2 | Read-only note | Always shown while a file is open. States the missing write endpoint. | live |
+| 3 | Code block | Exact server file content in a `<pre>`. No highlighting that would alter text. | live |
+| 4 | Save / Discard / dirty `*` | **Not drawn.** A write path does not exist; save chrome would be a lie. | absent |
 
-**State variants.**
+Open path: UI-X-01 row → `_openFileInEditor` → this surface becomes active.
 
-- **Loading.** Skeleton rows plus a `loading` chip in the workspace header. No counts, charts or metrics are drawn while loading.
-- **Empty.** "No file open. Open a file from the Files surface."
-- **Error.** "Couldn't load the file. ‹ reason from API ›"
-- **Permission-denied.** "You don't have access to edit this file. Ask the capsule owner for write access."
-- **Offline.** You're offline. Changes will not be saved until the connection returns.
+---
 
-**Modal overlays.** UI-M-03 Dialog — "Discard unsaved changes to <file.name>?" (destructive).
+## 3. States
+
+| State | Verbatim |
+|---|---|
+| empty | “No file open.” |
+| loading | “Opening file…” (header already shows name + lang) |
+| error | “File content could not be loaded.” |
+| offline | Chrome offline banner; last opened buffer remains. |
+
+---
+
+## 4. Modal overlays
+
+None. No discard dialog while the buffer is read-only.
+
+---
+
+## 5. Navigation
+
+| In | Out |
+|---|---|
+| Canvas tab **Editor** (registry order 4/8) | UI-X-01 Files (open another file) |
+| UI-X-01 row click / Enter | — |
+
+Cross-link: `SOMA-UI-NAV-001.md` §2 canvas · §5 acceptance.
+**No Memory tab in the canvas.**
+
+---
+
+## 6. Honesty
+
+- Content is the server bytes. Language chip is filename-derived display only.
+- Read-only is stated in plain language, not implied by greyed buttons.
+- No multi-tab strip until multiple open buffers are real.
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `webui/src/components/soma-right-panel.ts` | `_renderEditor` · `_openFileInEditor` · `languageOf` |
+| UI-X-01 `FileOut` | Identity of the open file |
+| file content fetch | Server text; null → error state |
+
+End of Document

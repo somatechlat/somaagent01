@@ -1,71 +1,113 @@
-# UI-S-15 — Module list
+# UI-S-15 — Tools list (runtime)
 
-Screen UI-S-15 · Facet: Module · Route: NEW (not present in `webui/src/main.ts` today).
-Source view per `SOMA-UI-IDREG-001.md`: NEW.
+Screen UI-S-15 · Subview of **`/admin/agents`** (`main.ts:258` → `soma-agents-view`)
+Chrome: **UI-S-00 thin** (abbrev) · Catalog: `SOMA-UI-CATALOG-001.md` §3 Tools
+Live: `GET /api/v2/tools` → `ToolInfo[]`
 
-## 1. ASCII wireframe — whole screen inside UI-S-00 chrome
+**Status: LIVE.** This screen lists the agent’s **enabled runtime tools** — `ToolInfo` fields only:
+`name` · `description` · `parameters` (`admin/tools/api/tools.py:25-30`).
+
+The admin registry (enable / category) is **UI-S-17** (`GET/PUT /tools/catalog`). Agent-owner
+enable + limits is **Settings › Tools** (UI-S-55). One catalog store (`admin.core.models.Capability`),
+three audiences — no duplicate inventories.
+
+---
+
+## 1. ASCII wireframe — runtime tool list
 
 ```
-┌─[capsule ▾] ‹capsule.name› [v‹semver›][‹lifecycle›]───────── IQ[──●──] AUTO[─●─] BUDGET[─●─] ⌘K─┐
-│ derived (RO): temp ‹› max_tok ‹› rlm ‹› recall ‹› tier ‹› hitl ‹› tokens ‹› cost ‹› think ‹›      │
-├─ Soul  Brain  Hands  Memory  Body  Governance ──────────────────────────────────────────────────┤
-│ LEFT NAV │ WORKSPACE — Modules [1]                                      │ SURFACES x8             │
-│  Chat    │ ┌────────────────────────────────────────────────────────┐  │ [Files][Tools][Browser] │
-│  Capsule │ │ SEARCH [2] ‹filter.modules…│  SOURCE [3] ‹source ▾│    │  │ [Editor][Debug][Capsule]│
-│  Module* │ │ ┌────────────────────────────────────────────────────┐ │  │ [Brain][Desktop†] †GATED│
-│  Platform│ │ │ MODULE GRID [4]                                    │ │  │                         │
-│  Ops     │ │ │ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐│ │  │                         │
-│  Settings│ │ │ │‹module.name› │ │‹module.name› │ │‹module.name› ││ │  │                         │
-│          │ │ │ │‹module.ver›  │ │‹module.ver›  │ │‹module.ver›  ││ │  │                         │
-│          │ │ │ │‹module.state›│ │‹module.state›│ │‹module.state›││ │  │                         │
-│          │ │ │ │ [ Install ]  │ │ [ Installed ]│ │ [ Install ]  ││ │  │                         │
-│          │ │ │ │ [⋯]          │ │ [ Configure ]│ │ [⋯]          ││ │  │                         │
-│          │ │ │ └──────────────┘ └──────────────┘ └──────────────┘│ │  │                         │
-│          │ │ └────────────────────────────────────────────────────┘ │  │                         │
-│          │ └────────────────────────────────────────────────────────┘  │                         │
-├──────────┴──────────────────────────────────────────────────────────────┴─────────────────────────┤
-│ INSTANCES ‹instance.id› ‹instance.status› │ NEURO: DA ‹› 5-HT ‹› NE ‹› ACh ‹› │ synced ‹ts›      │
-└───────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─ UI-S-00 chrome (thin · abbrev) ────────────────────────────────────────────────────────────────┐
+│ [≡]  [S] SOMA              ‹clock›   ● ‹conn›   🔔 ‹n›   ▢ ‹project› ▾                          │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  TOOLS — enabled for this agent                                            [⟳ Refresh]          │
+│  [Search tools…                     ]                                                              │
+│                                                                                                  │
+│  ┌─ TOOL LIST (server order) ────────────────────────────────────────────────────────────────┐  │
+│  │ name              description                                          parameters         │  │
+│  │ ‹name›            ‹description | —›                                    ‹present | —›      │  │
+│  │ ‹name›            ‹description | —›                                    ‹present | —›      │  │
+│  │ (scroll)                                                                                   │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                                  │
+│  total: ‹n | —› enabled tools                                                    [Open]         │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. Control map
+No install/uninstall, no `module.ver`, no `module.state`, no dependency or health panels — those
+are not `ToolInfo` fields. No chrome IQ/AUTO/BUDGET knobs, no facet tabs (`UI-S-00` §3).
 
-| # | UI-C-* | control | notes |
+---
+
+## 2. Real data — `ToolInfo` / `ToolCatalogItem`
+
+| Screen | Endpoint | Schema | Fields |
 |---|---|---|---|
-| 1 | — | Workspace region (Module list) | Screen shell. |
-| 2 | UI-C-021 | Search | Filters the grid live. |
-| 3 | UI-C-086 | Source filter select | Registry sources as configured; no invented catalogue. |
-| 4 | UI-C-087 | Module card grid | Cards show `‹module.name›` / `‹module.ver›` / `‹module.state›`. |
-| 4 | UI-C-028 | Card menu (⋯) | Install / Uninstall / Open. Uninstall opens UI-M-03. |
-| — | UI-A-040 | Install module | Per-card primary action; reflects in `‹module.state›`. |
-| — | UI-A-041 | Uninstall module | DESTRUCTIVE — always opens UI-M-03. |
-| — | UI-A-043 | Configure | Navigates to UI-S-16. |
+| **UI-S-15 (this)** | `GET /api/v2/tools` | `ToolInfo` | `name` · `description` · `parameters` |
+| UI-S-16 detail | `GET /api/v2/tools` | `ToolInfo` | same |
+| UI-S-17 registry | `GET /tools/catalog` | `ToolCatalogItem` | `name` · `description` · `category` · `enabled` |
+| UI-S-18 detail | `PUT /tools/catalog/{name}` | `ToolCatalogItem` | same (write) |
 
-## 3. State variants
+Canonical store: `admin.core.models.Capability` (`is_enabled`, `category`, `schema`).
 
-- **loading** — Grid shows 6 skeleton cards. Verbatim label: "Loading modules…"
-- **empty** — `UI-C-023` verbatim: "No modules are registered. Add a module source in Settings to browse modules."
-  Empty under a filter verbatim: "No modules match this filter. Clear the filter to see all."
-- **error** — `UI-C-024` verbatim: "Module registry could not be loaded. Retry, or check that the
-  module source is reachable."
-- **permission-denied** — Install/Uninstall disabled with inline reason
-  "Module changes require the operator role." Grid remains readable; `UI-C-025` verbatim:
-  "You do not have permission to manage modules. Ask a platform admin for the operator role."
-- **offline** — Grid shows last cached page ("Showing the last synced page."); Install/Uninstall
-  disabled with reason "Module actions are unavailable offline."
-
-## 4. Modal overlays
-
-| Trigger | Modal | Contents |
+| UI column | API field | Absent handling |
 |---|---|---|
-| UI-A-040 Install module | UI-M-03 Dialog | "Install ‹module.name› ‹module.ver›?" Cancel / Install. |
-| UI-A-041 Uninstall module | UI-M-03 Dialog | "Uninstall ‹module.name›? Capabilities it provides will be removed." Cancel / Uninstall. |
-| Configure | — | Navigates to UI-S-16; no modal. |
-| — | UI-M-01 / UI-M-02 | Not used by this screen. |
+| Name | `name` | required |
+| Description | `description` | `—` |
+| Parameters | `parameters` (schema dict) | `—` (“no schema”) |
 
-## 5. Honesty notes
+`GET /api/v2/tools` returns **enabled** tools only (`Capability.objects.filter(is_enabled=True)`).
+The enable switch lives in UI-S-17/UI-S-18/UI-S-55 — not here.
 
-Module names, versions and states are store placeholders. No catalogue sizes or install counts
-are invented.
+---
+
+## 3. Control map
+
+| # | Control | API / behavior | Live? |
+|---|---|---|---|
+| 1 | Search | Client filter over loaded rows. | live |
+| 2 | Tool row | `name` · `description` · `parameters` presence. | live |
+| 3 | Open | `router →` UI-S-16 for that tool. | live |
+| 4 | Refresh | `GET /api/v2/tools` again. | live |
+| 5 | Total | `—` until the server reports. | live |
+
+---
+
+## 4. Numbered journey — inspect a runtime tool
+
+| Step | Where | Action | API | Result |
+|---|---|---|---|---|
+| **1** | `/admin/agents` | Open Tools | `GET /api/v2/tools` | List of enabled `ToolInfo` rows. |
+| **2** | list | Search `name` | client filter | Table narrows. |
+| **3** | list | Click **Open** on a row | `router →` UI-S-16 | Tool detail with `parameters` schema. |
+| **4** | list | Need to enable/disable | — | Goes to UI-S-17 registry or Settings › Tools (UI-S-55). Not on this screen. |
+
+---
+
+## 5. States
+
+| State | Verbatim / behavior |
+|---|---|
+| loading | “Loading tools…” — skeleton rows. |
+| empty | “No tools are enabled for this agent.” |
+| empty (filter) | “No tools match this filter. Clear the filter to see all.” |
+| error | “Tools could not be loaded. Retry, or check that the tools service is reachable.” |
+| offline | “Tool data is unavailable offline.” |
+
+---
+
+## 6. Honesty
+
+Rows are `ToolInfo` fields only. No install counts, no catalogue sizes, no invented versions or
+states. `parameters` is a schema dict — presence is shown, not fabricated content.
+
+---
+
+## 7. Source map
+
+| Source | Role |
+|---|---|
+| `GET /api/v2/tools` | `ToolInfo[]` (`tools.py:51-68`) |
+| `admin/tools/api/tools.py:25-30` | `ToolInfo` schema |
+| `SOMA-UI-CATALOG-001.md` §3 | Real tool fields |
 
 End of Document
