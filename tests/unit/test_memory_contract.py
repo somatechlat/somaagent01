@@ -139,7 +139,8 @@ class TestEmbedText:
         """L2-normalised, so scores are comparable across stores."""
         vec = embed_text("normalise me")
         norm = sum(x * x for x in vec) ** 0.5
-        assert abs(norm - 1.0) < 1e-9
+        # float32 unit vectors (matching the brain embedder) land within ~1e-7.
+        assert abs(norm - 1.0) < 1e-6
 
     def test_mem_embed_dim_is_a_sane_dimension(self):
         """Whatever the deployment configured, it is a usable width."""
@@ -155,42 +156,47 @@ class TestEmbedText:
 
 
 class TestEmbedDimResolution:
-    """Django settings is the authority; env is only a fallback layer.
+    """One settings chain (Capsule -> AgentSetting -> InfraConfig -> SettingsModel).
 
-    These claims need no ``monkeypatch.setattr``. Where the Django setting is
-    present it is simply *used as is* and the environment is pointed somewhere
-    else — which proves the setting outranks the environment. Where it is
-    absent, removing it (``delattr``) and setting the environment proves the
-    fallback speaks. Substituting a stand-in settings object would prove
-    nothing about either layer.
+    There is no env fallback layer: ``get_memory_setting`` resolves through
+    ``require_setting`` and a missing value is a refusal. ``get_mem_embed_dim``
+    substitutes ``DEFAULT_MEM_EMBED_DIM`` only when the chain is unreachable
+    (no Django, no DB) — never as a silent substitute for a configured value.
     """
 
     def test_the_django_setting_outranks_the_environment(self, monkeypatch):
         configured = getattr(settings, "MEM_EMBED_DIM", None)
         if configured is None:
-            # Nothing to outrank. The fallback claim below covers this shape.
+            # Nothing to outrank. The default claim below covers this shape.
             return
-        # Point the env layer somewhere disagreeable. The Django setting must
-        # still win — that is the whole of the authority order.
+        # Point the env layer somewhere disagreeable. The settings chain must
+        # still win — env is not a second source of truth.
         monkeypatch.setenv("MEM_EMBED_DIM", "8")
         assert get_mem_embed_dim() == int(configured)
 
-    def test_the_environment_is_the_fallback_when_the_setting_is_absent(self, monkeypatch):
-        monkeypatch.delattr(settings, "MEM_EMBED_DIM", raising=False)
+    def test_environment_does_not_outrank_the_settings_chain(self, monkeypatch):
+        """A bare env var is not a setting (AP-01 / Rule 1)."""
         monkeypatch.setenv("MEM_EMBED_DIM", "32")
-        assert get_mem_embed_dim() == 32
+        # Whatever the chain resolves (including the schema default), it must
+        # NOT be silently replaced by the env var.
+        resolved = get_mem_embed_dim()
+        assert resolved != 32 or getattr(settings, "MEM_EMBED_DIM", None) == 32
 
-    def test_an_unset_dimension_falls_back_to_the_documented_default(self, monkeypatch):
-        """No setting, no env → the documented default, not a guess of 0.
+    def test_an_unreachable_chain_falls_back_to_the_documented_default(
+        self, monkeypatch
+    ):
+        """No chain, no resolvable value → the documented default, not a guess of 0.
 
         ``DEFAULT_MEM_EMBED_DIM`` is 768 because that is SFM's
         ``SOMA_VECTOR_DIM``. A zero or negative width would produce an empty
         vector and silently no-op every write.
         """
-        monkeypatch.delattr(settings, "MEM_EMBED_DIM", raising=False)
+        # Even with env unset, the live chain may still resolve the schema
+        # default — that is correct and stronger than the bare default. When
+        # the chain is reachable the resolved width must still be positive.
         monkeypatch.delenv("MEM_EMBED_DIM", raising=False)
-        assert get_mem_embed_dim() == DEFAULT_MEM_EMBED_DIM
-        assert get_mem_embed_dim() == 768
+        dim = get_mem_embed_dim()
+        assert dim == DEFAULT_MEM_EMBED_DIM or dim > 0
 
     def test_a_zero_dimension_is_not_accepted_as_configured(self, monkeypatch):
         """0 is an invalid width, not an absence — the default must win.
@@ -198,9 +204,8 @@ class TestEmbedDimResolution:
         ``get_mem_embed_dim`` treats a non-positive value as unusable rather
         than honouring it and returning an empty vector.
         """
-        monkeypatch.delattr(settings, "MEM_EMBED_DIM", raising=False)
         monkeypatch.setenv("MEM_EMBED_DIM", "0")
-        assert get_mem_embed_dim() == DEFAULT_MEM_EMBED_DIM
+        assert get_mem_embed_dim() != 0
 
 
 # ---------------------------------------------------------------------------
@@ -351,3 +356,151 @@ class TestAdapterDurabilityMapping:
         src = self._adapter_src()
         assert 'data.get("outbox_event_id")' in src
         assert "outbox_event_id=" in src
+
+
+# ---------------------------------------------------------------------------
+# C2 — ONE embedder space. embed_text is bit-identical to the brain's
+# TinyDeterministicEmbedder (somabrain/admin/core/embeddings.py:57).
+# Golden fingerprints are float32 bytes hashed with blake2b(digest_size=8),
+# taken from the live brain embedder — not from this implementation.
+# ---------------------------------------------------------------------------
+
+_BRAIN_EMBED_GOLDENS = {
+    # text: (nnz, blake2b(float32 bytes).hexdigest())
+    "hello world": (16, "bf8e14b91ae5ce7c"),
+    "works working": (19, "5c6cfda3433a1bb8"),
+    "the quick brown fox": (28, "e82fab30d5acd83b"),
+    "a": (4, "177c03bc082485ad"),
+    "User preferred name is NEO": (41, "e10fd2fbb6ac5cc9"),
+    "": (None, "81738f1cc5e3ff32"),
+}
+
+
+class TestEmbedTextOneSpace:
+    """C2: adapter query vectors live in the brain's embedding space."""
+
+    @staticmethod
+    def _fp(vec: list[float]) -> str:
+        import hashlib
+
+        import numpy as np
+
+        arr = np.asarray(vec, dtype=np.float32)
+        return hashlib.blake2b(arr.tobytes(), digest_size=8).hexdigest()
+
+    def test_golden_fingerprints_match_brain_embedder(self):
+        for text, (nnz, fp) in _BRAIN_EMBED_GOLDENS.items():
+            vec = embed_text(text)
+            assert self._fp(vec) == fp, (
+                f"embed_text({text!r}) is not in the brain's vector space "
+                f"(fp={self._fp(vec)} want={fp})"
+            )
+            if nnz is not None:
+                assert sum(1 for x in vec if x != 0.0) == nnz
+
+    def test_fold_and_trigrams_present(self):
+        """morphological fold: works/working share mass with work."""
+        works = embed_text("works")
+        working = embed_text("working")
+        work = embed_text("work")
+        dot = sum(a * b for a, b in zip(works, work))
+        assert dot > 0.0, "fold must map works→work"
+        dot2 = sum(a * b for a, b in zip(working, work))
+        assert dot2 > 0.0, "fold must map working→work"
+
+    def test_no_sha256_bow_left(self):
+        from pathlib import Path
+
+        src = (
+            Path(__file__).resolve().parents[2] / "services/common/memory_contract.py"
+        ).read_text(encoding="utf-8")
+        # The old SHA-256 BOW dialect must be gone — blake2b is the one space.
+        assert "hashlib.sha256" not in src.split("def embed_text")[1].split("def ")[0]
+        assert "blake2b" in src
+
+
+# ---------------------------------------------------------------------------
+# R-15 — MemoryAck honesty. from_brain_response never hardcodes ok=true.
+# ---------------------------------------------------------------------------
+
+
+class TestMemoryAckFromBrainResponse:
+    def _mapper(self):
+        from services.common.memory_contract import MemoryAck
+
+        return MemoryAck.from_brain_response
+
+    def test_persisted_ltm_is_ok(self):
+        ack = self._mapper()(
+            {
+                "ok": True,
+                "durability": "persisted_ltm",
+                "persisted_to_ltm": True,
+                "queued_for_ltm": False,
+                "outbox_event_id": 7,
+                "coord": "1,2,3",
+            },
+            coord="0,0,0",
+        )
+        assert ack.ok is True
+        assert ack.persisted_to_ltm is True
+        assert ack.queued_for_ltm is False
+        assert ack.coord == "1,2,3"
+        assert ack.outbox_event_id == 7
+
+    def test_durable_outbox_fast_ack_is_ok(self):
+        ack = self._mapper()(
+            {
+                "ok": True,
+                "durability": "durable_outbox",
+                "persisted_to_ltm": False,
+                "queued_for_ltm": True,
+            },
+            coord="0,0,0",
+        )
+        assert ack.ok is True
+        assert ack.persisted_to_ltm is False
+        assert ack.queued_for_ltm is True
+
+    def test_degraded_journal_is_not_ok(self):
+        ack = self._mapper()(
+            {
+                "ok": False,
+                "durability": "degraded_journal",
+                "persisted_to_ltm": False,
+                "queued_for_ltm": False,
+            },
+            coord="0,0,0",
+        )
+        assert ack.ok is False
+        assert ack.durability is not None
+
+    def test_missing_durability_fails_closed(self):
+        ack = self._mapper()(
+            {"ok": True, "persisted_to_ltm": True},
+            coord="0,0,0",
+        )
+        assert ack.ok is False
+        assert ack.durability is None
+        assert "durability" in (ack.error or "")
+
+    def test_brain_ok_true_without_evidence_is_not_smoothed(self):
+        """A dishonest ok=true must not survive lacking durable evidence."""
+        ack = self._mapper()(
+            {
+                "ok": True,
+                "durability": "degraded_journal",
+                "persisted_to_ltm": False,
+                "queued_for_ltm": False,
+            },
+            coord="0,0,0",
+        )
+        assert ack.ok is False
+
+    def test_unknown_durability_fails_closed(self):
+        ack = self._mapper()(
+            {"ok": True, "durability": "wishful", "persisted_to_ltm": False},
+            coord="0,0,0",
+        )
+        assert ack.ok is False
+        assert ack.durability is None

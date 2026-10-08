@@ -103,7 +103,8 @@ async function ask(page, text) {
         return await last
           .evaluate((el) => {
             const root = el.shadowRoot || el;
-            return (root.textContent || '').replace(/\s+/g, ' ').trim().length;
+            const body = root.querySelector('.text') || root;
+            return (body.textContent || '').replace(/\s+/g, ' ').trim().length;
           })
           .catch(() => 0);
       },
@@ -117,13 +118,14 @@ async function ask(page, text) {
 
   // Let streaming settle before reading.
   await page.waitForTimeout(1500);
-  // Lit renders into a shadow root. innerText of the host element is empty
-  // even when the person can read the reply, so read the shadow content.
+  // Read the message body only. The shadow root also contains copy/action
+  // buttons ("content_copy", "Copy") which are not what the person was told.
   return (
     await last
       .evaluate((el) => {
         const root = el.shadowRoot || el;
-        return root.textContent || '';
+        const body = root.querySelector('.text') || root;
+        return body.textContent || '';
       })
       .catch(() => '')
   )
