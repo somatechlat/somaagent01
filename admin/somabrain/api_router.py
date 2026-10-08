@@ -231,7 +231,7 @@ async def create_memory(request, payload: MemoryCreateRequest) -> dict:
             "memory_id": coord,
             "degraded": True,
             "queued": True,
-            "queue": get_memory_setting("MEMORY_WAL_TOPIC", MEMORY_WAL_TOPIC_DEFAULT),
+            "queue": get_memory_setting("MEMORY_WAL_TOPIC"),
             "message": get_message(SuccessCode.MEMORY_STORED),
         }
 
@@ -257,7 +257,7 @@ async def create_memory(request, payload: MemoryCreateRequest) -> dict:
             "memory_id": coord,
             "degraded": True,
             "queued": True,
-            "queue": get_memory_setting("MEMORY_WAL_TOPIC", MEMORY_WAL_TOPIC_DEFAULT),
+            "queue": get_memory_setting("MEMORY_WAL_TOPIC"),
             "message": get_message(SuccessCode.MEMORY_STORED),
         }
 

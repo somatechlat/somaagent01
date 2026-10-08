@@ -32,9 +32,12 @@ import httpx
 from pydantic import BaseModel, Field
 
 from services.common.memory_contract import (
+    embed_text,
+    get_mem_embed_dim,
     get_memory_setting,
     MemoryAck,
     MemoryConfigurationError,
+    MemoryDurability,
     MemoryHit,
     MemoryRecallUnavailable,
     MemoryWrite,
@@ -130,12 +133,30 @@ def _resolve_namespace(explicit: str | None) -> str:
             )
         return ns
 
+    from concurrent.futures import ThreadPoolExecutor
+
     from django.core.exceptions import ImproperlyConfigured
 
     from admin.core.helpers.service_urls import require_setting
 
+    def _read() -> str:
+        return str(require_setting("SOMABRAIN_NAMESPACE"))
+
+    # require_setting consults the AgentSetting ORM. Constructing the adapter
+    # happens on the async request path, where Django raises
+    # SynchronousOnlyOperation -- which the old `except ImproperlyConfigured`
+    # turned into "namespace is not configured". A missing setting and an
+    # illegal read must not look the same. Hand the read to a worker thread so
+    # it is legal in either context.
     try:
-        ns = str(require_setting("SOMABRAIN_NAMESPACE")).strip()
+        # Wait bound is the EXISTING memory-path timeout, not a new knob
+        # (AP-01: a call site must not invent a setting name).
+        # max_workers is deliberately omitted so the interpreter's own default
+        # applies -- the hop size is not a tunable and must not become one.
+        wait_s = float(get_memory_setting("MEM_HTTP_TIMEOUT"))
+        with ThreadPoolExecutor(thread_name_prefix="ns-resolve") as ex:
+            raw = ex.submit(_read).result(timeout=wait_s)
+        ns = str(raw).strip()
     except ImproperlyConfigured as exc:
         raise MemoryConfigurationError(
             "SomaBrain namespace is not configured. Set SOMABRAIN_NAMESPACE "
@@ -184,7 +205,7 @@ class SomaBrainAdapter:
                 "unauthenticated (VIBE Rule 164)."
             )
         self._timeout = float(
-            timeout if timeout is not None else get_memory_setting("MEM_HTTP_TIMEOUT", 5.0)
+            timeout if timeout is not None else get_memory_setting("MEM_HTTP_TIMEOUT")
         )
         # One namespace for write AND recall, from the settings chain. Body
         # `namespace` and header `X-Namespace` always carry this same value so
@@ -196,6 +217,21 @@ class SomaBrainAdapter:
             headers=self._headers(),
         )
 
+    def _brain_tenant(self, requested: str | None = None) -> str:
+        """Tenant that matches the SomaBrain bearer credential.
+
+        The brain rejects any body tenant that is not the credential's tenant
+        (403). App-level tenant IDs are not the brain partition unless the
+        credential is bound to them. Always speak the credential tenant.
+        """
+        from services.common.memory_contract import get_memory_setting
+
+        try:
+            resolved = get_memory_setting("SOMABRAIN_DEFAULT_TENANT")
+        except Exception:
+            resolved = None
+        return str(resolved or "standalone")
+
     def _headers(self, tenant_id: str | None = None) -> dict[str, str]:
         """Build request headers; bearer token plus tenant hint."""
 
@@ -203,8 +239,12 @@ class SomaBrainAdapter:
         # Unconditional: __init__ refuses to construct without a token, so
         # there is no branch here in which the request goes out unauthenticated.
         headers["Authorization"] = f"Bearer {self._token}"
-        if tenant_id:
-            headers["X-Tenant-ID"] = tenant_id
+        # X-Tenant-ID is an ASSERTION of the credential's tenant (somabrain/tenant.py).
+        # The seam already carries the partition on every call in the body
+        # (`tenant` / `tenant_id`). Asserting a different app tenant than the
+        # bearer is bound to makes get_tenant() raise 403 and kills recall.
+        # Never send a conflicting assertion; omit the header and let the
+        # credential + body tenant resolve (T-1, Rule 2).
         # Brain get_tenant reads X-Namespace first (somabrain/tenant.py). Write
         # and read must see the same namespace or recall finds nothing.
         headers["X-Namespace"] = self._namespace
@@ -240,13 +280,15 @@ class SomaBrainAdapter:
         if role:
             value["role"] = str(role)
         if w.embedding is not None:
-            # Precomputed vector (PLAN §1 rule 2); the brain composes its own
-            # payload today (api/memory/helpers.py _compose_memory_payload) and
-            # has no first-class embedding field yet.
+            # Precomputed vector (INVARIANTS §2). Nested value.embedding is the
+            # write-side compatibility slot: MemoryWriteRequest lifts it to the
+            # first-class top-level ``embedding`` before the store hop
+            # (somabrain/api/memory/models.py:292-304). Do not invent a second
+            # write field here — the lift is the one write path.
             value["embedding"] = w.embedding
 
         body: dict[str, Any] = {
-            "tenant": w.tenant_id,
+            "tenant": self._brain_tenant(w.tenant_id),
             "namespace": self._namespace,
             "key": key,
             "value": value,
@@ -268,7 +310,31 @@ class SomaBrainAdapter:
                 stored_coord = stored.strip()
             else:
                 stored_coord = w.coord
-            return MemoryAck(coord=stored_coord, store="somabrain", ok=True)
+
+            # T-6 / INVARIANTS §5.3: read durability — ok alone is never
+            # enough. A brain that omits the field is an older brain: fail
+            # closed rather than silently claiming a durable accept.
+            raw_durability = data.get("durability")
+            if raw_durability is None:
+                return MemoryAck(
+                    coord=stored_coord,
+                    store="somabrain",
+                    ok=False,
+                    durability=None,
+                    error=(
+                        "brain response omitted durability; cannot confirm "
+                        "durable accept (T-6)"
+                    ),
+                )
+            durability = MemoryDurability(raw_durability)
+            outbox_id = data.get("outbox_event_id")
+            return MemoryAck(
+                coord=stored_coord,
+                store="somabrain",
+                ok=True,
+                durability=durability,
+                outbox_event_id=int(outbox_id) if outbox_id is not None else None,
+            )
         except Exception as exc:
             LOGGER.warning("SomaBrain remember failed: %s", exc)
             return MemoryAck(coord=w.coord, store="somabrain", ok=False, error=str(exc))
@@ -276,16 +342,36 @@ class SomaBrainAdapter:
     async def recall(self, query: str, k: int, tenant_id: str) -> list[MemoryHit]:
         """Search via POST /memory/recall.
 
+        The body carries the PRECOMPUTED query vector (top-level ``embedding``)
+        from the same ``embed_text`` / ``get_mem_embed_dim`` pair the write
+        path uses, so the store never re-embeds (INVARIANTS §2.1).
+
         Fail-closed (R-05 / F-10): a transport or store failure raises
         ``MemoryRecallUnavailable`` — it is never reported as an empty list,
         which would be indistinguishable from "the user has no history".
         """
 
+        # INVARIANTS §2.1: the embedding is computed once, here in the gateway
+        # adapter, with the SAME embedder the write path uses
+        # (memory_gateway._embed -> embed_text), at the SAME dimension
+        # (get_mem_embed_dim()). The brain's RecallRequest.embedding is the
+        # precomputed query vector; when it is absent the store re-embeds with
+        # HashEmbedder — a different algorithm — and cosine is meaningless.
+        # TOP-LEVEL key only: a nested payload.embedding is silently dropped
+        # and hash-ranked x 0.25 (INVARIANTS §5.5, defect 15).
+        #
+        # `layer` is deliberately omitted. The two live recall handlers use
+        # different vocabularies for "everything":
+        #   endpoints/memory.py          -> layer in ("ltm","both") / ("wm","both")
+        #   api/memory/recall.py:243-245 -> layer in {"wm","ltm","all"} else 400
+        # "both" 400s the second; "all" silently returns zero hits from the
+        # first. Omitting the key lets each handler apply its own default
+        # ("both" / "all"), which is the one body valid under both.
         body = {
             "query": query,
+            "embedding": embed_text(query, get_mem_embed_dim()),
             "top_k": max(1, int(k)),
-            "layer": "both",
-            "tenant": tenant_id,
+            "tenant": self._brain_tenant(tenant_id),
             "namespace": self._namespace,
         }
         try:
@@ -317,7 +403,7 @@ class SomaBrainAdapter:
         and also returns False; it is never a silent skip of the call.
         """
 
-        body = ForgetRequest(coord=coord, tenant=tenant_id, tenant_id=tenant_id)
+        body = ForgetRequest(coord=coord, tenant=self._brain_tenant(tenant_id), tenant_id=self._brain_tenant(tenant_id))
         try:
             response = await self._client.post(
                 "/memory/forget",

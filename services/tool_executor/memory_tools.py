@@ -10,7 +10,7 @@ algorithm: WM/LTM + scoring), not a local fake.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from services.common.memory_contract import get_memory_setting
 from services.tool_executor.tools import BaseTool, ToolExecutionError
@@ -23,6 +23,22 @@ LOGGER = logging.getLogger(__name__)
 _SUMMARY_CHARS = 240
 
 
+def _fact_boost(text: str) -> float:
+    """Prefer durable facts over raw dialog transcripts when ranking.
+
+    Chat turns are also stored (chat_history). When the user asks for a
+    name/codeword the fact row must outrank "User: ...\\nAssistant: ...".
+    """
+    t = (text or "").strip()
+    if not t:
+        return 0.0
+    if t.startswith("User:") or "\nAssistant:" in t or t.startswith("Assistant:"):
+        return -0.15
+    if len(t) <= 180 and "User:" not in t:
+        return 0.12
+    return 0.0
+
+
 def _digest(hits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Shape hits into a ranked digest the model can answer from.
 
@@ -30,16 +46,29 @@ def _digest(hits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     model sees incomplete JSON, and asks again. A summary per hit keeps the
     whole result readable in one round.
     """
+    scored: List[Dict[str, Any]] = []
+    for h in hits:
+        text = str(h.get("text") or "").strip()
+        base = h.get("score")
+        try:
+            base_f = float(base) if base is not None else 0.0
+        except (TypeError, ValueError):
+            base_f = 0.0
+        scored.append({**h, "_rank_score": base_f + _fact_boost(text)})
+    scored.sort(key=lambda x: x.get("_rank_score") or 0.0, reverse=True)
+
     out: List[Dict[str, Any]] = []
-    for i, h in enumerate(hits, start=1):
+    for i, h in enumerate(scored, start=1):
         text = str(h.get("text") or "").strip()
         summary = text if len(text) <= _SUMMARY_CHARS else text[: _SUMMARY_CHARS - 1] + "…"
         out.append(
             {
                 "rank": i,
                 "summary": summary,
-                "coord": h.get("coord"),
+                "coord": h.get("coord") or h.get("coordinate"),
                 "score": h.get("score"),
+                "kind": h.get("kind"),
+                "store": h.get("store"),
             }
         )
     return out
@@ -84,8 +113,13 @@ def _hit_to_dict(hit: Any) -> Dict[str, Any]:
         text = payload.get("text") or payload.get("content") or ""
     return {
         "text": str(text)[:2000],
-        "coord": getattr(hit, "coordinate", None)
-        or (payload.get("coord") if isinstance(payload, dict) else None),
+        # MemoryHit.coord is the seam coordinate (memory_contract.MemoryHit).
+        # Do not look for `.coordinate` — that attribute does not exist and
+        # made every tool hit coord:null (agent could never show a memory id).
+        "coord": getattr(hit, "coord", None)
+        or getattr(hit, "coordinate", None)
+        or (payload.get("coord") if isinstance(payload, dict) else None)
+        or (payload.get("coordinate") if isinstance(payload, dict) else None),
         "score": getattr(hit, "score", None),
         "store": getattr(hit, "store", None),
         "kind": getattr(hit, "kind", None)
@@ -99,16 +133,22 @@ class MemoryRecallTool(BaseTool):
     """Semantic recall from SomaBrain (proximity + keyword)."""
 
     name = "memory_recall"
+    description = (
+        "Search long-term memory (SomaBrain). Use a specific question or name/codeword, "
+        "not the word 'memory'. Each hit has a coord (memory_id). When the user asks "
+        "where a memory is stored or for its id, print that coord. "
+        "Prefer tool results over guessing."
+    )
 
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
         query = args.get("query") or args.get("text") or ""
         tenant_id = _require_tenant(args)
         try:
             top_k = int(
-                args.get("top_k") or args.get("limit") or get_memory_setting("MEM_RECALL_TOP_K", 8)
+                args.get("top_k") or args.get("limit") or get_memory_setting("MEM_RECALL_TOP_K")
             )
         except (TypeError, ValueError):
-            top_k = int(get_memory_setting("MEM_RECALL_TOP_K", 8))
+            top_k = int(get_memory_setting("MEM_RECALL_TOP_K"))
         top_k = max(1, min(top_k, 50))
         # An empty query is a refusal, not a wildcard dump. Listing a tenant's
         # whole memory overflows the tool message, the model sees truncated
@@ -142,6 +182,9 @@ class MemoryRecallTool(BaseTool):
             # answer from them rather than call again.
             "enough": bool(digest),
             "digest": digest,
+            "instruction": "Answer from digest summaries when they contain the fact. "
+            "Print coord as memory_id if the user asks where a memory is stored. "
+            "Never invent a fact that is not in the digest.",
         }
 
     def input_schema(self) -> Dict[str, Any] | None:
@@ -171,11 +214,11 @@ class MemorySaveTool(BaseTool):
         kind = str(
             args.get("kind")
             or args.get("memory_type")
-            or get_memory_setting("MEM_DEFAULT_KIND", "episodic")
+            or get_memory_setting("MEM_DEFAULT_KIND")
         )
         salience = args.get("salience")
         if salience is None:
-            salience_f = float(get_memory_setting("MEM_DEFAULT_SALIENCE", 0.5))
+            salience_f = float(get_memory_setting("MEM_DEFAULT_SALIENCE"))
         else:
             try:
                 salience_f = float(salience)
@@ -205,6 +248,7 @@ class MemorySaveTool(BaseTool):
         return {
             "saved": any(bool(getattr(a, "ok", False)) for a in acks),
             "memory_id": memory_id,
+            "note": "memory_id is the seam coordinate. Show it to the user when they ask where a memory is stored.",
             "tenant_id": tenant_id,
             "kind": kind,
             "salience": salience_f,
@@ -278,10 +322,10 @@ class MemoryProximityTool(BaseTool):
             top_k = int(
                 args.get("top_k")
                 or args.get("limit")
-                or get_memory_setting("MEM_PROXIMITY_TOP_K", 10)
+                or get_memory_setting("MEM_PROXIMITY_TOP_K")
             )
         except (TypeError, ValueError):
-            top_k = int(get_memory_setting("MEM_PROXIMITY_TOP_K", 10))
+            top_k = int(get_memory_setting("MEM_PROXIMITY_TOP_K"))
         top_k = max(1, min(top_k, 50))
 
         # Coord proximity is expressed as a recall query including the coord

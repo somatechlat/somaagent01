@@ -337,7 +337,7 @@ class ConversationRenameIn(BaseModel):
 )
 async def rename_conversation(request, conversation_id: str, payload: ConversationRenameIn) -> dict:
     """Rename a conversation (C6 / CH-07)."""
-    await authorize(request, action="resource:conversation_create", resource="chat")
+    await authorize(request, action="resource:conversation_update", resource="chat")
     from asgiref.sync import sync_to_async
 
     user = get_current_user(request)

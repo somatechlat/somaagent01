@@ -61,8 +61,8 @@ class CircuitBreaker:
         from services.common.memory_contract import get_memory_setting
         breaker = CircuitBreaker(
             "somabrain",
-            failure_threshold=int(get_memory_setting("CB_FAILURE_THRESHOLD", 5)),
-            reset_timeout=float(get_memory_setting("CB_RESET_TIMEOUT_S", 30.0)),
+            failure_threshold=int(get_memory_setting("CB_FAILURE_THRESHOLD")),
+            reset_timeout=float(get_memory_setting("CB_RESET_TIMEOUT_S")),
         )
 
         try:

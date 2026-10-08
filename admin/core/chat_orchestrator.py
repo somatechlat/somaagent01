@@ -91,10 +91,12 @@ def _iq_model_tier(iq) -> str | None:
     return str(tier.value if hasattr(tier, "value") else tier or "") or None
 
 
-def _mem_setting(name: str, default):
+def _mem_setting(name: str):
     from services.common.memory_contract import get_memory_setting
 
-    return get_memory_setting(name, default)
+    # One arg only. Optional defaults live at declaration site
+    # (config/settings.py R-VAL-04) — never here (Rule 1).
+    return get_memory_setting(name)
 
 
 _MEMORY_WRITE_TIMEOUT_S = None
@@ -105,21 +107,21 @@ _HISTORY_RECALL_TIMEOUT_S = None
 def _write_timeout() -> float:
     global _MEMORY_WRITE_TIMEOUT_S
     if _MEMORY_WRITE_TIMEOUT_S is None:
-        _MEMORY_WRITE_TIMEOUT_S = float(_mem_setting("MEM_WRITE_TIMEOUT_S", 10.0))
+        _MEMORY_WRITE_TIMEOUT_S = float(_mem_setting("MEM_WRITE_TIMEOUT_S"))
     return _MEMORY_WRITE_TIMEOUT_S
 
 
 def _recall_timeout() -> float:
     global _MEMORY_RECALL_TIMEOUT_S
     if _MEMORY_RECALL_TIMEOUT_S is None:
-        _MEMORY_RECALL_TIMEOUT_S = float(_mem_setting("MEM_RECALL_TIMEOUT_S", 2.5))
+        _MEMORY_RECALL_TIMEOUT_S = float(_mem_setting("MEM_RECALL_TIMEOUT_S"))
     return _MEMORY_RECALL_TIMEOUT_S
 
 
 def _history_timeout() -> float:
     global _HISTORY_RECALL_TIMEOUT_S
     if _HISTORY_RECALL_TIMEOUT_S is None:
-        _HISTORY_RECALL_TIMEOUT_S = float(_mem_setting("MEM_HISTORY_TIMEOUT_S", 2.5))
+        _HISTORY_RECALL_TIMEOUT_S = float(_mem_setting("MEM_HISTORY_TIMEOUT_S"))
     return _HISTORY_RECALL_TIMEOUT_S
 
 
@@ -476,7 +478,7 @@ class V3ChatOrchestrator:
                 self._metrics.record_turn_phase(turn_id, TurnPhase.HEALTH_CHECKED)
 
             # SomaBrain context evaluation (cognitive co-processor)
-            brain_confidence = float(_mem_setting("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT", 0.5))
+            brain_confidence = float(_mem_setting("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT"))
             suggested_tools: List[str] = []
             brain_suggested_tools: List[str] = []
             try:
@@ -1082,6 +1084,17 @@ class V3ChatOrchestrator:
             temperature=iq.temperature,
             max_tokens=iq.max_tokens,
         )
+        # Real model identity — never invent which model this turn used.
+        try:
+            identity_line = (
+                f"\n\n[Runtime identity] You are serving as Soma on "
+                f"{model.provider}/{model.name}. "
+                f"If asked which model you are, answer with that exact name. "
+                f"Do not invent a different model family or parameter count."
+            )
+            context = context.model_copy(update={"system": (context.system or "") + identity_line})
+        except Exception:
+            pass
         messages = self._to_langchain_messages(context, history, turn.user_message)
 
         # Register the turn so the completion metrics below actually land.
@@ -1232,7 +1245,7 @@ class V3ChatOrchestrator:
             gateway = _require_memory_gateway()
             hits = await gateway.recall(
                 query=f"session:{conversation_id}",
-                k=int(_mem_setting("MEM_HISTORY_LIMIT", 20) or 20),
+                k=int(_mem_setting("MEM_HISTORY_LIMIT")),
                 tenant_id=tenant_id,
             )
         except Exception as exc:
@@ -1407,7 +1420,7 @@ class V3ChatOrchestrator:
         if kind is None:
             kind = str(MemoryWrite.model_fields["kind"].default)
         if not namespace:
-            namespace = str(get_memory_setting("MEM_CHAT_NAMESPACE", "chat_history"))
+            namespace = str(get_memory_setting("MEM_CHAT_NAMESPACE"))
 
         stamp = datetime.now(UTC)
         coord = make_coord(tenant_id, kind, stamp, text)
@@ -1472,13 +1485,25 @@ class V3ChatOrchestrator:
             iq_recall_limit = iq.recall_limit if iq is not None else None
             recall_limit = int(
                 memory_config.get("recall_limit") or iq_recall_limit
-                or _mem_setting("MEM_RECALL_TOP_K", 8)
+                or _mem_setting("MEM_RECALL_TOP_K")
             )
         except Exception:
-            recall_limit = int(_mem_setting("MEM_RECALL_TOP_K", 8))
+            recall_limit = int(_mem_setting("MEM_RECALL_TOP_K"))
         try:
             hits = await gateway.recall(query=query, k=recall_limit, tenant_id=tenant_id)
-            return list(hits or [])
+            rows = list(hits or [])
+            if not rows:
+                return rows
+            # Prefer fact-like rows; keep dialog only as filler.
+            def _rank(h: object) -> float:
+                text = str(getattr(h, "text", "") or "")
+                if isinstance(h, dict):
+                    text = str(h.get("text") or "")
+                if text.startswith("User:") or "\nAssistant:" in text:
+                    return -0.2
+                return 0.2 if len(text) <= 180 else 0.0
+            rows.sort(key=_rank, reverse=True)
+            return rows
         except Exception as exc:
             logger.warning("MemoryGateway.recall failed: %s", exc)
             return None
@@ -1505,12 +1530,16 @@ class V3ChatOrchestrator:
         """
         # ONE write path: SomaBrain via MemoryGateway.
         # Failed acks are queued to Kafka WAL inside _remember_via_gateway.
+        # Dialog is stored at lower salience so that explicit
+        # memory_save facts (name, favorites, codewords) outrank raw turns
+        # when the user asks a personal question.
         await self._remember_via_gateway(
             user_message,
             tenant_id=tenant_id,
             session_id=conversation_id or None,
             namespace="chat_history",
-            salience=salience,
+            salience=0.25 if salience is None else min(salience, 0.35),
+            kind="episodic",
             role="user",
         )
         assistant_coord = await self._remember_via_gateway(
@@ -1518,7 +1547,8 @@ class V3ChatOrchestrator:
             tenant_id=tenant_id,
             session_id=conversation_id or None,
             namespace="chat_history",
-            salience=salience,
+            salience=0.2 if salience is None else min(salience, 0.3),
+            kind="episodic",
             role="assistant",
         )
 

@@ -27,7 +27,7 @@ LOGGER = logging.getLogger(__name__)
 def _wal_topic() -> str:
     from services.common.memory_contract import get_memory_setting
 
-    return str(get_memory_setting("MEMORY_WAL_TOPIC", ""))
+    return str(get_memory_setting("MEMORY_WAL_TOPIC"))
 
 
 async def degraded_pending_count(tenant_id: str) -> Dict[str, Any]:

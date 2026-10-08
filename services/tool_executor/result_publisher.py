@@ -129,8 +129,8 @@ class ResultPublisher:
         success = status == "success"
         from services.common.memory_contract import get_memory_setting
 
-        reward_on_success = float(get_memory_setting("TOOL_REWARD_SUCCESS", 1.0))
-        reward_on_failure = float(get_memory_setting("TOOL_REWARD_FAILURE", 0.0))
+        reward_on_success = float(get_memory_setting("TOOL_REWARD_SUCCESS"))
+        reward_on_failure = float(get_memory_setting("TOOL_REWARD_FAILURE"))
         utility = reward_on_success if success else reward_on_failure
         feedback = {
             "session_id": str(result_event.get("session_id") or ""),
@@ -245,7 +245,7 @@ class ResultPublisher:
                 from services.common.memory_contract import get_memory_setting
                 from services.common.memory_gateway import get_memory_gateway
 
-                wal_topic = str(get_memory_setting("MEMORY_WAL_TOPIC", "memory.wal"))
+                wal_topic = str(get_memory_setting("MEMORY_WAL_TOPIC"))
                 # ONE write path: MemoryGateway. The tool lane is not a second
                 # writer; the seam's durable-accept owns retry/replay.
                 text = str(memory_payload.get("content") or "")

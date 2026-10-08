@@ -13,14 +13,15 @@ from typing import Any, Callable
 from services.common.adapters.somabrain_adapter import SomaBrainAdapter
 from services.common.circuit_breaker import CircuitBreakerError, get_circuit_breaker
 from services.common.memory_contract import (
-    coord_key_material,
-    embed_text,
-    get_mem_embed_dim,
-    make_coord,
     MemoryAck,
     MemoryHit,
     MemoryRecallUnavailable,
     MemoryWrite,
+    coord_key_material,
+    embed_text,
+    get_mem_embed_dim,
+    get_memory_setting,
+    make_coord,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -63,7 +64,7 @@ async def durable_accept_memory(
     from services.common.memory_contract import get_memory_setting
 
     stamp = ts if ts is not None else datetime.now(UTC)
-    topic = str(get_memory_setting("MEMORY_WAL_TOPIC", MEMORY_WAL_TOPIC_DEFAULT))
+    topic = str(get_memory_setting("MEMORY_WAL_TOPIC"))
     payload = {
         "id": coord,
         "type": "memory.degraded",
@@ -122,7 +123,7 @@ class FanoutMemoryGateway:
         self._embed_fn: EmbedFn = embed_fn or embed_text
         # Hottest path in the agent: remember_text / recall must fail fast
         # when SomaBrain is down, not pile up timeouts (R-SCL-03).
-        self._cb = get_circuit_breaker("memory_gateway", failure_threshold=5, reset_timeout=30.0)
+        self._cb = get_circuit_breaker("memory_gateway", failure_threshold=int(get_memory_setting("CB_FAILURE_THRESHOLD")), reset_timeout=float(get_memory_setting("CB_RESET_TIMEOUT_S")))
 
     def _embed(self, text: str) -> list[float]:
         """Compute the shared embedding once for one memory."""

@@ -114,47 +114,83 @@ SOMAFRACTALMEMORY_URL = os.environ.get("SOMAFRACTALMEMORY_URL")
 SOMA_API_TOKEN = get_secret_manager().get_credential("soma_api_token")
 
 # Shared embedding dimension for the memory seam (ARCHITECTURE-INVARIANTS §2).
+# ============================================================================
+# MEMORY / CIRCUIT / TOOL SEAM -- ONE DECLARATION PER CONCEPT (AP-03, AP-06)
+# ============================================================================
+# R-VAL-04: an OPTIONAL key's default lives HERE and nowhere else. Call sites
+# read through `get_memory_setting` with NO fallback (Rule 1: a default at a
+# call site is a hardcoded value). A REQUIRED key has no default and the call
+# raises, naming it (Rule 6 / Rule 91).
+# All values come from env at boot and Django settings is the one authority
+# inside the process (R-OWN-01). Operators change them without a code change.
+
+# --- L3 topology (required, no default) -------------------------------------
+MEM_EMBED_DIM = int(os.environ["MEM_EMBED_DIM"]) if os.environ.get("MEM_EMBED_DIM") else None
+
+# --- latency / timeout policy (optional) ------------------------------------
+# R-VAL-04: optional defaults live HERE and nowhere else. Operators override
+# via env without a code change. Call sites use get_memory_setting with NO
+# fallback (Rule 1).
+MEM_HTTP_TIMEOUT = os.environ.get("MEM_HTTP_TIMEOUT") or "5.0"
+MEM_WRITE_TIMEOUT_S = os.environ.get("MEM_WRITE_TIMEOUT_S") or "10.0"
+MEM_RECALL_TIMEOUT_S = os.environ.get("MEM_RECALL_TIMEOUT_S") or "2.5"
+MEM_HISTORY_TIMEOUT_S = os.environ.get("MEM_HISTORY_TIMEOUT_S") or "2.5"
+# --- retrieval policy (optional) --------------------------------------------
+MEM_RECALL_TOP_K = os.environ.get("MEM_RECALL_TOP_K") or "8"
+MEM_PROXIMITY_TOP_K = os.environ.get("MEM_PROXIMITY_TOP_K") or "4"
+MEM_HISTORY_LIMIT = os.environ.get("MEM_HISTORY_LIMIT") or "12"
+# --- write policy (optional) ------------------------------------------------
+MEM_CHAT_NAMESPACE = os.environ.get("MEM_CHAT_NAMESPACE") or "chat_history"
+MEM_DEFAULT_KIND = os.environ.get("MEM_DEFAULT_KIND") or "episodic"
+MEM_DEFAULT_SALIENCE = os.environ.get("MEM_DEFAULT_SALIENCE") or "0.5"
+MEM_DEFAULT_SOURCE = os.environ.get("MEM_DEFAULT_SOURCE") or "chat"
+# --- circuit breaker policy (optional) --------------------------------------
+CB_FAILURE_THRESHOLD = os.environ.get("CB_FAILURE_THRESHOLD")
+CB_RESET_TIMEOUT_S = os.environ.get("CB_RESET_TIMEOUT_S")
+# --- tool reward policy (optional) ------------------------------------------
+TOOL_REWARD_SUCCESS = os.environ.get("TOOL_REWARD_SUCCESS")
+TOOL_REWARD_FAILURE = os.environ.get("TOOL_REWARD_FAILURE")
 # MEM_EMBED_DIM (here) MUST equal SOMA_VECTOR_DIM (SFM's settings/infra.py).
 # This is the authority; env is the 12-factor override. Nothing else in the
 # codebase may invent a dimension.
 # No default here. The schema default lives once, as
 # services.common.memory_contract.DEFAULT_MEM_EMBED_DIM, and must equal
 # SFM's SOMA_VECTOR_DIM (ARCHITECTURE-INVARIANTS §2).
-MEM_EMBED_DIM = int(os.environ["MEM_EMBED_DIM"]) if os.environ.get("MEM_EMBED_DIM") else None
+
 
 # Memory seam transport + namespace (ARCHITECTURE-INVARIANTS §6).
 # Adapters read these via services.common.memory_contract.get_memory_setting()
 # and must never touch os.environ directly — this file is the one authority.
-MEM_HTTP_TIMEOUT = os.environ.get("MEM_HTTP_TIMEOUT")
+# --- Memory seam tunables (declaration site; R-VAL-04) ----------------------
+# Each is OPTIONAL and operator-configurable. The declaration is the only legal
+# home for a default -- call sites read through get_memory_setting with no
+# fallback (Rule 1, AP-03: a default duplicated in model AND call site).
+
+
 SFM_NAMESPACE = os.environ.get("SFM_NAMESPACE", "api_ns")
 # No default: a namespace is an administrator parameter resolved through
 # Capsule > AgentSetting > InfrastructureConfig > SettingsModel. A `"default"`
 # here is a hardcoded value (Rule 91) and hides a missing setting.
 SOMABRAIN_NAMESPACE = os.environ.get("SOMABRAIN_NAMESPACE")
+# Tenant bound to the SomaBrain bearer credential. Body tenant/tenant_id MUST
+# equal this or the brain returns 403 "body tenant does not match the
+# authenticated credential". Env override; default matches standalone bootstrap.
+SOMABRAIN_DEFAULT_TENANT = os.environ.get("SOMABRAIN_DEFAULT_TENANT") or "standalone"
 
 # ---------------------------------------------------------------------------
 # MEMORY TOOLS / SEAM — fully configurable. No hardcoded tool parameters.
 # Read via services.common.memory_contract.get_memory_setting().
 # ---------------------------------------------------------------------------
-MEM_RECALL_TOP_K = os.environ.get("MEM_RECALL_TOP_K")
-MEM_PROXIMITY_TOP_K = os.environ.get("MEM_PROXIMITY_TOP_K")
-MEM_HISTORY_LIMIT = os.environ.get("MEM_HISTORY_LIMIT")
-MEM_CHAT_NAMESPACE = os.environ.get("MEM_CHAT_NAMESPACE", "chat_history")
-MEM_DEFAULT_KIND = os.environ.get("MEM_DEFAULT_KIND", "episodic")
-MEM_DEFAULT_SALIENCE = os.environ.get("MEM_DEFAULT_SALIENCE")
-MEM_DEFAULT_SOURCE = os.environ.get("MEM_DEFAULT_SOURCE", "agent-chat")
-MEM_WRITE_TIMEOUT_S = os.environ.get("MEM_WRITE_TIMEOUT_S")
-MEM_RECALL_TIMEOUT_S = os.environ.get("MEM_RECALL_TIMEOUT_S")
-MEM_HISTORY_TIMEOUT_S = os.environ.get("MEM_HISTORY_TIMEOUT_S")
+
 
 # Degraded-mode Kafka queue (memory-replicator replay → SomaBrain).
 MEMORY_WAL_TOPIC = os.environ.get("MEMORY_WAL_TOPIC", "memory.wal")
 MEMORY_DEGRADED_TOPIC = os.environ.get("MEMORY_DEGRADED_TOPIC", "degradation.events")
 
 # Cognitive / tool feedback rewards (SomaBrain FeedbackRequest.utility).
-TOOL_REWARD_SUCCESS = os.environ.get("TOOL_REWARD_SUCCESS")
-TOOL_REWARD_FAILURE = os.environ.get("TOOL_REWARD_FAILURE")
-SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT = os.environ.get("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT")
+
+
+SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT = os.environ.get("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT") or "0.5"
 
 # Temporal async-cycle schedule cadence. Deployment env may override at boot;
 # the schema default lives only on SettingsModel (R-VAL-01 — one number, one
@@ -183,8 +219,7 @@ DEFAULT_UTIL_MODEL_NAME = os.environ.get("SA01_DEFAULT_UTIL_MODEL_NAME", "")
 DEFAULT_EMBED_MODEL_NAME = os.environ.get("SA01_DEFAULT_EMBED_MODEL_NAME", "")
 
 # Circuit breaker knobs (SomaBrain / external service resilience).
-CB_FAILURE_THRESHOLD = os.environ.get("CB_FAILURE_THRESHOLD")
-CB_RESET_TIMEOUT_S = os.environ.get("CB_RESET_TIMEOUT_S")
+
 
 # Speech realtime (endpoint is topology → env/URL).
 SPEECH_REALTIME_MODEL = os.environ.get("SPEECH_REALTIME_MODEL", "")

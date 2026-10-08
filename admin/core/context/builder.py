@@ -219,37 +219,74 @@ class ContextBuilder:
             return _MEMORY_UNAVAILABLE
         return self._format_memory_hits(memory_hits, budget)
 
+    @staticmethod
+    def _fact_rank(text: str) -> float:
+        """Prefer durable facts over raw dialog when filling the memory lane.
+
+        Chat turns are also written to the store. A question like "what is my
+        name?" must see `User's name is Juan`, not `User: whats my name?`.
+        """
+        t = (text or "").strip()
+        if not t:
+            return -1.0
+        score = 0.0
+        if t.startswith("User:") or t.startswith("Assistant:") or "\nAssistant:" in t:
+            score -= 0.35
+        # compact fact-like rows
+        if len(t) <= 160 and "User:" not in t:
+            score += 0.25
+        low = t.lower()
+        for token in ("name is", "i am", "i'm", "my name", "favorite", "favourite", "codeword", "remember"):
+            if token in low:
+                score += 0.2
+                break
+        return score
+
     def _format_memory_hits(self, hits: List[Any], budget: int) -> str:
         """Format MemoryGateway hits into the memory lane within the token budget.
 
         Fits as many hits as ``budget`` tokens (tiktoken cl100k) allow.
+        Facts rank above dialog transcripts. Each line is what the model must
+        treat as known — never invent a memory that is not listed here.
         """
         if not hits:
             return "[No relevant memories]"
 
-        parts: List[str] = []
-        used = 0
-
+        rows: List[tuple[float, str, str]] = []
         for hit in hits:
             text = getattr(hit, "text", None)
+            coord = getattr(hit, "coord", None)
             if text is None and isinstance(hit, dict):
                 text = hit.get("text") or hit.get("content") or ""
+                coord = hit.get("coord") or hit.get("coordinate")
             text = str(text or "").strip()
             if not text:
                 continue
+            rows.append((self._fact_rank(text), text, str(coord or "")))
+        rows.sort(key=lambda r: r[0], reverse=True)
 
-            line = f"- {text}"
+        parts: List[str] = []
+        used = 0
+        for _rank, text, coord in rows:
+            suffix = f"  [id:{coord}]" if coord else ""
+            line = f"- {text}{suffix}"
             cost = _token_count(line)
             if used + cost > budget:
                 if not parts:
-                    # Even the first hit does not fit — truncate to budget.
                     truncated = _ENCODING.decode(_ENCODING.encode(line)[: max(1, budget)])
                     parts.append(truncated)
                 break
             parts.append(line)
             used += cost
 
-        return "\n".join(parts) if parts else "[No relevant memories]"
+        if not parts:
+            return "[No relevant memories]"
+        header = (
+            "KNOWN MEMORIES (SomaBrain long-term). Prefer these over guessing. "
+            "For personal facts (name, favorites, codewords) answer from this list. "
+            "If missing, call memory_recall — never invent."
+        )
+        return header + "\n" + "\n".join(parts)
 
     def _build_tools_lane(self, persona: Dict[str, Any], budget: int) -> str:
         """Build tools description lane."""

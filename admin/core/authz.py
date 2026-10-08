@@ -168,6 +168,7 @@ def _build_catalog() -> dict[str, Permission]:
             "Start a conversation",
         ),
         ("resource:conversation_read", PermissionLevel.RESOURCE, "Read a conversation"),
+        ("resource:conversation_update", PermissionLevel.RESOURCE, "Rename or update a conversation"),
         ("resource:conversation_delete", PermissionLevel.RESOURCE, "Delete a conversation"),
         (
             "resource:conversation_send_message",
@@ -238,6 +239,8 @@ _RESOURCE_USE = frozenset(
     {
         "resource:conversation_create",
         "resource:conversation_read",
+        "resource:conversation_update",
+        "resource:conversation_delete",
         "resource:conversation_send_message",
         "resource:conversation_view_history",
         "resource:memory_read",
@@ -258,7 +261,6 @@ _RESOURCE_OPERATE = _RESOURCE_USE | frozenset(
 
 _RESOURCE_CONFIGURE = _RESOURCE_OPERATE | frozenset(
     {
-        "resource:conversation_delete",
         "resource:memory_write",
         "resource:memory_delete",
         "resource:file_delete",
