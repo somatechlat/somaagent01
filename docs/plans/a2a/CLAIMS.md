@@ -37,3 +37,8 @@
 | services/tool_executor/request_handler.py | MiMoCode-somaAgent01 | Kafka path reuses decide_and_authorize_tool | 2026-10-08T22:00:36Z | ACTIVE |
 | infra/aaas infra/standalone tests/e2e | MiMoCode-somaAgent01 | Temporal workers + codeword e2e | 2026-10-08T22:00:36Z | ACTIVE |
 | 2026-10-08T22:02:54Z | MiMoCode-somaAgent01 | W3.3 ResearchReportWorkflow + research_report/job_status tools (research_workflow.py, assistant_tools/research_report.py, tests) | 2026-10-08T22:02:54Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| admin/core/authz.py | MiMoCode-somaAgent01 | grant cognitive:view to sysadmin/agent_owner | 2026-10-08T23:47:26Z | ACTIVE |
+| admin/core/api/settings_v2.py services/common/authorization.py | MiMoCode-somaAgent01 | settings 403 fix | 2026-10-08T23:47:26Z | ACTIVE |
+| webui/src/views/soma-settings.ts webui/src/views/soma-settings-somabrain.ts | MiMoCode-somaAgent01 | Settings SomaBrain + BrainSetting UI | 2026-10-08T23:47:26Z | ACTIVE |

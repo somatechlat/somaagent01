@@ -342,6 +342,16 @@ if (app) {
             return;
         }
 
+        if (path === '/settings/somabrain' || path === '/agent/somabrain') {
+            await import('./views/soma-settings.js');
+            const el = document.createElement('soma-settings') as HTMLElement & {
+                activeTab?: string;
+            };
+            el.activeTab = 'somabrain';
+            app.appendChild(el);
+            return;
+        }
+
         if (path === '/settings/channels' || path === '/agent/channels') {
             await import('./views/soma-settings.js');
             const el = document.createElement('soma-settings') as HTMLElement & {

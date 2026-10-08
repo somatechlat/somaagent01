@@ -23,7 +23,9 @@ import { apiClient } from '../services/api-client.js';
 import { applyTheme, getTheme } from '../services/theme-boot.js';
 import '../components/settings-form.js';
 import './soma-settings-models.js';
+import './soma-settings-somabrain.js';
 import '../components/soma-agent-iq.js';
+import type { SomaSettingsSomaBrain } from './soma-settings-somabrain.js';
 
 type SettingsTab =
     | 'agent'
@@ -32,6 +34,7 @@ type SettingsTab =
     | 'interface'
     | 'tools'
     | 'external'
+    | 'somabrain'
     | 'connectivity'
     | 'system';
 
@@ -654,6 +657,7 @@ export class SomaSettings extends LitElement {
         { id: 'interface', label: 'Interface', icon: 'palette' },
         { id: 'tools', label: 'Tools', icon: 'build' },
         { id: 'external', label: 'Integrations', icon: 'key' },
+        { id: 'somabrain', label: 'SomaBrain', icon: 'psychology' },
         { id: 'connectivity', label: 'Connectivity', icon: 'cable' },
         { id: 'system', label: 'Advanced', icon: 'settings' },
     ];
@@ -763,10 +767,39 @@ export class SomaSettings extends LitElement {
                 return this._renderToolsTab();
             case 'external':
                 return this._renderExternalTab();
+            case 'somabrain':
+                return this._renderSomabrainTab();
             case 'connectivity':
                 return this._renderConnectivityTab();
             case 'system':
                 return this._renderSystemTab();
+        }
+    }
+
+    /**
+     * UI-S-56: Connection form + connector status + route links + honest gaps.
+     * Dirty state and PUT live on the child; shell Save delegates to it.
+     */
+    private _renderSomabrainTab() {
+        return html`
+            <soma-settings-somabrain
+                .canEdit=${this._canEditSettings}
+                @soma-settings-dirty=${this._onSomabrainDirty}
+            ></soma-settings-somabrain>
+        `;
+    }
+
+    private _somabrainPanel(): SomaSettingsSomaBrain | null {
+        return this.shadowRoot?.querySelector('soma-settings-somabrain') ?? null;
+    }
+
+    private _onSomabrainDirty(e: Event) {
+        const detail = (e as CustomEvent<{ dirty?: boolean }>).detail;
+        if (typeof detail?.dirty === 'boolean' && this._activeTab === 'somabrain') {
+            this._isDirty = detail.dirty;
+            if (!detail.dirty) {
+                this._saveStatus = null;
+            }
         }
     }
 
@@ -1218,13 +1251,22 @@ export class SomaSettings extends LitElement {
     }
 
     private _setTab(tab: SettingsTab) {
+        // Leaving SomaBrain drops its form dirty bit so shell Save cannot
+        // PUT connection fields while another tab is active.
+        if (this._activeTab === 'somabrain' && tab !== 'somabrain') {
+            this._isDirty = false;
+        }
         this._activeTab = tab;
+        if (tab === 'somabrain') {
+            this._isDirty = this._somabrainPanel()?.isDirty ?? false;
+        }
     }
 
     override async firstUpdated() {
         if (this.activeTab === 'models' || this.activeTab === 'external' || this.activeTab === 'voice'
             || this.activeTab === 'interface' || this.activeTab === 'tools' || this.activeTab === 'system'
-            || this.activeTab === 'agent' || this.activeTab === 'connectivity') {
+            || this.activeTab === 'agent' || this.activeTab === 'connectivity'
+            || this.activeTab === 'somabrain') {
             this._activeTab = this.activeTab;
         }
         await Promise.all([
@@ -1356,6 +1398,28 @@ export class SomaSettings extends LitElement {
         this._isSaving = true;
         this._saveStatus = null;
         try {
+            // SomaBrain owns its own PUT — do not double-write feature flags
+            // when the operator is only editing that form.
+            if (this._activeTab === 'somabrain') {
+                const panel = this._somabrainPanel();
+                if (!panel) {
+                    throw new Error('SomaBrain panel is not mounted');
+                }
+                const ok = await panel.save();
+                if (!ok) {
+                    this._saveStatus = {
+                        kind: 'error',
+                        text: panel.isDirty
+                            ? "Couldn't save SomaBrain settings."
+                            : 'No unsaved SomaBrain changes.',
+                    };
+                    return;
+                }
+                this._isDirty = false;
+                this._saveStatus = { kind: 'ok', text: 'SomaBrain settings saved.' };
+                return;
+            }
+
             await this._saveFeatureFlags();
             this._isDirty = false;
             this._saveStatus = { kind: 'ok', text: 'Settings saved.' };
