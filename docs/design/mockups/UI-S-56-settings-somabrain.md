@@ -1,88 +1,91 @@
 # UI-S-56-settings-somabrain — Settings — SomaBrain
 
 **Settings — SomaBrain** — section **SomaBrain** inside the one Settings shell — route `/settings` (SomaBrain tab) or `/settings/somabrain`.
-Chrome abbreviated (UI-S-00). Left section nav includes **SomaBrain**; tab active for sysadmin / org_admin.
-Memory remains one home at `/memory` (UI-S-04). Right-rail **Brain** (UI-X-07) stays per-agent live state — this screen is **platform setup + operator knobs**.
+Chrome abbreviated (UI-S-00). Left section nav includes **SomaBrain**.
+Audience: sysadmin / org_admin. **Every field below is bound to a live API.** Unavailable capabilities print a blocking reason — they are never drawn as editable controls.
 
-**Field truth.** Connection fields bind settings entity `somabrain` (`admin/core/api/settings_v2.py`): `SOMABRAIN_URL`, `SOMABRAIN_NAMESPACE`. Secrets are Vault-only — UI never displays a full token; rotate via Vault path note. Health strip uses live connector/diagnostics only (`/api/v2/core/…` / brain health). Cognitive defaults bind existing settings keys only (no invented keys). Live agent gauges use `/api/v2/somabrain/cognitive/state/{agent_id}` and sleep status — same routes as UI-X-07. Temporal strip is present-but-disabled if `SA01_TEMPORAL_HOST` unset (blocking reason printed).
+**Field truth (live only):**
 
-**Language law.** No Memory section here. Secrets: "Set / rotate in Vault — never shown in full."
+| Group | API | Fields (exact) |
+|---|---|---|
+| Connection | `GET/PUT /api/v2/core/settings/somabrain` | `url` → `SOMABRAIN_URL`, `namespace` → `SOMABRAIN_NAMESPACE`, `retention_days`, `sleep_interval`, `consolidation_enabled` |
+| Brain reachability | `GET /api/v2/core/brain-connector` | connector health (circuit + ping) — **read-only status** |
+| AgentIQ (per capsule, if operator drills in) | `GET/PUT /api/v2/core/agentiq/{capsule_id}` | knobs: `intelligence_level`, `autonomy_level`, `resource_budget`, `response_style`; **derived read-only** includes `tool_approval`, `require_hitl`, `egress_allowed` |
+| Cognitive live (optional drawer) | `GET /api/v2/somabrain/cognitive/state/{agent_id}` + sleep status | same as UI-X-07 — **read-only on this screen** |
+| Secrets | Vault | **not** on this API — pointer only, no token field |
 
-**Design direction (Lit 3.x).** Dense, scannable operator panel; Material icons only (`neurology`, `memory`, `schedule`, `link`); amber for unavailable; no card-in-card; no emoji.
+**Not on this screen (no live write API — do not invent):** Kafka reward topic editor, Temporal worker restart, SFM URL (separate `memory` settings entity), OPA policy editor.
+
+**Language law.** Memory home remains `/memory`. Secrets: "Set in Vault — not editable here." Material icons only.
 
 ## Purpose
 
-Configure SomaBrain connectivity, memory lane health, cognitive defaults, and optional live agent cognitive read-only controls for platform operators.
+Edit SomaBrain connection settings that the operator layer owns; show whether the connector is healthy; link to Memory and Cognitive surfaces.
 
 ```
 ┌─ UI-S-00 chrome (abbrev) ─────────────────────────────────────────────────────────────────────────┐
-│ ☰ SOMA    Settings · SomaBrain                    [Search settings…]        [Save] [Cancel]       │
+│ ☰ SOMA    Settings · SomaBrain              [Search…]                        [Save] [Cancel]      │
 ├──────────────┬───────────────────────────────────────────────────────────────────────────────────┤
-│ SECTION NAV  │  SOMABR brain + memory platform                                 ● online / warn   │
+│ SECTION NAV  │  SOMABR brain connection                                    ● / ○ connector      │
 │  Agent       │                                                                                   │
-│  Models      │  CONNECTION                                                                       │
-│  Voice       │  SOMABRAIN_URL          [‹live URL›                         ]                     │
-│  Interface   │  SOMABRAIN_NAMESPACE    [chat_history                      ]                     │
-│  Tools       │  Memory HTTP token      [••••••••  set in Vault        ]  [ Test connection ]     │
-│  Integrations│  Last check: ‹status · latency · memory_ok›                                       │
-│  **SomaBrain●**│                                                                                 │
-│  Connectivity│  MEMORY LANE (T-1)                                                                │
-│  Advanced    │  remember · recall · forget   ·  durable-before-hop on  ·  breaker ‹state›         │
-│              │  [ Open /memory dashboard ]                                                       │
+│  Models      │  CONNECTION  (GET/PUT /api/v2/core/settings/somabrain)                           │
+│  Voice       │  URL              [ ‹url from GET.url›                      ]  ← SOMABRAIN_URL  │
+│  Interface   │  Namespace        [ ‹namespace›                             ]  ← SOMABRAIN_…     │
+│  Tools       │  Retention (days) [ ‹retention_days› ]                                              │
+│  Integrations│  Sleep interval   [ ‹sleep_interval› ]  (seconds — maps to settings field only)    │
+│  SomaBrain●  │  Consolidation    [ ● enable ]  ← consolidation_enabled                          │
+│  Agent admin │                                                                                   │
+│  Connectivity│  STATUS  (GET /api/v2/core/brain-connector)  — read-only                          │
+│  Advanced    │  connector ‹ok|degraded|unavailable› · circuit ‹state› · last ping ‹…›            │
+│              │  [ Open /memory ]  ·  [ Open /cognitive ]                                        │
 │              │                                                                                   │
-│              │  COGNITIVE DEFAULTS (platform)                                                    │
-│              │  Confidence default     [0.5  ]                                                   │
-│              │  Reward Kafka topic     [reward.events]                                           │
-│              │  Sleep cycle (hours)    [6    ]  → SleepCycleWorkflow                             │
-│              │  [ Save defaults ]                                                                │
-│              │                                                                                   │
-│              │  LIVE AGENT (optional)                                                            │
-│              │  Agent [‹agent name› ▾]   neuromod gauges · sleep · last_sleep  (read-only)       │
-│              │  [ Trigger sleep ] [ Reset adaptation ]  (approval-gated)                         │
-│              │                                                                                   │
-│              │  TEMPORAL                                                                          │
-│              │  workers ‹Running|unavailable› · schedules ‹…›   or gated: "SA01_TEMPORAL_HOST     │
-│              │  not set on this deployment."                                                     │
+│              │  NOT AVAILABLE AS FIELDS (no write API — honest note)                             │
+│              │  "Memory token lives in Vault. Cognitive knobs are per-agent                      │
+│              │   (/cognitive). Temporal host is deploy env, not this form."                      │
 ├──────────────┴───────────────────────────────────────────────────────────────────────────────────┤
-│ status: ‹load/save› · secrets never shown full · rotate in Vault · permission: settings:edit     │
+│ status: ‹load/save› · PUT /api/v2/core/settings/somabrain · permission: settings:edit            │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Field table (API field)
 
-| Human label | Control | API field | Notes |
+| Human label | Control | Request/response field | Evidence |
 |---|---|---|---|
-| SomaBrain URL | text | `SOMABRAIN_URL` | settings entity `somabrain` |
-| Namespace | text | `SOMABRAIN_NAMESPACE` | settings entity `somabrain` |
-| Memory HTTP token | password + rotate note | Vault secret | never full display |
-| Test connection | button | live health | honest fail text |
-| Confidence default | number | existing cognitive setting key only | no invented key |
-| Reward topic | text | `SOMABRAIN_TOPIC_REWARD_EVENTS` | if present in settings |
-| Sleep cycle hours | number | Temporal schedule setting | if present |
-| Live agent | select | agent list | optional |
-| Neuromod / sleep | gauges | `/somabrain/cognitive/*` | read-only here |
+| URL | text/url | `url` | `settings_v2.py` ENTITY `somabrain.url` |
+| Namespace | text | `namespace` | same |
+| Retention days | number | `retention_days` | same |
+| Sleep interval | number | `sleep_interval` | same (seconds) |
+| Consolidation | toggle | `consolidation_enabled` | same |
+| Connector status | status row | `GET /core/brain-connector` | `health.py` `/brain-connector` |
+| Memory link | button | route `/memory` | UI-S-04 |
+| Cognitive link | button | route `/cognitive` | UI-X-07 |
+
+Secrets: **no** password field on this form.
 
 ## Control map
 
-| # | control | notes |
-|---|---|---|
-| 1 | section nav | Settings shell + SomaBrain tab |
-| 2 | connection fields | PUT settings `somabrain` |
-| 3 | Test connection | GET health; no fake latency |
-| 4 | token row | Vault pointer only |
-| 5 | memory lane status | real breaker / health |
-| 6 | Open /memory | navigates UI-S-04 |
-| 7 | cognitive defaults | existing keys only |
-| 8 | live agent gauges | same API as UI-X-07 |
-| 9 | Temporal strip | gated honest disabled |
-| 10 | Save | settings write; fail-closed |
+| # | control | API | notes |
+|---|---|---|---|
+| 1 | section nav | — | Settings shell |
+| 2 | five fields | PUT `settings/somabrain` | only keys in ENTITY_SPECS |
+| 3 | status row | GET `brain-connector` | fail closed text on error |
+| 4 | links | SPA routes | |
+| 5 | Save | PUT | disabled without `settings:edit` |
 
 ## States
 
-- **Loading.** Skeleton rows; no invented URL.
-- **Unavailable.** Amber: "SomaBrain unreachable. Chat continues; memory writes queue."
-- **Error.** "Couldn't load SomaBrain settings. ‹reason›"
+- **Loading.** Skeleton on five fields; no fake URL.
+- **Save error.** "Couldn't save SomaBrain settings. ‹reason›"
+- **Connector unavailable.** "SomaBrain unreachable. Chat continues; memory may queue."
 - **Permission-denied.** "Requires settings edit permission."
-- **Temporal gated.** Blocking reason: host not configured.
 
-**Modals.** None destructive. Token rotate is external Vault.
+**Modals.** None.
+
+## Gaps (do not mock as editable)
+
+| Desired control | Why absent | Next API needed |
+|---|---|---|
+| Memory HTTP token | Vault only | ops runbook / Vault UI |
+| Temporal host | env deploy | settings entity if operator-owned later |
+| Reward topic | not in somabrain ENTITY | add key or drop from mock |
+| Live neuromod edit | cognitive API is per-agent panel | keep UI-X-07 / `/cognitive` |

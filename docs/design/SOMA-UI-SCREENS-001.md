@@ -6,7 +6,7 @@
 |---|---|
 | Document Title | Implemented screens, agent flows, and mockup sync |
 | Document Identifier | SOMA-UI-SCREENS-001 |
-| Version | 1.0.0 |
+| Version | 1.1.0 |
 | Date | 2026-10-08 |
 | Status | Draft |
 | Author | SomaTech Engineering |
@@ -24,6 +24,7 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-10-08 | SomaTech Engineering | Initial issue. Full screen inventory, agent flows, mock index sync (UI-S-56/57). |
+| 1.1.0 | 2026-10-08 | SomaTech Engineering | UI-S-56/57 corrected to live-API-only fields; tool_policy 3-bucket and capabilities PUT marked GAP (no HTTP). |
 
 ---
 
