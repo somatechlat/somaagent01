@@ -285,14 +285,39 @@ async def get_current_user(request):
         )
         raise UnauthorizedError()
     try:
+        from services.common.identity.credential import (
+            CredentialKind,
+            classify_credential,
+        )
+
+        # Same routing contract as decode_token: the shape of the bearer
+        # decides which stack answers. Only a federated JWT may consult the
+        # identity provider's userinfo endpoint; a local session (``ses_``)
+        # was resolved from LocalIdentity and must not make a Keycloak hop
+        # (in Standalone the provider may not exist at all).
+        try:
+            kind = classify_credential(token)
+        except ValueError:
+            # decode_token rejects unrecognised shapes the same way; raising
+            # here keeps one failure for "not a credential we know".
+            raise UnauthorizedError(message="Invalid token") from None
+
         payload = await decode_token(token)
-        config = get_keycloak_config()
-        async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
-            resp = await client.get(
-                f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/userinfo",
-                headers={"Authorization": f"Bearer {token}"},
-            )
-            userinfo = resp.json() if resp.status_code == 200 else {}
+        userinfo: dict = {}
+        if kind is CredentialKind.JWT:
+            config = get_keycloak_config()
+            try:
+                async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
+                    resp = await client.get(
+                        f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/userinfo",
+                        headers={"Authorization": f"Bearer {token}"},
+                    )
+                    userinfo = resp.json() if resp.status_code == 200 else {}
+            except httpx.HTTPError:
+                # The JWT signature was already verified against JWKS in
+                # decode_token; userinfo is enrichment only. An unreachable
+                # provider leaves the verified claims, it does not 500.
+                userinfo = {}
         roles = payload.roles
         return UserResponse(
             id=payload.sub,

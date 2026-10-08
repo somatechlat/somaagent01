@@ -74,7 +74,17 @@ class CognitiveStepResponse(BaseModel):
 
 
 class CognitiveStateResponse(BaseModel):
-    """Agent cognitive state."""
+    """Agent cognitive state, composed from three real SomaBrain routes.
+
+    Composed (no single brain route returns all of this):
+    - neuromodulators: GET /neuromod/state →
+        {tenant_id, dopamine, serotonin, noradrenaline, acetylcholine}
+        (tenant_id stripped; only float levels kept)
+    - adaptation_params: GET /context/adaptation/state →
+        {retrieval: {alpha,beta,gamma,tau}, utility: {lambda_,mu,nu}, learning_rate}
+    - last_sleep: GET /sleep/state → {tenant_id, state, timestamp} (timestamp)
+    memory_stats stays empty: none of those routes returns memory statistics.
+    """
 
     agent_id: str
     neuromodulators: dict
@@ -254,7 +264,14 @@ async def terminate_cognitive_thread(request, thread_id: str) -> dict:
 async def get_cognitive_state(request, agent_id: str) -> CognitiveStateResponse:
     """Get agent's current cognitive state.
 
-    REAL SomaBrain call - NO MOCK DATA.
+    REAL SomaBrain calls - NO MOCK DATA. The brain has no single
+    "cognitive state" route that returns neuromodulators; GET
+    /context/adaptation/state returns only retrieval/utility/learning_rate.
+    Compose from the three routes that actually exist:
+
+    - GET /neuromod/state  → dopamine/serotonin/noradrenaline/acetylcholine
+    - GET /context/adaptation/state → retrieval/utility/learning_rate
+    - GET /sleep/state → state + timestamp (mapped to last_sleep)
     """
     await authorize(request, action="cognitive:view", resource="cognitive")
     client = get_somabrain_client()
@@ -262,14 +279,33 @@ async def get_cognitive_state(request, agent_id: str) -> CognitiveStateResponse:
         raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
 
     try:
-        state = await client.get_cognitive_state(agent_id)
+        neuro_raw = await client.get_neuromodulators(tenant_id=agent_id)
+        # Brain returns a flat dict that also carries tenant_id; keep only
+        # the numeric neuromodulator levels — no fabricated defaults.
+        neuromodulators = {
+            k: float(v)
+            for k, v in (neuro_raw or {}).items()
+            if k != "tenant_id" and isinstance(v, (int, float)) and not isinstance(v, bool)
+        }
+
+        adaptation = await client.get_cognitive_state(agent_id)
+        adaptation_params = {
+            k: adaptation[k]
+            for k in ("retrieval", "utility", "learning_rate")
+            if isinstance(adaptation, dict) and k in adaptation
+        }
+
+        sleep = await client.sleep_status() or {}
+        ts = sleep.get("timestamp")
+        last_sleep = str(ts) if ts is not None else None
 
         return CognitiveStateResponse(
             agent_id=agent_id,
-            neuromodulators=state.get("neuromodulators", {}),
-            adaptation_params=state.get("adaptation", {}),
-            memory_stats=state.get("memory", {}),
-            last_sleep=state.get("last_sleep"),
+            neuromodulators=neuromodulators,
+            adaptation_params=adaptation_params,
+            # Brain adaptation state has no memory stats — empty, not invented.
+            memory_stats={},
+            last_sleep=last_sleep,
             degraded=False,
         )
 
@@ -391,7 +427,11 @@ async def trigger_sleep_cycle(
 async def get_sleep_status(request, agent_id: str) -> dict:
     """Get agent's sleep/wake status.
 
-    REAL SomaBrain call - NO MOCK DATA.
+    REAL SomaBrain call - NO MOCK DATA. GET /sleep/state returns
+    {tenant_id, state, timestamp}; adaptation state has no sleep fields.
+    "active" is awake; light/deep/freeze are sleeping modes. timestamp is
+    the last transition (exposed as last_sleep); next_scheduled is not
+    returned by the brain and stays None rather than invented.
     """
     await authorize(request, action="cognitive:view", resource="cognitive")
     client = get_somabrain_client()
@@ -399,13 +439,15 @@ async def get_sleep_status(request, agent_id: str) -> dict:
         raise ServiceUnavailableError("somabrain", "SomaBrain not configured")
 
     try:
-        state = await client.get_cognitive_state(agent_id)
-
+        sleep = await client.sleep_status() or {}
+        state_name = str(sleep.get("state") or "active")
+        ts = sleep.get("timestamp")
         return {
             "agent_id": agent_id,
-            "is_sleeping": state.get("is_sleeping", False),
-            "last_sleep": state.get("last_sleep"),
-            "next_scheduled": state.get("next_scheduled_sleep"),
+            "state": state_name,
+            "is_sleeping": state_name != "active",
+            "last_sleep": str(ts) if ts is not None else None,
+            "next_scheduled": None,
             "degraded": False,
         }
 
