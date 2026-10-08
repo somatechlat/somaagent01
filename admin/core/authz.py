@@ -305,11 +305,21 @@ ROLE_PERMISSIONS: Mapping[str, frozenset[str]] = {
     # chat message is locked out of the product they run. The ordinary-use
     # grants are the named ``_RESOURCE_USE`` set plus ``agent:read``, exactly
     # what a ``member`` needs; nothing here is a union of other roles.
+    #
+    # ``resource:tool_execute`` is granted explicitly because the sysadmin
+    # administers and runs agents: SOMA-ARCH-TOOLS-001 §11.2 maps every tool
+    # action (``shell_exec``, ``research_report``, …) onto this permission as
+    # the RBAC floor, and a sysadmin without it would be denied each tool
+    # call by ``UnifiedGate`` — able to configure the agents but unable to
+    # operate them. One named grant, not ``_RESOURCE_OPERATE``: the
+    # sysadmin's tool authority is execute, not the operator's read/configure
+    # bundle.
     "sysadmin": _EVERY_PRINCIPAL
     | _RESOURCE_USE
     | frozenset(
         {
             "agent:read",
+            "resource:tool_execute",
             "system:view",
             "system:configure",
             "system:ratelimit",

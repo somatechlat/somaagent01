@@ -23,3 +23,6 @@
 | 2026-10-08T20:18:38Z | MiMoCode-somaAgent01 | COMMIT | CTX fill % from model ctx_length; icon-only dock; attachment file cards. No invented % or emojis. |
 | 2026-10-08T21:12:15Z | MiMoCode-somaAgent01 | COMMIT | SOMA-ARCH-TOOLS-001 v1.1 + PathGuard + unlisted=approval + file_read jail. Granular authz section. Pushed. |
 | 2026-10-08T21:19:56Z | MiMoCode-somaAgent01 | WAVE | GO W2.5+W3: policy choke, file tools PathGuard, Temporal ResearchReport. Builders + skeptic. |
+| 2026-10-08T22:02:54Z | MiMoCode-somaAgent01 | LAND | W3.3 ResearchReportWorkflow (plan_outline -> write_outline_file via PathGuard -> mark_complete) + research_report start hook + job_status (describe+progress query); registered on conversation queue; 16 unit tests green. Not committed. |
+| 2026-10-08T22:20:42Z | MiMoCode-somaAgent01 | COORD | Restarting cancelled W4 residuals. Peer somabrain on live learning loop. A2A status sync sent. |
+| 2026-10-08T22:42:51Z | MiMoCode-somaAgent01 | LAND | W4 residual: ROLE_PERMISSIONS sysadmin gets explicit resource:tool_execute (runner roles verified); Capsule.save seeds real default-kit Capability rows + M2M on first insert so UnifiedGate _check_scope passes the kit (RED→GREEN proven both); test_role_superset pins updated incl. pre-existing conversation_update/delete drift; _SPICEDB_VERBS gains conversation_update. Not committed. |

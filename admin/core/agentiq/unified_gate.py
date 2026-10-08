@@ -74,6 +74,7 @@ _SPICEDB_VERBS: Dict[str, str] = {
     # conversation you may already see.
     "conversation_create": "configure",
     "conversation_read": "view",
+    "conversation_update": "configure",
     "conversation_delete": "manage",
     "conversation_send_message": "view",
     "conversation_view_history": "view",

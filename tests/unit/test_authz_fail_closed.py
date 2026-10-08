@@ -254,6 +254,32 @@ def test_gate_floor_enforces_the_catalog():
     assert gate._check_role_floor("system:configure", ["sysadmin"]) is True
 
 
+def test_roles_that_run_agents_hold_resource_tool_execute():
+    """Every role that operates agents passes the floor for tool calls.
+
+    §11.1 makes the RBAC floor layer 1 of every tool action and §11.2 maps
+    those actions onto ``resource:tool_execute``. A runner role without the
+    grant would be able to start and configure its agents and then have
+    every tool call denied by ``UnifiedGate`` — and the grant must be the
+    named permission, never a wildcard (pinned by
+    ``test_no_role_grants_a_wildcard``).
+    """
+    from admin.core.agentiq.unified_gate import UnifiedGate
+
+    gate = UnifiedGate()
+    runners = ("sysadmin", "org_admin", "agent_owner", "agent_operator", "developer")
+    for role in runners:
+        assert "resource:tool_execute" in permissions_for_role(role), role
+        assert gate._check_role_floor("resource:tool_execute", [role]) is True, role
+
+    # Roles that never run agents keep no tool authority: the floor stays a
+    # floor, not a ladder. ``member`` denial is separately pinned through the
+    # choke by ``test_tool_policy_choke``.
+    for role in ("member", "trainer", "auditor"):
+        assert "resource:tool_execute" not in permissions_for_role(role), role
+        assert gate._check_role_floor("resource:tool_execute", [role]) is False, role
+
+
 def test_gate_rejects_actions_outside_the_catalog():
     from admin.core.agentiq.unified_gate import UnifiedGate
 

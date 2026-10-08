@@ -335,6 +335,43 @@ class Capsule(models.Model):
 
         return f"Capsule({self.name}:{self.version}:{self.status})"
 
+    def save(self, *args, **kwargs):
+        """Persist a capsule; a first insert is born holding the default tool kit.
+
+        ``_build_body_dict`` derives ``enabled_capabilities`` from the
+        ``capabilities`` M2M, and ``UnifiedGate._check_scope`` denies any tool
+        action whose resource is absent from that list — an empty list denies
+        every tool (SOMA-ARCH-TOOLS-001 §11.2). A capsule inserted with no
+        capability rows therefore cannot execute the default kit no matter
+        what its ``tool_policy`` lists, so the first insert seeds real
+        ``Capability`` rows and links them. Existing rows are never rewritten:
+        ``get_or_create`` only fills what is missing, and the link is a union —
+        capsule capabilities may add tools to the base kit, never remove them
+        (``services.tool_executor.default_tools`` management model).
+        """
+        adding = self._state.adding
+        super().save(*args, **kwargs)
+        if not adding:
+            return
+
+        from services.tool_executor.default_tools import (
+            DEFAULT_AGENT_TOOLS,
+            DEFAULT_TOOL_DESCRIPTIONS,
+        )
+
+        seeded = [
+            Capability.objects.get_or_create(
+                name=name,
+                defaults={
+                    "description": DEFAULT_TOOL_DESCRIPTIONS.get(name, ""),
+                    "category": "default_kit",
+                    "is_enabled": True,
+                },
+            )[0]
+            for name in DEFAULT_AGENT_TOOLS
+        ]
+        self.capabilities.add(*seeded)
+
     @property
     def is_certified(self) -> bool:
         """Check if capsule has been certified."""

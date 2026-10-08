@@ -10,9 +10,13 @@ import logging
 import os
 import time
 import uuid
-from typing import Any, TYPE_CHECKING
+from typing import Any, NamedTuple, TYPE_CHECKING
+
+from asgiref.sync import sync_to_async
 
 from admin.common.messages import ErrorCode, get_message
+from admin.core.agentiq import derive_all_settings
+from admin.core.tool_calling import ToolSubject, decide_and_authorize_tool
 from services.common.policy_client import PolicyRequest
 from services.tool_executor.audit import get_trace_id, log_tool_event
 from services.tool_executor.metrics import (
@@ -30,6 +34,16 @@ if TYPE_CHECKING:
     from services.tool_executor.main import ToolExecutor
 
 LOGGER = logging.getLogger(__name__)
+
+
+class _PolicyStop(NamedTuple):
+    """A decision that stops the request: what to publish, count and audit."""
+
+    status: str  # published result status: "error" | "blocked"
+    decision: str  # POLICY_DECISIONS label: "error" | "denied"
+    reason: str  # request counter + requeue + audit reason
+    message_code: ErrorCode
+    requeue: bool
 
 
 class RequestHandler:
@@ -149,73 +163,186 @@ class RequestHandler:
         session_id: str,
         trace_id_hex: str | None,
     ) -> str | None:
-        """Check policy and return error status if denied, None if allowed."""
-        try:
-            request = PolicyRequest(
-                tenant=tenant,
-                persona_id=persona_id,
-                action="tool.execute",
-                resource=tool_name,
-                context={
-                    "args": event.get("args", {}),
-                    "metadata": event.get("metadata", {}),
-                },
-            )
-            allow = await self._executor.policy.evaluate(request)
-        except Exception:
-            LOGGER.exception("Policy evaluation failed")
-            POLICY_DECISIONS.labels(tool_label, "error").inc()
-            TOOL_REQUEST_COUNTER.labels(tool_label, "policy_error").inc()
-            await self._executor.publish_result(
-                event,
-                status="error",
-                payload={"message": get_message(ErrorCode.TOOL_POLICY_EVALUATION_FAILED)},
-                execution_time=0.0,
-                metadata=metadata,
-            )
-            await log_tool_event(
-                self._executor.get_audit_store(),
-                action="tool.execute.finish",
-                tool_name=tool_name,
-                session_id=session_id,
-                tenant=tenant,
-                persona_id=persona_id,
-                event_id=event.get("event_id"),
-                trace_id=trace_id_hex,
-                details={"status": "error", "reason": "policy_error"},
-            )
-            return "policy_error"
+        """Authorize the request; return the status to publish, None to run.
 
-        decision_label = "allowed" if allow else "denied"
-        POLICY_DECISIONS.labels(tool_label, decision_label).inc()
+        Two fail-closed layers (SOMA-ARCH-TOOLS-001 §11.1):
 
-        if not allow:
+        1. ``decide_and_authorize_tool`` — the one choke the chat loop also
+           passes: capsule ``tool_policy``, egress, then RBAC → OPA →
+           SpiceDB → capsule scope. This Kafka path is not a second
+           authority and does not authorize anything on OPA alone.
+        2. The rego tool policy read directly with the action
+           ``policy/tool_policy.rego`` matches (``tool.request``); an
+           unattached engine narrows nothing — the choke already applied the
+           role floor and the capsule scope.
+        """
+        stop = await self._choke_decision(tenant, persona_id, tool_name, event, metadata)
+        if stop is None:
+            try:
+                allowed = await self._evaluate_opa(tenant, persona_id, tool_name, event)
+            except Exception:
+                LOGGER.exception("Policy evaluation failed")
+                allowed = None
+            if allowed is None:
+                stop = _PolicyStop(
+                    "error",
+                    "error",
+                    "policy_error",
+                    ErrorCode.TOOL_POLICY_EVALUATION_FAILED,
+                    False,
+                )
+            elif not allowed:
+                stop = _PolicyStop(
+                    "blocked",
+                    "denied",
+                    "policy_denied",
+                    ErrorCode.TOOL_POLICY_DENIED,
+                    True,
+                )
+
+        if stop is None:
+            POLICY_DECISIONS.labels(tool_label, "allowed").inc()
+            return None
+
+        POLICY_DECISIONS.labels(tool_label, stop.decision).inc()
+        TOOL_REQUEST_COUNTER.labels(tool_label, stop.reason).inc()
+        if stop.requeue:
             identifier = event.get("event_id") or str(uuid.uuid4())
             payload = dict(event)
             payload["timestamp"] = time.time()
             await self._executor.requeue.add(identifier, payload)
-            REQUEUE_EVENTS.labels(tool_label, "policy_denied").inc()
-            await self._executor.publish_result(
-                event,
-                status="blocked",
-                payload={"message": get_message(ErrorCode.TOOL_POLICY_DENIED)},
-                execution_time=0.0,
-                metadata=metadata,
-            )
-            await log_tool_event(
-                self._executor.get_audit_store(),
-                action="tool.execute.finish",
-                tool_name=tool_name,
-                session_id=session_id,
-                tenant=tenant,
-                persona_id=persona_id,
-                event_id=event.get("event_id"),
-                trace_id=trace_id_hex,
-                details={"status": "blocked", "reason": "policy_denied"},
-            )
-            return "policy_denied"
+            REQUEUE_EVENTS.labels(tool_label, stop.reason).inc()
+        await self._executor.publish_result(
+            event,
+            status=stop.status,
+            payload={"message": get_message(stop.message_code)},
+            execution_time=0.0,
+            metadata=metadata,
+        )
+        await log_tool_event(
+            self._executor.get_audit_store(),
+            action="tool.execute.finish",
+            tool_name=tool_name,
+            session_id=session_id,
+            tenant=tenant,
+            persona_id=persona_id,
+            event_id=event.get("event_id"),
+            trace_id=trace_id_hex,
+            details={"status": stop.status, "reason": stop.reason},
+        )
+        return stop.status
 
-        return None
+    async def _choke_decision(
+        self,
+        tenant: str,
+        persona_id: str | None,
+        tool_name: str,
+        event: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> _PolicyStop | None:
+        """Run the shared tool choke; ``None`` means it authorized execution."""
+        try:
+            subject, capsule, iq = await self._choke_inputs(tenant, persona_id, metadata)
+            decision = await decide_and_authorize_tool(
+                subject, capsule, tool_name, dict(event.get("args") or {}), iq
+            )
+        except Exception:
+            LOGGER.exception("Tool authorization choke failed", extra={"tool": tool_name})
+            return _PolicyStop(
+                "error",
+                "error",
+                "policy_error",
+                ErrorCode.TOOL_POLICY_EVALUATION_FAILED,
+                False,
+            )
+
+        if decision == "auto_execute":
+            return None
+        # approval_required has no channel on this path: a tool that must ask
+        # a human is blocked, never executed quietly. Both stops are requeued
+        # so an operator who changes the policy can replay the event.
+        if decision == "denied":
+            return _PolicyStop(
+                "blocked",
+                "denied",
+                "choke_denied",
+                ErrorCode.TOOL_POLICY_DENIED,
+                True,
+            )
+        return _PolicyStop(
+            "blocked",
+            "denied",
+            "approval_required",
+            ErrorCode.TOOL_EXECUTION_DENIED,
+            True,
+        )
+
+    async def _choke_inputs(
+        self, tenant: str, persona_id: str | None, metadata: dict[str, Any]
+    ) -> tuple[ToolSubject, Any, Any]:
+        """Resolve the principal, capsule and AgentIQ the choke judges.
+
+        Nothing is invented from the event: ``metadata.user_id`` only names
+        the principal, its roles come from the membership record (never from
+        the event, which a producer could forge), and the capsule is
+        ``persona_id`` — the id the chat path stamps on every event — scoped
+        to the event tenant. An absent piece stays absent so the choke fails
+        closed on it.
+        """
+        user_id = metadata.get("user_id")
+        subject = ToolSubject(
+            user_id=str(user_id) if user_id else None,
+            tenant_id=str(tenant),
+            roles=None,
+        )
+        if not persona_id:
+            return subject, None, None
+        capsule, iq = await self._load_capsule_and_iq(str(persona_id), str(tenant))
+        return subject, capsule, iq
+
+    @staticmethod
+    async def _load_capsule_and_iq(capsule_id: str, tenant: str) -> tuple[Any, Any]:
+        """Load the capsule and derive its AgentIQ with the ORM off the loop."""
+        from admin.core.models import Capsule
+
+        @sync_to_async
+        def _load() -> tuple[Any, Any]:
+            capsule = Capsule.objects.filter(id=capsule_id).first()
+            if capsule is None or str(capsule.tenant_id) != tenant:
+                return None, None
+            # One body read feeds the IQ derivation and UnifiedGate's scope
+            # check; the chat paths set ``_cached_body`` the same way.
+            body = capsule.body
+            capsule._cached_body = body
+            return capsule, derive_all_settings(capsule, body=body)
+
+        return await _load()
+
+    async def _evaluate_opa(
+        self, tenant: str, persona_id: str | None, tool_name: str, event: dict[str, Any]
+    ) -> bool:
+        """Read the rego tool policy with the action that policy matches.
+
+        ``policy/tool_policy.rego`` allows ``input.action == "tool.request"``;
+        the previous ``tool.execute`` literal matched no rule there, so the
+        rego could only deny. An unattached engine is an absent narrowing
+        layer, not consent: the choke above has already decided from the role
+        floor and the capsule scope.
+        """
+        client = self._executor.policy
+        if not client.is_configured:
+            return True
+        request = PolicyRequest(
+            tenant=tenant,
+            persona_id=persona_id,
+            action="tool.request",
+            resource=tool_name,
+            context={
+                "args": event.get("args", {}),
+                "metadata": event.get("metadata", {}),
+            },
+        )
+        return await client.evaluate(request)
 
     async def _handle_unknown_tool(
         self,

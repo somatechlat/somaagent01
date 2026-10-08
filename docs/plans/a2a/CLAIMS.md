@@ -30,3 +30,10 @@
 | admin/core/tool_calling.py admin/core/chat_orchestrator.py | MiMoCode-somaAgent01 | W2.5 policy choke UnifiedGate per tool | 2026-10-08T21:19:56Z | ACTIVE |
 | services/tool_executor/tools.py services/tool_executor/assistant_tools/ services/common/path_guard.py | MiMoCode-somaAgent01 | W3.1-W3.2 file tools | 2026-10-08T21:19:56Z | ACTIVE |
 | services/conversation_worker/temporal_worker.py | MiMoCode-somaAgent01 | W3.3 ResearchReportWorkflow | 2026-10-08T21:19:56Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| admin/core/authz.py | MiMoCode-somaAgent01 | role:tool_execute grants | 2026-10-08T22:00:36Z | ACTIVE |
+| admin/core/models/core.py admin/core/helpers | MiMoCode-somaAgent01 | capsule bootstrap default-kit capabilities | 2026-10-08T22:00:36Z | ACTIVE |
+| services/tool_executor/request_handler.py | MiMoCode-somaAgent01 | Kafka path reuses decide_and_authorize_tool | 2026-10-08T22:00:36Z | ACTIVE |
+| infra/aaas infra/standalone tests/e2e | MiMoCode-somaAgent01 | Temporal workers + codeword e2e | 2026-10-08T22:00:36Z | ACTIVE |
+| 2026-10-08T22:02:54Z | MiMoCode-somaAgent01 | W3.3 ResearchReportWorkflow + research_report/job_status tools (research_workflow.py, assistant_tools/research_report.py, tests) | 2026-10-08T22:02:54Z | ACTIVE |

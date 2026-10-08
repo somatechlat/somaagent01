@@ -226,6 +226,22 @@ async def test_role_floor_denies_a_subject_without_tool_execute():
     assert decision == "denied"
 
 
+@pytest.mark.asyncio
+async def test_sysadmin_tool_call_clears_floor_and_scope():
+    """A sysadmin runs tools end to end through the choke (§11.1 layer 1+4).
+
+    Regression for the role floor: sysadmin administers agents, so its
+    explicit ``resource:tool_execute`` grant must carry an ``auto_execute``
+    tool all the way through — denied here would mean the operator cannot
+    operate what they configure.
+    """
+    capsule = _capsule(auto=("timestamp",))
+    decision = await decide_and_authorize_tool(
+        _subject(roles=("sysadmin",)), capsule, "timestamp", {}, _iq()
+    )
+    assert decision == "auto_execute"
+
+
 # ---------------------------------------------------------------------------
 # run_tool_loop: choke runs per tool BEFORE execute; approval semantics
 # ---------------------------------------------------------------------------
