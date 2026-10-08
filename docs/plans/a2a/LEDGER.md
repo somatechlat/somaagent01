@@ -13,3 +13,4 @@
 | 2026-10-08T15:23:10Z | MiMoCode-somaAgent01 | COMMIT | W1.8 cognitive panel: agent id writer, guards, sleep status route, visible failures (webui). |
 | 2026-10-08T15:36:21Z | MiMoCode-somaAgent01 | WAVE | Roster expanded: general-10 W1.5 phantoms + general-12 R-15 adapter + general-13 regression gates (parallel, non-colliding claims). |
 | 2026-10-08T15:37:08Z | MiMoCode-somaAgent01 | COORD | Message to somabrain peer: W1 status, route-truth questions, ignore third process. |
+| 2026-10-08T15:50:01Z | MiMoCode-somaAgent01 | COMMIT | W1.5 phantoms eliminated (DELETE/405/real set_personality); reward topic registered; evaluate 0.5 fabrication removed. Pushed. |
