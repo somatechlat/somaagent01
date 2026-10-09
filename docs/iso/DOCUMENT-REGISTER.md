@@ -45,7 +45,7 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-ARCH-ADR-001 | docs/architecture/SOMA-ARCH-ADR-001.md | Architecture Decision: Shared Embedding Dimension is 768 | 1.0.0 | Draft | — | 2027-01-03 | Compliant |
 | SOMA-ARCH-INVARIANTS-001 | docs/architecture/SOMA-ARCH-INVARIANTS-001.md | ARCHITECTURE INVARIANTS — what must be perfect | 1.1.0 | Draft | — | 2027-01-03 | Compliant |
 | SOMA-ARCH-REDESIGN-001 | docs/architecture/SOMA-ARCH-REDESIGN-001.md | Enterprise Architecture Redesign | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
-| SOMA-ARCH-TOOLS-001 | docs/architecture/SOMA-ARCH-TOOLS-001.md | Agent tool framework — standardized implementation for assistant file/OS tools | 1.2.5 | Draft | — | 2027-01-08 | Compliant |
+| SOMA-ARCH-TOOLS-001 | docs/architecture/SOMA-ARCH-TOOLS-001.md | Agent tool framework — standardized implementation for assistant file/OS tools | 1.3.0 | Draft | — | 2027-01-08 | Compliant |
 | — | docs/design/SOMA-CHAT-UI-001.md | Chat UI/UX (Agent Soma) | — | — | — | MISSING | Non-compliant |
 | SOMA-UI-BINDINGS-001 | docs/design/SOMA-UI-BINDINGS-001.md | Agent Soma — UI mock control → live binding map | 1.0.0 | Draft | — | MISSING | Non-compliant |
 | SOMA-UI-CATALOG-001 | docs/design/SOMA-UI-CATALOG-001.md | Agent Soma — curated UI/UX catalog (every screen, click, field) | 1.0.0 | Draft | — | MISSING | Non-compliant |

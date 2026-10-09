@@ -6,7 +6,7 @@
 |---|---|
 | Document Title | Agent tool framework — standardized implementation for assistant file/OS tools |
 | Document Identifier | SOMA-ARCH-TOOLS-001 |
-| Version | 1.2.5 |
+| Version | 1.3.0 |
 | Date | 2026-10-09 |
 | Status | Draft |
 | Author | SomaTech Engineering |
@@ -31,6 +31,7 @@
 | 1.2.3 | 2026-10-09 | SomaTech Engineering | §5.9 Document RAG redesign grounded in live `memory_gateway.py` + `somabrain_adapter.py`: index via `remember_text`, query via `recall`, no second client. Ingest currently extracts only; index + document_query still OPEN. |
 | 1.2.4 | 2026-10-09 | SomaTech Engineering | §5.9.1–5.9.6 user journey: filesv2 bytes vs Brain chunks; extract full text for same-turn answer; index for durable recall; document_query; honesty rules. Design only. |
 | 1.2.5 | 2026-10-09 | SomaTech Engineering | Implement `document_index` + `document_query` on MemoryGateway (A0 document_query journey without FAISS/SFM). Capsule default policy approval. 10 unit tests green. |
+| 1.3.0 | 2026-10-09 | SomaTech Engineering | §5.10 Internet/browser/search requirement: A0 SearxNG+Playwright audit; recommended OSS stack (SearxNG, trafilatura, Playwright container); generic Capability/MCP extension model; Capsule profiles. Host browser DENY. |
 
 ---
 
@@ -422,6 +423,99 @@ Large PDF policy (design): if extract text > context budget → Temporal Documen
 
 ---
 
+### 5.10 Internet / browser / search — A0 audit + Soma stack (requirement)
+
+**Requirement (Operator):** internet access and browser automation must be **generic** — any tool can be registered as a Capsule Capability and run through the same choke. Math plots were only an example; this section is the normative web stack.
+
+#### 5.10.1 What Agent Zero actually does (source: `Downloads/agent-zero-main`)
+
+| A0 piece | Mechanism | Soma disposition |
+|---|---|---|
+| `search_engine` tool | Always calls **SearxNG** `POST http://localhost:55510/search` (`helpers/searxng.py`); formats top 10 title/url/snippet | Clone **behaviour** as `web_search` → **operator SearxNG URL** (settings/BrainSetting topology, no localhost default) |
+| `duckduckgo_search` helper | `duckduckgo_search.DDGS` library | Optional secondary backend **behind** SearxNG or as fallback only if SearxNG down; still egress-gated |
+| `perplexity_search` helper | Exists in tree | Optional paid backend — **not** default; Vault key if enabled |
+| `_browser` plugin | **Playwright Chromium in Docker** (`runtime_backend: container`); optional **host browser** via A0 CLI connector | **Container only**. Host browser = DENY (same as computer_use_remote) |
+| Browser actions | navigate, content (DOM refs `[link 1]`), click/type/submit, screenshot, evaluate JS, tabs, history screenshots, canvas panel | Same action set, **isolated** Playwright service |
+| DOM annotation | refs for model actions | Keep — structured refs, not raw HTML dump |
+| Extensions | Unpacked Chromium extensions in Docker browser | Operator profile only; not default |
+| Proxy | Config for internal Docker browser | Capsule/infra setting; secrets Vault |
+
+A0 search is thin (one SearxNG URL hardcoded). A0 browser is rich but **host-browser path is a security hole** for multi-tenant Soma.
+
+#### 5.10.2 Recommended open-source Soma stack
+
+| Layer | Open source | Role | Why better than A0 default |
+|---|---|---|---|
+| **Web search** | **[SearxNG](https://github.com/searxng/searxng)** (self-host) | Meta-search; JSON API | No single-vendor lock; multi-engine; private; same as A0 but **URL is topology** |
+| **Fetch page text** | **[trafilatura](https://github.com/adbar/trafilatura)** or **readability-lxml** | HTML → clean text | Better than raw browser for “read article” |
+| **HTTP client** | **httpx** (already in tree) | `http_fetch` + SSRF deny | Shared client, timeouts |
+| **Browser automation** | **Playwright** (Python) in **dedicated container** | navigate/click/type/screenshot | Same as A0 container mode; no host Chrome |
+| **Optional browser API** | **[Browserless](https://www.browserless.io/)** or Playwright MCP server | HTTP Playwright if we want out-of-process | Still container; operator choice |
+| **MCP for external tools** | Official **MCP** (stdio/HTTP) | Materialize Capabilities | Generic “any tool” path |
+| **Screenshots→vision** | existing multimodal + Capsule `browser_model` | Visual QA | Keep |
+
+**Do not use as defaults:** bare `curl|sh`, scraping APIs with secrets in Capsule JSON, host Chrome via CDP on user machine, unlimited `page.evaluate`.
+
+#### 5.10.3 Tool surface (Soma)
+
+| Tool | Tier | Backend | Notes |
+|---|---|---|---|
+| `web_search` | 2 | SearxNG (config URL) | `{query, k?}`; egress IQ; no localhost default |
+| `http_fetch` | 2 | httpx | LIVE already |
+| `browser_session` | 2 | Playwright container | open/list/close tabs |
+| `browser_navigate` | 2 | Playwright | SSRF deny (link-local, metadata, private ranges unless allowlist) |
+| `browser_content` | 2 | Playwright | a11y/text refs; not full HTML |
+| `browser_click` / `type` / `submit` | 2 | Playwright | by ref/selector |
+| `browser_screenshot` | 2 | Playwright → workroot PathGuard | optional filesv2 |
+| `browser_eval` | **3** | Playwright | always approval; sandboxed page only |
+
+All **approval** until Capsule lists them in `auto_execute`. Unlisted = approval (already law).
+
+#### 5.10.4 Generic tool extension (any tool → Capsule)
+
+This is the **requirement** for “create any tool and add it to the Capsule”:
+
+```
+ToolDefinition (native or MCP)
+  → Capability row (name, schema, implementation{type:native|mcp, …})
+  → Capsule.capabilities M2M  (enabled_capabilities)
+  → Capsule.tool_policy bucket
+  → AgentIQ floor
+  → one choke per call
+```
+
+| Implementation.type | Meaning |
+|---|---|
+| `native` | Python class under `services/tool_executor/` |
+| `mcp` | MCP server + remote tool name; client on choke |
+| `packages` | ensure profile + import (scientific, office, …) |
+| `temporal` | start workflow + job_status |
+| `http` | operator-registered HTTP action (allowlisted URL template) |
+
+**Marketplace / plugins** install **Capability packs + MCP server defs + policy templates** into a Capsule — never raw shell, never secrets.
+
+#### 5.10.5 Capsule profiles (portable SKUs)
+
+| Profile | Internet pack |
+|---|---|
+| `base` | `http_fetch` only |
+| `researcher` | + `web_search`, `browser_*`, document_* |
+| `developer` | + `packages_ensure`, files, code |
+| `analyst` | + packages data/scientific, chart_render |
+
+Profile = Capsule body template (tool_policy + IQ + capability set). Standalone download = pick profile → clone Capsule → sign.
+
+#### 5.10.6 Hard rules (non-negotiable)
+
+1. SearxNG / browser hosts come from **settings topology**, never hardcoded `localhost`.  
+2. Host-browser connector and unrestricted `page.evaluate` on user Chrome = **DENY**.  
+3. Every web tool: egress IQ + OPA `tool.request` + Capsule scope.  
+4. Screenshots written via **PathGuard** into workroot only.  
+5. MCP tools are Capabilities — same choke, same policy.  
+6. No second chat loop for “browser agents.”
+
+---
+
 ## 6. Temporal durability (assistant jobs)
 
 | Workflow | Purpose | Status |
@@ -578,4 +672,4 @@ Absent OPA/SpiceDB: fail per UnifiedGate semantics (absent engine = that layer a
 
 ---
 
-*End of SOMA-ARCH-TOOLS-001 v1.2.5*
+*End of SOMA-ARCH-TOOLS-001 v1.3.0*
