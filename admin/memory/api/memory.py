@@ -55,6 +55,85 @@ async def _gateway():
     return get_memory_gateway()
 
 
+@router.get("/status", summary="Honest memory lane status", auth=AuthBearer())
+async def memory_status(request) -> dict:
+    """Real memory health for the UI indicator — list is not enough.
+
+    Brain ``/health`` reports ``memory_ok`` / ``memory_degraded`` from the
+    LTM write path. A green GET /memory/ with ``memory_ok=false`` means
+    reads may work while writes 503 — the indicator must not call that ready.
+    """
+    from admin.core.somabrain_client import SomaBrainClient
+    from services.common.circuit_breaker import get_circuit_breaker
+
+    await authorize(request, action="resource:memory_search", resource="memory")
+
+    breaker = get_circuit_breaker("memory_gateway", failure_threshold=5, reset_timeout=30.0)
+    circuit = str(getattr(breaker, "state", "") or "")
+    gateway_ok = circuit.lower() != "open"
+
+    read_ok = False
+    write_ok = False
+    memory_degraded = True
+    reason = ""
+    brain_status = ""
+
+    try:
+        await _gateway()
+        read_ok = True
+    except Exception as exc:  # noqa: BLE001
+        reason = f"gateway: {exc}"
+
+    client = await SomaBrainClient.get_async()
+    if client is None:
+        write_ok = False
+        reason = reason or "SomaBrain client not configured"
+    else:
+        try:
+            health = await client.health()
+            if isinstance(health, dict):
+                brain_status = str(health.get("status") or "")
+                write_ok = bool(health.get("memory_ok"))
+                memory_degraded = bool(
+                    health.get("memory_degraded")
+                    or health.get("memory_circuit_open")
+                    or not write_ok
+                )
+                if not write_ok and not reason:
+                    reason = str(
+                        health.get("memory_error")
+                        or "Brain reports memory_ok=false (LTM write path down)"
+                    )
+            else:
+                write_ok = False
+                reason = "Brain health payload unexpected shape"
+        except Exception as exc:  # noqa: BLE001
+            write_ok = False
+            memory_degraded = True
+            reason = reason or f"brain health: {exc}"
+
+    if write_ok and read_ok and gateway_ok:
+        state = "ok"
+        summary = "Memory ready"
+    elif read_ok and not write_ok:
+        state = "warn"
+        summary = "Memory degraded — reads may work; writes queue until the brain recovers"
+    else:
+        state = "warn"
+        summary = "Memory unavailable — messages queue until connected"
+
+    return {
+        "state": state,
+        "summary": summary,
+        "read_ok": read_ok,
+        "write_ok": write_ok,
+        "degraded": memory_degraded,
+        "circuit": circuit,
+        "brain_status": brain_status,
+        "reason": reason,
+    }
+
+
 @router.get("/", summary="List recent memories", auth=AuthBearer())
 async def list_memories(request, limit: int = 20) -> dict:
     """Recent memories from SomaBrain (recall-wide)."""

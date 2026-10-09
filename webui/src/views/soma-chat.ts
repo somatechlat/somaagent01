@@ -1618,17 +1618,25 @@ export class SomaChat extends LitElement {
 
     private async _loadMemoryStatus(): Promise<void> {
         try {
-            const rows = await apiClient.get<{ memories?: unknown[]; total?: number }>('/memory/');
-            const ok = !!(rows && Array.isArray(rows.memories));
-            if (ok) {
-                this._memoryDot = 'ok';
-                this._memoryTooltip = 'Memory ready';
-                this._memoryQueued = false;
-            }
+            // Honest status: list alone can be 200 while LTM writes 503.
+            // /memory/status reads brain memory_ok + gateway circuit (T-6).
+            const status = await apiClient.get<{
+                state?: string;
+                summary?: string;
+                write_ok?: boolean;
+                degraded?: boolean;
+                reason?: string;
+            }>('/memory/status');
+            const state = status?.state === 'ok' ? 'ok' : 'warn';
+            this._memoryDot = state;
+            this._memoryTooltip =
+                status?.summary ||
+                (state === 'ok'
+                    ? 'Memory ready'
+                    : 'Memory degraded — messages queue until the brain recovers');
+            this._memoryQueued = state !== 'ok';
             this.requestUpdate();
         } catch {
-            // Honest degradation: memory down never blocks chat. Writes queue
-            // in the agent WAL until the brain recovers (T-6).
             this._memoryDot = 'warn';
             this._memoryTooltip =
                 'Memory unavailable — messages are queued and will sync when connected';
