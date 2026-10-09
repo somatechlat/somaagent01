@@ -48,12 +48,13 @@ DEFAULT_AGENT_TOOLS: List[str] = [
     "document_query",
 ]
 
-# Tools that MUST NEVER be disabled by capsule policy.
+# Memory tools that stay available (not disableable by capsule policy).
+# memory_forget is deliberately EXCLUDED: erasure is destructive and must not
+# auto-run. Default decision is approval_required (TOOL-001 / Operator UX).
 NON_DISABLEABLE_TOOLS = frozenset(
     {
         "memory_recall",
         "memory_save",
-        "memory_forget",
         "memory_proximity",
         "memory_get",
     }
@@ -63,7 +64,14 @@ NON_DISABLEABLE_TOOLS = frozenset(
 DEFAULT_TOOL_DESCRIPTIONS: Dict[str, str] = {
     "memory_recall": "Search SomaBrain long-term memory. Use it only when the memory already given to you is not enough to answer. If the answer is already in that memory, answer directly - do not call this.",
     "memory_save": "Persist an important fact or episode to SomaBrain memory (works for all future turns). Use for user preferences, commitments, and discoveries.",
-    "memory_forget": "Delete a memory by coordinate (privacy erasure).",
+    "memory_forget": (
+        "Delete ONE stored memory by its exact coord (privacy erasure). "
+        "Call ONLY when the user explicitly asks to delete/erase/forget a "
+        "specific memory they know exists. Never call because the user "
+        "mentioned their name, asked a question, or said hello. "
+        "Never claim a fact was removed unless this tool returns forgotten=true "
+        "and the user requested erasure."
+    ),
     "memory_proximity": "Find memories nearest to a query or coordinate (semantic proximity via SomaBrain scoring).",
     "memory_get": "Fetch one memory by exact coordinate.",
     "timestamp": "Return current UTC timestamp.",

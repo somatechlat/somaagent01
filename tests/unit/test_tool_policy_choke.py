@@ -167,11 +167,11 @@ async def test_unlisted_tool_requires_approval():
 
 @pytest.mark.asyncio
 async def test_memory_kit_auto_executes_without_listing():
-    """Memory base kit never requires HITL unless denied — product core."""
+    """Recall/save/proximity/get never require HITL — product core."""
     capsule = _capsule(
         auto=("timestamp",),
         denied=(),
-        capabilities=["timestamp", "memory_save", "memory_recall"],
+        capabilities=["timestamp", "memory_save", "memory_recall", "memory_forget"],
     )
     assert (
         await decide_and_authorize_tool(_subject(), capsule, "memory_recall", {}, _iq())
@@ -181,11 +181,39 @@ async def test_memory_kit_auto_executes_without_listing():
         await decide_and_authorize_tool(_subject(), capsule, "memory_save", {}, _iq())
         == "auto_execute"
     )
+    # memory_forget is NOT in NON_DISABLEABLE — unlisted → approval.
+    # Prevents the model from free-firing erasure and claiming "name removed".
+    assert (
+        await decide_and_authorize_tool(_subject(), capsule, "memory_forget", {}, _iq())
+        == "approval_required"
+    )
     # Denied still wins
     capsule_deny = _capsule(auto=(), denied=("memory_forget",), capabilities=["memory_forget"])
     assert (
         await decide_and_authorize_tool(_subject(), capsule_deny, "memory_forget", {}, _iq())
         == "denied"
+    )
+
+
+@pytest.mark.asyncio
+async def test_memory_forget_never_auto_without_explicit_list():
+    """Destructive erasure must not ride the non-disableable memory auto path."""
+    from services.tool_executor.default_tools import NON_DISABLEABLE_TOOLS
+
+    assert "memory_forget" not in NON_DISABLEABLE_TOOLS
+    capsule = _capsule(auto=("memory_recall",), denied=(), capabilities=["memory_forget"])
+    assert (
+        await decide_and_authorize_tool(_subject(), capsule, "memory_forget", {}, _iq())
+        == "approval_required"
+    )
+    capsule_opt_in = _capsule(
+        auto=("memory_forget",),
+        denied=(),
+        capabilities=["memory_forget"],
+    )
+    assert (
+        await decide_and_authorize_tool(_subject(), capsule_opt_in, "memory_forget", {}, _iq())
+        == "auto_execute"
     )
 
 

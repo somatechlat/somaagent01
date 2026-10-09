@@ -278,7 +278,11 @@ class MemorySaveTool(BaseTool):
 
 
 class MemoryForgetTool(BaseTool):
-    """Delete a memory by coord (erasure primitive)."""
+    """Delete a memory by coord (erasure primitive).
+
+    Destructive. Capsule default is approval_required — not auto_execute.
+    The model must not use this for casual conversation.
+    """
 
     name = "memory_forget"
 
@@ -295,7 +299,17 @@ class MemoryForgetTool(BaseTool):
             LOGGER.exception("memory_forget failed")
             raise ToolExecutionError(f"memory_forget failed: {exc}") from exc
 
-        return {"forgotten": bool(ok), "coord": coord, "tenant_id": tenant_id}
+        return {
+            "forgotten": bool(ok),
+            "coord": coord,
+            "tenant_id": tenant_id,
+            "instruction": (
+                "Only tell the user a fact was deleted if THEY explicitly asked "
+                "to erase this memory. Do not claim names or preferences were "
+                "removed after ordinary chat. If forgotten is false, the memory "
+                "was not deleted — do not pretend otherwise."
+            ),
+        }
 
     def input_schema(self) -> Dict[str, Any] | None:
         return {
