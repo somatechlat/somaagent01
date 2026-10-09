@@ -260,6 +260,9 @@ INSTALLED_APPS = [
     "admin.llm",
     "admin.capsules",
     "admin.files",
+    # The /filesv2 router is mounted by admin/api.py; its File model only
+    # loads when this app is installed (services/gateway/settings.py has it).
+    "admin.filesv2",
     "admin.gateway",
     "admin.memory",
     "admin.modules",

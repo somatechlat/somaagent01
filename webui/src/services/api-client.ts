@@ -69,8 +69,25 @@ export class ApiClient {
                 clearTimeout(timeoutId);
 
                 if (!response.ok) {
-                    const error = await response.json().catch(() => ({}));
-                    throw new ApiError(response.status, error.detail ?? 'Request failed');
+                    const error = (await response.json().catch(() => ({}))) as Record<
+                        string,
+                        unknown
+                    >;
+                    // Three error bodies are live in this API: ninja's
+                    // {"detail": ...}, the ApiError handler's
+                    // {"error": {"code", "message"}}, and legacy
+                    // {"error": "<message>"} bodies. Surface whichever the
+                    // server actually sent instead of a bare "Request failed".
+                    const nested =
+                        error.error && typeof error.error === 'object'
+                            ? (error.error as { message?: unknown }).message
+                            : undefined;
+                    const detail =
+                        (typeof error.detail === 'string' ? error.detail : '') ||
+                        (typeof error.error === 'string' ? error.error : '') ||
+                        (typeof nested === 'string' ? nested : '') ||
+                        'Request failed';
+                    throw new ApiError(response.status, detail);
                 }
 
                 const json = await response.json();

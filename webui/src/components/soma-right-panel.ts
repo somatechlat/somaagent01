@@ -182,6 +182,15 @@ function languageOf(name: string): string {
     return LANG_BY_EXT[ext] ?? 'text';
 }
 
+/**
+ * UI-X-04 Save stays present-but-disabled (REQ-UIX-020) because
+ * `admin/filesv2/api.py` declares no PUT/content route for an existing
+ * file — only presigned download (`/{id}/download-url`) and upload
+ * (`POST /upload`). The reason travels with the control.
+ */
+const SAVE_DISABLED_REASON =
+    'Save is unavailable: this deployment exposes no write endpoint for an existing file (filesv2 offers presigned download/upload only).';
+
 function isTextishMime(mime: string): boolean {
     const m = (mime || '').toLowerCase().split(';')[0].trim();
     if (!m) return false;
@@ -256,6 +265,8 @@ export class SomaRightPanel extends LitElement {
     @state() private _files: FileOut[] = [];
     @state() private _filesTotal = 0;
     @state() private _filesStatus: LoadStatus = 'idle';
+    /** Why the last list attempt failed — shown next to the error state. */
+    @state() private _filesError = '';
 
     @state() private _tools: ToolInfo[] = [];
     @state() private _toolsStatus: LoadStatus = 'idle';
@@ -605,6 +616,11 @@ export class SomaRightPanel extends LitElement {
             margin-bottom: 12px;
         }
 
+        .editor-save {
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
         .code-block {
             margin: 0;
             padding: 12px;
@@ -708,6 +724,7 @@ export class SomaRightPanel extends LitElement {
     private async _loadFiles(): Promise<void> {
         if (this._filesStatus === 'loading') return;
         this._filesStatus = 'loading';
+        this._filesError = '';
         try {
             const res = await apiClient.get<FileListResponse>(
                 '/filesv2/?page=1&per_page=50'
@@ -720,6 +737,14 @@ export class SomaRightPanel extends LitElement {
                 this._filesStatus = 'denied';
             } else {
                 this._filesStatus = 'error';
+                // A failed load is not an empty workspace — say exactly which
+                // request broke instead of a bare "something went wrong".
+                this._filesError =
+                    err instanceof ApiError
+                        ? err.status > 0
+                            ? `GET /api/v2/filesv2/ refused (HTTP ${err.status})`
+                            : `${err.message || 'network error'} — GET /api/v2/filesv2/`
+                        : `GET /api/v2/filesv2/ — ${err instanceof Error ? err.message : 'unknown error'}`;
             }
         }
     }
@@ -843,7 +868,19 @@ export class SomaRightPanel extends LitElement {
             return html`<div class="loading">Loading files…</div>`;
         }
         if (this._filesStatus === 'error') {
-            return html`<div class="error">Files could not be listed.</div>`;
+            return html`<div class="error" role="alert">
+                <span>Files could not be listed.</span>
+                ${this._filesError
+                    ? html`<span class="row-sub">${this._filesError}</span>`
+                    : nothing}
+                <button
+                    class="btn"
+                    @click=${() => void this._loadFiles()}
+                    aria-label="Retry listing files"
+                >
+                    Retry
+                </button>
+            </div>`;
         }
         if (this._filesStatus === 'denied') {
             return html`<div class="error">
@@ -851,7 +888,13 @@ export class SomaRightPanel extends LitElement {
             </div>`;
         }
         if (this._filesStatus === 'empty' || this._files.length === 0) {
-            return html`<div class="empty">No files in the working set.</div>`;
+            return html`<div class="empty">
+                <span>No files in the working set.</span>
+                <span class="row-sub">
+                    filesv2 storage only — agent work-directory files (file_list /
+                    file_write tools) have no list API in this deployment.
+                </span>
+            </div>`;
         }
 
         return html`
@@ -1028,9 +1071,22 @@ export class SomaRightPanel extends LitElement {
             <div class="editor-header">
                 <div class="editor-name">${file.original_name || file.name}</div>
                 <span class="chip">${lang}</span>
+                <button
+                    class="btn editor-save"
+                    disabled
+                    aria-disabled="true"
+                    title=${SAVE_DISABLED_REASON}
+                    aria-label=${`Save — disabled. ${SAVE_DISABLED_REASON}`}
+                >
+                    Save
+                </button>
             </div>
             <div class="readonly-note">
                 This deployment exposes no file-write endpoint; the buffer is read-only.
+                Save stays disabled: filesv2 exposes only presigned download
+                (<code>GET /filesv2/{id}/download-url</code>) and upload
+                (<code>POST /filesv2/upload</code>) — there is no PUT/content route for
+                an existing file, so a save would have nowhere honest to write.
             </div>
             <pre class="code-block">${this._fileContent}</pre>
         `;

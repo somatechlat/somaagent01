@@ -42,3 +42,6 @@
 | admin/core/authz.py | MiMoCode-somaAgent01 | grant cognitive:view to sysadmin/agent_owner | 2026-10-08T23:47:26Z | ACTIVE |
 | admin/core/api/settings_v2.py services/common/authorization.py | MiMoCode-somaAgent01 | settings 403 fix | 2026-10-08T23:47:26Z | ACTIVE |
 | webui/src/views/soma-settings.ts webui/src/views/soma-settings-somabrain.ts | MiMoCode-somaAgent01 | Settings SomaBrain + BrainSetting UI | 2026-10-08T23:47:26Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| admin/filesv2/api.py config/settings.py webui/src/services/file-upload.ts webui/src/components/soma-right-panel.ts tests/unit/test_filesv2_upload.py tests/unit/test_ninja_error_return_convention.py | MiMoCode-somaAgent01 | Mission F file tools UI/UX (upload record-before-presign, honest Files/Editor states, composer attachment upload) | 2026-10-09T01:11:30Z | ACTIVE |

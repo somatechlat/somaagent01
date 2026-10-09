@@ -43,6 +43,8 @@ Nav: `SOMA-UI-NAV-001.md` §2 canvas (no Memory tab) · §3 Files one-home
 | 3 | “showing N of total” | Rendered only when `total > files.length`. Never a guessed remainder. | live |
 | 4 | Upload / new folder | **Not in this surface today.** No upload control is drawn. | absent |
 | 5 | Delete / rename | **Not in this surface today.** No destructive control is drawn. | absent |
+| 6 | Empty-state source note | Under the verbatim empty line: the list is filesv2 storage only — agent work-directory files (`file_list` / `file_write` tools) have no list API in this deployment. | live |
+| 7 | Retry (error state) | Re-runs `GET /api/v2/filesv2/` after a failed load; the failed request is named beside the verbatim error line. | live |
 
 No tree is invented when the API returns a flat list. No preview pane until a preview path exists.
 
@@ -53,8 +55,8 @@ No tree is invented when the API returns a flat list. No preview pane until a pr
 | State | Verbatim |
 |---|---|
 | idle / loading | “Loading files…” |
-| empty | “No files in the working set.” |
-| error | “Files could not be listed.” |
+| empty | “No files in the working set.” (+ source note, control 6) |
+| error | “Files could not be listed.” (+ failed request + Retry, control 7) |
 | denied | “You need `files:read` to browse files.” |
 | offline | Chrome offline banner; list keeps last painted rows. |
 

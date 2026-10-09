@@ -18,6 +18,7 @@ import { WebSocketClient } from '../services/websocket-client.js';
 import { apiClient } from '../services/api-client.js';
 import type { ToolCallStep, ToolStepStatus } from '../components/soma-tool-timeline.js';
 import { iqStore } from '../stores/iq-store.js';
+import { uploadAttachments } from '../services/file-upload.js';
 import type { ComposerSendDetail } from '../components/soma-composer.js';
 import type { ChatControlAction, ConnectionStatus } from '../components/soma-chat-topbar.js';
 import { formatRelative } from '../utils/markdown.js';
@@ -41,7 +42,11 @@ export interface ChatMessage {
     tools?: ToolCallStep[];
     stopped?: boolean;
     error?: string;
-    attachments?: { name: string; type?: string; size?: number }[];
+    /**
+     * `file_id` is the filesv2 id and exists only for attachments whose
+     * bytes were accepted by POST /filesv2/upload — never a guessed one.
+     */
+    attachments?: { name: string; type?: string; size?: number; file_id?: string }[];
 }
 
 export interface Conversation {
@@ -2485,6 +2490,35 @@ export class SomaChat extends LitElement {
 
         this.updateComplete.then(() => this._scrollToBottom());
 
+        // Attachments go to filesv2 BEFORE the wire send so the message
+        // metadata can carry a real file_id per attachment
+        // (admin/filesv2/api.py: POST /filesv2/upload → presigned PUT or the
+        // upload-local fallback). Upload failure never blocks the text turn:
+        // the reason is attached to this user message, and a file that did
+        // not upload keeps name/type/size with no file_id.
+        let sentAttachments = userMessage.attachments;
+        if (detail.attachments && detail.attachments.length > 0) {
+            const { results, failures } = await uploadAttachments(detail.attachments);
+            sentAttachments = results;
+            const failureText =
+                failures.length > 0
+                    ? `Attachment upload failed: ${failures.map((f) => `${f.name} — ${f.reason}`).join(' · ')}`
+                    : '';
+            this._messages = this._messages.map((m) =>
+                m.id === userMessage.id
+                    ? {
+                          ...m,
+                          attachments: results,
+                          error: failureText
+                              ? m.error
+                                  ? `${m.error} · ${failureText}`
+                                  : failureText
+                              : m.error,
+                      }
+                    : m,
+            );
+        }
+
         try {
             this._wsClient?.send({
                 type: 'chat.message',
@@ -2492,7 +2526,7 @@ export class SomaChat extends LitElement {
                     content,
                     conversation_id: conversationId,
                     mode: this._currentMode,
-                    attachments: userMessage.attachments,
+                    attachments: sentAttachments,
                 },
             });
         } catch (error) {

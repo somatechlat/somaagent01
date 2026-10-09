@@ -21,14 +21,17 @@ Honesty (verbatim in UI): “This deployment exposes no file-write endpoint; the
 │  └────────────────────────────────┘    │  ‹original_name | name›                    ‹lang›           │
 │                                        │                                                                │
 │                                        │  This deployment exposes no file-write endpoint; the         │
-│                                        │  buffer is read-only.                                        │
+│                                        │  buffer is read-only. Save stays disabled: filesv2 has no    │
+│                                        │  PUT/content route for an existing file.                     │
+│                                        │                                                                │
+│                                        │  [Save disabled]                                  ‹lang› chip  │
 │                                        │                                                                │
 │                                        │  ┌─ code (pre) ────────────────────────────────────────────┐  │
 │                                        │  │ ‹file content›                                         │  │
 │                                        │  │ …                                                       │  │
 │                                        │  └─────────────────────────────────────────────────────────┘  │
 │                                        │                                                                │
-│  instance ‹session_id› ‹state›         │  No save. No discard. No dirty mark — the buffer cannot change.│
+│  instance ‹session_id› ‹state›         │  Save is present but disabled with its reason (REQ-UIX-020).   │
 └────────────────────────────────────────┴──────────────────────────────────────────────────────────────┘
 ```
 
@@ -39,9 +42,9 @@ Honesty (verbatim in UI): “This deployment exposes no file-write endpoint; the
 | # | Control | Behavior | Live? |
 |---|---|---|---|
 | 1 | File name + language chip | From the opened `FileOut` (`original_name \|\| name`); `languageOf()` derives the chip from the filename only. | live |
-| 2 | Read-only note | Always shown while a file is open. States the missing write endpoint. | live |
+| 2 | Read-only note | Always shown while a file is open. States the missing write endpoint **and** why Save is disabled (no PUT/content route — filesv2 has presigned download/upload only). | live |
 | 3 | Code block | Exact server file content in a `<pre>`. No highlighting that would alter text. | live |
-| 4 | Save / Discard / dirty `*` | **Not drawn.** A write path does not exist; save chrome would be a lie. | absent |
+| 4 | Save (disabled) | Present-but-disabled with its reason (`title`/`aria-label` + the note). There is no write path for an existing file, so saving would be a lie — but the control states *why* instead of being absent. | live (disabled) |
 
 Open path: UI-X-01 row → `_openFileInEditor` → this surface becomes active.
 
@@ -80,6 +83,7 @@ Cross-link: `SOMA-UI-NAV-001.md` §2 canvas · §5 acceptance.
 
 - Content is the server bytes. Language chip is filename-derived display only.
 - Read-only is stated in plain language, not implied by greyed buttons.
+- Save exists but is disabled, and the reason names the missing endpoint — a save with no write path would be a lie either way; hiding the control entirely would hide the gap.
 - No multi-tab strip until multiple open buffers are real.
 
 ---

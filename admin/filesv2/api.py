@@ -119,6 +119,110 @@ def list_files(
     }
 
 
+@router.post("/upload", response=FileUploadResponse, auth=AuthBearer())
+def create_upload_url(
+    request,
+    filename: str,
+    mime_type: str,
+    size_bytes: int,
+    tenant_id: str,
+    user_id: str,
+):
+    """Create presigned upload URL."""
+    authorize_sync(request, action="resource:file_upload", resource="files")
+
+    file_id = str(uuid.uuid4())
+    storage_key = f"uploads/{tenant_id}/{file_id}/{filename}"
+
+    # The File row is keyed by the caller's tenant and user (UUID columns) —
+    # validate them at this boundary instead of letting the ORM raise a 500.
+    try:
+        uuid.UUID(str(tenant_id))
+        uuid.UUID(str(user_id))
+    except ValueError:
+        # Raised (not `return body, status`): django-ninja 1.7 reads a 2-tuple
+        # as (status, body), and every non-200 status must be declared on the
+        # operation — the registered ApiError handler does both.
+        from admin.common.exceptions import ValidationError
+
+        raise ValidationError(
+            get_message(
+                ErrorCode.VALIDATION_ERROR,
+                details="tenant_id and user_id must be UUIDs",
+            )
+        ) from None
+
+    # The row must exist BEFORE either storage path is handed out:
+    # POST /upload-local/{file_id} looks it up, and a file without a row can
+    # never appear in GET /filesv2/. Creating it only after a successful
+    # presign left the local fallback 404-ing in AAAS-in-a-box.
+    from admin.filesv2.models import File
+
+    try:
+        File.objects.create(
+            id=file_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            name=filename,
+            original_name=filename,
+            mime_type=mime_type,
+            size_bytes=size_bytes,
+            storage_key=storage_key,
+            storage_backend="s3",
+        )
+    except Exception as e:
+        logger.exception("File record create failed: %s", e)
+        from admin.common.exceptions import ApiError
+
+        raise ApiError(get_message(ErrorCode.INTERNAL_ERROR)) from e
+
+    # Create S3 presigned URL. The import lives here, not above: boto3 is
+    # optional (it is not in requirements.txt), and a missing SDK must land
+    # in the local fallback rather than 500 the whole endpoint.
+    try:
+        import boto3  # type: ignore[import]
+        from botocore.config import Config  # type: ignore[import]
+
+        s3_client = boto3.client(
+            "s3",
+            config=Config(signature_version="s3v4"),
+            region_name=require_setting("AWS_REGION"),
+        )
+
+        bucket = require_setting("AWS_S3_BUCKET")
+        expires_in = 3600  # 1 hour
+
+        upload_url = s3_client.generate_presigned_url(
+            "put_object",
+            Params={
+                "Bucket": bucket,
+                "Key": storage_key,
+                "ContentType": mime_type,
+            },
+            ExpiresIn=expires_in,
+        )
+
+        return {
+            "file_id": file_id,
+            "upload_url": upload_url,
+            "expires_in": expires_in,
+        }
+
+    except Exception as e:
+        logger.exception("S3 presigned URL error: %s", e)
+        # Fallback for local dev: the record above already exists, so
+        # /upload-local/{file_id} can resolve it.
+        return {
+            "file_id": file_id,
+            "upload_url": f"/api/v2/filesv2/upload-local/{file_id}",
+            "expires_in": 3600,
+        }
+
+
+# Registered AFTER /upload and BEFORE the single-segment routes below:
+# django resolves URL patterns in registration order and only then checks the
+# method, so a GET /{file_id} declared first answers POST /filesv2/upload with
+# 405 (live-verified) — literal paths must precede the {file_id} catch-all.
 @router.get("/{file_id}", response=FileOut, auth=AuthBearer())
 def get_file(request, file_id: str):
     """Get file details."""
@@ -145,76 +249,6 @@ def get_file(request, file_id: str):
         return {"error": get_message(ErrorCode.NOT_FOUND)}, 404
 
 
-@router.post("/upload", response=FileUploadResponse, auth=AuthBearer())
-def create_upload_url(
-    request,
-    filename: str,
-    mime_type: str,
-    size_bytes: int,
-    tenant_id: str,
-    user_id: str,
-):
-    """Create presigned upload URL."""
-    authorize_sync(request, action="resource:file_upload", resource="files")
-
-    import boto3  # type: ignore[import]
-    from botocore.config import Config  # type: ignore[import]
-
-    file_id = str(uuid.uuid4())
-    storage_key = f"uploads/{tenant_id}/{file_id}/{filename}"
-
-    # Create S3 presigned URL
-    try:
-        s3_client = boto3.client(
-            "s3",
-            config=Config(signature_version="s3v4"),
-            region_name=require_setting("AWS_REGION"),
-        )
-
-        bucket = require_setting("AWS_S3_BUCKET")
-        expires_in = 3600  # 1 hour
-
-        upload_url = s3_client.generate_presigned_url(
-            "put_object",
-            Params={
-                "Bucket": bucket,
-                "Key": storage_key,
-                "ContentType": mime_type,
-            },
-            ExpiresIn=expires_in,
-        )
-
-        # Create file record
-        from admin.filesv2.models import File
-
-        File.objects.create(
-            id=file_id,
-            tenant_id=tenant_id,
-            user_id=user_id,
-            name=filename,
-            original_name=filename,
-            mime_type=mime_type,
-            size_bytes=size_bytes,
-            storage_key=storage_key,
-            storage_backend="s3",
-        )
-
-        return {
-            "file_id": file_id,
-            "upload_url": upload_url,
-            "expires_in": expires_in,
-        }
-
-    except Exception as e:
-        logger.exception("S3 presigned URL error: %s", e)
-        # Fallback for local dev
-        return {
-            "file_id": file_id,
-            "upload_url": f"/api/v2/filesv2/upload-local/{file_id}",
-            "expires_in": 3600,
-        }
-
-
 @router.post("/upload-local/{file_id}", auth=AuthBearer())
 def upload_local(request, file_id: str, file: UploadedFile = File(...)):
     """Handle local file upload (Dev/AAAS-in-a-box mode)."""
@@ -223,24 +257,37 @@ def upload_local(request, file_id: str, file: UploadedFile = File(...)):
     from django.core.files.base import ContentFile
     from django.core.files.storage import default_storage
 
+    from admin.common.exceptions import ApiError
     from admin.filesv2.models import File as FileModel
 
+    # Errors are raised, not `return body, status`: django-ninja 1.7 reads a
+    # 2-tuple as (status, body) and refuses undeclared statuses — the
+    # registered ApiError handler turns these into proper HTTP responses.
     try:
         f = FileModel.objects.get(id=file_id, deleted_at__isnull=True)
+    except FileModel.DoesNotExist:
+        raise ApiError(
+            get_message(ErrorCode.NOT_FOUND),
+            status_code=404,
+            error_code=ErrorCode.NOT_FOUND.value,
+        ) from None
 
-        # Security check: ensure file size doesn't exceed limit
-        if file.size > f.size_bytes + (1024 * 1024):  # 1MB buffer
-            return {"error": get_message(ErrorCode.FILE_SIZE_EXCEEDED)}, 400
+    # Security check: ensure file size doesn't exceed limit
+    if file.size > f.size_bytes + (1024 * 1024):  # 1MB buffer
+        raise ApiError(
+            get_message(ErrorCode.FILE_SIZE_EXCEEDED),
+            status_code=400,
+            error_code=ErrorCode.FILE_SIZE_EXCEEDED.value,
+        )
 
+    try:
         # Save to local storage using the pre-defined key
         path = default_storage.save(f.storage_key, ContentFile(file.read()))
-
-        return {"success": True, "path": path}
-    except FileModel.DoesNotExist:
-        return {"error": get_message(ErrorCode.NOT_FOUND)}, 404
     except Exception as e:
         logger.exception("Local upload failed: %s", e)
-        return {"error": get_message(ErrorCode.INTERNAL_ERROR)}, 500
+        raise ApiError(get_message(ErrorCode.INTERNAL_ERROR)) from e
+
+    return {"success": True, "path": path}
 
 
 @router.delete("/{file_id}", auth=AuthBearer())

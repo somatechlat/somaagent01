@@ -23,7 +23,7 @@ Live: `webui/src/views/soma-chat.ts` · composer `soma-composer.ts` · topbar `s
 
 | Screen | Control | Event | API / WS (exact path) | Request / response fields | Live source (file:line) |
 |---|---|---|---|---|---|
-| Chat | Send / Enter | `send-message` | **WS** `wss://…/ws/v2/chat/{capsule_id\|agent_id}` · frame `chat.message` | req: `{content, conversation_id, mode, attachments[{name,type,size}]}` · stream in: `chat.delta` `{delta\|content, response_id}` · `chat.done` `{content, confidence, response_id}` · `chat.message` `{id, role, content, timestamp}` | send `soma-chat.ts:1764-1772`; WS open `1155-1267`; stream `1315-1372` |
+| Chat | Send / Enter | `send-message` | **WS** `wss://…/ws/v2/chat/{capsule_id\|agent_id}` · frame `chat.message` | req: `{content, conversation_id, mode, attachments[{name,type,size,file_id?}]}` · stream in: `chat.delta` `{delta\|content, response_id}` · `chat.done` `{content, confidence, response_id}` · `chat.message` `{id, role, content, timestamp}` | send `soma-chat.ts:1764-1772`; WS open `1155-1267`; stream `1315-1372` |
 | Chat | Pause | `soma-chat-control` `pause` | WS `chat.pause` | req: `{conversation_id}` · gateway `CONTROL_MSG_TYPES` | `soma-chat.ts:1572-1574`, `1607-1615`; `soma-chat-topbar.ts` |
 | Chat | Resume | `resume` | WS `chat.resume` | same payload | `soma-chat.ts:1575-1578` |
 | Chat | Stop | `stop` | WS `chat.stop` then local finalize | same payload | `soma-chat.ts:1580-1581`, `1618-1627` |
@@ -42,7 +42,7 @@ Live: `webui/src/views/soma-chat.ts` · composer `soma-composer.ts` · topbar `s
 | Chat | Conversation list | load | `GET /chat/conversations` | `{id, title, last_message, updated_at, message_count?}` | `soma-chat.ts:1033-1058` |
 | Chat | Conversation search | input | **local filter** over already-loaded list | — | `soma-chat.ts:1868-1876`, `1914-1925` |
 | Chat | Mic / STT | stop recording | `POST /voice/transcribe` | req `{audio_base64, format: webm\|m4a\|ogg, language: null}` → `{text}` | `soma-composer.ts:424-508`, `488-492`; route `admin/voice/api.py:69-86` |
-| Chat | Attach (+ menu) | file pick | **local** `composerStore`; names/sizes ride WS `chat.message.attachments` (no separate upload in this path) | `{name, type, size}` | `soma-composer.ts:536-553`; send `soma-chat.ts:1750-1751` |
+| Chat | Attach (+ menu) | file pick | **local** `composerStore` → on send **REST** `POST /api/v2/filesv2/upload` (+ presigned `PUT` or `POST /api/v2/filesv2/upload-local/{file_id}`); `file_id` rides WS `chat.message.attachments`; upload failure lands on the user message, never a guessed id | `{name, type, size, file_id?}` · identity `{id, tenant_id}` from `GET /auth/me` | `soma-composer.ts:536-553`; upload `services/file-upload.ts`; send `soma-chat.ts` `_deliverUserMessage` |
 | Chat | Clear chat (composer menu) | event | **local** clear transcript | — | `soma-chat.ts:1652-1656` |
 | Chat | Export chat (composer menu) | event | **client** Blob of `_messages` | — | `soma-chat.ts:1658-1691` |
 | Chat | Agent select | change | `GET /agents/` then **WS reconnect** `/ws/v2/chat/{wsId}` | agents: `{agent_id, name, description, capsule_id?}` | `soma-chat.ts:1004-1031`, `2370-2380` |
