@@ -6,7 +6,7 @@
 |---|---|
 | Document Title | Agent tool framework — standardized implementation for assistant file/OS tools |
 | Document Identifier | SOMA-ARCH-TOOLS-001 |
-| Version | 1.3.0 |
+| Version | 1.4.0 |
 | Date | 2026-10-09 |
 | Status | Draft |
 | Author | SomaTech Engineering |
@@ -32,6 +32,7 @@
 | 1.2.4 | 2026-10-09 | SomaTech Engineering | §5.9.1–5.9.6 user journey: filesv2 bytes vs Brain chunks; extract full text for same-turn answer; index for durable recall; document_query; honesty rules. Design only. |
 | 1.2.5 | 2026-10-09 | SomaTech Engineering | Implement `document_index` + `document_query` on MemoryGateway (A0 document_query journey without FAISS/SFM). Capsule default policy approval. 10 unit tests green. |
 | 1.3.0 | 2026-10-09 | SomaTech Engineering | §5.10 Internet/browser/search requirement: A0 SearxNG+Playwright audit; recommended OSS stack (SearxNG, trafilatura, Playwright container); generic Capability/MCP extension model; Capsule profiles. Host browser DENY. |
+| 1.4.0 | 2026-10-09 | SomaTech Engineering | §5.4 Package ensure LIVE: `packages_ensure` (tier 3, approval) + `packages_list` (tier 1 auto) on the default kit; operator profile allowlist (`package_profiles.py`); `PackageEnsureWorkflow` create-venv → pip install → import verify registered on the conversation queue; Capsule seed approval + IQ egress gate; unit tests green. |
 
 ---
 
@@ -164,16 +165,16 @@ Long multi-step creation **must** be Temporal (invariant 7). Chat tool starts wo
 
 **Implementation preference:** one `artifact_*` family sharing Temporal activities (python-docx / openpyxl / python-pptx / reportlab / matplotlib) inside the **agent worker image**, not host LibreOffice on the chat process.
 
-### 5.4 Package ensure (install libraries) — PLANNED, tier 3
+### 5.4 Package ensure (install libraries) — LIVE, tier 3
 
 Operator scenario: *“INSTALL all libraries for MATH plots”* must **not** be free-shell `pip install` in the chat loop (A0 pattern; supply-chain + non-reproducible).
 
 | Tool | Tier | Durable | Behaviour |
 |---|---|---|---|
-| `packages_ensure` | 3 | **Temporal** PackageEnsureWorkflow | Ensure **profiles** or **allowlisted** packages in the **workroot-scoped venv** (or next image bake). Approval mandatory. |
-| `packages_list` | 1 | no | Show installed distributions in workroot venv / image tag |
+| `packages_ensure` | 3 | **Temporal** PackageEnsureWorkflow | Ensure **profiles** or **allowlisted** packages in the **workroot-scoped venv** (`.soma/venv` under `TOOL_WORK_DIR`). Approval mandatory; image bake remains future. |
+| `packages_list` | 1 | no | Show profile/allowlist + workroot venv path (`venv_present`); installed set is reported by `job_status` |
 
-**Profiles** (curated; versions pinned in repo lockfile, not model-guessed):
+**Profiles** (curated in `services/tool_executor/package_profiles.py`; distribution names only — pip resolves versions inside the workroot venv, never model-guessed pins):
 
 | Profile id | Intent | Example pins (lockfile owns truth) |
 |---|---|---|
@@ -187,7 +188,7 @@ Operator scenario: *“INSTALL all libraries for MATH plots”* must **not** be 
 1. No `pip` / `apt` / `curl|sh` strings in tool protocol — structured `{profile|packages[]}` only.  
 2. Packages must be on the **operator allowlist** (Capsule/AgentIQ or platform config). Unknown package → fail-closed with explicit deny reason.  
 3. Install runs only under **PackageEnsureWorkflow** (Temporal) → L0 container; timeout + audit.  
-4. Side effect is **workroot venv** (`.venv` under `TOOL_WORK_DIR`) or a **proposed image bake** — never mutate the host OS or chat process environment.  
+4. Side effect is **workroot venv** (`.soma/venv` under `TOOL_WORK_DIR`) or a **proposed image bake** — never mutate the host OS or chat process environment.  
 5. `code_execute` may use the venv path returned by `packages_ensure`; it must not install packages itself.  
 6. Network egress for PyPI is an **egress allowlist** entry; disabled → ensure fails honestly.
 
@@ -526,7 +527,7 @@ Profile = Capsule body template (tool_policy + IQ + capability set). Standalone 
 | `ResearchReportWorkflow` | Outline → research → write sections → assemble → filesv2 | **LIVE** (registered) |
 | `ArtifactCreateWorkflow` | Create/edit office/markdown/PDF artifacts in workroot | PLANNED §5.3 |
 | `FileBuildWorkflow` | Multi-step document build / merge | PLANNED |
-| `PackageEnsureWorkflow` | Install allowlisted profile into workroot venv | PLANNED §5.4 |
+| `PackageEnsureWorkflow` | Install allowlisted profile into workroot venv | **LIVE** (registered) §5.4 |
 | `DocumentPipelineWorkflow` | OCR/convert/bulk | PLANNED |
 | Existing | Sleep, JobAdvance, OutboxReplay, Conversation, A2A | LIVE |
 
@@ -566,7 +567,7 @@ IQ autonomy floor may only **tighten** (existing `_apply_autonomy_floor`).
 | F | Composer upload → filesv2 → attachment_id → ingest | upload **DONE**; ingest residual |
 | G | ResearchReportWorkflow + ArtifactCreateWorkflow + FileBuildWorkflow | Research **DONE**; others PLANNED |
 | H | job_status + Jobs UI panel | job_status **DONE**; panel residual |
-| I | **PackageEnsureWorkflow** + profiles + `packages_ensure` | PLANNED §5.4 |
+| I | **PackageEnsureWorkflow** + profiles + `packages_ensure` | **DONE** §5.4 |
 | J | Playwright: report job creates file visible in Files tab | OPEN |
 | K | chart_render + scientific profile e2e (math plots) | PLANNED |
 | L | shell_exec opt-in container profile | DENY until I + L0 proven |

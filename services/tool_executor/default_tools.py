@@ -48,6 +48,10 @@ DEFAULT_AGENT_TOOLS: List[str] = [
     "document_query",
     # Web search (TOOLS-001 §5.10) — configured SearxNG; egress-gated.
     "web_search",
+    # Package ensure (TOOLS-001 §5.4) — allowlist profiles; install runs in
+    # PackageEnsureWorkflow (Temporal), never free pip in the chat loop.
+    "packages_ensure",
+    "packages_list",
 ]
 
 # Memory tools that stay available (not disableable by capsule policy).
@@ -90,6 +94,8 @@ DEFAULT_TOOL_DESCRIPTIONS: Dict[str, str] = {
     "document_index": "Index extracted document text (or an attachment) into SomaBrain as semantic chunks. Approval-gated. Uses the memory gateway only.",
     "document_query": "Ask a question about a document already indexed into SomaBrain. Optional attachment_id scopes to one document. Uses memory recall only.",
     "web_search": "Search the web via the operator-configured SearxNG instance. Returns top-k title/url/content digests. Approval-gated; requires SEARXNG_URL and egress.",
+    "packages_ensure": "Start a durable Temporal job that installs operator-allowlisted Python packages into the agent work virtualenv (profiles: scientific, office, data, vision; or packages[] from the allowlist only). Approval-gated; returns workflow id — poll with job_status. Unknown packages fail closed; never free-form pip.",
+    "packages_list": "List the operator package profiles/allowlist and the agent work virtualenv path (read-only). Use after packages_ensure / job_status.",
 }
 
 

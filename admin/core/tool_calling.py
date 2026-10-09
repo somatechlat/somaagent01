@@ -44,8 +44,15 @@ def _tool_setting(name: str, default):
 
 # Tools that reach the network. Gated by IQ egress_allowed: an operator who
 # turns autonomy down must not get outbound calls from an auto-executed tool.
+# packages_ensure reaches PyPI from the worker (TOOLS-001 §5.4 hard rule 6).
 _NETWORK_TOOLS = frozenset(
-    {"http_fetch", "document_ingest", "canvas_append", "web_search"}
+    {
+        "http_fetch",
+        "document_ingest",
+        "canvas_append",
+        "web_search",
+        "packages_ensure",
+    }
 )
 
 # Cap the model->tool->model loop so a runaway tool chain cannot pin a turn

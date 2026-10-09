@@ -171,6 +171,9 @@ class JobStatusTool(SomaAssistantTool):
         if not workflow_id:
             raise tool_error("workflow_id is required")
 
+        from services.conversation_worker.package_ensure_workflow import (
+            PackageEnsureWorkflow,
+        )
         from services.conversation_worker.research_workflow import (
             ResearchReportWorkflow,
         )
@@ -185,12 +188,15 @@ class JobStatusTool(SomaAssistantTool):
 
         status = getattr(desc.status, "name", str(desc.status))
         progress: Optional[Dict[str, Any]] = None
-        try:
-            progress = await handle.query(ResearchReportWorkflow.progress)
-        except Exception:
-            # Non-ResearchReport workflow, closed before query, or worker
-            # unreachable for the query — status above is still reported.
-            progress = None
+        # Progress query is workflow-specific: try the known durable workflows
+        # in turn. Wrong type, a closed run, or an unreachable worker simply
+        # leaves progress None — status above is still reported.
+        for wf in (ResearchReportWorkflow, PackageEnsureWorkflow):
+            try:
+                progress = await handle.query(wf.progress)
+                break
+            except Exception:
+                progress = None
 
         return {
             "workflow_id": workflow_id,

@@ -42,6 +42,12 @@ from services.common.router_client import RouterClient
 from services.common.telemetry import TelemetryPublisher
 from services.common.tenant_config import TenantConfig
 from services.common.tracing import setup_tracing
+from services.conversation_worker.package_ensure_workflow import (
+    PackageEnsureWorkflow,
+    create_venv_activity,
+    install_packages_activity,
+    verify_imports_activity,
+)
 from services.conversation_worker.policy_integration import ConversationPolicyEnforcer
 from services.conversation_worker.research_workflow import (
     ResearchReportWorkflow,
@@ -346,6 +352,9 @@ async def main() -> None:
             plan_outline_activity,
             write_outline_file_activity,
             mark_complete_activity,
+            create_venv_activity,
+            install_packages_activity,
+            verify_imports_activity,
         ],
         workflows=[
             ConversationWorkflow,
@@ -353,6 +362,7 @@ async def main() -> None:
             JobAdvanceWorkflow,
             OutboxReplayWorkflow,
             ResearchReportWorkflow,
+            PackageEnsureWorkflow,
         ],
     )
     await worker.run()

@@ -387,6 +387,7 @@ class Capsule(models.Model):
                 "file_read",
                 "file_search",
                 "job_status",
+                "packages_list",
                 *sorted(NON_DISABLEABLE_TOOLS),
             ]
             self.tool_policy = {
@@ -402,6 +403,8 @@ class Capsule(models.Model):
                     "canvas_append",
                     "research_report",
                     "web_search",
+                    # Installs into the work venv under Temporal (§5.4).
+                    "packages_ensure",
                     # Destructive erasure — not part of the auto memory kit.
                     "memory_forget",
                 ],
