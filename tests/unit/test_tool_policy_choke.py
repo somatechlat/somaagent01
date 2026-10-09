@@ -159,10 +159,34 @@ def _done(events, name):
 
 @pytest.mark.asyncio
 async def test_unlisted_tool_requires_approval():
-    """Unlisted = approval_required, never auto_execute (§2 invariant 3)."""
+    """Unlisted non-memory tools = approval_required, never auto_execute."""
     capsule = _capsule(auto=("timestamp",), capabilities=["timestamp", "file_write"])
     decision = await decide_and_authorize_tool(_subject(), capsule, "file_write", {}, _iq())
     assert decision == "approval_required"
+
+
+@pytest.mark.asyncio
+async def test_memory_kit_auto_executes_without_listing():
+    """Memory base kit never requires HITL unless denied — product core."""
+    capsule = _capsule(
+        auto=("timestamp",),
+        denied=(),
+        capabilities=["timestamp", "memory_save", "memory_recall"],
+    )
+    assert (
+        await decide_and_authorize_tool(_subject(), capsule, "memory_recall", {}, _iq())
+        == "auto_execute"
+    )
+    assert (
+        await decide_and_authorize_tool(_subject(), capsule, "memory_save", {}, _iq())
+        == "auto_execute"
+    )
+    # Denied still wins
+    capsule_deny = _capsule(auto=(), denied=("memory_forget",), capabilities=["memory_forget"])
+    assert (
+        await decide_and_authorize_tool(_subject(), capsule_deny, "memory_forget", {}, _iq())
+        == "denied"
+    )
 
 
 @pytest.mark.asyncio

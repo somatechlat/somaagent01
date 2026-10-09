@@ -83,18 +83,26 @@ class ToolPolicy:
     def decision(self, tool_name: str) -> str:
         """Return the execution decision for ``tool_name``.
 
-        SOMA-ARCH-TOOLS-001: **unlisted = approval_required**. A new tool
-        (file_write, shell_exec, research_report) must never silently
-        auto-execute because the capsule JSON omitted it. Operators put a
-        tool in ``auto_execute`` deliberately; the absence of a list entry
-        is not consent.
+        SOMA-ARCH-TOOLS-001:
+        * **denied** always wins.
+        * **Non-disableable memory kit** (recall/save/forget/proximity/get)
+          auto-executes unless denied — memory is the product core; HITL
+          on every recall is a defect, not safety.
+        * **auto_execute** list still wins for other tools.
+        * **Unlisted** dangerous/new tools (file_write, shell_exec,
+          research_report, …) require approval — never silent auto-run.
         """
         if tool_name in self.denied:
             return "denied"
+        # Memory lane: always on (base kit), unless explicitly denied above.
+        from services.tool_executor.default_tools import NON_DISABLEABLE_TOOLS
+
+        if tool_name in NON_DISABLEABLE_TOOLS:
+            return "auto_execute"
         if tool_name in self.auto_execute:
             return "auto_execute"
         # Unlisted and approval_required both require a human (or IQ floor
-        # that later moves them). Fail-closed default.
+        # that later moves them). Fail-closed default for non-memory tools.
         return "approval_required"
 
 

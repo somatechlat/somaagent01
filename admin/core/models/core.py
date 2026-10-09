@@ -372,6 +372,38 @@ class Capsule(models.Model):
         ]
         self.capabilities.add(*seeded)
 
+        # Seed tool_policy so the base kit is usable without HITL on every
+        # memory call. Dangerous tools stay approval unless the operator
+        # moves them (SOMA-ARCH-TOOLS-001 §7). Existing tool_policy is
+        # never overwritten — only empty first insert is filled.
+        if not self.tool_policy:
+            from services.tool_executor.default_tools import (
+                NON_DISABLEABLE_TOOLS,
+            )
+
+            safe_auto = [
+                "timestamp",
+                "file_list",
+                "file_read",
+                "file_search",
+                "job_status",
+                *sorted(NON_DISABLEABLE_TOOLS),
+            ]
+            self.tool_policy = {
+                "auto_execute": safe_auto,
+                "approval_required": [
+                    "code_execute",
+                    "file_write",
+                    "file_patch",
+                    "http_fetch",
+                    "document_ingest",
+                    "canvas_append",
+                    "research_report",
+                ],
+                "denied": [],
+            }
+            super().save(update_fields=["tool_policy"])
+
     @property
     def is_certified(self) -> bool:
         """Check if capsule has been certified."""
