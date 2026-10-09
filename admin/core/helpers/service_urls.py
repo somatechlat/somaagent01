@@ -155,12 +155,11 @@ def _from_infraconfig(setting_name: str) -> Optional[str]:
             if not warm_infraconfig_cache():
                 return None
         else:
-            # On the request path the cache is already warm (warmed at boot and
-            # invalidated on write). Doing ORM work here would mean blocking the
-            # event loop or spawning a coroutine nobody awaits. Refuse instead:
-            # a cold cache on a live request is a deployment fault, and the
-            # next layer or the final raise says so honestly.
-            return None
+            # Cold cache after restart/boot race: warm on a worker thread so
+            # the first tool call is not a silent miss. warm_infraconfig_cache
+            # hops ORM off the event loop when a loop is already running.
+            if not warm_infraconfig_cache():
+                return None
     return _INFRA_CACHE.get(setting_name)
 
 

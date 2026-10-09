@@ -477,6 +477,14 @@ async def get_messages(
     def _get_messages():
         # Verify conversation exists AND belongs to current user/tenant
         """Execute get messages."""
+        import uuid as uuid_mod
+
+        # Short hex (e.g. conversation *title* suffix) is not a conversation id.
+        # Return not-found instead of a 500 from Django UUIDField.
+        try:
+            uuid_mod.UUID(str(conversation_id))
+        except (ValueError, AttributeError, TypeError):
+            return None, 0
 
         if not Conversation.objects.filter(
             id=conversation_id, user_id=user_id, tenant_id=tenant_id

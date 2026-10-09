@@ -637,6 +637,28 @@ export class SomaChat extends LitElement {
         }
 
         /* Welcome / empty state — A0-merged enterprise */
+        .empty-transcript {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            min-height: 12rem;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            color: var(--text-muted, #6b7280);
+        }
+
+        .empty-transcript p {
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        .empty-transcript .empty-hint {
+            font-size: 0.85rem;
+            opacity: 0.85;
+        }
+
         .welcome {
             display: flex;
             flex-direction: column;
@@ -2925,7 +2947,19 @@ export class SomaChat extends LitElement {
                             !this._messagesLoading &&
                             !this._activeConversationId
                             ? this._renderWelcome()
-                            : html`
+                            : this._messages.length === 0 &&
+                                  !this._isStreaming &&
+                                  !this._messagesLoading &&
+                                  this._activeConversationId
+                              ? html`
+                                    <div class="empty-transcript" data-control="empty-conversation">
+                                        <p>No messages in this conversation yet.</p>
+                                        <p class="empty-hint">
+                                            Type below to continue — history loads here when messages exist.
+                                        </p>
+                                    </div>
+                                `
+                              : html`
                                   ${this._messages.map((msg) => this._renderMessage(msg))}
                                   ${this._isStreaming
                                       ? html`
