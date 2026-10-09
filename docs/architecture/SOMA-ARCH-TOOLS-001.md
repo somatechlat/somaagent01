@@ -6,7 +6,7 @@
 |---|---|
 | Document Title | Agent tool framework — standardized implementation for assistant file/OS tools |
 | Document Identifier | SOMA-ARCH-TOOLS-001 |
-| Version | 1.2.0 |
+| Version | 1.2.1 |
 | Date | 2026-10-09 |
 | Status | Draft |
 | Author | SomaTech Engineering |
@@ -26,6 +26,7 @@
 | 1.0.0 | 2026-10-08 | SomaTech Engineering | Initial issue. Standardized tool abstraction, sandbox layers, Temporal durability for long file jobs, and policy default (unlisted = approval). |
 | 1.1.0 | 2026-10-08 | SomaTech Engineering | §11 granular authorization: every tool action is RBAC role floor → OPA → SpiceDB → capsule scope via UnifiedGate; chat path must call the same choke as Kafka. PathGuard + unlisted=approval landed in tree. |
 | 1.2.0 | 2026-10-09 | SomaTech Engineering | Full tool catalog vs Agent Zero inventory (core + plugins). File creation suite (docs/PPT/XLSX/PDF/plots). Package ensure profiles (math/plot stack) with allowlist + Temporal — no free shell pip. Architecture-audit hardening notes. |
+| 1.2.1 | 2026-10-09 | SomaTech Engineering | §5.7 complete 23-tool A0 audit table (every `agent.system.tool.*` + connector remote tools). Explicit Do-not-clone list. Power model: free work inside PathGuard/Temporal/OPA rails. |
 
 ---
 
@@ -217,27 +218,43 @@ Agent: chart_render or code_execute using that venv → PNG in workroot → file
 | `scheduler_*` | 2 | PLANNED on Temporal schedules | Not in-process cron |
 | `a2a_message` | 2 | PLANNED | Matches docs/plans/a2a protocol; no peer FS write |
 
-### 5.7 A0 inventory map (source: `Downloads/agent-zero-main`)
+### 5.7 Complete Agent Zero inventory (audited 2026-10-09)
 
-| A0 path | Catalog id | Soma disposition |
-|---|---|---|
-| `plugins/_text_editor` | text_editor read/write/patch | Split: `file_read/list/search` LIVE; write/patch LIVE approval |
-| `plugins/_code_execution` | code_execution python/shell | `code_execute` LIVE restricted; shell → `shell_exec` DENY |
-| `plugins/_office` | office_artifact | → `artifact_*` PLANNED §5.3 |
-| `plugins/_document_query` | document_query | → `document_query` PLANNED |
-| `plugins/_browser` | browser | → `browser_use` gated PLANNED |
-| `plugins/_desktop` | desktop | DENY / operator profile |
-| `plugins/_a0_connector` | remote text/code/input/computer | **Do not clone** |
-| `plugins/_memory` | memory_* | LIVE T-1 kit |
-| `plugins/_goal` | goal | PLANNED orchestration |
-| `plugins/_email|telegram|whatsapp` | bridges | Capsules (out of tool catalog) |
-| `tools/search_engine.py` | search_engine | → `web_search` PLANNED |
-| `tools/scheduler.py` | scheduler | → Temporal schedules PLANNED |
-| `tools/skills_tool.py` | skills | PLANNED skills |
-| `tools/vision_load.py` | vision_load | → multimodal PLANNED |
-| `tools/call_subordinate.py` | call_subordinate | PLANNED |
-| `tools/a2a_chat.py` | a2a_chat | PLANNED a2a_message |
-| `tools/parallel.py` | parallel | Prefer Temporal fan-out over in-loop parallel tools |
+Source tree: `/Users/macbookpro201916i964gb1tb/Downloads/agent-zero-main`.  
+User-facing tools = every `agent.system.tool.*.md` loaded by `extensions/python/system_prompt/_11_tools_prompt.py` after `tool_policy.filter_tool_prompts`.
+
+| # | A0 tool | A0 path | What A0 does | Soma id | Disposition |
+|---|---|---|---|---|---|
+| 1 | `response` | `tools/response.py` | End loop / final answer | loop control | LIVE (orchestrator) |
+| 2 | `code_execution` | `plugins/_code_execution` | **python / nodejs / terminal** interactive PTY sessions; optional **SSH**; apt/pip via terminal | `code_execute` + `packages_ensure` + (future) `shell_exec` | LIVE restricted Python; **install = packages_ensure**; shell DENY default |
+| 3 | `input` | `plugins/_code_execution/tools/input.py` | Keyboard into running terminal | `code_input` | PLANNED only if shell_exec opt-in |
+| 4 | `text_editor` | `plugins/_text_editor` | read/write/patch (+ freshness, multi patch modes) | `file_read/write/patch` | **LIVE** PathGuard |
+| 5 | `office_artifact` | `plugins/_office` | create/open/read/edit **odt/ods/odp/docx/xlsx/pptx** + LibreOffice validate | `artifact_*` | PLANNED §5.3 Temporal |
+| 6 | `document_query` | `plugins/_document_query` | RAG over uploaded docs | `document_query` | PLANNED after SFM ingest |
+| 7 | `memory` + `behaviour` | `plugins/_memory` | save/load/forget/delete + behaviour rules | `memory_*` + Capsule persona | **LIVE** T-1 |
+| 8 | `goal` | `plugins/_goal` | create/update/complete per-chat goal | `goal` | PLANNED |
+| 9 | `browser` | `plugins/_browser` | navigate/click/type/screenshot/script in isolated browser | `browser_use` | PLANNED gated (container) |
+| 10 | `search_engine` | `tools/search_engine.py` | SearxNG search | `web_search` | PLANNED + egress |
+| 11 | `scheduler` | `tools/scheduler.py` | cron/adhoc/planned tasks | Temporal schedules + `scheduler_*` | PLANNED on Temporal |
+| 12 | `skills` | `tools/skills_tool.py` | list/load skill markdown into context | `skills` | PLANNED |
+| 13 | `vision_load` | `tools/vision_load.py` | image → vision model context | multimodal | PLANNED |
+| 14 | `call_subordinate` | `tools/call_subordinate.py` | spawn subordinate agent | `call_subordinate` | PLANNED (Capsule delegation) |
+| 15 | `notify_user` | `tools/notify_user.py` | agent → user notification | `notify_user` | PARTIAL (notifications app) |
+| 16 | `parallel` | `tools/parallel.py` | multi-tool parallel worker | Temporal fan-out | prefer WF not in-loop |
+| 17 | `wait` | `tools/wait.py` | sleep in loop | Temporal timer | prefer WF |
+| 18 | `a2a_chat` | `tools/a2a_chat.py` | HTTP A2A to peer agent | `a2a_message` | PLANNED (protocol match) |
+| 19 | `unknown` | `tools/unknown.py` | unknown tool feedback | executor error | LIVE structured error |
+| 20 | `text_editor_remote` | `plugins/_a0_connector` | edit **user host** FS | — | **Do not clone** |
+| 21 | `code_execution_remote` | `plugins/_a0_connector` | code on **user host** | — | **Do not clone** |
+| 22 | `computer_use_remote` | `plugins/_a0_connector` | GUI control **user host** | — | **Do not clone** / DENY |
+| 23 | `input_remote` | `plugins/_a0_connector` | keyboard on **user host** | — | **Do not clone** |
+| — | (MCP servers) | `helpers/mcp_handler.py` | external MCP tools | MCP client Capabilities | PLANNED |
+| — | (plugins installer) | `_plugin_installer` | install A0 plugins | — | use Capsules + packages_ensure |
+| — | (bridges WA/TG/Email) | plugins | messaging | Capsules | out of tool catalog |
+
+**A0 sandbox reality (do not copy):** no in-process FS jail; Docker only boundary; text_editor expands absolute/`~`; terminal can `cd` anywhere; pip/apt in the same PTY as the agent.
+
+**Soma power model (clone capacity, keep firewalls):** PathGuard workroot + tiered approval + UnifiedGate/OPA + Temporal durability + packages_ensure allowlist profiles + optional shell_exec argv-only opt-in — agent works freely **inside** those rails, never outside them.
 
 ### 5.8 Registration rule (unchanged)
 
@@ -405,4 +422,4 @@ Absent OPA/SpiceDB: fail per UnifiedGate semantics (absent engine = that layer a
 
 ---
 
-*End of SOMA-ARCH-TOOLS-001 v1.2.0*
+*End of SOMA-ARCH-TOOLS-001 v1.2.1*
