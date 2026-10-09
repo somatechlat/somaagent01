@@ -19,11 +19,17 @@ from admin.aaas.api.schemas import (
     RoleOut,
     RoleUpdate,
 )
+from admin.common.auth import AuthBearer
 from admin.common.exceptions import ValidationError
 from admin.common.messages import ErrorCode, get_message, SuccessCode
 from admin.core.authz import permissions_for_roles, validate_scopes
 from services.common.authorization import authorize_sync
 
+# Every handler below gates with ``authorize_sync()``, which reads roles from
+# ``request.auth`` — and Django Ninja only sets ``request.auth`` when the route
+# declares an auth callback. A gated route without ``auth=AuthBearer()`` reaches
+# the gate as a principal with no roles and is denied 403 for everyone,
+# sysadmin included. Both halves are required.
 router = Router()
 
 
@@ -40,7 +46,7 @@ from django.utils import timezone
 from admin.aaas.models.profiles import ApiKey
 
 
-@router.get("/api-keys", response=list[ApiKeyOut])
+@router.get("/api-keys", response=list[ApiKeyOut], auth=AuthBearer())
 def list_api_keys(request, tenant_id: Optional[str] = None):
     """Get all API keys, optionally filtered by tenant."""
     authorize_sync(request, action="org:apikey_read", resource="api_keys")
@@ -62,7 +68,7 @@ def list_api_keys(request, tenant_id: Optional[str] = None):
     ]
 
 
-@router.post("/api-keys")
+@router.post("/api-keys", auth=AuthBearer())
 @transaction.atomic
 def create_api_key(request, payload: ApiKeyCreate):
     """Create a new API key.
@@ -114,7 +120,7 @@ def create_api_key(request, payload: ApiKeyCreate):
     }
 
 
-@router.delete("/api-keys/{key_id}", response=MessageResponse)
+@router.delete("/api-keys/{key_id}", response=MessageResponse, auth=AuthBearer())
 @transaction.atomic
 def revoke_api_key(request, key_id: str):
     """Revoke an API key."""
@@ -133,7 +139,7 @@ def revoke_api_key(request, key_id: str):
 # =============================================================================
 # LLM MODELS
 # =============================================================================
-@router.get("/models", response=list[ModelConfigOut])
+@router.get("/models", response=list[ModelConfigOut], auth=AuthBearer())
 def list_models(request):
     """Get all configured LLM models from Global Defaults."""
     authorize_sync(request, action="system:view", resource="settings")
@@ -158,7 +164,7 @@ def list_models(request):
     ]
 
 
-@router.patch("/models/{model_id}", response=ModelConfigOut)
+@router.patch("/models/{model_id}", response=ModelConfigOut, auth=AuthBearer())
 @transaction.atomic
 def update_model(request, model_id: str, payload: ModelConfigUpdate):
     """Update model configuration in Global Defaults."""
@@ -209,7 +215,7 @@ def update_model(request, model_id: str, payload: ModelConfigUpdate):
 # =============================================================================
 # ROLES & PERMISSIONS
 # =============================================================================
-@router.get("/roles", response=list[RoleOut])
+@router.get("/roles", response=list[RoleOut], auth=AuthBearer())
 def list_roles(request):
     """Get all platform roles from Global Defaults."""
     authorize_sync(request, action="org:read", resource="settings")
@@ -230,7 +236,7 @@ def list_roles(request):
     ]
 
 
-@router.patch("/roles/{role_id}", response=RoleOut)
+@router.patch("/roles/{role_id}", response=RoleOut, auth=AuthBearer())
 @transaction.atomic
 def update_role(request, role_id: str, payload: RoleUpdate):
     """Update role permissions.
@@ -308,7 +314,7 @@ class LLMProviderOut(BaseModel):
     masked_key: Optional[str] = None  # First 8 chars only
 
 
-@router.get("/llm-providers", response=list[LLMProviderOut])
+@router.get("/llm-providers", response=list[LLMProviderOut], auth=AuthBearer())
 def list_llm_providers(request):
     """List all LLM providers and their configuration status.
 
@@ -337,7 +343,7 @@ def list_llm_providers(request):
     return result
 
 
-@router.post("/llm-providers", response=MessageResponse)
+@router.post("/llm-providers", response=MessageResponse, auth=AuthBearer())
 def set_llm_provider_key(request, payload: LLMProviderKeyIn):
     """Set API key for an LLM provider.
 
@@ -373,7 +379,7 @@ def set_llm_provider_key(request, payload: LLMProviderKeyIn):
         )
 
 
-@router.delete("/llm-providers/{provider}", response=MessageResponse)
+@router.delete("/llm-providers/{provider}", response=MessageResponse, auth=AuthBearer())
 def delete_llm_provider_key(request, provider: str):
     """Delete API key for an LLM provider from Vault."""
     # Same privilege as setting one: deleting a provider credential takes the

@@ -15,6 +15,7 @@ from django.http import HttpRequest
 from ninja import Router
 from pydantic import BaseModel
 
+from admin.common.auth import AuthBearer
 from admin.common.exceptions import ServiceError, ValidationError
 from admin.common.messages import ErrorCode, get_message
 from config.settings_registry import get_settings as get_registry_settings
@@ -368,7 +369,7 @@ def save_settings_to_db(entity: str, values: dict) -> bool:
     return True
 
 
-@router.get("/{entity}", response=SettingsResponse)
+@router.get("/{entity}", response=SettingsResponse, auth=AuthBearer())
 async def get_settings(request: HttpRequest, entity: str):
     """
     Get settings for a service entity.
@@ -376,6 +377,11 @@ async def get_settings(request: HttpRequest, entity: str):
     Gated: configuration is not public. Reads and writes both go through
     ``authorize()``, so a principal who may not see a service's shape cannot
     probe it here.
+
+    ``auth=AuthBearer()`` is load-bearing: ``authorize()`` reads roles from
+    ``request.auth``, and Django Ninja only sets it when the route carries an
+    auth callback. Without one every caller — a sysadmin included — reaches the
+    gate as a principal with no roles and is denied 403.
     """
     await authorize(request, action="system:view", resource="settings")
 
@@ -407,7 +413,12 @@ async def get_settings(request: HttpRequest, entity: str):
     )
 
 
-@router.put("/{entity}", response=SettingsUpdateResponse, summary="Update service settings")
+@router.put(
+    "/{entity}",
+    response=SettingsUpdateResponse,
+    summary="Update service settings",
+    auth=AuthBearer(),
+)
 async def update_settings(request: HttpRequest, entity: str, payload: SettingsUpdateRequest):
     """
     Update settings for a service entity.
@@ -521,7 +532,7 @@ def _label_for(local: str) -> str:
     return local.replace("_", " ").strip().capitalize()
 
 
-@router.get("/schema/{entity}", response=EntitySchema)
+@router.get("/schema/{entity}", response=EntitySchema, auth=AuthBearer())
 async def get_entity_schema(request: HttpRequest, entity: str):
     """Field catalog for one entity — the lookup table lives here, not in TS."""
     await authorize(request, action="system:view", resource="settings")
@@ -547,7 +558,7 @@ async def get_entity_schema(request: HttpRequest, entity: str):
     )
 
 
-@router.get("/", response=list)
+@router.get("/", response=list, auth=AuthBearer())
 async def list_services(request: HttpRequest):
     """List all configurable services.
 

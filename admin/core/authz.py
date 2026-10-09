@@ -314,12 +314,19 @@ ROLE_PERMISSIONS: Mapping[str, frozenset[str]] = {
     # operate them. One named grant, not ``_RESOURCE_OPERATE``: the
     # sysadmin's tool authority is execute, not the operator's read/configure
     # bundle.
+    #
+    # ``cognitive:view`` is named for the same reason: the cognitive routes
+    # (``/somabrain/cognitive``, agent neuromodulators) ask for it, and a
+    # sysadmin denied that read could operate the platform but not see the
+    # state of the agents on it. It is a read — ``cognitive:edit`` stays with
+    # ``trainer``, who tunes; the sysadmin looks.
     "sysadmin": _EVERY_PRINCIPAL
     | _RESOURCE_USE
     | frozenset(
         {
             "agent:read",
             "resource:tool_execute",
+            "cognitive:view",
             "system:view",
             "system:configure",
             "system:ratelimit",
@@ -363,7 +370,14 @@ ROLE_PERMISSIONS: Mapping[str, frozenset[str]] = {
     | _AGENT_OWN
     | _RESOURCE_CONFIGURE,
     # Owns one agent: configures it, does not administer the organization.
-    "agent_owner": _EVERY_PRINCIPAL | _AGENT_OWN | _RESOURCE_OPERATE,
+    # ``cognitive:view`` is named explicitly — the owner holds
+    # ``agent:configure_personality`` and must be able to read the persona and
+    # neuromodulator state they are configuring. Read only; ``cognitive:edit``
+    # remains the trainer's.
+    "agent_owner": _EVERY_PRINCIPAL
+    | _AGENT_OWN
+    | _RESOURCE_OPERATE
+    | frozenset({"cognitive:view"}),
     # Runs one agent: starts, stops, reads logs. Cannot reconfigure it.
     "agent_operator": _EVERY_PRINCIPAL | _AGENT_OPERATE | _RESOURCE_OPERATE,
     # Engineering surface: capsules, tools, models, diagnostics. No org

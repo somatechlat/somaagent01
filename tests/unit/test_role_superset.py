@@ -110,6 +110,10 @@ _SYSADMIN = frozenset(
         "agent:read",
         "audit:export",
         "audit:read",
+        # A named read grant: the operator sees the cognitive state of the
+        # agents they run. ``cognitive:edit`` is still not theirs — see
+        # ``test_no_admin_is_the_union_of_all_roles``.
+        "cognitive:view",
         "org:read",
         "resource:chat_send",
         "resource:chat_view",
