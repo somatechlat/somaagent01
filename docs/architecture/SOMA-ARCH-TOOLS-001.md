@@ -6,8 +6,8 @@
 |---|---|
 | Document Title | Agent tool framework — standardized implementation for assistant file/OS tools |
 | Document Identifier | SOMA-ARCH-TOOLS-001 |
-| Version | 1.1.0 |
-| Date | 2026-10-08 |
+| Version | 1.2.0 |
+| Date | 2026-10-09 |
 | Status | Draft |
 | Author | SomaTech Engineering |
 | Approver | — |
@@ -25,6 +25,7 @@
 |---|---|---|---|
 | 1.0.0 | 2026-10-08 | SomaTech Engineering | Initial issue. Standardized tool abstraction, sandbox layers, Temporal durability for long file jobs, and policy default (unlisted = approval). |
 | 1.1.0 | 2026-10-08 | SomaTech Engineering | §11 granular authorization: every tool action is RBAC role floor → OPA → SpiceDB → capsule scope via UnifiedGate; chat path must call the same choke as Kafka. PathGuard + unlisted=approval landed in tree. |
+| 1.2.0 | 2026-10-09 | SomaTech Engineering | Full tool catalog vs Agent Zero inventory (core + plugins). File creation suite (docs/PPT/XLSX/PDF/plots). Package ensure profiles (math/plot stack) with allowlist + Temporal — no free shell pip. Architecture-audit hardening notes. |
 
 ---
 
@@ -102,37 +103,164 @@ All paths **must** `guard.resolve(path)` first.
 
 ---
 
-## 5. Catalog (assistant tools to build)
+## 5. Full tool catalog (normative)
 
-| Tool | Tier | Durable | Notes |
+This §5 is the **single catalog** for agent hands. Status values: **LIVE** (in tree, wired), **PLANNED** (spec only — not stubbed), **DENY** (must stay off until operator profile). Tiers: **1** auto-safe · **2** approval · **3** human / image / Temporal-only start.
+
+### 5.1 How this compares to Agent Zero (audit summary)
+
+| A0 behaviour | A0 mechanism | Soma form | Why better |
 |---|---|---|---|
-| `file_list` | 1 | no | |
-| `file_read` | 1 | no | PathGuard mandatory |
-| `file_search` | 1 | no | |
-| `file_write` | 2 | optional | large → Temporal |
-| `file_patch` | 2 | optional | |
-| `document_ingest` | existing | optional | needs attachment upload lane |
-| `document_query` | 2 | optional | after ingest |
-| `research_report` | 2–3 | **Temporal** | ResearchReportWorkflow |
-| `file_build` | 2–3 | **Temporal** | FileBuildWorkflow |
-| `job_status` | 1 | — | query Temporal |
-| `shell_exec` | 3 | optional | container; argv only; opt-in capsule |
-| `package_install` | 3 | yes | image bake or human merge only |
+| text_editor read/write/patch | Path expand `~`/abs; no jail | PathGuard L1 + approval on write/patch | No host escape |
+| code_execution python/shell | Interactive PTY, SSH optional, pip/apt in-loop | `code_execute` restricted + Temporal jobs + Package Ensure profiles | No free host root; durable multi-step |
+| office_artifact docx/xlsx/pptx | LibreOffice + document store | `artifact_create` / `artifact_edit` (Temporal) → workroot + filesv2 | PathGuard + approval + audit |
+| search_engine | DDG/SearxNG | `web_search` + egress allowlist + IQ | OPA egress gate |
+| scheduler | In-process cron | Temporal schedules + `job_status` | Durable, not process-local |
+| browser / desktop / connector SSH | Full host automation | Gated surfaces only; **not default** | Operator profile only |
+| memory_* | FAISS local | T-1 MemoryGateway → SomaBrain → SFM | One write lane |
+| plugin installer / shell | Arbitrary | Package Ensure allowlist + image bake | Supply-chain control |
 
-Existing default kit (timestamp, memory_*, code_execute, file_read, http_fetch, document_ingest, canvas_append) remains; **file_read** switches to PathGuard; **code_execute** stays restricted (not a sandbox).
+**Do not copy** A0 unrestricted host shell, in-loop `pip install anything`, SSH-to-user-machine, or self-rewritable instruction files.
+
+### 5.2 LIVE — default kit (every agent)
+
+| Tool | Tier | Policy | Notes |
+|---|---|---|---|
+| `timestamp` | 1 | auto | UTC |
+| `memory_recall` / `save` / `forget` / `proximity` / `get` | 1 | auto (NON_DISABLEABLE) | T-1 only |
+| `file_read` | 1 | auto | PathGuard; workroot |
+| `file_list` | 1 | auto | PathGuard; metadata |
+| `file_search` | 1 | auto | PathGuard; literal |
+| `file_write` | 2 | approval | PathGuard; SHA-256 |
+| `file_patch` | 2 | approval | PathGuard; exact once |
+| `research_report` | 2 | approval | Temporal ResearchReportWorkflow |
+| `job_status` | 1 | auto | Temporal describe + progress query |
+| `code_execute` | 2 | approval | Restricted Python; **not** a security sandbox (L0–L4 is) |
+| `http_fetch` | 2 | approval + egress | SSRF deny-list; IQ `egress_allowed` |
+| `document_ingest` | 2 | approval | Attachment → knowledge (upload lane live; ingest residual) |
+| `canvas_append` | 1 | auto | Session canvas |
+
+### 5.3 File creation suite (docs / decks / sheets / plots) — PLANNED
+
+Long multi-step creation **must** be Temporal (invariant 7). Chat tool starts workflow; bytes never enter history.
+
+| Tool | Tier | Durable | Formats | Notes |
+|---|---|---|---|---|
+| `artifact_create` | 2 | **Temporal** ArtifactCreateWorkflow | md, txt, **docx, odt, pptx, odp, xlsx, ods, pdf, csv** | Structured kind+format; writes via PathGuard; publishes to filesv2 |
+| `artifact_edit` | 2 | optional Temporal | same | Text replace / slide/sheet ops on workroot file |
+| `artifact_read` | 1 | no | same | PathGuard; truncated |
+| `chart_render` | 2 | optional | **png, svg, pdf** plot | Runs in Package Ensure venv (matplotlib etc.); output PathGuard |
+| `file_build` | 2–3 | **Temporal** FileBuildWorkflow | multi-step assemble | Outline → sections → merge → filesv2 |
+| `document_query` | 2 | optional | — | After ingest; chunk+embed via SFM (not local FAISS) |
+
+**Honesty:** PLANNED tools are **not registered** until code+tests exist. Unlisted = approval if someone adds them without listing.
+
+**Implementation preference:** one `artifact_*` family sharing Temporal activities (python-docx / openpyxl / python-pptx / reportlab / matplotlib) inside the **agent worker image**, not host LibreOffice on the chat process.
+
+### 5.4 Package ensure (install libraries) — PLANNED, tier 3
+
+Operator scenario: *“INSTALL all libraries for MATH plots”* must **not** be free-shell `pip install` in the chat loop (A0 pattern; supply-chain + non-reproducible).
+
+| Tool | Tier | Durable | Behaviour |
+|---|---|---|---|
+| `packages_ensure` | 3 | **Temporal** PackageEnsureWorkflow | Ensure **profiles** or **allowlisted** packages in the **workroot-scoped venv** (or next image bake). Approval mandatory. |
+| `packages_list` | 1 | no | Show installed distributions in workroot venv / image tag |
+
+**Profiles** (curated; versions pinned in repo lockfile, not model-guessed):
+
+| Profile id | Intent | Example pins (lockfile owns truth) |
+|---|---|---|
+| `scientific` | Math + plots | numpy, scipy, matplotlib, pandas, sympy, seaborn |
+| `office` | Docs/decks/sheets | python-docx, openpyxl, python-pptx, reportlab, odfpy |
+| `data` | Frames / IO | pandas, pyarrow, openpyxl |
+| `vision` | Image QA helpers | pillow (opencv only if operator allowlist) |
+
+**Hard rules**
+
+1. No `pip` / `apt` / `curl|sh` strings in tool protocol — structured `{profile|packages[]}` only.  
+2. Packages must be on the **operator allowlist** (Capsule/AgentIQ or platform config). Unknown package → fail-closed with explicit deny reason.  
+3. Install runs only under **PackageEnsureWorkflow** (Temporal) → L0 container; timeout + audit.  
+4. Side effect is **workroot venv** (`.venv` under `TOOL_WORK_DIR`) or a **proposed image bake** — never mutate the host OS or chat process environment.  
+5. `code_execute` may use the venv path returned by `packages_ensure`; it must not install packages itself.  
+6. Network egress for PyPI is an **egress allowlist** entry; disabled → ensure fails honestly.
+
+**Example user → tool path (target UX)**
+
+```
+User: INSTALL all libraries for MATH plots in your OS
+Agent: packages_ensure { profile: "scientific" }   → approval modal
+Human: Approve
+Temporal: PackageEnsureWorkflow creates workroot venv, installs pin set
+Agent: job_status / packages_list → "scientific profile ready (venv: …)"
+User: Plot sine waves…
+Agent: chart_render or code_execute using that venv → PNG in workroot → filesv2
+```
+
+### 5.5 Sandbox / process / egress — PLANNED or DENY
+
+| Tool | Tier | Status | Notes |
+|---|---|---|---|
+| `shell_exec` | 3 | DENY default | `{binary, argv[]}` only; container; opt-in capsule; **no** `sh -c` strings |
+| `package_install` (legacy name) | 3 | superseded by `packages_ensure` | Do not implement free-form |
+| `web_search` | 2 | PLANNED | SearxNG/DDG via egress allowlist |
+| `browser_use` | 2–3 | PLANNED gated | Playwright in isolated container; canvas panel; not host Chrome |
+| `computer_use` / remote connector | 3 | DENY | Separate operator profile only |
+| `call_subordinate` | 2 | PLANNED | Capsule-to-capsule via existing delegation; same choke |
+
+### 5.6 Orchestration / product tools — existing or PLANNED
+
+| Tool | Tier | Status | Notes |
+|---|---|---|---|
+| `response` / break | 1 | part of loop | Not a free LLM rewrite layer |
+| `notify_user` | 2 | PARTIAL (notifications app) | Bound to real notifications API |
+| `skills` load | 1–2 | PLANNED | Skill markdown inject; not A0 infection-style |
+| `scheduler_*` | 2 | PLANNED on Temporal schedules | Not in-process cron |
+| `a2a_message` | 2 | PLANNED | Matches docs/plans/a2a protocol; no peer FS write |
+
+### 5.7 A0 inventory map (source: `Downloads/agent-zero-main`)
+
+| A0 path | Catalog id | Soma disposition |
+|---|---|---|
+| `plugins/_text_editor` | text_editor read/write/patch | Split: `file_read/list/search` LIVE; write/patch LIVE approval |
+| `plugins/_code_execution` | code_execution python/shell | `code_execute` LIVE restricted; shell → `shell_exec` DENY |
+| `plugins/_office` | office_artifact | → `artifact_*` PLANNED §5.3 |
+| `plugins/_document_query` | document_query | → `document_query` PLANNED |
+| `plugins/_browser` | browser | → `browser_use` gated PLANNED |
+| `plugins/_desktop` | desktop | DENY / operator profile |
+| `plugins/_a0_connector` | remote text/code/input/computer | **Do not clone** |
+| `plugins/_memory` | memory_* | LIVE T-1 kit |
+| `plugins/_goal` | goal | PLANNED orchestration |
+| `plugins/_email|telegram|whatsapp` | bridges | Capsules (out of tool catalog) |
+| `tools/search_engine.py` | search_engine | → `web_search` PLANNED |
+| `tools/scheduler.py` | scheduler | → Temporal schedules PLANNED |
+| `tools/skills_tool.py` | skills | PLANNED skills |
+| `tools/vision_load.py` | vision_load | → multimodal PLANNED |
+| `tools/call_subordinate.py` | call_subordinate | PLANNED |
+| `tools/a2a_chat.py` | a2a_chat | PLANNED a2a_message |
+| `tools/parallel.py` | parallel | Prefer Temporal fan-out over in-loop parallel tools |
+
+### 5.8 Registration rule (unchanged)
+
+1. Implement under `services/tool_executor/assistant_tools/`.  
+2. Export in `AVAILABLE_TOOLS` / `default_tool_definitions` only when tier ≤ 2 **and** capsule may enable.  
+3. Tier 2/3 must appear in capsule `auto_execute` **or** `approval_required` — never rely on unlisted auto.  
+4. Catalog row in this §5 must move PLANNED → LIVE in the same PR as code.  
+5. Every action hits `decide_and_authorize_tool` (§11).
 
 ---
 
 ## 6. Temporal durability (assistant jobs)
 
-| Workflow | Purpose |
-|---|---|
-| `ResearchReportWorkflow` | Outline → research → write sections → assemble → filesv2 |
-| `FileBuildWorkflow` | Multi-step document build |
-| `DocumentPipelineWorkflow` | OCR/convert/bulk |
-| Existing | Sleep, JobAdvance, OutboxReplay, Conversation, A2A |
+| Workflow | Purpose | Status |
+|---|---|---|
+| `ResearchReportWorkflow` | Outline → research → write sections → assemble → filesv2 | **LIVE** (registered) |
+| `ArtifactCreateWorkflow` | Create/edit office/markdown/PDF artifacts in workroot | PLANNED §5.3 |
+| `FileBuildWorkflow` | Multi-step document build / merge | PLANNED |
+| `PackageEnsureWorkflow` | Install allowlisted profile into workroot venv | PLANNED §5.4 |
+| `DocumentPipelineWorkflow` | OCR/convert/bulk | PLANNED |
+| Existing | Sleep, JobAdvance, OutboxReplay, Conversation, A2A | LIVE |
 
-**Input:** `{topic|spec, capsule_id, tenant_id, filesv2_ids?}`  
+**Input:** `{topic|spec, capsule_id, tenant_id, filesv2_ids?, profile?}`  
 **Activities** write via PathGuard + filesv2 IDs.  
 **History:** manifests and IDs only — never multi-MB content.  
 **Signals:** cancel/pause. **Queries:** progress.  
@@ -144,13 +272,13 @@ Existing default kit (timestamp, memory_*, code_execute, file_read, http_fetch, 
 
 ```json
 {
-  "auto_execute": ["timestamp", "memory_recall", "memory_save", "memory_forget", "memory_proximity", "memory_get", "file_list", "file_read", "file_search", "job_status"],
-  "approval_required": ["file_write", "file_patch", "document_query", "research_report", "file_build", "code_execute", "http_fetch", "document_ingest"],
-  "denied": []
+  "auto_execute": ["timestamp", "memory_recall", "memory_save", "memory_forget", "memory_proximity", "memory_get", "file_list", "file_read", "file_search", "job_status", "packages_list", "artifact_read"],
+  "approval_required": ["file_write", "file_patch", "document_query", "research_report", "file_build", "artifact_create", "artifact_edit", "chart_render", "packages_ensure", "code_execute", "http_fetch", "document_ingest", "web_search"],
+  "denied": ["shell_exec", "computer_use", "package_install_freeform"]
 }
 ```
 
-`shell_exec` / `package_install` stay **denied** until an operator profile enables them.
+`shell_exec` / free-form package install stay **denied** until an operator profile enables them (then still tier 3 + allowlist).
 
 IQ autonomy floor may only **tighten** (existing `_apply_autonomy_floor`).
 
@@ -158,18 +286,21 @@ IQ autonomy floor may only **tighten** (existing `_apply_autonomy_floor`).
 
 ## 8. Implementation path (order)
 
-| Step | Deliverable |
-|---|---|
-| A | PathGuard + unit tests (sibling-dir bypass, absolute, `~`) |
-| B | ToolPolicy unlisted → approval_required (done in code with this issue) |
-| C | One choke: run_tool_loop calls shared `decide_tool()` (policy + egress + capsule capabilities) |
-| D | file_list / file_read via PathGuard (replace startswith jail) |
-| E | file_write / file_patch + Files tab editor save |
-| F | Composer upload → filesv2 → attachment_id → ingest |
-| G | ResearchReportWorkflow + FileBuildWorkflow (Temporal) |
-| H | job_status + Jobs UI panel |
-| I | shell_exec opt-in container profile |
-| J | Playwright: report job creates file visible in Files tab |
+| Step | Deliverable | Status |
+|---|---|---|
+| A | PathGuard + unit tests | **DONE** |
+| B | ToolPolicy unlisted → approval_required | **DONE** |
+| C | One choke `decide_and_authorize_tool` chat + Kafka | **DONE** |
+| D | file_list / file_read / file_search PathGuard | **DONE** |
+| E | file_write / file_patch + Files editor save | tools **DONE**; editor save residual |
+| F | Composer upload → filesv2 → attachment_id → ingest | upload **DONE**; ingest residual |
+| G | ResearchReportWorkflow + ArtifactCreateWorkflow + FileBuildWorkflow | Research **DONE**; others PLANNED |
+| H | job_status + Jobs UI panel | job_status **DONE**; panel residual |
+| I | **PackageEnsureWorkflow** + profiles + `packages_ensure` | PLANNED §5.4 |
+| J | Playwright: report job creates file visible in Files tab | OPEN |
+| K | chart_render + scientific profile e2e (math plots) | PLANNED |
+| L | shell_exec opt-in container profile | DENY until I + L0 proven |
+| M | filesv2 object-level tenancy | OPEN §11.3 |
 
 ---
 
@@ -181,8 +312,26 @@ IQ autonomy floor may only **tighten** (existing `_apply_autonomy_floor`).
 | A0-parity “full shell” as default | **Opt-in only**; parity is capability, not host root |
 | SandboxManager “in-process” as security | **Rename narrative**: timeout helper, not sandbox; L0–L4 is the sandbox |
 | Multiple file planes | Tools use workroot; bytes home is filesv2; UI lists both via API ids |
+| “Install packages via shell” | **`packages_ensure` profiles only** (§5.4) — never free pip in chat loop |
+| Prompt-only “must use tool X” | Enforced in code choke (§11), not prompt text |
 
 Do not invent a second memory client or second chat loop.
+
+---
+
+## 9a. Architecture-audit hardening (agent stack)
+
+Apply the 12-layer audit to every new tool wave:
+
+| Layer | Control in Soma |
+|---|---|
+| 6 Tool selection | Capsule capabilities ∩ tool_policy; empty = deny |
+| 7 Tool execution | Real executor only; no “claimed call without run” |
+| 8 Tool interpretation | Structured JSON results; no silent rewrite |
+| 11 Hidden repair | No second LLM that rewrites tool results without contract |
+| 12 Persistence | Temporal history = IDs/manifests; cache never = live evidence |
+
+**Severity findings to avoid (from A0 clone risk):** free shell (critical), unlisted auto (high — fixed), dual memory clients (critical — T-1), prompt-only tool gates (high — choke exists).
 
 ---
 
@@ -194,7 +343,10 @@ Do not invent a second memory client or second chat loop.
 4. Output file appears under workroot and in filesv2/Files tab.  
 5. No shell string execution; no host path escape.  
 6. Every tool action passes granular authz (§11).  
-7. `check_docs.py` clean on this document.
+7. `check_docs.py` clean on this document.  
+8. `packages_ensure` for profile `scientific` installs only allowlisted pins into workroot venv under Temporal approval — proven by unit/integration test, not prompt text.  
+9. `artifact_create` kind=deck|document|sheet produces a real file under workroot (not a mock).  
+10. Catalog §5.3/§5.4 rows are LIVE only when code+tests ship in the same change.
 
 ---
 
@@ -253,4 +405,4 @@ Absent OPA/SpiceDB: fail per UnifiedGate semantics (absent engine = that layer a
 
 ---
 
-*End of SOMA-ARCH-TOOLS-001 v1.1.0*
+*End of SOMA-ARCH-TOOLS-001 v1.2.0*
