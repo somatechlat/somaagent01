@@ -508,15 +508,29 @@ class UnifiedGate:
         ``_check_role_floor`` alone. That is why the fall-through here is True
         for non-tool actions and not a default grant.
 
-        A tool action is permitted only when the tool is named in
-        ``enabled_capabilities``. An empty or missing capability list therefore
-        denies every tool — a capsule that declares no tools executes none.
+        A tool action is permitted when the tool is named in
+        ``enabled_capabilities`` **or** is in the non-disableable memory kit
+        (always-on product core — see ``NON_DISABLEABLE_TOOLS``). An empty
+        capability list still denies every non-memory tool.
         """
         is_tool_action = action.startswith("tool:") or action in {
             "resource:tool_execute",
             "resource:tool_configure",
         }
         if is_tool_action:
-            return bool(resource) and resource in enabled_capabilities
+            if not resource:
+                return False
+            # Memory kit is always-on; capabilities may add tools, never
+            # remove the base memory lane (SOMA-ARCH-TOOLS-001 / default_tools).
+            try:
+                from services.tool_executor.default_tools import (
+                    NON_DISABLEABLE_TOOLS,
+                )
+
+                if resource in NON_DISABLEABLE_TOOLS:
+                    return True
+            except Exception:
+                pass
+            return resource in enabled_capabilities
 
         return True
