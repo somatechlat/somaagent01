@@ -6,7 +6,7 @@
 |---|---|
 | Document Title | Agent tool framework — standardized implementation for assistant file/OS tools |
 | Document Identifier | SOMA-ARCH-TOOLS-001 |
-| Version | 1.2.3 |
+| Version | 1.2.4 |
 | Date | 2026-10-09 |
 | Status | Draft |
 | Author | SomaTech Engineering |
@@ -29,6 +29,7 @@
 | 1.2.1 | 2026-10-09 | SomaTech Engineering | §5.7 complete 23-tool A0 audit table (every `agent.system.tool.*` + connector remote tools). Explicit Do-not-clone list. Power model: free work inside PathGuard/Temporal/OPA rails. |
 | 1.2.2 | 2026-10-09 | SomaTech Engineering | Fix T-1 violation in catalog prose: `document_query` and all memory/RAG I/O go **MemoryGateway → SomaBrain** only — never direct SFM from the agent (SOMA-STD-TRIAD-001 T-1). |
 | 1.2.3 | 2026-10-09 | SomaTech Engineering | §5.9 Document RAG redesign grounded in live `memory_gateway.py` + `somabrain_adapter.py`: index via `remember_text`, query via `recall`, no second client. Ingest currently extracts only; index + document_query still OPEN. |
+| 1.2.4 | 2026-10-09 | SomaTech Engineering | §5.9.1–5.9.6 user journey: filesv2 bytes vs Brain chunks; extract full text for same-turn answer; index for durable recall; document_query; honesty rules. Design only. |
 
 ---
 
@@ -320,6 +321,93 @@ run:
 | `document_query` tool | **OPEN** |
 | Temporal DocumentIngestWorkflow | PLANNED |
 
+#### 5.9.1 Two homes for a document (never collapse)
+
+| Home | Holds | Who reads it | Lifetime |
+|---|---|---|---|
+| **filesv2** | Original bytes (PDF, DOCX, …), version, mime, download URL | UI Files, re-extract, audit | Until delete |
+| **SomaBrain → SFM** | **Searchable text chunks** as semantic memory (`remember` / `recall`) | Agent via MemoryGateway only | Until `forget` / retention |
+
+**filesv2 is not the brain. Brain is not the file store.**  
+Upload always lands in filesv2 first. Indexing into Brain is a **separate, explicit** step so the agent can later answer “what’s in that PDF?” without re-uploading and without holding the whole file in chat history forever.
+
+#### 5.9.2 User journey — “Upload this PDF and tell me what’s inside”
+
+```
+User (chat)                    Agent                         Stores
+──────────                    ─────                         ──────
+1. Attach report.pdf  ──►  POST /filesv2/upload
+                              + upload-local bytes
+                              → { attachment_id / file_id }
+                              (LIVE today)
+
+2. “Summarize it”     ──►  tool: document_ingest
+                              { attachment_id }
+                           ├─ fetch bytes (gateway/filesv2)
+                           ├─ EXTRACT full text (fitz/OCR)
+                           └─ return text (+ optional auto-INDEX)
+
+3a. Same-turn answer         LLM sees extracted text (or digested
+                             sections) → answers “what’s inside”
+                             — this is READ of full content in-context
+
+3b. Durable index            for each chunk:
+                             MemoryGateway.remember_text(
+                               text="[doc:{id} #n] …",
+                               kind=semantic,
+                               source="document:{id}")
+                           → Brain → SFM  (T-1 path only)
+
+4. Next week:               document_query { query, attachment_id? }
+   “What did §3 say?”   ──►  gateway.recall → hits → filter [doc:id]
+                             → answer from chunks, not from chat memory
+```
+
+#### 5.9.3 Full content vs chunks — when each is used
+
+| Need | Mechanism | Why not the other |
+|---|---|---|
+| **Immediate** “what’s in this PDF?” | **Extract full text** → feed LLM (capped, e.g. first N chars / section digests) | Chunk recall alone can miss structure (TOC, page order) |
+| **Durable** “remember this document forever” | **Chunk + index** via `remember_text` | Full text in one memory row is too coarse for recall and blows limits |
+| **Later** “ask about section 3” | **`document_query`** → `recall` on tagged chunks | Re-parsing the PDF every question is wasteful; chat history is not RAG |
+
+**Rule of thumb for the orchestrator (design):**
+
+1. Always **extract** on ingest (tool result for this turn).  
+2. Always **index** chunks when the user wants the doc to *stay* known (default on for chat uploads; Temporal for large PDFs so the turn is not blocked).  
+3. **Never** dump multi-MB PDF text into permanent chat history as the only copy.  
+4. **Never** open SFM; only MemoryGateway.
+
+#### 5.9.4 What the model is allowed to see
+
+| Stage | Model sees |
+|---|---|
+| Upload ack | `file_id`, filename, mime, size — not full bytes |
+| Ingest result | Extracted text **or** section summaries + `indexed_chunks: n` + `document_id` |
+| document_query | Ranked chunk digests (`[doc:… #n]` + summary + score) — same digest shape as `memory_recall` |
+| Never | Raw Milvus payloads, SFM coords as “file paths”, host filesystem paths outside workroot |
+
+Large PDF policy (design): if extract text > context budget → Temporal DocumentIngestWorkflow indexes first; chat answer uses `document_query` / progressive section reads — **fail honestly** (“document indexed; ask about a section”) rather than truncate silently.
+
+#### 5.9.5 Tool surface for this journey (design — no code yet)
+
+| Tool | Role |
+|---|---|
+| composer upload → filesv2 | bytes home (LIVE) |
+| `document_ingest` | extract (+ kick index workflow); returns text summary + document_id |
+| `document_index` (optional explicit) | force re-index / index workroot file already PathGuard-read |
+| `document_query` | recall chunks via gateway only |
+| `memory_forget` | remove one chunk coord; or document-level forget job (list coords by source prefix — may need brain filter; A2A if missing) |
+
+#### 5.9.6 Failure honesty
+
+| Failure | User-visible |
+|---|---|
+| filesv2 upload down | upload error — no fake file_id |
+| extract fail (scanned PDF, no OCR) | “could not extract text” — no empty success |
+| Brain remember 503 | index queued (T-6 WAL) / “stored in filesv2; not yet searchable” — **never** “indexed” |
+| recall outage | `MemoryRecallUnavailable` → “memory unavailable”, not empty answer |
+
 ---
 
 ### 5.8 Registration rule (unchanged)
@@ -488,4 +576,4 @@ Absent OPA/SpiceDB: fail per UnifiedGate semantics (absent engine = that layer a
 
 ---
 
-*End of SOMA-ARCH-TOOLS-001 v1.2.3*
+*End of SOMA-ARCH-TOOLS-001 v1.2.4*
