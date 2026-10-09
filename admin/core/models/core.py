@@ -401,6 +401,7 @@ class Capsule(models.Model):
                     "document_query",
                     "canvas_append",
                     "research_report",
+                    "web_search",
                     # Destructive erasure — not part of the auto memory kit.
                     "memory_forget",
                 ],

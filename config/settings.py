@@ -108,6 +108,10 @@ GOOGLE_REDIRECT_URI = os.environ.get("GOOGLE_REDIRECT_URI") or ""
 GOOGLE_JAVASCRIPT_ORIGIN = os.environ.get("GOOGLE_JAVASCRIPT_ORIGIN") or ""
 SMTP_HOST = os.environ.get("SMTP_HOST") or ""
 SMTP_PORT = os.environ.get("SMTP_PORT") or ""
+# SearxNG meta-search base URL for web_search (TOOLS-001 §5.10).
+# Empty when unset — require_service_url() refuses an unconfigured endpoint.
+# There is no localhost substitute.
+SEARXNG_URL = os.environ.get("SEARXNG_URL") or os.environ.get("SA01_SEARXNG_URL") or ""
 
 # SomaFractalMemory (vector memory storage + semantic search)
 SOMAFRACTALMEMORY_URL = os.environ.get("SOMAFRACTALMEMORY_URL")

@@ -327,6 +327,13 @@ KOKORO_TTS_URL = get_optional_env(
 AGENTVOICEVOX_BASE_URL = get_optional_env(
     "SA01_VOICEVOX_URL", "", "AgentVoiceVox base URL"
 )
+# SearxNG meta-search (web_search, TOOLS-001 §5.10). Empty when unset —
+# require_service_url() refuses; no localhost default.
+SEARXNG_URL = get_optional_env(
+    "SEARXNG_URL",
+    get_optional_env("SA01_SEARXNG_URL", "", "SearxNG meta-search base URL"),
+    "SearxNG meta-search base URL",
+)
 
 # LLM Service
 LLM_API_URL = get_optional_env("SA01_LLM_API_URL", "", "Internal LLM chat endpoint URL")

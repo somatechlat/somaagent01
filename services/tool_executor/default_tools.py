@@ -46,6 +46,8 @@ DEFAULT_AGENT_TOOLS: List[str] = [
     # Document RAG (TOOLS-001 §5.9) — MemoryGateway → SomaBrain only.
     "document_index",
     "document_query",
+    # Web search (TOOLS-001 §5.10) — configured SearxNG; egress-gated.
+    "web_search",
 ]
 
 # Memory tools that stay available (not disableable by capsule policy).
@@ -87,6 +89,7 @@ DEFAULT_TOOL_DESCRIPTIONS: Dict[str, str] = {
     "job_status": "Report the status of a durable job by workflow id: Temporal execution status plus the workflow's progress query.",
     "document_index": "Index extracted document text (or an attachment) into SomaBrain as semantic chunks. Approval-gated. Uses the memory gateway only.",
     "document_query": "Ask a question about a document already indexed into SomaBrain. Optional attachment_id scopes to one document. Uses memory recall only.",
+    "web_search": "Search the web via the operator-configured SearxNG instance. Returns top-k title/url/content digests. Approval-gated; requires SEARXNG_URL and egress.",
 }
 
 

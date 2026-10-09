@@ -44,7 +44,9 @@ def _tool_setting(name: str, default):
 
 # Tools that reach the network. Gated by IQ egress_allowed: an operator who
 # turns autonomy down must not get outbound calls from an auto-executed tool.
-_NETWORK_TOOLS = frozenset({"http_fetch", "document_ingest", "canvas_append"})
+_NETWORK_TOOLS = frozenset(
+    {"http_fetch", "document_ingest", "canvas_append", "web_search"}
+)
 
 # Cap the model->tool->model loop so a runaway tool chain cannot pin a turn
 # forever. Each of these is a declared setting, not a literal.

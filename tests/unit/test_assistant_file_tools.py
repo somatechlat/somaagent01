@@ -44,13 +44,23 @@ def test_registered_in_available_tools_with_clear_schemas():
         "file_search",
         "file_write",
         "file_patch",
+        "document_index",
+        "document_query",
+        "web_search",
     }
-    tiers = {"file_list": 1, "file_search": 1, "file_write": 2, "file_patch": 2}
+    tiers = {
+        "file_list": 1,
+        "file_search": 1,
+        "file_write": 2,
+        "file_patch": 2,
+        "web_search": 2,
+    }
     required = {
         "file_list": [],
         "file_search": ["query"],
         "file_write": ["path", "content"],
         "file_patch": ["path", "old", "new"],
+        "web_search": ["query"],
     }
     for name, tier in tiers.items():
         tool = AVAILABLE_TOOLS.get(name)

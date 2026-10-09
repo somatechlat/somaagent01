@@ -191,6 +191,9 @@ Operator scenario: *“INSTALL all libraries for MATH plots”* must **not** be 
 5. `code_execute` may use the venv path returned by `packages_ensure`; it must not install packages itself.  
 6. Network egress for PyPI is an **egress allowlist** entry; disabled → ensure fails honestly.
 
+**OS packages (container only) — `os_packages_ensure`:**  
+Same rails as Python packages. Installs **allowlisted** apt packages **inside the agent L0 container** via Temporal (`argv[]`, never shell strings). Profiles e.g. `media` (ffmpeg, imagemagick), `docs` (poppler-utils, unzip). Always approval. **Never** mutates the user host OS or chat process. Operator extends the OS allowlist or bakes the agent image. Host `apt` / docker.sock / free shell = DENY.
+
 **Example user → tool path (target UX)**
 
 ```
@@ -209,7 +212,7 @@ Agent: chart_render or code_execute using that venv → PNG in workroot → file
 |---|---|---|---|
 | `shell_exec` | 3 | DENY default | `{binary, argv[]}` only; container; opt-in capsule; **no** `sh -c` strings |
 | `package_install` (legacy name) | 3 | superseded by `packages_ensure` | Do not implement free-form |
-| `web_search` | 2 | PLANNED | SearxNG/DDG via egress allowlist |
+| `web_search` | 2 | **LIVE** | SearxNG via `SEARXNG_URL` settings chain; egress IQ; no localhost default |
 | `browser_use` | 2–3 | PLANNED gated | Playwright in isolated container; canvas panel; not host Chrome |
 | `computer_use` / remote connector | 3 | DENY | Separate operator profile only |
 | `call_subordinate` | 2 | PLANNED | Capsule-to-capsule via existing delegation; same choke |

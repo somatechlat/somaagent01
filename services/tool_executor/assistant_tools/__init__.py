@@ -20,6 +20,10 @@ from services.tool_executor.assistant_tools.file_list import FileListTool
 from services.tool_executor.assistant_tools.file_patch import FilePatchTool
 from services.tool_executor.assistant_tools.file_search import FileSearchTool
 from services.tool_executor.assistant_tools.file_write import FileWriteTool
+from services.tool_executor.assistant_tools.web_search import (
+    WEB_SEARCH_ASSISTANT_TOOLS,
+    WebSearchTool,
+)
 
 FILE_ASSISTANT_TOOLS: List[SomaAssistantTool] = [
     FileListTool(),
@@ -28,6 +32,8 @@ FILE_ASSISTANT_TOOLS: List[SomaAssistantTool] = [
     FilePatchTool(),
     # Document RAG (TOOLS-001 §5.9) — T-1 MemoryGateway only.
     *DOCUMENT_ASSISTANT_TOOLS,
+    # Web search (TOOLS-001 §5.10) — configured SearxNG only.
+    *WEB_SEARCH_ASSISTANT_TOOLS,
 ]
 
 ASSISTANT_TOOL_NAMES: Tuple[str, ...] = tuple(tool.name for tool in FILE_ASSISTANT_TOOLS)
@@ -44,4 +50,6 @@ __all__ = [
     "FileWriteTool",
     "SomaAssistantTool",
     "ToolContext",
+    "WEB_SEARCH_ASSISTANT_TOOLS",
+    "WebSearchTool",
 ]
