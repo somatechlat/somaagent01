@@ -44,7 +44,9 @@ def _tool_setting(name: str, default):
 
 # Tools that reach the network. Gated by IQ egress_allowed: an operator who
 # turns autonomy down must not get outbound calls from an auto-executed tool.
-# packages_ensure reaches PyPI from the worker (TOOLS-001 §5.4 hard rule 6).
+# packages_ensure reaches PyPI from the worker (TOOLS-001 §5.4 hard rule 6);
+# os_packages_ensure reaches the configured apt sources inside the container
+# (TOOLS-001 §5.4.1).
 _NETWORK_TOOLS = frozenset(
     {
         "http_fetch",
@@ -52,6 +54,7 @@ _NETWORK_TOOLS = frozenset(
         "canvas_append",
         "web_search",
         "packages_ensure",
+        "os_packages_ensure",
     }
 )
 

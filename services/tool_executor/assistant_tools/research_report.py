@@ -171,6 +171,9 @@ class JobStatusTool(SomaAssistantTool):
         if not workflow_id:
             raise tool_error("workflow_id is required")
 
+        from services.conversation_worker.os_package_ensure_workflow import (
+            OsPackageEnsureWorkflow,
+        )
         from services.conversation_worker.package_ensure_workflow import (
             PackageEnsureWorkflow,
         )
@@ -191,7 +194,7 @@ class JobStatusTool(SomaAssistantTool):
         # Progress query is workflow-specific: try the known durable workflows
         # in turn. Wrong type, a closed run, or an unreachable worker simply
         # leaves progress None — status above is still reported.
-        for wf in (ResearchReportWorkflow, PackageEnsureWorkflow):
+        for wf in (ResearchReportWorkflow, PackageEnsureWorkflow, OsPackageEnsureWorkflow):
             try:
                 progress = await handle.query(wf.progress)
                 break

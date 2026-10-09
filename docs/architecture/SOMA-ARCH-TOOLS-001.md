@@ -33,6 +33,7 @@
 | 1.2.5 | 2026-10-09 | SomaTech Engineering | Implement `document_index` + `document_query` on MemoryGateway (A0 document_query journey without FAISS/SFM). Capsule default policy approval. 10 unit tests green. |
 | 1.3.0 | 2026-10-09 | SomaTech Engineering | §5.10 Internet/browser/search requirement: A0 SearxNG+Playwright audit; recommended OSS stack (SearxNG, trafilatura, Playwright container); generic Capability/MCP extension model; Capsule profiles. Host browser DENY. |
 | 1.4.0 | 2026-10-09 | SomaTech Engineering | §5.4 Package ensure LIVE: `packages_ensure` (tier 3, approval) + `packages_list` (tier 1 auto) on the default kit; operator profile allowlist (`package_profiles.py`); `PackageEnsureWorkflow` create-venv → pip install → import verify registered on the conversation queue; Capsule seed approval + IQ egress gate; unit tests green. |
+| 1.4.1 | 2026-10-09 | SomaTech Engineering | §5.4.1 OS packages LIVE: `os_packages_ensure` (tier 3, approval, default kit) installs allowlisted apt names (`media`/`docs` profiles in `os_package_profiles.py`) **inside the agent container only** via `OsPackageEnsureWorkflow` — argv-list `apt-get install -y --no-install-recommends`, `check_allowlist` re-gate, `which <bin>` verify; no host OS, no docker.sock, no shell strings, no mirrors in app code. Capsule seed approval + IQ egress gate; unit tests green. |
 
 ---
 
@@ -192,8 +193,24 @@ Operator scenario: *“INSTALL all libraries for MATH plots”* must **not** be 
 5. `code_execute` may use the venv path returned by `packages_ensure`; it must not install packages itself.  
 6. Network egress for PyPI is an **egress allowlist** entry; disabled → ensure fails honestly.
 
-**OS packages (container only) — `os_packages_ensure`:**  
-Same rails as Python packages. Installs **allowlisted** apt packages **inside the agent L0 container** via Temporal (`argv[]`, never shell strings). Profiles e.g. `media` (ffmpeg, imagemagick), `docs` (poppler-utils, unzip). Always approval. **Never** mutates the user host OS or chat process. Operator extends the OS allowlist or bakes the agent image. Host `apt` / docker.sock / free shell = DENY.
+#### 5.4.1 OS packages (container only) — `os_packages_ensure` — LIVE, tier 3
+
+Same rails as Python packages. Installs **allowlisted** apt packages **inside the agent L0 container** only — never the user host OS, never the chat process, never docker.sock, never a free `sh -c` string. Host `apt` / docker.sock / free shell = **DENY**.
+
+| Tool | Tier | Durable | Behaviour |
+|---|---|---|---|
+| `os_packages_ensure` | 3 | **Temporal** OsPackageEnsureWorkflow | `check_allowlist` → `apt-get install -y --no-install-recommends <names>` (subprocess **argv list**, no shell) → `which <bin>` verify, all inside the agent container. Approval mandatory. |
+
+**Profiles** (curated in `services/tool_executor/os_package_profiles.py` — structured Debian names only, no mirrors/URLs/pins in app code):
+
+| Profile id | Members |
+|---|---|
+| `media` | ffmpeg, imagemagick |
+| `docs` | poppler-utils, unzip |
+
+**Status: LIVE** — tool + workflow + worker activities + Capsule seed approval + unit tests land in the same change (rule 4). Container-only: the side effect is the agent container's package set; apt sources/mirrors come from the operator-baked image, never from application code.
+
+**Hard rules:** identical to §5.4 — structured `{profile|packages[]}` only; unknown package → fail-closed with explicit deny reason (checked again in the workflow's `check_allowlist_activity`, not just at the tool); long apt runs only under `OsPackageEnsureWorkflow` (Temporal); workflow history carries **package names only**; IQ egress gate applies (`_NETWORK_TOOLS`). **Operator extends the OS allowlist** in `os_package_profiles.py` or bakes the agent image — the model never adds names.
 
 **Example user → tool path (target UX)**
 
@@ -528,6 +545,7 @@ Profile = Capsule body template (tool_policy + IQ + capability set). Standalone 
 | `ArtifactCreateWorkflow` | Create/edit office/markdown/PDF artifacts in workroot | PLANNED §5.3 |
 | `FileBuildWorkflow` | Multi-step document build / merge | PLANNED |
 | `PackageEnsureWorkflow` | Install allowlisted profile into workroot venv | **LIVE** (registered) §5.4 |
+| `OsPackageEnsureWorkflow` | Allowlisted apt install inside the agent container | **LIVE** (registered) §5.4.1 |
 | `DocumentPipelineWorkflow` | OCR/convert/bulk | PLANNED |
 | Existing | Sleep, JobAdvance, OutboxReplay, Conversation, A2A | LIVE |
 
@@ -544,7 +562,7 @@ Profile = Capsule body template (tool_policy + IQ + capability set). Standalone 
 ```json
 {
   "auto_execute": ["timestamp", "memory_recall", "memory_save", "memory_forget", "memory_proximity", "memory_get", "file_list", "file_read", "file_search", "job_status", "packages_list", "artifact_read"],
-  "approval_required": ["file_write", "file_patch", "document_query", "research_report", "file_build", "artifact_create", "artifact_edit", "chart_render", "packages_ensure", "code_execute", "http_fetch", "document_ingest", "web_search"],
+  "approval_required": ["file_write", "file_patch", "document_query", "research_report", "file_build", "artifact_create", "artifact_edit", "chart_render", "packages_ensure", "os_packages_ensure", "code_execute", "http_fetch", "document_ingest", "web_search"],
   "denied": ["shell_exec", "computer_use", "package_install_freeform"]
 }
 ```

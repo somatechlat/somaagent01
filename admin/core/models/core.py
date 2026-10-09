@@ -405,6 +405,8 @@ class Capsule(models.Model):
                     "web_search",
                     # Installs into the work venv under Temporal (§5.4).
                     "packages_ensure",
+                    # apt in the agent container under Temporal (§5.4.1).
+                    "os_packages_ensure",
                     # Destructive erasure — not part of the auto memory kit.
                     "memory_forget",
                 ],

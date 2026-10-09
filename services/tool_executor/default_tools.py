@@ -48,6 +48,9 @@ DEFAULT_AGENT_TOOLS: List[str] = [
     "document_query",
     # Web search (TOOLS-001 §5.10) — configured SearxNG; egress-gated.
     "web_search",
+    # OS packages (TOOLS-001 §5.4.1) — allowlisted apt inside the agent
+    # container via OsPackageEnsureWorkflow; never host OS, never free shell.
+    "os_packages_ensure",
     # Package ensure (TOOLS-001 §5.4) — allowlist profiles; install runs in
     # PackageEnsureWorkflow (Temporal), never free pip in the chat loop.
     "packages_ensure",
@@ -96,6 +99,7 @@ DEFAULT_TOOL_DESCRIPTIONS: Dict[str, str] = {
     "web_search": "Search the web via the operator-configured SearxNG instance. Returns top-k title/url/content digests. Approval-gated; requires SEARXNG_URL and egress.",
     "packages_ensure": "Start a durable Temporal job that installs operator-allowlisted Python packages into the agent work virtualenv (profiles: scientific, office, data, vision; or packages[] from the allowlist only). Approval-gated; returns workflow id — poll with job_status. Unknown packages fail closed; never free-form pip.",
     "packages_list": "List the operator package profiles/allowlist and the agent work virtualenv path (read-only). Use after packages_ensure / job_status.",
+    "os_packages_ensure": "Start a durable Temporal job that installs operator-allowlisted OS packages (apt) inside the agent container (profiles: media = ffmpeg, imagemagick; docs = poppler-utils, unzip; or packages[] from the small OS allowlist only). Approval-gated; returns workflow id — poll with job_status. Container-only — never the host OS, no docker.sock, no shell strings; unknown packages fail closed.",
 }
 
 
@@ -157,11 +161,14 @@ def select_tools_for_mode(
 
 
 def _register_durable_tools() -> None:
-    """Put the durable-job tools (research_report, job_status) in AVAILABLE_TOOLS.
+    """Put the durable-job tools in AVAILABLE_TOOLS.
 
     W3.3: they live in ``assistant_tools`` but are registered here (not in
     ``tools.py``) so the registration shares one list with the kit they join.
     """
+    from services.tool_executor.assistant_tools.os_packages_ensure import (
+        OsPackagesEnsureTool,
+    )
     from services.tool_executor.assistant_tools.research_report import (
         JobStatusTool,
         ResearchReportTool,
@@ -170,6 +177,7 @@ def _register_durable_tools() -> None:
 
     AVAILABLE_TOOLS.setdefault(ResearchReportTool.name, ResearchReportTool())
     AVAILABLE_TOOLS.setdefault(JobStatusTool.name, JobStatusTool())
+    AVAILABLE_TOOLS.setdefault(OsPackagesEnsureTool.name, OsPackagesEnsureTool())
 
 
 def default_tool_definitions() -> List[Dict[str, Any]]:
