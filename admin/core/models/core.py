@@ -397,6 +397,8 @@ class Capsule(models.Model):
                     "file_patch",
                     "http_fetch",
                     "document_ingest",
+                    "document_index",
+                    "document_query",
                     "canvas_append",
                     "research_report",
                 ],

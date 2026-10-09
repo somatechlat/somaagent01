@@ -6,7 +6,7 @@
 |---|---|
 | Document Title | Agent tool framework — standardized implementation for assistant file/OS tools |
 | Document Identifier | SOMA-ARCH-TOOLS-001 |
-| Version | 1.2.4 |
+| Version | 1.2.5 |
 | Date | 2026-10-09 |
 | Status | Draft |
 | Author | SomaTech Engineering |
@@ -30,6 +30,7 @@
 | 1.2.2 | 2026-10-09 | SomaTech Engineering | Fix T-1 violation in catalog prose: `document_query` and all memory/RAG I/O go **MemoryGateway → SomaBrain** only — never direct SFM from the agent (SOMA-STD-TRIAD-001 T-1). |
 | 1.2.3 | 2026-10-09 | SomaTech Engineering | §5.9 Document RAG redesign grounded in live `memory_gateway.py` + `somabrain_adapter.py`: index via `remember_text`, query via `recall`, no second client. Ingest currently extracts only; index + document_query still OPEN. |
 | 1.2.4 | 2026-10-09 | SomaTech Engineering | §5.9.1–5.9.6 user journey: filesv2 bytes vs Brain chunks; extract full text for same-turn answer; index for durable recall; document_query; honesty rules. Design only. |
+| 1.2.5 | 2026-10-09 | SomaTech Engineering | Implement `document_index` + `document_query` on MemoryGateway (A0 document_query journey without FAISS/SFM). Capsule default policy approval. 10 unit tests green. |
 
 ---
 
@@ -155,7 +156,8 @@ Long multi-step creation **must** be Temporal (invariant 7). Chat tool starts wo
 | `artifact_read` | 1 | no | same | PathGuard; truncated |
 | `chart_render` | 2 | optional | **png, svg, pdf** plot | Runs in Package Ensure venv (matplotlib etc.); output PathGuard |
 | `file_build` | 2–3 | **Temporal** FileBuildWorkflow | multi-step assemble | Outline → sections → merge → filesv2 |
-| `document_query` | 2 | optional | — | **T-1 only:** `MemoryGateway.recall` after chunks are written by ingest via `MemoryGateway.remember_text`. Never an SFM client. See §5.9. |
+| `document_index` | 2 | no | **LIVE** — chunk → `remember_text` (T-1). A0 FAISS replaced by Brain. |
+| `document_query` | 2 | no | **LIVE** — `recall` + optional `attachment_id` filter. Never SFM. See §5.9. |
 
 **Honesty:** PLANNED tools are **not registered** until code+tests exist. Unlisted = approval if someone adds them without listing.
 
@@ -233,7 +235,7 @@ User-facing tools = every `agent.system.tool.*.md` loaded by `extensions/python/
 | 3 | `input` | `plugins/_code_execution/tools/input.py` | Keyboard into running terminal | `code_input` | PLANNED only if shell_exec opt-in |
 | 4 | `text_editor` | `plugins/_text_editor` | read/write/patch (+ freshness, multi patch modes) | `file_read/write/patch` | **LIVE** PathGuard |
 | 5 | `office_artifact` | `plugins/_office` | create/open/read/edit **odt/ods/odp/docx/xlsx/pptx** + LibreOffice validate | `artifact_*` | PLANNED §5.3 Temporal |
-| 6 | `document_query` | `plugins/_document_query` | RAG over uploaded docs | `document_query` | PLANNED §5.9 — chunks in Brain via gateway recall only |
+| 6 | `document_query` | `plugins/_document_query` | RAG over uploaded docs | `document_query` | **LIVE** §5.9 — MemoryGateway.recall; A0 FAISS not cloned |
 | 7 | `memory` + `behaviour` | `plugins/_memory` | save/load/forget/delete + behaviour rules | `memory_*` + Capsule persona | **LIVE** T-1 |
 | 8 | `goal` | `plugins/_goal` | create/update/complete per-chat goal | `goal` | PLANNED |
 | 9 | `browser` | `plugins/_browser` | navigate/click/type/screenshot/script in isolated browser | `browser_use` | PLANNED gated (container) |
@@ -317,8 +319,8 @@ run:
 |---|---|
 | MemoryGateway remember/recall/forget | LIVE |
 | `document_ingest` extract text | LIVE — **does not index** (returns text only) |
-| Chunk → `remember_text` index | **OPEN** |
-| `document_query` tool | **OPEN** |
+| Chunk → `remember_text` index | **LIVE** `document_index` |
+| `document_query` tool | **LIVE** (approval tier) |
 | Temporal DocumentIngestWorkflow | PLANNED |
 
 #### 5.9.1 Two homes for a document (never collapse)
@@ -576,4 +578,4 @@ Absent OPA/SpiceDB: fail per UnifiedGate semantics (absent engine = that layer a
 
 ---
 
-*End of SOMA-ARCH-TOOLS-001 v1.2.4*
+*End of SOMA-ARCH-TOOLS-001 v1.2.5*

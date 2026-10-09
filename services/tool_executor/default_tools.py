@@ -43,6 +43,9 @@ DEFAULT_AGENT_TOOLS: List[str] = [
     # starts a Temporal workflow; job_status reports a workflow id.
     "research_report",
     "job_status",
+    # Document RAG (TOOLS-001 §5.9) — MemoryGateway → SomaBrain only.
+    "document_index",
+    "document_query",
 ]
 
 # Tools that MUST NEVER be disabled by capsule policy.
@@ -75,6 +78,8 @@ DEFAULT_TOOL_DESCRIPTIONS: Dict[str, str] = {
     "file_patch": "Replace one exact text fragment in a work-directory file; fails unless it occurs exactly once. Approval-gated.",
     "research_report": "Start a durable research-report job on Temporal for a topic; returns the workflow id immediately (approval-gated). Poll with job_status.",
     "job_status": "Report the status of a durable job by workflow id: Temporal execution status plus the workflow's progress query.",
+    "document_index": "Index extracted document text (or an attachment) into SomaBrain as semantic chunks. Approval-gated. Uses the memory gateway only.",
+    "document_query": "Ask a question about a document already indexed into SomaBrain. Optional attachment_id scopes to one document. Uses memory recall only.",
 }
 
 
