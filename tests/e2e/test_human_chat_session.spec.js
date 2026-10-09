@@ -62,6 +62,15 @@ test.describe('A person uses the agent', () => {
       timeout: 30000,
     });
 
+    // Wait for live WS before typing — otherwise send fails with "Not connected".
+    await page.waitForFunction(
+      () => {
+        const c = document.querySelector('soma-chat');
+        return Boolean(c && c._wsConnected && c._selectedAgentId);
+      },
+      { timeout: 25000 }
+    );
+
     const composer = page
       .locator('soma-composer textarea, soma-chat textarea, textarea')
       .first();
