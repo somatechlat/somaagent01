@@ -6,7 +6,7 @@
 |---|---|
 | Document Title | Agent tool framework — standardized implementation for assistant file/OS tools |
 | Document Identifier | SOMA-ARCH-TOOLS-001 |
-| Version | 1.2.1 |
+| Version | 1.2.2 |
 | Date | 2026-10-09 |
 | Status | Draft |
 | Author | SomaTech Engineering |
@@ -27,6 +27,7 @@
 | 1.1.0 | 2026-10-08 | SomaTech Engineering | §11 granular authorization: every tool action is RBAC role floor → OPA → SpiceDB → capsule scope via UnifiedGate; chat path must call the same choke as Kafka. PathGuard + unlisted=approval landed in tree. |
 | 1.2.0 | 2026-10-09 | SomaTech Engineering | Full tool catalog vs Agent Zero inventory (core + plugins). File creation suite (docs/PPT/XLSX/PDF/plots). Package ensure profiles (math/plot stack) with allowlist + Temporal — no free shell pip. Architecture-audit hardening notes. |
 | 1.2.1 | 2026-10-09 | SomaTech Engineering | §5.7 complete 23-tool A0 audit table (every `agent.system.tool.*` + connector remote tools). Explicit Do-not-clone list. Power model: free work inside PathGuard/Temporal/OPA rails. |
+| 1.2.2 | 2026-10-09 | SomaTech Engineering | Fix T-1 violation in catalog prose: `document_query` and all memory/RAG I/O go **MemoryGateway → SomaBrain** only — never direct SFM from the agent (SOMA-STD-TRIAD-001 T-1). |
 
 ---
 
@@ -152,7 +153,7 @@ Long multi-step creation **must** be Temporal (invariant 7). Chat tool starts wo
 | `artifact_read` | 1 | no | same | PathGuard; truncated |
 | `chart_render` | 2 | optional | **png, svg, pdf** plot | Runs in Package Ensure venv (matplotlib etc.); output PathGuard |
 | `file_build` | 2–3 | **Temporal** FileBuildWorkflow | multi-step assemble | Outline → sections → merge → filesv2 |
-| `document_query` | 2 | optional | — | After ingest; chunk+embed via SFM (not local FAISS) |
+| `document_query` | 2 | optional | — | After ingest; **query only via MemoryGateway → SomaBrain** (T-1). Never an SFM client in the agent. |
 
 **Honesty:** PLANNED tools are **not registered** until code+tests exist. Unlisted = approval if someone adds them without listing.
 
@@ -230,7 +231,7 @@ User-facing tools = every `agent.system.tool.*.md` loaded by `extensions/python/
 | 3 | `input` | `plugins/_code_execution/tools/input.py` | Keyboard into running terminal | `code_input` | PLANNED only if shell_exec opt-in |
 | 4 | `text_editor` | `plugins/_text_editor` | read/write/patch (+ freshness, multi patch modes) | `file_read/write/patch` | **LIVE** PathGuard |
 | 5 | `office_artifact` | `plugins/_office` | create/open/read/edit **odt/ods/odp/docx/xlsx/pptx** + LibreOffice validate | `artifact_*` | PLANNED §5.3 Temporal |
-| 6 | `document_query` | `plugins/_document_query` | RAG over uploaded docs | `document_query` | PLANNED after SFM ingest |
+| 6 | `document_query` | `plugins/_document_query` | RAG over uploaded docs | `document_query` | PLANNED after ingest → **MemoryGateway → SomaBrain** (T-1; never direct SFM) |
 | 7 | `memory` + `behaviour` | `plugins/_memory` | save/load/forget/delete + behaviour rules | `memory_*` + Capsule persona | **LIVE** T-1 |
 | 8 | `goal` | `plugins/_goal` | create/update/complete per-chat goal | `goal` | PLANNED |
 | 9 | `browser` | `plugins/_browser` | navigate/click/type/screenshot/script in isolated browser | `browser_use` | PLANNED gated (container) |
@@ -422,4 +423,4 @@ Absent OPA/SpiceDB: fail per UnifiedGate semantics (absent engine = that layer a
 
 ---
 
-*End of SOMA-ARCH-TOOLS-001 v1.2.1*
+*End of SOMA-ARCH-TOOLS-001 v1.2.2*
