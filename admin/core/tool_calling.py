@@ -101,6 +101,10 @@ class ToolPolicy:
             return "auto_execute"
         if tool_name in self.auto_execute:
             return "auto_execute"
+        # Explicit product path: memory_forget with a query= (multi-row erase
+        # for "delete my name") auto-runs only when the model supplies a query.
+        # Bare coord forget stays approval_required. decide_and_authorize_tool
+        # inspects args for this; bare ToolPolicy.decision stays conservative.
         # Unlisted and approval_required both require a human (or IQ floor
         # that later moves them). Fail-closed default for non-memory tools.
         return "approval_required"
@@ -256,6 +260,16 @@ async def decide_and_authorize_tool(
         decision = resolve_tool_policy(capsule, iq).decision(tool_name)
         if decision == "denied":
             return "denied"
+
+        # Product path for explicit multi-row erasure ("delete my name"):
+        # memory_forget with a non-empty query= auto-runs. Bare coord forget
+        # stays approval_required (single-row, accidental free-fire risk).
+        if decision == "approval_required" and tool_name == "memory_forget":
+            q = ""
+            if isinstance(args, dict):
+                q = str(args.get("query") or args.get("text") or args.get("match") or "").strip()
+            if len(q) >= 3:
+                decision = "auto_execute"
 
         if tool_name in _NETWORK_TOOLS and not egress_permitted(iq):
             return "denied"

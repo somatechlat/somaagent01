@@ -10,6 +10,7 @@ algorithm: WM/LTM + scoring), not a local fake.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, Dict, List
 
 from services.common.memory_contract import get_memory_setting
@@ -278,36 +279,131 @@ class MemorySaveTool(BaseTool):
 
 
 class MemoryForgetTool(BaseTool):
-    """Delete a memory by coord (erasure primitive).
+    """Delete memories by coord, or all matches for an explicit erase query.
 
-    Destructive. Capsule default is approval_required — not auto_execute.
-    The model must not use this for casual conversation.
+    Single ``coord`` is the precision primitive (approval_required by default).
+    ``query`` is the product path for "delete my name from long-term memory":
+    it recalls matching rows (fact **and** chat echoes like "Your name is Zoe")
+    and forgets every coord whose text contains a distinctive match. One coord
+    is never enough when the same fact was stored as a fact + transcript.
     """
 
     name = "memory_forget"
 
     async def run(self, args: Dict[str, Any]) -> Dict[str, Any]:
         coord = args.get("coord") or args.get("coordinate") or ""
-        if not isinstance(coord, str) or not coord.strip():
-            raise ToolExecutionError("coord is required for memory_forget")
+        query = args.get("query") or args.get("text") or args.get("match") or ""
         tenant_id = _require_tenant(args)
+
+        if isinstance(coord, str) and coord.strip():
+            gateway = _memory_gateway()
+            try:
+                ok = await gateway.forget(coord.strip(), tenant_id)
+            except Exception as exc:  # noqa: BLE001
+                LOGGER.exception("memory_forget failed")
+                raise ToolExecutionError(f"memory_forget failed: {exc}") from exc
+
+            return {
+                "forgotten": bool(ok),
+                "mode": "coord",
+                "coord": coord,
+                "deleted": 1 if ok else 0,
+                "tenant_id": tenant_id,
+                "instruction": (
+                    "Only tell the user a fact was deleted if THEY explicitly asked "
+                    "to erase this memory. Do not claim names or preferences were "
+                    "removed after ordinary chat. If forgotten is false, the memory "
+                    "was not deleted — do not pretend otherwise. If the same fact "
+                    "also lives in chat-echo rows, use query= mode to erase all copies."
+                ),
+            }
+
+        probe = str(query).strip()
+        if not probe:
+            raise ToolExecutionError(
+                "memory_forget requires coord or query "
+                "(query matches fact rows AND chat echoes of that fact)"
+            )
+
+        # Distinctive tokens the model must have pulled from the user request
+        # or a prior recall — not the generic word "name" alone.
+        tokens = [t for t in re.split(r"[^a-z0-9]+", probe.lower()) if len(t) >= 3]
+        stop = {
+            "the",
+            "and",
+            "for",
+            "you",
+            "your",
+            "memory",
+            "memories",
+            "from",
+            "long",
+            "term",
+            "please",
+            "delete",
+            "remove",
+            "forget",
+            "erase",
+            "name",
+            "about",
+            "that",
+            "this",
+            "with",
+            "all",
+            "any",
+        }
+        distinctive = [t for t in tokens if t not in stop]
+        if not distinctive:
+            # Fall back to full probe if it is already distinctive (e.g. a name).
+            distinctive = [probe.lower()] if len(probe) >= 3 else []
 
         gateway = _memory_gateway()
         try:
-            ok = await gateway.forget(coord.strip(), tenant_id)
+            hits = await gateway.recall(probe, 50, tenant_id)
         except Exception as exc:  # noqa: BLE001
-            LOGGER.exception("memory_forget failed")
-            raise ToolExecutionError(f"memory_forget failed: {exc}") from exc
+            LOGGER.exception("memory_forget query recall failed")
+            raise ToolExecutionError(f"memory_forget query failed: {exc}") from exc
+
+        deleted_coords: List[str] = []
+        failed: List[str] = []
+        matched_preview: List[str] = []
+        for h in hits or []:
+            text = str(getattr(h, "text", "") or "")
+            low = text.lower()
+            if distinctive and not any(t in low for t in distinctive):
+                continue
+            # Require a real content hit, not a bare "?" or empty stub.
+            if len(text.strip()) < 4:
+                continue
+            c = str(getattr(h, "coord", "") or "").strip()
+            if not c or c in deleted_coords:
+                continue
+            try:
+                ok = await gateway.forget(c, tenant_id)
+            except Exception as exc:  # noqa: BLE001
+                failed.append(f"{c}: {exc}")
+                continue
+            if ok:
+                deleted_coords.append(c)
+                if len(matched_preview) < 5:
+                    matched_preview.append(text[:160].replace("\n", " "))
+            else:
+                failed.append(f"{c}: not deleted")
 
         return {
-            "forgotten": bool(ok),
-            "coord": coord,
+            "forgotten": bool(deleted_coords),
+            "mode": "query",
+            "query": probe,
+            "deleted": len(deleted_coords),
+            "failed": len(failed),
+            "coords": deleted_coords[:25],
+            "matched": matched_preview,
             "tenant_id": tenant_id,
             "instruction": (
-                "Only tell the user a fact was deleted if THEY explicitly asked "
-                "to erase this memory. Do not claim names or preferences were "
-                "removed after ordinary chat. If forgotten is false, the memory "
-                "was not deleted — do not pretend otherwise."
+                f"Erased {len(deleted_coords)} matching memor(ies) for this explicit "
+                "user request. Tell the user it is deleted only if deleted>=1. "
+                "If deleted is 0, the fact was not found or not deleted — say so. "
+                "Do not invent a second erase without another user request."
             ),
         }
 
@@ -315,10 +411,22 @@ class MemoryForgetTool(BaseTool):
         return {
             "type": "object",
             "properties": {
-                "coord": {"type": "string", "description": "Memory coordinate string"},
+                "coord": {
+                    "type": "string",
+                    "description": "Exact memory coordinate to delete (one row).",
+                },
+                "query": {
+                    "type": "string",
+                    "description": (
+                        "When the user explicitly asks to erase a fact (e.g. "
+                        "'delete my name'), pass a distinctive query such as the "
+                        "stored value 'Zoe' or 'name is Zoe'. Deletes every matching "
+                        "fact and chat-echo row."
+                    ),
+                },
                 "tenant_id": {"type": "string"},
             },
-            "required": ["coord", "tenant_id"],
+            "required": ["tenant_id"],
             "additionalProperties": True,
         }
 

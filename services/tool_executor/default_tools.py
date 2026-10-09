@@ -65,12 +65,11 @@ DEFAULT_TOOL_DESCRIPTIONS: Dict[str, str] = {
     "memory_recall": "Search SomaBrain long-term memory. Use it only when the memory already given to you is not enough to answer. If the answer is already in that memory, answer directly - do not call this.",
     "memory_save": "Persist an important fact or episode to SomaBrain memory (works for all future turns). Use for user preferences, commitments, and discoveries.",
     "memory_forget": (
-        "Delete ONE stored memory by its exact coord (privacy erasure). "
-        "Call ONLY when the user explicitly asks to delete/erase/forget a "
-        "specific memory they know exists. Never call because the user "
-        "mentioned their name, asked a question, or said hello. "
-        "Never claim a fact was removed unless this tool returns forgotten=true "
-        "and the user requested erasure."
+        "Erase stored memory when the USER explicitly asks to delete/forget a fact. "
+        "Preferred: pass query with a distinctive value (e.g. 'Zoe' or 'name is Zoe') "
+        "so ALL copies including chat echoes are removed. Or pass a single coord. "
+        "Never call on ordinary questions. Only tell the user it is gone if "
+        "forgotten=true / deleted>=1."
     ),
     "memory_proximity": "Find memories nearest to a query or coordinate (semantic proximity via SomaBrain scoring).",
     "memory_get": "Fetch one memory by exact coordinate.",

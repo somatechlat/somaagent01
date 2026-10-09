@@ -181,16 +181,29 @@ async def test_memory_kit_auto_executes_without_listing():
         await decide_and_authorize_tool(_subject(), capsule, "memory_save", {}, _iq())
         == "auto_execute"
     )
-    # memory_forget is NOT in NON_DISABLEABLE — unlisted → approval.
+    # memory_forget is NOT in NON_DISABLEABLE — unlisted bare-coord → approval.
     # Prevents the model from free-firing erasure and claiming "name removed".
     assert (
         await decide_and_authorize_tool(_subject(), capsule, "memory_forget", {}, _iq())
         == "approval_required"
     )
+    # Explicit query= multi-row erase ("delete my name") auto-runs — product path.
+    assert (
+        await decide_and_authorize_tool(
+            _subject(), capsule, "memory_forget", {"query": "name is Zoe"}, _iq()
+        )
+        == "auto_execute"
+    )
     # Denied still wins
     capsule_deny = _capsule(auto=(), denied=("memory_forget",), capabilities=["memory_forget"])
     assert (
         await decide_and_authorize_tool(_subject(), capsule_deny, "memory_forget", {}, _iq())
+        == "denied"
+    )
+    assert (
+        await decide_and_authorize_tool(
+            _subject(), capsule_deny, "memory_forget", {"query": "Zoe"}, _iq()
+        )
         == "denied"
     )
 
