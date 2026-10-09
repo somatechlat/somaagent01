@@ -56,7 +56,7 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-UI-NAV-001 | docs/design/SOMA-UI-NAV-001.md | Agent Soma — complete UI navigation map | 1.0.0 | Draft | — | MISSING | Non-compliant |
 | SOMA-UI-NAV-AUDIT-001 | docs/design/SOMA-UI-NAV-AUDIT-001.md | Navigation audit — every mock vs `main.ts` routes | 1.0.0 | Draft | — | MISSING | Non-compliant |
 | SOMA-UI-PARITY-002 | docs/design/SOMA-UI-PARITY-002.md | PLAN — UI/UX Feature Parity with Agent Zero (clone & better) | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
-| SOMA-UI-SCREENS-001 | docs/design/SOMA-UI-SCREENS-001.md | Implemented screens, agent flows, and mockup sync | 1.0.0 | Draft | — | 2027-01-08 | Compliant |
+| SOMA-UI-SCREENS-001 | docs/design/SOMA-UI-SCREENS-001.md | Implemented screens, agent flows, and mockup sync | 1.1.0 | Draft | — | 2027-01-08 | Compliant |
 | SOMA-UI-SKINS-001 | docs/design/SOMA-UI-SKINS-001.md | Capsule Skins — Theming Framework Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-UI-SPEC-001 | docs/design/SOMA-UI-SPEC-001.md | Soma Agent Definitive UI/UX Specification | 2.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-UI-SPEC-002 | docs/design/SOMA-UI-SPEC-002.md | Soma Agent UI/UX Complete Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
