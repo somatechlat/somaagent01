@@ -1079,6 +1079,11 @@ class V3ChatOrchestrator:
                 f"{model.provider}/{model.name}. "
                 f"If asked which model you are, answer with that exact name. "
                 f"Do not invent a different model family or parameter count."
+                f"\n[Memory honesty] Never say a memory, name, or fact was "
+                f"deleted/removed unless the user explicitly asked to erase it "
+                f"AND a memory_forget tool result returned forgotten=true. "
+                f"If memory_forget is denied, not called, or forgotten=false, "
+                f"the memory still exists — do not claim otherwise."
             )
             context = context.model_copy(update={"system": (context.system or "") + identity_line})
         except Exception:

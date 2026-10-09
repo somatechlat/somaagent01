@@ -516,6 +516,14 @@ async def run_tool_loop(
                     # Refused (or nobody to ask). A denied tool is a terminal
                     # tool result, not a reason to loop.
                     error = get_message(ErrorCode.TOOL_EXECUTION_DENIED)
+                    if name == "memory_forget":
+                        # The model must not invent erasure after a deny.
+                        error = (
+                            f"{error} — memory_forget was NOT executed. "
+                            "The memory still exists. Do not tell the user "
+                            "that any name, fact, or preference was removed "
+                            "from memory."
+                        )
                     yield ToolStreamEvent(
                         type=TOOL_EVENT_DONE,
                         payload={
