@@ -154,6 +154,22 @@ ENTITY_SPECS: Dict[str, Dict[str, Dict[str, Any]]] = {
         "sleep_interval": {"type": "integer", "editable": True, "default": 21600},
         "consolidation_enabled": {"type": "boolean", "editable": True, "default": True},
     },
+    # Meta-search for web_search (TOOLS-001 §5.10). Empty URL = search off
+    # (fail-closed). Operator sets the stack-network SearxNG base; no default host.
+    "search": {
+        "url": {
+            "type": "url",
+            "editable": True,
+            "default": "",
+            "setting": "SEARXNG_URL",
+        },
+        "enabled": {
+            "type": "boolean",
+            "editable": True,
+            "default": True,
+            "setting": "WEB_SEARCH_ENABLED",
+        },
+    },
     "memory": {
         "url": {
             "type": "url",
@@ -500,6 +516,7 @@ ENTITY_META: Dict[str, Dict[str, str]] = {
     "temporal": {"name": "Temporal", "icon": "schedule"},
     "keycloak": {"name": "Keycloak", "icon": "lock"},
     "somabrain": {"name": "SomaBrain", "icon": "neurology"},
+    "search": {"name": "Web Search", "icon": "search"},
     "memory": {"name": "Memory", "icon": "psychology"},
     "llm": {"name": "LLM Gateway", "icon": "smart_toy"},
     "agent": {"name": "Agent", "icon": "settings_suggest"},

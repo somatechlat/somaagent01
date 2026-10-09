@@ -403,6 +403,7 @@ class Capsule(models.Model):
                     "canvas_append",
                     "research_report",
                     "web_search",
+                    "web_read",
                     # Installs into the work venv under Temporal (§5.4).
                     "packages_ensure",
                     # apt in the agent container under Temporal (§5.4.1).

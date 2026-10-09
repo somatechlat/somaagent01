@@ -48,6 +48,7 @@ DEFAULT_AGENT_TOOLS: List[str] = [
     "document_query",
     # Web search (TOOLS-001 §5.10) — configured SearxNG; egress-gated.
     "web_search",
+    "web_read",
     # OS packages (TOOLS-001 §5.4.1) — allowlisted apt inside the agent
     # container via OsPackageEnsureWorkflow; never host OS, never free shell.
     "os_packages_ensure",
@@ -97,6 +98,7 @@ DEFAULT_TOOL_DESCRIPTIONS: Dict[str, str] = {
     "document_index": "Index extracted document text (or an attachment) into SomaBrain as semantic chunks. Approval-gated. Uses the memory gateway only.",
     "document_query": "Ask a question about a document already indexed into SomaBrain. Optional attachment_id scopes to one document. Uses memory recall only.",
     "web_search": "Search the web via the operator-configured SearxNG instance. Returns top-k title/url/content digests. Approval-gated; requires SEARXNG_URL and egress.",
+    "web_read": "Fetch one public http(s) URL and return extracted plain text (use after web_search). Refuses localhost/private URLs. Approval-gated; requires egress.",
     "packages_ensure": "Start a durable Temporal job that installs operator-allowlisted Python packages into the agent work virtualenv (profiles: scientific, office, data, vision; or packages[] from the allowlist only). Approval-gated; returns workflow id — poll with job_status. Unknown packages fail closed; never free-form pip.",
     "packages_list": "List the operator package profiles/allowlist and the agent work virtualenv path (read-only). Use after packages_ensure / job_status.",
     "os_packages_ensure": "Start a durable Temporal job that installs operator-allowlisted OS packages (apt) inside the agent container (profiles: media = ffmpeg, imagemagick; docs = poppler-utils, unzip; or packages[] from the small OS allowlist only). Approval-gated; returns workflow id — poll with job_status. Container-only — never the host OS, no docker.sock, no shell strings; unknown packages fail closed.",

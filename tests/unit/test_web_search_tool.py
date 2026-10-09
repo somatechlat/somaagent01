@@ -199,6 +199,7 @@ async def test_run_calls_only_configured_base(monkeypatch):
     import services.tool_executor.assistant_tools.web_search as mod
 
     monkeypatch.setattr(mod, "require_searxng_base", lambda: "https://searx.ops")
+    monkeypatch.setattr(mod, "web_search_enabled", lambda: True)
     fake = _FakeAsyncClient(
         {
             "results": [
@@ -213,7 +214,9 @@ async def test_run_calls_only_configured_base(monkeypatch):
     assert out["count"] == 2
     assert out["results"][0]["url"] == "https://a.test"
     assert fake.calls[0]["url"] == "https://searx.ops/search"
-    assert fake.calls[0]["params"] == {"q": "soma agent", "format": "json"}
+    assert fake.calls[0]["params"]["q"] == "soma agent"
+    assert fake.calls[0]["params"]["format"] == "json"
+    assert fake.calls[0]["params"]["engines"] == mod.DEFAULT_ENGINES
 
 
 @pytest.mark.asyncio

@@ -24,7 +24,21 @@ from services.tool_executor.assistant_tools.base import (
 DEFAULT_K = 8
 MAX_K = 20
 DIGEST_MAX_CHARS = 300
-REQUEST_TIMEOUT_S = 10.0
+REQUEST_TIMEOUT_S = 15.0
+# Engine names SearxNG accepts on the query string (not hosts/URLs). Private
+# CAPTCHA engines (DDG/startpage/brave) are left out of the default set.
+DEFAULT_ENGINES = "google,bing,wikipedia,mojeek"
+
+
+def web_search_enabled() -> bool:
+    """Operator switch: Settings · search.enabled (WEB_SEARCH_ENABLED)."""
+    from admin.core.helpers.settings import get_settings
+
+    model = get_settings()
+    raw = getattr(model, "web_search_enabled", True)
+    if isinstance(raw, str):
+        return raw.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(raw)
 
 
 def require_searxng_base() -> str:
@@ -135,6 +149,12 @@ class WebSearchTool(SomaAssistantTool):
             k = DEFAULT_K
         k = max(1, min(k, MAX_K))
 
+        if not web_search_enabled():
+            raise tool_error(
+                "web_search is disabled (WEB_SEARCH_ENABLED / Settings · search "
+                "· enabled). Enable it in administration settings to search."
+            )
+
         base = require_searxng_base()
         # SSRF: only the configured base host. Query params carry the
         # user text; the model never supplies a URL.
@@ -142,7 +162,12 @@ class WebSearchTool(SomaAssistantTool):
         try:
             async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_S) as client:
                 response = await client.get(
-                    endpoint, params={"q": query, "format": "json"}
+                    endpoint,
+                    params={
+                        "q": query,
+                        "format": "json",
+                        "engines": DEFAULT_ENGINES,
+                    },
                 )
                 response.raise_for_status()
                 payload = response.json()

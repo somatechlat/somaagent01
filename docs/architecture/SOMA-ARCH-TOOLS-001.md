@@ -230,7 +230,8 @@ Agent: chart_render or code_execute using that venv → PNG in workroot → file
 |---|---|---|---|
 | `shell_exec` | 3 | DENY default | `{binary, argv[]}` only; container; opt-in capsule; **no** `sh -c` strings |
 | `package_install` (legacy name) | 3 | superseded by `packages_ensure` | Do not implement free-form |
-| `web_search` | 2 | **LIVE** | SearxNG via `SEARXNG_URL` settings chain; egress IQ; no localhost default |
+| `web_search` | 2 | **LIVE** | SearxNG via `SEARXNG_URL` + Settings·search; engines google/bing/wikipedia/mojeek; egress IQ |
+| `web_read` | 2 | **LIVE** | Public http(s) extract; SSRF refuse private; egress IQ |
 | `browser_use` | 2–3 | PLANNED gated | Playwright in isolated container; canvas panel; not host Chrome |
 | `computer_use` / remote connector | 3 | DENY | Separate operator profile only |
 | `call_subordinate` | 2 | PLANNED | Capsule-to-capsule via existing delegation; same choke |

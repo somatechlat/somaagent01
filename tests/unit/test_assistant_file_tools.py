@@ -47,6 +47,7 @@ def test_registered_in_available_tools_with_clear_schemas():
         "document_index",
         "document_query",
         "web_search",
+        "web_read",
         "packages_ensure",
         "packages_list",
     }
@@ -56,6 +57,7 @@ def test_registered_in_available_tools_with_clear_schemas():
         "file_write": 2,
         "file_patch": 2,
         "web_search": 2,
+        "web_read": 2,
         "packages_ensure": 3,
         "packages_list": 1,
     }
@@ -65,6 +67,7 @@ def test_registered_in_available_tools_with_clear_schemas():
         "file_write": ["path", "content"],
         "file_patch": ["path", "old", "new"],
         "web_search": ["query"],
+        "web_read": ["url"],
         "packages_ensure": [],
         "packages_list": [],
     }

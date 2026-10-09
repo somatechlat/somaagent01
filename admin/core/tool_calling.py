@@ -53,6 +53,7 @@ _NETWORK_TOOLS = frozenset(
         "document_ingest",
         "canvas_append",
         "web_search",
+        "web_read",
         "packages_ensure",
         "os_packages_ensure",
     }

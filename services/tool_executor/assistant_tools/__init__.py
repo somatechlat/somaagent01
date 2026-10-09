@@ -25,6 +25,10 @@ from services.tool_executor.assistant_tools.packages_ensure import (
     PackagesEnsureTool,
     PackagesListTool,
 )
+from services.tool_executor.assistant_tools.web_read import (
+    WEB_READ_ASSISTANT_TOOLS,
+    WebReadTool,
+)
 from services.tool_executor.assistant_tools.web_search import (
     WEB_SEARCH_ASSISTANT_TOOLS,
     WebSearchTool,
@@ -37,8 +41,9 @@ FILE_ASSISTANT_TOOLS: List[SomaAssistantTool] = [
     FilePatchTool(),
     # Document RAG (TOOLS-001 §5.9) — T-1 MemoryGateway only.
     *DOCUMENT_ASSISTANT_TOOLS,
-    # Web search (TOOLS-001 §5.10) — configured SearxNG only.
+    # Web search + read (TOOLS-001 §5.10) — configured SearxNG / public URLs only.
     *WEB_SEARCH_ASSISTANT_TOOLS,
+    *WEB_READ_ASSISTANT_TOOLS,
     # Package ensure (TOOLS-001 §5.4) — operator allowlist, Temporal install.
     *PACKAGE_ASSISTANT_TOOLS,
 ]
@@ -62,4 +67,6 @@ __all__ = [
     "ToolContext",
     "WEB_SEARCH_ASSISTANT_TOOLS",
     "WebSearchTool",
+    "WEB_READ_ASSISTANT_TOOLS",
+    "WebReadTool",
 ]

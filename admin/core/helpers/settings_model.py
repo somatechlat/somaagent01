@@ -216,6 +216,10 @@ class SettingsModel(BaseModel):
     service_smtp_host: str = Field(default_factory=lambda: str(_dj("SMTP_HOST", "")))
     service_smtp_port: str = Field(default_factory=lambda: str(_dj("SMTP_PORT", "")))
     service_searxng_url: str = Field(default_factory=lambda: str(_dj("SEARXNG_URL", "")))
+    web_search_enabled: bool = Field(
+        default_factory=lambda: str(_dj("WEB_SEARCH_ENABLED", "True")).strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
 
     # AuthN / login hardening. Tunable behaviour, not a literal at the gate.
     login_rate_limit: int = Field(
