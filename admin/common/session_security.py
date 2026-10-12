@@ -85,10 +85,13 @@ class PermissionResolver:
         # An engine that reports authority the roles do not hold is ignored.
         # Role-based access control is the floor; nothing may widen it.
         narrowed = granted & spicedb_permissions if spicedb_permissions else set()
-        if not narrowed and spicedb_permissions:
+        if spicedb_permissions and not narrowed:
             logger.info(
                 "SpiceDB narrowed %s to nothing: user=%s", sorted(granted), user_id
             )
+            # Fail-closed: an engine that narrowed to empty DENIES. Falling
+            # back to `granted` is a fail-open (security review F-04).
+            return []
         return sorted(narrowed or granted)
 
     def _get_permissions_for_roles(self, roles: list[str]) -> list[str]:

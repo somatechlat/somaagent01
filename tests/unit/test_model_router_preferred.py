@@ -1,6 +1,6 @@
 """Capsule.chat_model must drive model selection.
 
-The admin UI writes ``Capsule.chat_model`` (admin/llm/api.py set_slots).
+The admin UI writes ``Capsule.chat_model`` (admin/llm/api.py set_roles).
 ``select_model`` has to honour that binding — otherwise the slot has zero
 effect on the chat path.
 """

@@ -103,10 +103,43 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
                 await self.close(code=4001)  # Unauthorized
                 return
 
-            # Extract tenant_id from query string or token
+            # Tenant comes from the authenticated principal, never the query
+            # string and never a literal default. A client-supplied
+            # ``tenant_id`` is a cross-tenant selection vector, and
+            # ``"default"`` is a shared partition that merges strangers
+            # (F-06). The scope auth is what the middleware resolved from the
+            # credential; if it names no tenant the connection is refused.
+            auth = self.scope.get("auth") or getattr(user, "auth", None)
+            principal_tenant = None
+            if auth is not None:
+                if isinstance(auth, dict):
+                    principal_tenant = auth.get("tenant_id") or auth.get("tenant")
+                else:
+                    principal_tenant = getattr(auth, "tenant_id", None) or getattr(
+                        auth, "tenant", None
+                    )
+            if not principal_tenant:
+                logger.warning(
+                    "Voice WS refused: authenticated principal has no tenant"
+                )
+                await self.close(code=4003)  # Forbidden: no tenant
+                return
+
+            # A query-string tenant is a claim, not an authority. It is
+            # accepted only when it matches the principal's own tenant.
             query_string = self.scope.get("query_string", b"").decode()
             params = dict(p.split("=") for p in query_string.split("&") if "=" in p)
-            tenant_id = params.get("tenant_id", "default")
+            claimed_tenant = params.get("tenant_id")
+            if claimed_tenant is not None and claimed_tenant != principal_tenant:
+                logger.warning(
+                    "Voice WS refused: tenant mismatch claim=%s principal=%s",
+                    claimed_tenant,
+                    principal_tenant,
+                )
+                await self.close(code=4003)  # Forbidden: tenant mismatch
+                return
+
+            tenant_id = principal_tenant
 
             self.state = VoiceSessionState(
                 session_id=str(uuid.uuid4()),

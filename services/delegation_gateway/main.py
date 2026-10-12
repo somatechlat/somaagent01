@@ -37,7 +37,9 @@ from prometheus_client import (
 CONTENT_TYPE_LATEST: str = "text/plain; version=0.0.4; charset=utf-8"
 from pydantic import BaseModel
 
+from admin.common.auth import AuthBearer
 from admin.common.exceptions import NotFoundError
+from services.common.authorization import authorize
 from services.common.delegation_store import DelegationStore
 from services.common.event_bus import (
     KafkaEventBus,
@@ -174,29 +176,31 @@ api = NinjaAPI(title="Delegation Gateway", version="1.0.0")
 router = Router(tags=["delegation"])
 
 
-@router.get("/metrics")
-def metrics(request) -> HttpResponse:
+@router.get("/metrics", auth=AuthBearer())
+async def metrics(request) -> HttpResponse:
     """Execute metrics.
 
     Args:
         request: The request.
     """
+    await authorize(request=request, action="system:read_metrics", resource="metrics")
 
     return HttpResponse(generate_latest(), content_type=CONTENT_TYPE_LATEST)
 
 
-@router.get("/health")
+@router.get("/health", auth=AuthBearer())
 async def health(request) -> dict:
     """Execute health.
 
     Args:
         request: The request.
     """
+    await authorize(request=request, action="system:view", resource="health")
 
     return {"status": "ok"}
 
 
-@router.post("/v1/delegation/task")
+@router.post("/v1/delegation/task", auth=AuthBearer())
 async def create_delegation_task(request, body: DelegationRequest) -> dict:
     """Execute create delegation task.
 
@@ -204,6 +208,11 @@ async def create_delegation_task(request, body: DelegationRequest) -> dict:
         request: The request.
         body: The body.
     """
+    await authorize(
+        request=request,
+        action="resource:tool_execute",
+        resource="delegation",
+    )
 
     task_id = body.task_id or str(uuid.uuid4())
     store = get_store()
@@ -238,7 +247,7 @@ async def create_delegation_task(request, body: DelegationRequest) -> dict:
     return {"task_id": task_id, "status": "queued"}
 
 
-@router.get("/v1/delegation/task/{task_id}")
+@router.get("/v1/delegation/task/{task_id}", auth=AuthBearer())
 async def get_delegation_task(request, task_id: str) -> dict:
     """Retrieve delegation task.
 
@@ -246,6 +255,11 @@ async def get_delegation_task(request, task_id: str) -> dict:
         request: The request.
         task_id: The task_id.
     """
+    await authorize(
+        request=request,
+        action="resource:tool_read",
+        resource="delegation",
+    )
 
     store = get_store()
     record = await store.get_task(task_id)
@@ -254,7 +268,7 @@ async def get_delegation_task(request, task_id: str) -> dict:
     return record
 
 
-@router.post("/v1/delegation/task/{task_id}/callback")
+@router.post("/v1/delegation/task/{task_id}/callback", auth=AuthBearer())
 async def delegation_callback(request, task_id: str, body: DelegationCallback) -> dict:
     """Execute delegation callback.
 
@@ -263,6 +277,11 @@ async def delegation_callback(request, task_id: str, body: DelegationCallback) -
         task_id: The task_id.
         body: The body.
     """
+    await authorize(
+        request=request,
+        action="resource:tool_execute",
+        resource="delegation",
+    )
 
     store = get_store()
     record = await store.get_task(task_id)

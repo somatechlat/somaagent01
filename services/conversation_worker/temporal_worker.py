@@ -35,7 +35,6 @@ from services.common.event_bus import (
     KafkaSettings,
     resolve_kafka_sasl_password,
 )
-from services.common.model_profiles import ModelProfileStore
 from services.common.policy_client import PolicyClient
 from services.common.publisher import DurablePublisher
 from services.common.router_client import RouterClient
@@ -61,6 +60,12 @@ from services.conversation_worker.research_workflow import (
     plan_outline_activity,
     write_outline_file_activity,
 )
+from services.conversation_worker.zero_loss_activities import (
+    drain_memory_wal_activity,
+    promotion_audit_activity,
+    replay_unacked_outbox_activity,
+    sleep_consolidation_activity,
+)
 
 LOGGER = logging.getLogger(__name__)
 # Django settings used instead
@@ -84,13 +89,14 @@ def _build_use_case():
     )
     bus = KafkaEventBus(kafka)
     publisher = DurablePublisher(bus=bus)
-    dlq = DeadLetterQueue(os.environ.get("CONVERSATION_INBOUND", "conversation.inbound"), bus=bus)
+    dlq = DeadLetterQueue(django_settings.KAFKA_CONVERSATION_TOPIC, bus=bus)
     # Use Django ORM Session model
     from admin.core.models import Session
 
     store = Session.objects
-    profiles = ModelProfileStore.from_env()
-    tenants = TenantConfig(path=os.environ.get("TENANT_CONFIG_PATH", "conf/tenants.yaml"))
+    from admin.core.helpers.service_urls import require_setting
+
+    tenants = TenantConfig(path=str(require_setting("TENANT_CONFIG_PATH")))
     budgets = BudgetManager(url=django_settings.REDIS_URL, tenant_config=tenants)
     policy_client = PolicyClient(base_url=django_settings.OPA_URL, tenant_config=tenants)
     enforcer = ConversationPolicyEnforcer(policy_client)
@@ -112,7 +118,7 @@ def _build_use_case():
         # live request (VIBE Rule 164).
         internal_token=get_secret_manager().get_credential("gateway_internal_token"),
         publisher=publisher,
-        outbound_topic=os.environ.get("CONVERSATION_OUTBOUND", "conversation.outbound"),
+        outbound_topic=str(require_setting("CONVERSATION_OUTBOUND")),
         # REQUIRED, and no ``or ""``: an empty model is not a model.
         default_model=os.environ.get("SA01_LLM_MODEL"),
     )
@@ -122,14 +128,14 @@ def _build_use_case():
         gateway=build_memory_gateway(),
         publisher=publisher,
         response_generator=gen,
-        outbound_topic=os.environ.get("CONVERSATION_OUTBOUND", "conversation.outbound"),
+        outbound_topic=str(require_setting("CONVERSATION_OUTBOUND")),
     )
-    return proc, dlq, profiles, budgets, telemetry, router
+    return proc, dlq, budgets, telemetry, router
 
 
 @activity.defn
 async def process_message_activity(event: dict) -> dict:
-    proc, dlq, _, _, _, _ = _build_use_case()
+    proc, dlq, _, _, _ = _build_use_case()
     try:
         res = await proc.execute(
             ProcessMessageInput(
@@ -267,6 +273,116 @@ class OutboxReplayWorkflow:
         )
 
 
+# ---------------------------------------------------------------------------
+# A2A / delegation — folded from services/delegation_gateway/temporal_worker.py
+# so there is exactly ONE Temporal worker process and ONE task queue (WAVE 5).
+# ---------------------------------------------------------------------------
+
+
+@activity.defn
+async def handle_a2a(event: dict) -> dict:
+    """Execute one A2A / delegation tool event (delegation_gateway)."""
+    from admin.core.helpers.service_urls import require_setting
+
+    from services.common.compensation import compensate_event
+    from services.common.dlq import DeadLetterQueue
+    from services.common.event_bus import KafkaEventBus, KafkaSettings
+    from services.common.publisher import DurablePublisher
+    from services.delegation_gateway.main import DelegationGateway
+
+    kcfg = KafkaSettings(
+        bootstrap_servers=str(require_setting("KAFKA_BOOTSTRAP_SERVERS"))
+    )
+    bus = KafkaEventBus(kcfg)
+    publisher = DurablePublisher(bus=bus)
+    dlq = DeadLetterQueue(str(require_setting("A2A_TOPIC")), bus=bus)
+    gateway = DelegationGateway()
+    try:
+        await gateway.handle_event(event, publisher)
+        return {"success": True}
+    except Exception as exc:
+        try:
+            await compensate_event(event)
+        except Exception:
+            pass
+        await dlq.send_to_dlq(event, exc)
+        return {"success": False, "error": str(exc)}
+
+
+@workflow.defn
+class A2AWorkflow:
+    """Temporal workflow for A2A event processing (same worker + queue)."""
+
+    @workflow.run
+    async def run(self, event: dict) -> dict:
+        return await workflow.execute_activity(
+            handle_a2a,
+            event,
+            schedule_to_close_timeout=timedelta(seconds=300),
+        )
+
+
+# ---------------------------------------------------------------------------
+# WAVE 5 — zero-loss / temporal memory workflows.
+# ---------------------------------------------------------------------------
+
+
+@workflow.defn
+class MemoryReplicationWorkflow:
+    """Drain memory.wal outbox → POST Brain /memory/remember → mark published.
+
+    Idempotent under replay: every write carries ``mem:{coord}``.
+    """
+
+    @workflow.run
+    async def run(self, limit: int = 50) -> dict:
+        return await workflow.execute_activity(
+            drain_memory_wal_activity,
+            limit,
+            schedule_to_close_timeout=timedelta(seconds=600),
+        )
+
+
+@workflow.defn
+class SleepConsolidationWorkflow:
+    """Drive the Brain sleep FSM and audit the consolidation result."""
+
+    @workflow.run
+    async def run(self, tenant_id: str) -> dict:
+        return await workflow.execute_activity(
+            sleep_consolidation_activity,
+            tenant_id,
+            schedule_to_close_timeout=timedelta(seconds=600),
+        )
+
+
+@workflow.defn
+class PromotionAuditWorkflow:
+    """Verify WM→LTM promotion via /memory/metrics + /memory/recall."""
+
+    @workflow.run
+    async def run(self, tenant_id: str) -> dict:
+        return await workflow.execute_activity(
+            promotion_audit_activity,
+            tenant_id,
+            schedule_to_close_timeout=timedelta(seconds=300),
+        )
+
+
+@workflow.defn
+class ReplayRecoveryWorkflow:
+    """Re-drive unacked outbox rows older than N minutes (zero-loss recovery)."""
+
+    @workflow.run
+    async def run(self, older_than_minutes: int = 5, limit: int = 100) -> dict:
+        return await workflow.execute_activity(
+            replay_unacked_outbox_activity,
+            older_than_minutes,
+            limit,
+            schedule_to_close_timeout=timedelta(seconds=600),
+        )
+
+
 def _schedule_specs() -> tuple:
     """Interval specs for the async cycle.
 
@@ -345,6 +461,15 @@ async def main() -> None:
             "topology (operator parameter); there is no default scheduler."
         )
     task_queue = django_settings.TEMPORAL_CONVERSATION_QUEUE
+    # SECURITY (prod): Client.connect MUST use TLS + API key (or mTLS) — never
+    # a plaintext local endpoint outside dev. Temporal Cloud and any shared
+    # cluster carry workflow payloads (memory text, tenant ids, tool events).
+    # Connect via ``Client.connect(target, tls=..., api_key=...)`` where target
+    # is the operator-supplied SA01_TEMPORAL_HOST (e.g. namespace.tmprl:7233)
+    # and the API key comes from Vault (never os.environ at this call site).
+    # Dev-only plaintext is acceptable solely when SA01_TEMPORAL_HOST points at
+    # a loopback/in-cluster broker the operator explicitly configured.
+    # See docs/operations/SOMA-OPS-TEMPORAL-TLS-001.md.
     client = await Client.connect(temporal_host)
     await _ensure_schedules(client, task_queue)
     worker = Worker(
@@ -364,6 +489,11 @@ async def main() -> None:
             check_allowlist_activity,
             install_os_packages_activity,
             verify_os_binaries_activity,
+            handle_a2a,
+            drain_memory_wal_activity,
+            sleep_consolidation_activity,
+            promotion_audit_activity,
+            replay_unacked_outbox_activity,
         ],
         workflows=[
             ConversationWorkflow,
@@ -373,6 +503,11 @@ async def main() -> None:
             ResearchReportWorkflow,
             PackageEnsureWorkflow,
             OsPackageEnsureWorkflow,
+            A2AWorkflow,
+            MemoryReplicationWorkflow,
+            SleepConsolidationWorkflow,
+            PromotionAuditWorkflow,
+            ReplayRecoveryWorkflow,
         ],
     )
     await worker.run()

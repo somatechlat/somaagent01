@@ -66,7 +66,8 @@ async def memory_status(request) -> dict:
     from admin.core.somabrain_client import SomaBrainClient
     from services.common.circuit_breaker import get_circuit_breaker
 
-    await authorize(request, action="resource:memory_search", resource="memory")
+    # Status is a read of the memory lane, not a search (SOMA-STD-SECURITY-001).
+    await authorize(request, action="resource:memory_read", resource="memory")
 
     breaker = get_circuit_breaker("memory_gateway", failure_threshold=5, reset_timeout=30.0)
     circuit = str(getattr(breaker, "state", "") or "")

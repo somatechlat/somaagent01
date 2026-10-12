@@ -198,6 +198,9 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         self.tool_registry: Optional[Any] = None
         self.perm_cache: Optional[bool] = None
         self._cached_history: List[Dict[str, str]] = []
+        # ToolRegistry load failure is surfaced on the connected payload
+        # (tools_error + degraded) — chat must not hide a missing tool stack.
+        self._tools_error: Optional[str] = None
 
     async def connect(self):
         """Handle WebSocket connection.
@@ -245,6 +248,16 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 if agent:
                     self.agent_id = str(agent.id)
                     logger.info("Auto-resolved agent=%s for user=%s", self.agent_id, self.user_id)
+                else:
+                    # Honesty: no agent for this principal is its own failure
+                    # mode, not a missing capsule.
+                    logger.warning("No active agent for user=%s tenant=%s", self.user_id, self.tenant_id)
+                    await self._send_error(
+                        "No active agent is available for this account",
+                        code="no_agents",
+                    )
+                    await self.close(code=4004)
+                    return
 
             # Resolve capsule: try direct Capsule ID first, then Agent lookup
             self.capsule = await sync_to_async(
@@ -265,6 +278,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     logger.info("Resolved agent %s → capsule %s", self.agent_id, capsule.id)
             if not self.capsule:
                 logger.warning("Capsule not found for agent: %s", self.agent_id)
+                # Honesty: tell the client WHY the socket is closing before 4004.
+                await self._send_error(
+                    "No capsule is bound to this agent",
+                    code="no_capsule",
+                )
                 await self.close(code=4004)
                 return
 
@@ -294,10 +312,12 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                     "WebSocket tool registry built: %d tools",
                     len(list(self.tool_registry.list())),
                 )
-            except Exception:
-                # Tool stack must never block chat (optional deps).
+            except Exception as tools_exc:
+                # Tool stack must never block chat (optional deps). The failure
+                # is still reported on the connected payload — never silent.
                 logger.exception("ToolRegistry load failed; continuing without tools")
                 self.tool_registry = None
+                self._tools_error = type(tools_exc).__name__
 
             # Phase 5: PERMISSION PRE-CHECK (ONCE, cached)
             from admin.core.agentiq import UnifiedGate
@@ -311,7 +331,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             )
             if not self.perm_cache:
                 logger.warning("Permission denied for capsule: %s", self.capsule.id)
-                await self.close(code=4003)  # Permission denied
+                await self._send_error("Permission denied", code="permission_denied")
+                await self.close(code=4003)
                 return
 
             # Phase 6: SYNC NEUROMODULATORS WITH BRAIN
@@ -334,18 +355,23 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
             self.heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
+            connected_payload = {
+                "user_id": self.user_id,
+                "agent_id": self.agent_id,
+                "session_id": self.session_id,
+                "iq_tier": self.iq.model_tier if self.iq else None,
+                "tools_available": (
+                    len(list(self.tool_registry.list())) if self.tool_registry else 0
+                ),
+            }
+            if self._tools_error is not None:
+                # Degraded tool stack is a first-class connected fact.
+                connected_payload["tools_error"] = self._tools_error
+                connected_payload["degraded"] = True
             await self.send_json(
                 WSMessage(
                     type=MSG_CONNECTED,
-                    payload={
-                        "user_id": self.user_id,
-                        "agent_id": self.agent_id,
-                        "session_id": self.session_id,
-                        "iq_tier": self.iq.model_tier if self.iq else None,
-                        "tools_available": (
-                            len(list(self.tool_registry.list())) if self.tool_registry else 0
-                        ),
-                    },
+                    payload=connected_payload,
                 ).to_dict()
             )
 
@@ -353,14 +379,13 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
         except UnauthorizedError:
             logger.warning("WebSocket auth failed: unauthorized")
+            await self._send_error("Unauthorized", code="unauthorized")
             await self.close(code=4001)
-        except (TimeoutError, ValidationError):
-            logger.exception("WebSocket connect error")
-            await self._send_error("internal_error", code="internal_error")
+        except (TimeoutError, ValidationError) as exc:
+            await self._send_internal_error(exc, where="connect")
             await self.close(code=4000)
-        except Exception:
-            logger.exception("WebSocket connect error: unexpected exception")
-            await self._send_error("internal_error", code="internal_error")
+        except Exception as exc:
+            await self._send_internal_error(exc, where="connect")
             await self.close(code=4000)
 
     async def disconnect(self, close_code):
@@ -431,13 +456,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             else:
                 await self._send_error(f"Unknown message type: {msg_type}")
 
-        except (TimeoutError, ValidationError):
-            logger.exception("WebSocket message error")
-            await self._send_error("internal_error", code="internal_error")
+        except (TimeoutError, ValidationError) as exc:
+            await self._send_internal_error(exc, where="receive_json")
             await self.close(code=4000)
-        except Exception:
-            logger.exception("WebSocket message error: unexpected exception")
-            await self._send_error("internal_error", code="internal_error")
+        except Exception as exc:
+            await self._send_internal_error(exc, where="receive_json")
             await self.close(code=4000)
 
         finally:
@@ -755,13 +778,11 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         except asyncio.TimeoutError:
             await self._send_error("Response timeout", code="timeout")
 
-        except (UnauthorizedError, ValidationError):
-            logger.exception("Chat message error")
-            await self._send_error("internal_error", code="internal_error")
+        except (UnauthorizedError, ValidationError) as exc:
+            await self._send_internal_error(exc, where="handle_chat")
             await self.close(code=4000)
-        except Exception:
-            logger.exception("Chat message error: unexpected exception")
-            await self._send_error("internal_error", code="internal_error")
+        except Exception as exc:
+            await self._send_internal_error(exc, where="handle_chat")
             await self.close(code=4000)
 
         finally:
@@ -847,6 +868,32 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
                 payload={
                     "code": code,
                     "message": message,
+                },
+            ).to_dict()
+        )
+        _metrics.WEBSOCKET_MESSAGES.labels(direction="outbound", type=MSG_ERROR).inc()
+
+    @staticmethod
+    def _sanitize_error_message(exc: BaseException) -> str:
+        """Client-safe message: exception type + str, never a stack frame."""
+        text = str(exc).strip() or "unexpected failure"
+        # One line only — stacks and multi-line internals stay in the logs.
+        return f"{type(exc).__name__}: {text.splitlines()[0]}"[:300]
+
+    async def _send_internal_error(self, exc: BaseException, *, where: str) -> None:
+        """Report an internal failure honestly without leaking a stack.
+
+        Stack traces go to the log only. The client gets ``error_type`` and a
+        sanitized one-line ``message``.
+        """
+        logger.exception("WebSocket %s failed", where)
+        await self.send_json(
+            WSMessage(
+                type=MSG_ERROR,
+                payload={
+                    "code": "internal_error",
+                    "message": self._sanitize_error_message(exc),
+                    "error_type": type(exc).__name__,
                 },
             ).to_dict()
         )

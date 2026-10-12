@@ -64,8 +64,10 @@ def list_provider_keys(request) -> list[ProviderKeyStatus]:
     """Which providers have keys in Vault. Never returns key material."""
     authorize_sync(request, action="system:manage_integrations", resource="secrets")
     sm = _sm()
-    # Known + whatever list_providers can see
-    known = ["openai", "anthropic", "google", "groq", "ollama", "custom", "openrouter", "fireworks"]
+    # Canonical ids from admin.llm.providers (registry + legacy gateway keys)
+    from admin.llm.providers import VAULT_PROVIDER_IDS
+
+    known = list(VAULT_PROVIDER_IDS)
     seen: set[str] = set()
     result: list[ProviderKeyStatus] = []
     for pid in known:

@@ -13,7 +13,6 @@ _SUBMODULES = {
     "unified_secret_manager",
     "litellm_client",
     "model_costs",
-    "model_profiles",
     "telemetry",
     "deployment_mode",
 }

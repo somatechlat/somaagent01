@@ -104,7 +104,22 @@ async def authorize(
 
     start = time.perf_counter()
     ctx = context or {}
-    tenant = request.headers.get("X-Tenant-Id", "default")
+    # F-02/F-06: tenant comes from the authenticated principal, never the
+    # client header and never a literal default. A caller-supplied
+    # X-Tenant-Id is a cross-tenant selection vector, and ``"default"`` is a
+    # shared partition that merges strangers. Authorization refuses a request
+    # with no tenant (T-5): there is no fallback partition.
+    auth = getattr(request, "auth", None)
+    tenant = None
+    if auth is not None:
+        tenant = getattr(auth, "tenant_id", None) or getattr(auth, "tenant", None)
+    if not tenant:
+        AUTH_DECISIONS.labels(action=action, result="deny").inc()
+        logging.getLogger("authz").warning(
+            "authz denial: no tenant on the authenticated principal",
+            extra={"action": action, "resource": resource},
+        )
+        raise ForbiddenError(action=action, resource=resource)
     persona = request.headers.get("X-Persona-Id")
 
     # ---- 1. Role baseline -------------------------------------------------
@@ -119,7 +134,7 @@ async def authorize(
         raise ForbiddenError(action=action, resource=resource)
 
     roles, scopes = _principal_from_request(request)
-    granted = permissions_for_principal(roles=roles, scopes=scopes)
+    granted = permissions_for_principal(roles=roles, scopes=scopes, org_id=tenant)
     if permission not in granted:
         AUTH_DECISIONS.labels(action=action, result="deny").inc()
         AUTH_DURATION.labels(source=action).observe(max(0.0, time.perf_counter() - start))

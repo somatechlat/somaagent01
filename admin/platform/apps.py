@@ -3,7 +3,7 @@
 from django.apps import AppConfig
 
 
-class AaasConfig(AppConfig):
+class SomaPlatformConfig(AppConfig):
     """Soma Platform Admin app configuration."""
 
     default_auto_field = "django.db.models.BigAutoField"

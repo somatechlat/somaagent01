@@ -89,3 +89,144 @@
 - Agent: MiMoCode session (operator-requested commit+push)
 
 ## [2026-10-12T14:00:53Z] LAND SOMA-PM-PLAN-CLEF-INTEGRATION-001 written (closes ARCH-CLEF-001:17 dangling ref). W-C0/C1/C2 code LIVE; W-C3+ not started; I-1 CF token still open.
+
+## [2026-10-12T22:30:00Z] CLAIM WAVE5 temporal
+- One Temporal worker: A2AWorkflow + handle_a2a folded into conversation_worker/temporal_worker.py (same worker, same queue).
+- delegation_gateway/temporal_worker.py is a thin re-export (no second Worker).
+- Added MemoryReplicationWorkflow, SleepConsolidationWorkflow, PromotionAuditWorkflow, ReplayRecoveryWorkflow.
+- mTLS note: docs/operations/SOMA-OPS-TEMPORAL-TLS-001.md (Client.connect file:line).
+| 2026-10-12T20:30:00Z | MiMoCode-wave1-model-registry | WAVE1 model registry + Clef + 5 model roles (no commit; compile-checked). admin/llm/providers.py NEW (KNOWN_PROVIDER_IDS + VAULT_PROVIDER_IDS + MODEL_ROLES + vault note), vendor_api_bases +DEEPSEEK/HF, api.py model_type decision + 5-role slots + preset vision/decision/is_bundled/scope + POST /llm/presets/restore-bundled, migrations/0006_seed_model_catalog.py (10 rows incl clef-decision), secrets+unified_secret_manager provider lists -> admin.llm.providers.VAULT_PROVIDER_IDS, webui soma-settings-models.ts role keys. |
+| 2026-10-12T14:30:00Z | MiMoCode-clef-decision | CLEF decision model live: seed_clef_vault.py, bootstrap_clef.py, 0006_seed_clef_decision.py, decision_role_id slots/presets, get_feature_flag settings fallthrough, clef_api_token credential | uncommitted working tree |
+
+## 2026-10-12 law-enforcement hard-delete
+- HARD DELETED env-var operator secrets (SOMA_SECRET_*) invented in bootstrap_exec.py
+- HARD DELETED __UNSET__ fake provider key markers
+- HARD DELETED start.sh env defaults SA01_DEFAULT_TENANT_ID / SA01_SYSADMIN_EMAIL with hardcoded values
+- HARD DELETED bootstrap_soma invented defaults `or \"standalone\"` / `or \"admin@soma.dev\"`
+- Rules fed to agents general-10..general-14 (violation scrub, W2, W3, W6, chat+Playwright)
+
+## 2026-10-13 WAVE 3 chat/memory/cognition
+- CLAIM: bare close + missing error frames (chat.py), silent failure de-fake (chat_service.py tenant_id/recall), hardcoded neuromod defaults (chat_orchestrator.py). TDD: RED tests first, then GREEN.
+
+## 2026-10-13 WAVE 3 LAND — chat/memory/cognition wiring
+- LAND: Bare close fixes (B-* chat WS defects): chat.py:334 perm-denied close now sends error frame before close(4003); chat.py:381 UnauthorizedError close now sends error frame before close(4001). All 11 close() sites verified to have error frames (GREEN).
+- LAND: chat_service.py de-fake (C1 residual): send_message now raises PermissionError on empty tenant (was tenant_id=""); recall_memories propagates MemoryRecallUnavailable (was silent return []). 
+- LAND: somabrain_integration.py de-fake: recall_memories raises PermissionError on missing tenant (was return []); propagates MemoryRecallUnavailable (was return []); removed blanket except Exception return [].
+- LAND: chat_orchestrator.py hardcoded neuromod defaults removed (was {"dopamine": 0.5, ...} — a default IS hardcoded); _load_neuromodulators uses capsule baseline as-is. Silent except:pass on neuromod application + identity line now log warnings.
+- VERIFY: WM→LTM promotion path REAL — brain WMLTMPromoter attached (runtime/manager.py:87 _attach_wm_promoter → mt_wm.py:80 set_promoter_factory); agent PromotionAuditWorkflow registered (temporal_worker.py:358,507) verifying via /memory/metrics + /memory/recall.
+- VERIFY: No dead somafractalmemory imports in agent runtime (rg clean). No os.environ/os.getenv in chat/memory path. No fake planner (brain gates own SOMABRAIN_USE_PLANNER).
+- py_compile: all 6 touched files OK. No commits (operator order).
+| 2026-10-12T19:51:57Z | MiMoCode-wave6-webui-roles | LAND | WAVE 6 WebUI model roles/presets UX (NOT committed): admin/llm/api.py /llm/slots→/llm/roles + RolesOut/RolesUpdate/get_roles/set_roles rename (product concept is Model Roles, never slots); webui soma-settings-models.ts 5-role panel + decision_role Clef binding + presets bind all 5 roles (edit + save-current) + honest loading/error (_setRole/_deleteModel catch); providers stay on GET /llm/providers; HARD DELETE hardcoded URL hrefs (somatech.lat, docs.somaagent.com) + literal host placeholders in SSO forms; soma-right-panel browser-role wording. webui tsc --noEmit EXIT 0. Python py_compile OK. Unit tests blocked: Vault unreachable (pre-existing). |
+
+## 2026-10-12T19:55:00Z — MiMoCode-law-enforcement — LAW CLEANUP (somaAgent01 + somabrain)
+
+**Scope:** uncommitted diff + untracked files, mandated paths (services/common/, admin/, infra/standalone/, temporal_worker.py, bootstrap/, seed_clef_vault.py).
+
+**Fixed (somaAgent01):**
+- temporal_worker.py: `os.environ.get("A2A_TOPIC","a2a")` → `require_setting("A2A_TOPIC")` (no call-site default)
+- temporal_worker.py: `os.environ.get("CONVERSATION_INBOUND","conversation.inbound")` → `django_settings.KAFKA_CONVERSATION_TOPIC`
+- temporal_worker.py: `os.environ.get("CONVERSATION_OUTBOUND","conversation.outbound")` ×2 → `require_setting("CONVERSATION_OUTBOUND")`
+- temporal_worker.py: `os.environ.get("TENANT_CONFIG_PATH","conf/tenants.yaml")` → `require_setting("TENANT_CONFIG_PATH")`
+- settings_model.py: added `conversation_outbound`, `a2a_topic`, `tenant_config_path` fields (defaults live HERE per R-VAL-01)
+- capsule_settings.py: added CONVERSATION_OUTBOUND, A2A_TOPIC, TENANT_CONFIG_PATH to KEY_CATEGORY
+- vault_unseal.py: removed `http://localhost:20882` default for VAULT_ADDR; now fail-closed (Rule 91)
+- tenant_config.py: removed `or "default"` persona identity fallback
+- bootstrap_soma.py: docstring `admin@soma.dev`/`standalone` → placeholder `<sysadmin-email>`/`<tenant-slug>`
+- verify.py: `agent_id = "default"` → `seed_data.MODEL_SLOT_AGENT_ID` (single source)
+
+**Fixed (somabrain):**
+- RESTORED `somabrain/cognition/{__init__,memory_cycle}.py` from HEAD — working-tree deletion broke 3 importers (memory_remember.py, recall.py, promotion.py). Real eval_step callers, not shims.
+
+**Verified clean (added lines):** vendor_api_bases.py (allowed), bootstrap_exec.py token_urlsafe (infra-only, provider keys correctly NOT generated), webui placeholders, bootstrap commands, seed_data.py, zero_loss_activities.py, all somabrain diff hunks.
+
+**Compile:** all touched files `python3 -m py_compile` OK. somabrain unit: 61/62 diff-related pass (1 pre-existing coord-dup failure). somaAgent01 tests require live Vault (pre-existing infra gate).
+
+**Reported not changed (pre-existing, systemic):** `MODEL_SLOT_AGENT_ID="default"` shared partition key (matches registry.py/settings_defaults.py callers — changing requires coordinated migration); `KEYCHAIN_SERVICE` default "soma-vault-t0" (established F-05 pattern across init_vault/vault_unseal/seed_clef_vault); Kafka SASL/OTLP env in worker boot paths.
+
+## 2026-10-13 WAVE 2 BOOTSTRAP LAND — bootstrap_soma chat-ready (NOT committed)
+
+**Scope:** admin/core/bootstrap/, admin/core/management/commands/bootstrap_soma.py, bootstrap_platform.py, Makefile.
+
+**Result:** `python manage.py bootstrap_soma --tenant cb6fc5b8-9525-4e81-8b6d-8ccf86460e9c --sysadmin-email test@soma.dev --password-stdin` completes all 8 phases (P0 preflight → P7 verify) and `verify_chat_ready` passes all 19 asserts against the live stack (postgres + vault + somabrain:30101). Bare `--check` (start.sh path) also green, exit 0. Idempotent: second run reports writes=0/skips>0 on every phase. `--dry-run` computes real write/skip decisions and changes nothing.
+
+**Fixed this turn:**
+- Makefile: HARD DELETED `BOOT_TENANT ?= standalone` / `BOOT_EMAIL ?= admin@soma.dev` hardcoded defaults (Rule 1: a default IS a hardcoded value). bootstrap target now fails closed when BOOT_TENANT/BOOT_EMAIL are empty. verify-chat passes them only when set (bare --check discovers scope). Wording "model slots" → "Model Roles"; "18-assert" → "19-assert".
+- phases_models.py: honest compare-before-write on LLM catalog (writes only when row absent or seed field drifted; unchanged re-assert = skip). Was `writes += 1` on both created and not-created branches. Dry-run now also computes the five Model Role binding decisions (was returning before the role loop).
+- phases_core.py: phase_pepper respects --dry-run (was calling bootstrap_password_pepper() which writes). phase_identity resolves pepper only after the dry-run guard (was `get_password_pepper()` before the guard — crashes dry-run when pepper is not yet provisioned).
+- bootstrap/__init__.py: docstring drift P0..P9 → P0..P7, 18 → 19 asserts.
+
+**Verified live (somaagent_standalone container, bind-mounted admin/):**
+- Full write path: all 8 phases ok, exit_code=0. P6 BrainSetting.ensure_seeded via HTTP: tenant=standalone, 103 knobs.
+- Bare --check: all asserts pass, write phases skipped, exit 0.
+- --dry-run: every phase reports would-write/skip without touching state.
+- py_compile: all 11 bootstrap/command files OK.
+
+**Noted not changed (outside claim / pre-existing):**
+- "Secret key missing in Vault response" warning from services/common/vault_secrets.py:339 on every process start — some lookup hits a key absent from the KV doc. Pre-existing, not bootstrap-owned.
+- Transient 401 from SomaBrain /brain/settings when somabrain app is still booting (admin token not yet resolved into SOMABRAIN_ADMIN_TOKEN). Correct fail-closed (DependencyError → exit 4); not a bootstrap bug. Retry after app is healthy succeeds.
+
+**No commits (operator order).**
+
+## 2026-10-12T21:45Z — MiMoCode-tribo — TRIAD live proof (T-1 / T-6 / no-mock)
+
+**Scope:** prove somaAgent01 uses SomaBrain + SomaFractalMemory for real (no mocks). Report-only + A2A. No commits. Live stack untouched.
+
+**Report:** `docs/reports/SOMA-RPT-TRIAD-PROOF-001.md`
+
+**Results:**
+- T-1 import law: **PASS** — `rg '^\s*(from|import)\s+\S*(somafractal|fractalmemory|soma_fractal)' services/ admin/ config/` → exit 1. Zero SFM client in agent. Memory path is MemoryGateway → SomaBrainAdapter only (`services/common/memory_gateway.py:224-235`, `services/common/adapters/somabrain_adapter.py:317`).
+- Live remember: **PASS** agent→Brain (`POST /api/v2/memory/save` → 200, `acks[0].store=somabrain`, coord `0.7558789788745344,0.42311042081564665,-0.2364507201127708`). Brain DB `outbox_events` id=5 topic `memory.store` holds the seam key with marker `PROOF-TRIAD-1791840792-XYZZY` (T-6 durable-before-hop).
+- Live recall: **PASS** agent→Brain (`POST /api/v2/memory/recall` returns the written marker, `store=somabrain`).
+- Chat turn writes memory: **PASS** — `POST /api/v2/chat/conversations/6df01afe-…/messages` produced 3 Brain outbox rows (ids 28-30) containing `CHATWRITE-1791840792-XYZZY`.
+- No mock/fake in production path: **PASS** — mock/fake/stub class scan exit 1; only historical comment at `services/common/adapters/somabrain_adapter.py:12` about already-deleted `platform/brain.py`.
+
+**Defect found (pre-existing, NOT fixed here — live stack must not break):**
+Brain→SFM store hop fails closed with HTTP 401 even though Brain's bearer and SFM's `SOMA_API_TOKEN` are the **same value** (sha256[:16]=`42a895c76e73d147`). Cause: `somafractalmemory/somafractalmemory/api/auth.py:57-62` requires `SOMA_BOUND_TENANT`; it is unseeded (absent from `somafractalmemory/infra/standalone/docker-compose.yml` and all seed scripts; tunable default `None` at `settings/model.py:159-165`). SFM `sfm_memories` count = 0. Outbox rows correctly stay pending for replay (T-6). Secondary hazard: setting `SOMA_BOUND_TENANT` to a constant alone will 403 Brain, because Brain sends `X-Soma-Tenant = namespace` (`somabrain/memory/client/core.py:36`) while `api/utils.py:70-80` demands exact match with the bound tenant. Binding contract must be reconciled before replay.
+
+**Peer notes:** memory outbox topic `memory.store` is the one SFM-write queue; do not invent a second degraded path. Agent memory writes/reads never touch port 10101.
+
+**No commits (operator order).**
+
+## 2026-10-13 FULL UI/UX AUDIT webui vs design suite (NOT committed)
+
+**Scope:** `webui/src/**` only. Report: `docs/reports/SOMA-RPT-UIUX-AUDIT-001.md`.
+
+**Verification:** `tsc --noEmit` exit 0 (run via Bun — host `node` broken on a pre-existing
+`libada.3.dylib` self-loop symlink under `/usr/local/opt/ada-url`, outside repo scope).
+`python3 -m py_compile admin/memory/api/memory.py admin/llm/api.py` exit 0.
+Law sweeps on `webui/src`: 0 env-var reads, 0 hardcoded hosts/ports, 0 secret-like literals,
+0 user-facing "slot" wording.
+
+**Priority results:**
+- P1 memory indicator: already honest. `state=ok` live → green (`soma-chat.ts` `state==='ok'`
+  → `StatusDotState 'ok'` → `#10B981`). `brain_status:"critical"` in the same payload is a
+  different lane (brain overall, not memory) and is correctly not used for the memory dot.
+- P2 memory panel UI-S-04: **was FAIL** — no WM/LTM tiles, no Remember, no Run probe,
+  `total` fell back to `memories.length` (invented), recall clobbered the list total.
+  Fixed: WM/LTM render `—` + GATED (never 0), `POST /memory/save` remember form (mockup said
+  `/memory/remember`; mounted router is `/save` — code is truth), `Run probe`, `?turn=current`
+  filter + clear, totals now server-only.
+- P3 model registry: PASS as-built. 5 Model Roles (Chat/Help/Memory/Vision/Decisions),
+  LIVE chip = role-bound (`_isLive` = `_usedFor(id).length>0`), providers from
+  `GET /llm/providers`, no slot wording. Live: all 5 roles bound (chat=3 utility=3
+  embedding=5 vision=9 decision=4). Model ids are strings on both sides so `===` is safe.
+- P4 chat active model LIVE: **was FAIL** — model was bare text. Fixed: resolve
+  `chat_role` → model label forms (`provider/name` + `name`; orchestrator emits
+  `f"{provider}/{name}"` at `chat_orchestrator.py:1088`), LIVE chip only when the turn model
+  matches that binding, chip navigates to `/settings/models` via `soma-navigate`.
+- P5 status honesty: all indicators green only under real conditions (see report truth table).
+  Fail-closed on every catch: warn/—/queued, never green, never 0.
+- P6 hard-delete env/URLs/placeholders/fakes: nothing to delete — already clean.
+
+**Also fixed:** C2 recall readout now shows `recall n` / `recall 0` (only after
+`chat.turn_meta` — before any turn recall is unknown, not zero) / `recall —` on outage, plus
+`Open Memory` → `/memory?turn=current` in all states.
+
+**Noted not changed (pre-existing / out of scope):**
+- `soma-agent-metrics.ts:214` `/* Charts placeholder */` — chart area unrendered, no fake data.
+- UI-S-04 layer filter + record drawer are mockup-`design` status, not live — left unimplemented.
+- `GET /memory/` `total` is `len(memories)` (page length) not a corpus count — UI shows the
+  server value as-is.
+- Host node/ada-url symlink breakage (outside repo).
+
+**No commits (operator order).**

@@ -9,7 +9,7 @@
  * Backing (honest, no fabricated data):
  *   UI-X-01 Files    — GET /api/v2/filesv2/
  *   UI-X-02 Tools    — GET /api/v2/tools + live tool.* WS frames
- *   UI-X-03 Browser  — gated: no browser slot on /llm/slots, no viewport backend
+ *   UI-X-03 Browser  — gated: no browser model role, no viewport backend
  *   UI-X-04 Editor   — read-only view of a file opened from UI-X-01
  *   UI-X-05 Debug    — real WS frame ring buffer (websocket-client.ts)
  *   UI-X-06 Capsule  — <soma-capsule-editor>
@@ -1023,17 +1023,17 @@ export class SomaRightPanel extends LitElement {
     }
 
     private _renderBrowser(def: SurfaceDef): TemplateResult {
-        // /llm/slots carries chat/utility/embedding only — there is no browser
-        // slot on that surface and no browser viewport backend in this
-        // deployment, so binding cannot be verified and the surface stays
-        // present-but-disabled (REQ-UIX-020).
+        // /llm/roles carries Chat / Help / Memory / Vision / Decisions only —
+        // there is no browser model role on that surface and no browser
+        // viewport backend in this deployment, so binding cannot be verified
+        // and the surface stays present-but-disabled (REQ-UIX-020).
         const reason =
             def.blockedReason ?? 'Bind a browser model on UI-S-02 first';
         return html`
             <div class="disabled-frame" aria-disabled="true">
                 <div class="disabled-reason">${reason}</div>
                 <div class="disabled-note">
-                    This deployment exposes no browser slot; binding cannot be verified here.
+                    This deployment exposes no browser model role; binding cannot be verified here.
                 </div>
             </div>
         `;

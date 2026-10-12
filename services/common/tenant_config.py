@@ -55,8 +55,8 @@ class TenantConfig:
         budgets = settings.budgets
         if not budgets:
             return None
-        persona_key = (persona_id or "default").lower()
-        if persona_key in budgets and budgets[persona_key] > 0:
+        persona_key = persona_id.lower() if persona_id else None
+        if persona_key and persona_key in budgets and budgets[persona_key] > 0:
             return budgets[persona_key]
         default = budgets.get("default", 0)
         return default or None

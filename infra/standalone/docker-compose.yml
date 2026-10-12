@@ -111,15 +111,10 @@ services:
       #   secret/agent/credentials/somabrain_memory_http_token
       # and are read there by services/gateway/settings.py. They are deliberately
       # NOT passed here.
-      # Service endpoints are OPERATOR PARAMETERS, not an ENV contract: the
-      # runtime resolves them through InfrastructureConfig (Capsule >
-      # AgentSetting > InfrastructureConfig > SettingsModel) via
-      # require_service_url. They are passed here only so the process has a
-      # first value before the admin UI exists, and each is REQUIRED — there is
-      # no default host, because a default is a hardcoded value an operator
-      # cannot see and an auditor cannot audit.
-      - SOMABRAIN_URL=${SOMABRAIN_URL:?set SOMABRAIN_URL}
-      - SOMAFRACTALMEMORY_URL=${SOMAFRACTALMEMORY_URL:?set SOMAFRACTALMEMORY_URL}
+      # Service endpoints are OPERATOR PARAMETERS resolved through the
+      # settings chain (Capsule > AgentSetting > InfrastructureConfig >
+      # SettingsModel) via require_service_url. They are NEVER passed as ENV
+      # URLs (OPEN-07 / R-VAL-06). bootstrap_soma P6 writes InfrastructureConfig.
       # Database topology — parts, not a DSN. A DSN embeds the password.
       # The password is read from Vault (secret/agent/credentials/postgres_password)
       # by config/settings_registry.py and assembled into DATABASES there.
@@ -132,6 +127,10 @@ services:
       - POSTGRES_PORT=5432
       - POSTGRES_DB=somaagent
       - POSTGRES_USER=somaagent
+      # Redis is Docker service topology (Rule 3: env is topology only).
+      - REDIS_HOST=somaagent_redis
+      - REDIS_PORT=6379
+      - SA01_REDIS_URL=redis://somaagent_redis:6379/0
     ports:
       - "20020:9000" # Agent API
     networks:
@@ -250,18 +249,18 @@ services:
   # somabrain_standalone_vault_unseal_watch). Vault reseals on every server
   # restart; the one-shot above only runs at `compose up`. This watcher
   # re-unseals whenever the seal comes back (container restart, crash, host
-  # reboot). Same script, same RAM custodian — idempotent, a no-op when
-  # already unsealed. It never writes secrets: the custodian is T0_DIR tmpfs.
+  # reboot). Same script, same custodian — idempotent, a no-op when already
+  # unsealed. The custodian is the named volume t0_agent (container-native,
+  # not OS keychain, not tmpfs) so the unseal key survives container recreate.
   somaagent_vault_unseal_watch:
-    tmpfs:
-      - /run/t0:mode=0700,size=1m
     container_name: somaagent_vault_unseal_watch
     image: python:3.11-alpine
     working_dir: /work
     volumes:
       - ./vault_unseal.py:/work/vault_unseal.py:ro
-      # Read-write T0_DIR: unseal key / root token live here after first init
-      # (or in the OS keychain on a host-side run). RAM only.
+      # Named volume (not tmpfs): unseal key written by bootstrap_exec / vault_unseal
+      # survives container recreate. Never the repo, never the host keychain.
+      - t0_agent:/run/t0:rw
     environment:
       VAULT_ADDR: http://somaagent_vault:8200
       T0_DIR: /run/t0

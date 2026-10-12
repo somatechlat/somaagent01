@@ -142,10 +142,24 @@ def _get_secret_manager():
 
 
 def get_api_key(service: str) -> str:
-    """Get API key from Vault (single source of truth). Fail-closed on missing key."""
+    """Get API key from Vault (single source of truth). Fail-closed on missing key.
+
+    Gateway-keyed providers (mimo / custom / ollama) have no vendor API key:
+    they are reached through an external gateway or a deployment endpoint
+    (``LLMModelConfig.api_base``). Asking Vault for one would invent a
+    credential requirement that does not exist — return empty for them.
+    """
+    from admin.llm.providers import provider_requires_api_key
+
+    if not provider_requires_api_key(service):
+        return ""
     key = _get_secret_manager().get_provider_key(service.lower())
     if not key:
-        raise LLMNotConfiguredError(f"Missing API key for provider '{service}' in secret manager")
+        raise LLMNotConfiguredError(
+            f"Missing API key for provider '{service}' in Vault "
+            f"(UnifiedSecretManager.get_provider_key). Store it at "
+            f"secret/agent/api_keys/{service.lower()}_api_key — never in env."
+        )
     if "," in key:
         api_keys = [k.strip() for k in key.split(",") if k.strip()]
         api_keys_round_robin[service] = api_keys_round_robin.get(service, -1) + 1
@@ -629,6 +643,13 @@ def _adjust_call_args(provider_name: str, model_name: str, kwargs: dict):
         }
     if provider_name == "other":
         provider_name = "openai"
+    # Deployment endpoints that speak the OpenAI wire protocol (mimo, custom,
+    # ollama) have no native LiteLLM chat provider.  Address them as
+    # ``openai/<model>`` with ``api_base`` naming the real gateway — the
+    # supported LiteLLM pattern for OpenAI-compatible hosts.
+    from admin.llm.providers import litellm_provider_for
+
+    provider_name = litellm_provider_for(provider_name)
     return provider_name, model_name, kwargs
 
 
@@ -663,9 +684,12 @@ def _merge_provider_defaults(
                 kwargs.setdefault(k, v)
 
     if "api_key" not in kwargs:
-        key = get_api_key(original_provider)
-        if key and key not in ("None", "NA"):
-            kwargs["api_key"] = key
+        from admin.llm.providers import provider_requires_api_key
+
+        if provider_requires_api_key(original_provider):
+            key = get_api_key(original_provider)
+            if key and key not in ("None", "NA"):
+                kwargs["api_key"] = key
 
     global_kwargs = _json_env("SA01_LITELLM_GLOBAL_KWARGS")
     if isinstance(global_kwargs, dict):

@@ -259,7 +259,7 @@ export class SomaRegister extends LitElement {
                     </form>
 
                     <div class="footer">
-                        <p class="footer-text">Powered by <a href="https://somatech.lat" target="_blank">SomaTech LAT</a></p>
+                        <p class="footer-text">Powered by SomaTech LAT</p>
                     </div>
                 </div>
             </div>

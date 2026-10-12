@@ -31,7 +31,7 @@ const SSO_PROVIDERS: ProviderConfig[] = [
         description: 'Connect via OIDC protocol (Keycloak, Auth0, etc.)',
         icon: 'key',
         fields: [
-            { key: 'issuer_url', label: 'Issuer URL', type: 'url', placeholder: 'https://auth.company.com/realms/main', required: true },
+            { key: 'issuer_url', label: 'Issuer URL', type: 'url', placeholder: 'Issuer URL of your identity provider', required: true },
             { key: 'client_id', label: 'Client ID', type: 'text', placeholder: 'soma-agent-client', required: true },
             { key: 'client_secret', label: 'Client Secret', type: 'password', placeholder: 'Enter client secret', required: true },
         ],
@@ -42,9 +42,9 @@ const SSO_PROVIDERS: ProviderConfig[] = [
         description: 'Enterprise SAML federation (Okta, OneLogin, etc.)',
         icon: 'security',
         fields: [
-            { key: 'metadata_url', label: 'Metadata URL', type: 'url', placeholder: 'https://idp.company.com/metadata.xml', required: true },
+            { key: 'metadata_url', label: 'Metadata URL', type: 'url', placeholder: 'IdP metadata URL', required: true },
             { key: 'entity_id', label: 'Entity ID', type: 'text', placeholder: 'urn:soma:agent:saml', required: true },
-            { key: 'acs_url', label: 'ACS URL', type: 'url', placeholder: 'https://app.somaagent.com/auth/saml/callback' },
+            { key: 'acs_url', label: 'ACS URL', type: 'url', placeholder: 'ACS callback URL from your service provider config' },
         ],
     },
     {
@@ -53,7 +53,7 @@ const SSO_PROVIDERS: ProviderConfig[] = [
         description: 'Connect to OpenLDAP or similar directory',
         icon: 'folder_shared',
         fields: [
-            { key: 'server_url', label: 'Server URL', type: 'url', placeholder: 'ldap://ldap.company.com:389', required: true },
+            { key: 'server_url', label: 'Server URL', type: 'url', placeholder: 'LDAP server URL', required: true },
             { key: 'base_dn', label: 'Base DN', type: 'text', placeholder: 'dc=company,dc=com', required: true },
             { key: 'bind_dn', label: 'Bind DN', type: 'text', placeholder: 'cn=admin,dc=company,dc=com', required: true },
             { key: 'bind_password', label: 'Bind Password', type: 'password', placeholder: 'Enter bind password', required: true },
@@ -67,7 +67,7 @@ const SSO_PROVIDERS: ProviderConfig[] = [
         icon: 'domain',
         fields: [
             { key: 'domain', label: 'Domain', type: 'text', placeholder: 'company.local', required: true },
-            { key: 'server_url', label: 'Domain Controller', type: 'url', placeholder: 'ldaps://dc.company.local:636', required: true },
+            { key: 'server_url', label: 'Domain Controller', type: 'url', placeholder: 'Domain controller LDAPS URL', required: true },
             { key: 'service_account', label: 'Service Account', type: 'text', placeholder: 'svc-somaagent@company.local', required: true },
             { key: 'service_password', label: 'Password', type: 'password', placeholder: 'Service account password', required: true },
             { key: 'base_ou', label: 'Search Base OU', type: 'text', placeholder: 'OU=Users,DC=company,DC=local' },
@@ -101,7 +101,7 @@ const SSO_PROVIDERS: ProviderConfig[] = [
         description: 'Ping Identity federation server',
         icon: 'hub',
         fields: [
-            { key: 'base_url', label: 'PingFederate URL', type: 'url', placeholder: 'https://sso.company.com', required: true },
+            { key: 'base_url', label: 'PingFederate URL', type: 'url', placeholder: 'PingFederate base URL', required: true },
             { key: 'client_id', label: 'Client ID', type: 'text', placeholder: 'soma-agent', required: true },
             { key: 'client_secret', label: 'Client Secret', type: 'password', placeholder: 'Enter client secret', required: true },
         ],
@@ -734,7 +734,7 @@ export class SomaLogin extends LitElement {
 
 
                     <div class="footer">
-                        <p class="footer-text">Powered by <a href="https://somatech.lat" target="_blank">SomaTech LAT</a></p>
+                        <p class="footer-text">Powered by SomaTech LAT</p>
                     </div>
                 </div>
             </div>
@@ -819,7 +819,7 @@ export class SomaLogin extends LitElement {
 
                     <div class="sso-footer">
                         <div class="sso-help">
-                            Need help? <a href="https://docs.somaagent.com/sso" target="_blank">View SSO documentation</a>
+                            Need help? Contact your administrator for SSO documentation.
                         </div>
                         <div class="sso-actions">
                             <button class="sso-btn" @click=${() => this._showSSOModal = false}>Cancel</button>

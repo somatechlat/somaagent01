@@ -192,10 +192,6 @@ def load_config() -> Config:
         "SA01_REDIS_URL",
         default_cfg_dict["redis"]["url"],
     )
-    default_cfg_dict["external"]["somabrain_base_url"] = os.getenv(
-        "SA01_SOMA_BASE_URL",
-        default_cfg_dict["external"]["somabrain_base_url"],
-    )
     default_cfg_dict["external"]["opa_url"] = os.getenv(
         "SA01_POLICY_URL",
         default_cfg_dict["external"]["opa_url"],

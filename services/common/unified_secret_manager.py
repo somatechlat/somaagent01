@@ -124,8 +124,10 @@ class UnifiedSecretManager:
         """List providers with stored API keys."""
         if not self._is_available():
             return []
-        # Check common providers
-        providers = ["openai", "groq", "anthropic", "openrouter", "ollama", "fireworks"]
+        # Canonical ids from admin.llm.providers (registry + legacy gateway keys)
+        from admin.llm.providers import VAULT_PROVIDER_IDS
+
+        providers = list(VAULT_PROVIDER_IDS)
         return [p for p in providers if self.get_provider_key(p)]
 
     # -------------------------------------------------------------------------

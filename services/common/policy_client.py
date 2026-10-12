@@ -160,7 +160,12 @@ class PolicyClient:
                 )
                 response.raise_for_status()
             data: dict[str, Any] = response.json()
-            decision = bool(data.get("result"))
+            # Fail-closed parse: only an explicit boolean True in result.allow
+            # permits. `bool(data.get("result"))` is a deny→allow inversion —
+            # OPA returns {"result": {"allow": false}} and a non-empty dict is
+            # truthy (security review F-01).
+            result = data.get("result")
+            decision = result.get("allow", False) is True if isinstance(result, dict) else False
             self._cache[cache_key] = (decision, now)
             self._cache.move_to_end(cache_key)
             while len(self._cache) > self._cache_max:

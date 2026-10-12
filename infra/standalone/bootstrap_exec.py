@@ -175,10 +175,12 @@ def ensure_unsealed() -> tuple[str | None, str | None]:
         unseal = keys[0] if keys else ""
         if not root or not unseal:
             die("sys/init returned no keys/root_token")
-        # Unseal key stays in THIS process RAM only (never consumer T0).
-        # Operator/keychain custodian for restarts (SOMA-STD-SECURITY-001 §1.2).
+        # Unseal key goes to the container-native T0 custodian (named volume)
+        # so unseal_watch can re-unseal on every start without any OS keychain.
+        # Root stays in THIS process RAM only (never consumer T0).
+        t0_write(UNSEAL_ACCOUNT, unseal)
         vault("POST", "sys/unseal", {"key": unseal}, token=root)
-        log("vault: initialised + unsealed (root+unseal in process RAM only)")
+        log("vault: initialised + unsealed (root in process RAM; unseal in T0)")
         return root, unseal
 
     st, hs = vault("GET", "sys/health")
@@ -188,14 +190,35 @@ def ensure_unsealed() -> tuple[str | None, str | None]:
         vault("POST", "sys/unseal", {"key": unseal})
         log("vault: unsealed")
 
+    # Already-initialised Vault: root is NOT required to restart. Seeding and
+    # token mint happen only when this process holds root (first boot). The
+    # restart path reuses scoped tokens already in T0 (see main).
     if not root:
-        die(
-            "no Vault root token in process RAM or T0. First boot of an "
-            "uninitialised Vault stores it here; a Vault initialised by another "
-            "container cannot share that RAM. Wipe vault data volume to re-bootstrap "
-            "or provide VAULT_TOKEN for this one-shot (R-SEC-03)."
-        )
+        log("vault: initialised; no root in this process (restart path)")
     return root, unseal
+
+
+# Infrastructure secrets this stack generates (real random, Vault-only).
+# Matches init_vault.py: values are created in process RAM and written to Vault
+# and nowhere else. Vendor API keys are NEVER generated — they come from the
+# operator seeder or the key is simply absent (get_provider_key fails closed).
+_INFRA_GENERATED = (
+    "django_secret_key",
+    "postgres_password",
+    "test_db_password",
+    "soma_api_token",
+    "somabrain_memory_http_token",
+    "somabrain_jwt_secret",
+    "keycloak_client_secret",
+    "keycloak_admin_password",
+    "minio_access_key",
+    "minio_secret_key",
+    "supervisor_http_pass",
+    "google_client_secret",
+    "spicedb_token",
+    "kafka_sasl_password",
+    "identity_password_pepper",
+)
 
 
 def seed_credentials(root: str) -> None:
@@ -204,43 +227,46 @@ def seed_credentials(root: str) -> None:
         if st not in (200, 204, 400):
             die(f"mount {mount} -> HTTP {st}")
 
-    creds = (
-        "django_secret_key",
-        "postgres_password",
-        "test_db_password",
-        "soma_api_token",
-        "somabrain_memory_http_token",
-        "somabrain_jwt_secret",
-        "keycloak_client_secret",
-        "keycloak_admin_password",
-        "minio_access_key",
-        "minio_secret_key",
-        "supervisor_http_pass",
-        "llm_api_key",
-        "google_client_secret",
-        "spicedb_token",
-        "kafka_sasl_password",
-        "identity_password_pepper",
-    )
-    for key in creds:
+    for key in _INFRA_GENERATED:
         existing = kv2_read(root, "secret", "agent/credentials", key)
         if existing:
             log(f"   – skipped (already in Vault): agent/credentials[{key}]")
             continue
-        value = py_secrets.token_urlsafe(32)
-        kv2_write_merge(root, "secret", "agent/credentials", key, value)
-        log(f"   ✔ generated + seeded agent/credentials[{key}]")
-        del value
+        generated = py_secrets.token_urlsafe(32)
+        kv2_write_merge(root, "secret", "agent/credentials", key, generated)
+        log(f"   ✔ seeded generated agent/credentials[{key}]")
+        del generated
 
-    for provider in ("groq", "openai", "elevenlabs", "anthropic"):
-        key = f"{provider}_api_key"
-        existing = kv2_read(root, "secret", "agent/api_keys", key)
-        if existing:
-            continue
-        value = py_secrets.token_urlsafe(32)
-        kv2_write_merge(root, "secret", "agent/api_keys", key, value)
-        log(f"   ✔ generated + seeded agent/api_keys[{key}]")
-        del value
+    # Provider API keys and shared inter-stack tokens are operator material.
+    # Delivered on stdin as JSON {"mount/key": "value", ...} — never ENV, never
+    # argv, never a file. Absent key = get_provider_key fails closed.
+    if not sys.stdin.isatty():
+        try:
+            raw = sys.stdin.read()
+        except Exception:
+            raw = ""
+        if raw.strip():
+            try:
+                operator = json.loads(raw)
+            except Exception:
+                die("stdin operator secrets must be JSON object of path/key -> value")
+            if not isinstance(operator, dict):
+                die("stdin operator secrets must be a JSON object")
+            for loc, value in operator.items():
+                if not value or not isinstance(value, str):
+                    die(f"stdin operator secret {loc!r} must be a non-empty string")
+                if "/" not in loc:
+                    die(f"stdin operator secret {loc!r} must be 'path/secret_key'")
+                # loc = "agent/credentials/somabrain_memory_http_token"
+                #  -> KV path "agent/credentials", key "somabrain_memory_http_token"
+                parts = loc.strip("/").split("/")
+                if len(parts) < 2:
+                    die(f"stdin key {loc!r} must be path/secret_key")
+                key = parts[-1]
+                path = "/".join(parts[:-1])
+                kv2_write_merge(root, "secret", path, key, value)
+                log(f"   ✔ seeded operator credential {path}[{key}]")
+                del value
 
 
 def mint_scoped(root: str) -> None:

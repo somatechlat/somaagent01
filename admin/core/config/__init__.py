@@ -88,16 +88,17 @@ def gateway_port() -> int:
 
 
 def soma_base_url() -> str:
-    """Get SomaBrain base URL.
+    """Get SomaBrain base URL from the settings chain only.
 
-
-    No legacy SOMA_BASE_URL support.
+    No env fallback (OPEN-07 / R-VAL-06). Readers must resolve through
+    require_service_url / InfrastructureConfig (R-VEN-02).
     """
     cfg_obj = settings()
-    url = cfg_obj.external.somabrain_base_url or env("SA01_SOMA_BASE_URL")
+    url = cfg_obj.external.somabrain_base_url
     if not url:
         raise RuntimeError(
-            "SA01_SOMA_BASE_URL must be set explicitly. No alternate sources allowed per "
+            "SOMABRAIN_URL is not configured. Set it through the settings chain "
+            "(Capsule / AgentSetting / InfrastructureConfig). No env fallback."
         )
     return str(url).rstrip("/")
 

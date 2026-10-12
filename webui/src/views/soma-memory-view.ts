@@ -235,6 +235,122 @@ export class SomaMemoryView extends LitElement {
             color: #b45309;
         }
 
+        /* MEMORY DASHBOARD (UI-S-04 §3.7) */
+        .memory-dashboard {
+            margin-top: auto;
+            padding-top: 16px;
+            border-top: 1px solid var(--soma-border-light, #e0e0e0);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .dash-tile {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 8px 10px;
+            border: 1px solid var(--soma-border-light, #e0e0e0);
+            border-radius: 8px;
+            background: var(--soma-bg-hover, #fafafa);
+        }
+
+        .dash-value {
+            font-size: 16px;
+            font-weight: 650;
+            line-height: 1.2;
+        }
+
+        .dash-value.gated {
+            color: var(--soma-text-muted, #999);
+        }
+
+        .dash-value.queued {
+            color: #b45309;
+        }
+
+        .dash-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--soma-text-secondary, #666);
+        }
+
+        .dash-note {
+            font-size: 10px;
+            color: var(--soma-text-muted, #999);
+        }
+
+        .dash-footnote {
+            grid-column: 1 / -1;
+            margin: 2px 0 0;
+            font-size: 10px;
+            line-height: 1.4;
+            color: var(--soma-text-muted, #999);
+        }
+
+        /* Remember… form (UI-S-04 action 12) */
+        .remember-form {
+            margin: 12px 0;
+            padding: 12px;
+            border: 1px solid var(--soma-border-light, #e0e0e0);
+            border-radius: 10px;
+            background: var(--soma-bg-hover, #fafafa);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .remember-form textarea {
+            width: 100%;
+            min-height: 64px;
+            resize: vertical;
+            padding: 8px 10px;
+            border: 1px solid var(--soma-border-light, #e0e0e0);
+            border-radius: 8px;
+            font: inherit;
+            font-size: 13px;
+            background: #fff;
+            color: var(--soma-text-primary, #1a1a1a);
+        }
+
+        .remember-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .remember-status {
+            font-size: 12px;
+        }
+
+        .remember-status.ok {
+            color: #047857;
+        }
+
+        .remember-status.err {
+            color: #b91c1c;
+        }
+
+        .probe-btn {
+            margin-top: 8px;
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--soma-border-light, #e0e0e0);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--soma-text-primary, #1a1a1a);
+            font: inherit;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .probe-btn:hover {
+            background: var(--soma-bg-hover, #fafafa);
+        }
+
         .memory-queued-banner {
             display: flex;
             gap: 10px;
@@ -603,9 +719,20 @@ export class SomaMemoryView extends LitElement {
     @state() private _totalCount: number | null = null;
     /** True when the last list/recall failed (brain down). Not “zero memories”. */
     @state() private _memoryUnavailable = false;
+    /** Hits returned by the last recall probe. Null = no probe run this session. */
+    @state() private _recallHits: number | null = null;
+    /** UI-S-04 #4 — this-turn filter from `?turn=current`. */
+    @state() private _thisTurnOnly = false;
+    /** Remember… form open (UI-S-04 action 12). */
+    @state() private _rememberOpen = false;
+    @state() private _rememberText = '';
+    @state() private _rememberStatus = '';
+    @state() private _rememberOk = true;
 
     async connectedCallback() {
         super.connectedCallback();
+        this._thisTurnOnly =
+            new URLSearchParams(window.location.search).get('turn') === 'current';
         await this._loadMemories();
     }
 
@@ -627,18 +754,87 @@ export class SomaMemoryView extends LitElement {
                         : nothing}
                 </div>
 
-                <!-- Search -->
+                <!-- Search (UI-S-04 #1) + Run probe (#2) -->
                 <div class="search-box">
                     <span class="material-symbols-outlined search-icon">search</span>
                     <input 
                         type="text" 
                         class="search-input" 
-                        placeholder="Semantic search..."
+                        placeholder="Search recall..."
                         .value=${this._searchQuery}
                         @input=${this._handleSearch}
                         @keydown=${this._handleSearchKeydown}
                     >
                 </div>
+                <button
+                    class="probe-btn"
+                    @click=${this._performSearch}
+                    ?disabled=${this._isLoading}
+                >
+                    Run probe
+                </button>
+
+                <!-- This-turn filter (UI-S-04 #4) — present when ?turn=current.
+                     [clear] returns to the full list. -->
+                ${this._thisTurnOnly
+                    ? html`
+                          <div class="filter-section">
+                              <div class="filter-label">Filter</div>
+                              <div class="filter-options">
+                                  <button
+                                      class="filter-chip active"
+                                      @click=${this._clearThisTurn}
+                                      title="Clear the this-turn filter"
+                                  >
+                                      this turn ✕
+                                  </button>
+                              </div>
+                          </div>
+                      `
+                    : nothing}
+
+                <!-- Remember… (UI-S-04 action 12) → POST /api/v2/memory/save -->
+                ${this._rememberOpen
+                    ? html`
+                          <div class="remember-form" role="form" aria-label="Remember">
+                              <label class="filter-label" for="remember-text">Remember…</label>
+                              <textarea
+                                  id="remember-text"
+                                  .value=${this._rememberText}
+                                  @input=${(e: Event) => {
+                                      this._rememberText = (e.target as HTMLTextAreaElement).value;
+                                  }}
+                                  placeholder="Text to store as a memory"
+                              ></textarea>
+                              <div class="remember-actions">
+                                  <button
+                                      class="action-btn primary"
+                                      @click=${this._submitRemember}
+                                      ?disabled=${!this._rememberText.trim() || this._isLoading}
+                                  >
+                                      Store
+                                  </button>
+                                  <button
+                                      class="action-btn"
+                                      @click=${() => {
+                                          this._rememberOpen = false;
+                                          this._rememberText = '';
+                                          this._rememberStatus = '';
+                                      }}
+                                  >
+                                      Cancel
+                                  </button>
+                                  ${this._rememberStatus
+                                      ? html`<span
+                                            class="remember-status ${this._rememberOk ? 'ok' : 'err'}"
+                                            role="status"
+                                            >${this._rememberStatus}</span
+                                        >`
+                                      : nothing}
+                              </div>
+                          </div>
+                      `
+                    : nothing}
 
                 <!-- Filter by Type -->
                 <div class="filter-section">
@@ -665,15 +861,38 @@ export class SomaMemoryView extends LitElement {
                     </select>
                 </div>
 
-                <!-- Stats. No storage-used figure exists in any memory API;
-                     a "2.4 GB" tile was a fabricated metric. -->
-                <div class="stats">
-                    <div class="stat-row">
-                        <span class="stat-label">Total Memories</span>
-                        <span class="stat-value ${this._memoryUnavailable ? 'queued' : ''}">
-                            ${this._memoryUnavailable ? 'queued' : (this._totalCount ?? '—')}
-                        </span>
+                <!-- MEMORY DASHBOARD (UI-S-04 §3.7). API numbers only.
+                     WM / LTM have no count API — they render "—" / GATED until
+                     one ships. Never 0, never a guess. No storage-used figure
+                     exists in any memory API; a "2.4 GB" tile was fabricated. -->
+                <div class="memory-dashboard" role="group" aria-label="Memory dashboard">
+                    <div class="dash-tile">
+                        <span class="dash-value gated" title="No count API — shown as — until one ships. Never 0.">—</span>
+                        <span class="dash-label">WM</span>
+                        <span class="dash-note">GATED</span>
                     </div>
+                    <div class="dash-tile">
+                        <span class="dash-value gated" title="No count API — shown as — until one ships. Never 0.">—</span>
+                        <span class="dash-label">LTM</span>
+                        <span class="dash-note">GATED</span>
+                    </div>
+                    <div class="dash-tile">
+                        <span class="dash-value ${this._memoryUnavailable ? 'queued' : ''}">${
+                            this._recallHits ?? '—'
+                        }</span>
+                        <span class="dash-label">recall</span>
+                        <span class="dash-note">${this._recallHits == null ? 'no probe' : 'this probe'}</span>
+                    </div>
+                    <div class="dash-tile">
+                        <span class="dash-value ${this._memoryUnavailable ? 'queued' : ''}">${
+                            this._memoryUnavailable ? 'queued' : (this._totalCount ?? '—')
+                        }</span>
+                        <span class="dash-label">list</span>
+                        <span class="dash-note">GET /memory/</span>
+                    </div>
+                    <p class="dash-footnote">
+                        No count API — WM / LTM show <b>—</b> until one ships. Never 0, never a guess.
+                    </p>
                 </div>
 
                 <!-- Back Button -->
@@ -693,6 +912,16 @@ export class SomaMemoryView extends LitElement {
                         </span>
                     </div>
                     <div class="header-actions">
+                        <button
+                            class="action-btn"
+                            @click=${() => {
+                                this._rememberOpen = !this._rememberOpen;
+                                this._rememberStatus = '';
+                            }}
+                            aria-expanded=${this._rememberOpen ? 'true' : 'false'}
+                        >
+                            <span class="material-symbols-outlined">add</span> Remember…
+                        </button>
                         <button class="action-btn" @click=${this._exportMemories}>
                             <span class="material-symbols-outlined">download</span> Export
                         </button>
@@ -823,7 +1052,9 @@ export class SomaMemoryView extends LitElement {
             };
             const hits = Array.isArray(response?.memories) ? response.memories : [];
             this._memories = hits.map(mapSomaHit);
-            this._totalCount = typeof response.total === 'number' ? response.total : this._memories.length;
+            // UI-S-04: `total` comes from the server only. Absent → `—`, never a
+            // guess derived from the rows we happened to receive.
+            this._totalCount = typeof response.total === 'number' ? response.total : null;
             this._memoryUnavailable = false;
         } catch (error) {
             // Failure is not zero memories — mark unavailable / queued.
@@ -848,6 +1079,7 @@ export class SomaMemoryView extends LitElement {
 
     private async _performSearch() {
         if (!this._searchQuery.trim()) {
+            this._recallHits = null;
             await this._loadMemories();
             return;
         }
@@ -863,7 +1095,9 @@ export class SomaMemoryView extends LitElement {
             }) as { memories?: SomaMemoryHit[] };
             const hits = Array.isArray(response?.memories) ? response.memories : [];
             this._memories = hits.map(mapSomaHit);
-            this._totalCount = this._memories.length;
+            // Recall hit count is its own dashboard figure (UI-S-04 #7).
+            // It is not the list total and must not overwrite it.
+            this._recallHits = this._memories.length;
         } catch (error) {
             console.error('Search failed:', error);
         } finally {
@@ -880,6 +1114,15 @@ export class SomaMemoryView extends LitElement {
 
     private _setFilter(filter: MemoryFilter) {
         this._filter = filter;
+    }
+
+    /** UI-S-04 #4 — [clear] drops ?turn=current and returns to the full list. */
+    private _clearThisTurn(): void {
+        this._thisTurnOnly = false;
+        const url = new URL(window.location.href);
+        url.searchParams.delete('turn');
+        window.history.replaceState(null, '', url.pathname + url.search);
+        void this._loadMemories();
     }
 
     private _handleSort(e: Event) {
@@ -924,10 +1167,47 @@ export class SomaMemoryView extends LitElement {
                 // SomaBrain forget — POST /api/v2/memory/forget
                 await apiClient.post('/memory/forget', { coord: memory.coord });
                 this._memories = this._memories.filter(m => m.id !== memory.id);
-                this._totalCount = this._memories.length;
+                // Decrement a known server total; do not invent one we never had.
+                if (typeof this._totalCount === 'number') {
+                    this._totalCount = Math.max(0, this._totalCount - 1);
+                }
             } catch (error) {
                 console.error('Failed to delete memory:', error);
             }
+        }
+    }
+
+    /**
+     * UI-S-04 action 12 — store a memory.
+     * Live contract is `POST /api/v2/memory/save` `MemorySaveIn {text}`.
+     * The mockup named this `/memory/remember`; the mounted router path is
+     * the source of truth (admin/memory/api/memory.py:184).
+     */
+    private async _submitRemember(): Promise<void> {
+        const text = this._rememberText.trim();
+        if (!text) return;
+        this._isLoading = true;
+        try {
+            const res = await apiClient.post<{ saved?: boolean; memory_id?: string }>(
+                '/memory/save',
+                { text },
+            );
+            if (res && res.saved === false) {
+                this._rememberOk = false;
+                this._rememberStatus = 'Server did not save the memory.';
+                return;
+            }
+            this._rememberOk = true;
+            this._rememberStatus = 'Stored.';
+            this._rememberText = '';
+            this._rememberOpen = false;
+            await this._loadMemories();
+        } catch (error) {
+            this._rememberOk = false;
+            this._rememberStatus =
+                error instanceof Error ? error.message : 'Could not store the memory.';
+        } finally {
+            this._isLoading = false;
         }
     }
 

@@ -42,11 +42,9 @@ test.describe('A person uses the agent', () => {
 
   test('logs in like a human', async ({ page }) => {
     await page.goto(`${UI}/login`);
-    await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
-    await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
-    await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
-
-    // A human knows they are in when the chat surface appears.
+    await page.locator('input[placeholder="name@company.com"]').fill(EMAIL);
+    await page.locator('input[placeholder="Enter your password"]').fill(PASSWORD);
+    await page.locator('input[placeholder="Enter your password"]').press('Enter');
     await expect(page).toHaveURL(/\/(chat|soma\/chat|workspace)?$/, { timeout: 30000 });
     await expect(
       page.locator('soma-chat, soma-chat-workspace, .chat-workspace').first()
@@ -55,9 +53,9 @@ test.describe('A person uses the agent', () => {
 
   test('streams a reply the person can watch arrive', async ({ page }) => {
     await page.goto(`${UI}/login`);
-    await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
-    await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
-    await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
+    await page.locator('input[placeholder="name@company.com"]').fill(EMAIL);
+    await page.locator('input[placeholder="Enter your password"]').fill(PASSWORD);
+    await page.locator('input[placeholder="Enter your password"]').press('Enter');
     await expect(page.locator('soma-chat, soma-chat-workspace').first()).toBeVisible({
       timeout: 30000,
     });
@@ -87,9 +85,9 @@ test.describe('A person uses the agent', () => {
 
   test('the controls a person presses actually control the turn', async ({ page }) => {
     await page.goto(`${UI}/login`);
-    await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
-    await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
-    await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
+    await page.locator('input[placeholder="name@company.com"]').fill(EMAIL);
+    await page.locator('input[placeholder="Enter your password"]').fill(PASSWORD);
+    await page.locator('input[placeholder="Enter your password"]').press('Enter');
     await expect(page.locator('soma-chat, soma-chat-workspace').first()).toBeVisible({
       timeout: 30000,
     });
@@ -112,12 +110,21 @@ test.describe('A person uses the agent', () => {
 
   test('remembers through SomaBrain and recalls it back', async ({ page, request }) => {
     await page.goto(`${UI}/login`);
-    await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
-    await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
-    await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
+    await page.locator('input[placeholder="name@company.com"]').fill(EMAIL);
+    await page.locator('input[placeholder="Enter your password"]').fill(PASSWORD);
+    await page.locator('input[placeholder="Enter your password"]').press('Enter');
     await expect(page.locator('soma-chat, soma-chat-workspace').first()).toBeVisible({
       timeout: 30000,
     });
+
+    // Wait for live WS before typing — otherwise send fails with "Not connected".
+    await page.waitForFunction(
+      () => {
+        const c = document.querySelector('soma-chat');
+        return Boolean(c && c._wsConnected && c._selectedAgentId);
+      },
+      { timeout: 25000 }
+    );
 
     const composer = page
       .locator('soma-composer textarea, soma-chat textarea, textarea')
@@ -142,9 +149,9 @@ test.describe('A person uses the agent', () => {
 
   test('logging out ends the session', async ({ page }) => {
     await page.goto(`${UI}/login`);
-    await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
-    await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
-    await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
+    await page.locator('input[placeholder="name@company.com"]').fill(EMAIL);
+    await page.locator('input[placeholder="Enter your password"]').fill(PASSWORD);
+    await page.locator('input[placeholder="Enter your password"]').press('Enter');
     await expect(page.locator('soma-chat, soma-chat-workspace').first()).toBeVisible({
       timeout: 30000,
     });
@@ -166,10 +173,11 @@ test.describe('A person uses the agent', () => {
   });
 
   test('the settings panel tells the truth about what this role may edit', async ({ page }) => {
+    test.setTimeout(180000); // 9 tabs × control walk — not the 60s default
     await page.goto(`${UI}/login`);
-    await page.getByRole('textbox', { name: 'name@company.com' }).fill(EMAIL);
-    await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
-    await page.getByRole('textbox', { name: 'Enter your password' }).press('Enter');
+    await page.locator('input[placeholder="name@company.com"]').fill(EMAIL);
+    await page.locator('input[placeholder="Enter your password"]').fill(PASSWORD);
+    await page.locator('input[placeholder="Enter your password"]').press('Enter');
     await expect(page.locator('soma-chat, soma-chat-workspace').first()).toBeVisible({
       timeout: 30000,
     });
@@ -206,7 +214,9 @@ test.describe('A person uses the agent', () => {
     //                      the title states that precondition).
     //    Not editable   -> disabled AND carrying a visible blocking reason.
     //    Dead-with-no-reason is the failure this test exists to catch.
-    const tabs = ['Agent', 'External', 'Connectivity', 'System'];
+    // Labels are the LIVE product tabs (soma-settings.ts _tabs) — a test that
+    // invents tab names walks nothing and passes on an empty page.
+    const tabs = ['Agent', 'Models', 'Voice', 'Interface', 'Tools', 'Integrations', 'SomaBrain', 'Connectivity', 'Advanced'];
     const seenControls = new Set();
 
     for (const label of tabs) {

@@ -975,6 +975,29 @@ export class SomaChat extends LitElement {
             color: #FF7A3D;
         }
 
+        /* Model chip (UI-S-07 C1 / E) — read-only label, links to Model Roles.
+           LIVE lights only when the turn model is the chat_role binding. */
+        a.vital.model-chip {
+            text-decoration: none;
+            cursor: pointer;
+            gap: 6px;
+        }
+
+        a.vital.model-chip:hover {
+            text-decoration: underline;
+        }
+
+        .vital em.live-chip {
+            color: #10B981;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            border: 1px solid rgba(16, 185, 129, 0.5);
+            border-radius: 999px;
+            padding: 0 5px;
+        }
+
         .dock-knobs-preview {
             font-size: 11px;
             color: #FF7A3D;
@@ -1443,12 +1466,21 @@ export class SomaChat extends LitElement {
     @state() private _agents: { id: string; name: string; description: string; capsule_id?: string }[] = [];
     @state() private _selectedAgentId = '';
     @state() private _modelLabel = '';
+    /**
+     * Label forms of the model bound to `chat_role` (`GET /llm/roles` →
+     * `GET /llm/models`). The chat LIVE chip is lit only when the turn's
+     * `chat.turn_meta.model` matches this binding — never a decorative flag.
+     */
+    @state() private _chatRoleLabels: string[] = [];
     @state() private _chatTitle = 'New conversation';
     @state() private _userName = 'User';
     @state() private _userRole = '';
     @state() private _userInitials = 'U';
     @state() private _turnLanes: Record<string, number> | null = null;
     @state() private _memoryHits: { text?: string; score?: number | null; kind?: string | null }[] = [];
+    /** True once a turn has emitted chat.turn_meta — the only honest source of
+     *  "recall 0 this turn". Before any turn, recall is unknown, not zero. */
+    @state() private _turnMetaSeen = false;
     @state() private _contextTokens = 0;
     /** Real LLMModelConfig.ctx_length; null/0 means unknown — never invent a %. */
     @state() private _contextWindow = 0;
@@ -1508,6 +1540,7 @@ export class SomaChat extends LitElement {
         void this._loadSystemDiagnostics();
         void this._loadChannels();
         void this._loadMemoryStatus();
+        void this._loadChatRoleBinding();
         window.addEventListener('keydown', this._onGlobalKeydown);
     }
 
@@ -1669,6 +1702,44 @@ export class SomaChat extends LitElement {
                 'Memory unavailable — messages are queued and will sync when connected';
             this._memoryQueued = true;
         }
+    }
+
+    /**
+     * Resolve which model `chat_role` is bound to so the active-model chip can
+     * show LIVE only when the turn model is that role-bound model.
+     * Both `provider/name` and bare `name` forms are kept: the orchestrator
+     * emits `chat.turn_meta.model` as `f"{provider}/{name}"`.
+     */
+    private async _loadChatRoleBinding(): Promise<void> {
+        try {
+            const roles = await apiClient.get<{ chat_role?: string | null }>('/llm/roles');
+            const boundId = roles?.chat_role;
+            if (!boundId) {
+                this._chatRoleLabels = [];
+                return;
+            }
+            const models = await apiClient.get<
+                { id?: string; name?: string; provider?: string }[]
+            >('/llm/models');
+            const list = Array.isArray(models) ? models : [];
+            const m = list.find((x) => String(x.id) === String(boundId));
+            if (!m?.name) {
+                this._chatRoleLabels = [];
+                return;
+            }
+            const labels = new Set<string>([m.name]);
+            if (m.provider) labels.add(`${m.provider}/${m.name}`);
+            this._chatRoleLabels = [...labels];
+        } catch {
+            // No role binding readable → no LIVE chip. Never decorate.
+            this._chatRoleLabels = [];
+        }
+    }
+
+    /** True only when the in-use turn model is the model bound to chat_role. */
+    private get _modelIsChatRole(): boolean {
+        if (!this._modelLabel || !this._chatRoleLabels.length) return false;
+        return this._chatRoleLabels.includes(this._modelLabel);
     }
 
     private async _loadChannels(): Promise<void> {
@@ -2216,6 +2287,7 @@ export class SomaChat extends LitElement {
         if (p.model) {
             this._modelLabel = p.model;
         }
+        this._turnMetaSeen = true;
         this._turnLanes = p.lanes ?? null;
         this._memoryHits = Array.isArray(p.memory_hits) ? p.memory_hits : [];
         this._contextTokens = typeof p.context_tokens === 'number' ? p.context_tokens : 0;
@@ -3007,11 +3079,33 @@ export class SomaChat extends LitElement {
                                     ? html`<em class="memory-queued-chip" title=${this._memoryTooltip}>queued</em>`
                                     : nothing}
                             </span>
-                            ${this._memoryHits.length
-                                ? html`<span class="vital text" title="Recall this turn">
-                                      ${ICON('psychology', 14)} ${this._memoryHits.length}
+                            ${this._memoryDot === 'warn' && this._memoryQueued
+                                ? html`<span class="vital text" title="Long-term memory unavailable">
+                                      ${ICON('psychology', 14)} recall —
                                   </span>`
-                                : nothing}
+                                : this._memoryHits.length
+                                  ? html`<span class="vital text" title="Recall this turn">
+                                        ${ICON('psychology', 14)} recall ${this._memoryHits.length}
+                                    </span>`
+                                  : this._turnMetaSeen
+                                    ? html`<span class="vital text" title="Nothing recalled this turn">
+                                          ${ICON('psychology', 14)} recall 0
+                                      </span>`
+                                    : nothing}
+                            <a
+                                class="vital text"
+                                href="/memory?turn=current"
+                                title="Open Memory (this turn)"
+                                @click=${(e: MouseEvent) => {
+                                    e.preventDefault();
+                                    window.dispatchEvent(
+                                        new CustomEvent('soma-navigate', {
+                                            detail: { route: '/memory?turn=current' },
+                                        }),
+                                    );
+                                }}
+                                >Open Memory</a
+                            >
                             ${this._contextFillPct != null
                                 ? html`<span
                                       class="vital text ${this._contextFillClass}"
@@ -3025,7 +3119,25 @@ export class SomaChat extends LitElement {
                                     </span>`
                                   : nothing}
                             ${this._modelLabel
-                                ? html`<span class="vital text" title="Model">${this._modelLabel}</span>`
+                                ? html`<a
+                                      class="vital text model-chip"
+                                      href="/settings/models"
+                                      title=${this._modelIsChatRole
+                                          ? 'Model · bound to chat role (Model Roles)'
+                                          : 'Model · not bound to chat role'}
+                                      @click=${(e: MouseEvent) => {
+                                          e.preventDefault();
+                                          window.dispatchEvent(
+                                              new CustomEvent('soma-navigate', {
+                                                  detail: { route: '/settings/models' },
+                                              }),
+                                          );
+                                      }}
+                                  >
+                                      ${this._modelLabel}${this._modelIsChatRole
+                                          ? html`<em class="live-chip">LIVE</em>`
+                                          : nothing}
+                                  </a>`
                                 : nothing}
                             ${this._isStreaming
                                 ? html`<span class="vital text pulse">
@@ -3089,6 +3201,26 @@ export class SomaChat extends LitElement {
     }
 
     private _renderWelcome() {
+        if (this._agents.length === 0) {
+            return html`
+                <div class="welcome" data-control="no-agents">
+                    <div class="welcome-hero">
+                        <h2>Create your first agent</h2>
+                        <p>
+                            You have no agents yet. An agent is a configured Soma that can chat,
+                            remember, and act. Create one to get started.
+                        </p>
+                        <button
+                            class="wb-action"
+                            style="margin-top: 12px"
+                            @click=${() => this._navigate('/admin/agents')}
+                        >
+                            Create your first agent
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
         const firstName =
             this._userName && this._userName !== 'User' ? `, ${this._userName.split(' ')[0]}` : '';
         const start = (text: string) => {

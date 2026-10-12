@@ -326,6 +326,14 @@ ROLE_PERMISSIONS: Mapping[str, frozenset[str]] = {
         {
             "agent:read",
             "resource:tool_execute",
+            # Memory UI (UI-S-04) search/recall/remember/forget is ordinary
+            # product use, same class as chat_send. Without these a sysadmin
+            # can open Memory but not run a probe or remember — the screen is
+            # dead. Named grants, not ``_RESOURCE_OPERATE``/``_CONFIGURE``:
+            # tool_configure and file_delete stay with operator roles.
+            "resource:memory_search",
+            "resource:memory_write",
+            "resource:memory_delete",
             "cognitive:view",
             "system:view",
             "system:configure",
@@ -504,8 +512,9 @@ def permissions_for_role(role: str) -> frozenset[str]:
 def permissions_for_principal(
     roles: Iterable[str] | None = None,
     scopes: Iterable[str] | None = None,
+    org_id: str | None = None,
 ) -> frozenset[str]:
-    """The authority a principal holds.
+    """The authority a principal holds, inside one organization.
 
     A principal is one of two things, and the two must not be mixed:
 
@@ -520,6 +529,13 @@ def permissions_for_principal(
     ignored rather than unioned in. Unioning would turn a deliberately narrow
     key into "whatever the caller also happens to hold".
 
+    **Org scoping (F-02).** Roles are held *inside* an organization; the same
+    role name in two organizations is two different authorities. Therefore
+    ``org_id`` is mandatory on every call: a check that cannot name the
+    organization is a check that cannot scope the grant, and it gets no
+    authority. There is no implicit "current" org and no default partition.
+    An empty or missing ``org_id`` yields the empty set.
+
     An empty scope set is an empty authority. ``validate_scopes`` refuses to
     issue one; if one is ever stored, it grants nothing.
 
@@ -527,6 +543,8 @@ def permissions_for_principal(
     permission is not authority, and it does not become authority by sitting
     in a list.
     """
+    if not org_id:
+        return frozenset()
     if scopes is not None:
         return frozenset(s for s in scopes if s in PERMISSIONS)
     return permissions_for_roles(roles or [])

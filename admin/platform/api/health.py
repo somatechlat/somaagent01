@@ -19,6 +19,7 @@ from django.utils import timezone
 from ninja import Router
 from pydantic import BaseModel
 
+from admin.common.auth import AuthBearer
 from admin.observability.api import get_uptime_seconds
 from services.common.http_timeouts import httpx_timeout  # noqa: E402
 
@@ -186,7 +187,9 @@ async def check_kafka() -> ServiceHealth:
 async def check_somabrain() -> ServiceHealth:
     """Check SomaBrain cognitive service health."""
     start = datetime.now()
-    somabrain_url = settings.SOMABRAIN_URL  # VIBE: No fallback - fail fast
+    from admin.core.helpers.service_urls import require_service_url
+
+    somabrain_url = require_service_url("SOMABRAIN_URL")
     try:
         async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
             response = await client.get(f"{somabrain_url}/health")
@@ -223,6 +226,7 @@ async def check_somabrain() -> ServiceHealth:
     "",
     response=PlatformHealth,
     summary="Get complete platform health",
+    auth=AuthBearer(),
 )
 async def get_platform_health(request) -> PlatformHealth:
     """Check health of all platform services.
@@ -260,6 +264,7 @@ async def get_platform_health(request) -> PlatformHealth:
     "/db",
     response=ServiceHealth,
     summary="Check database health",
+    auth=AuthBearer(),
 )
 async def check_database_health(request) -> ServiceHealth:
     """Check PostgreSQL database health only."""
@@ -270,6 +275,7 @@ async def check_database_health(request) -> ServiceHealth:
     "/cache",
     response=ServiceHealth,
     summary="Check cache health",
+    auth=AuthBearer(),
 )
 async def check_cache_health(request) -> ServiceHealth:
     """Check Redis cache health only."""
@@ -280,6 +286,7 @@ async def check_cache_health(request) -> ServiceHealth:
     "/keycloak",
     response=ServiceHealth,
     summary="Check Keycloak health",
+    auth=AuthBearer(),
 )
 async def check_keycloak_health(request) -> ServiceHealth:
     """Check Keycloak IAM health only."""
@@ -290,6 +297,7 @@ async def check_keycloak_health(request) -> ServiceHealth:
     "/somabrain",
     response=ServiceHealth,
     summary="Check SomaBrain health",
+    auth=AuthBearer(),
 )
 async def check_somabrain_health(request) -> ServiceHealth:
     """Check SomaBrain cognitive service health only."""
@@ -299,6 +307,7 @@ async def check_somabrain_health(request) -> ServiceHealth:
 @router.get(
     "/degradation",
     summary="Get degradation status",
+    auth=AuthBearer(),
 )
 async def get_degradation_status(request) -> dict:
     """Get current degradation mode status.

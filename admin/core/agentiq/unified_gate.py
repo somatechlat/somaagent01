@@ -175,7 +175,9 @@ class UnifiedGate:
             resolved_roles, resolved_scopes = await self._principal_for(
                 user_id, tenant_id, roles, scopes
             )
-            if not self._check_role_floor(action, resolved_roles, resolved_scopes):
+            if not self._check_role_floor(
+                action, resolved_roles, resolved_scopes, tenant_id=tenant_id
+            ):
                 logger.debug(
                     "Role floor denied action=%s roles=%s", action, resolved_roles
                 )
@@ -273,7 +275,10 @@ class UnifiedGate:
         return await self._roles_for(user_id, tenant_id), None
 
     async def _roles_for(self, user_id: str | None, tenant_id: str | None) -> List[str]:
-        """Resolve the subject's roles from the membership record.
+        """Resolve the subject's roles from the one membership store.
+
+        ``TenantUser.roles_for`` is the single resolver (F-05). This method
+        never opens a second question against the table.
 
         FAIL-CLOSED: a subject with no recorded role has no authority. A missing
         role must never become a default grant. Resolution failure is denial,
@@ -284,16 +289,9 @@ class UnifiedGate:
         try:
             from asgiref.sync import sync_to_async
 
-            @sync_to_async
-            def _load() -> List[str]:
-                from admin.platform.models import TenantUser
+            from admin.platform.models import TenantUser
 
-                qs = TenantUser.objects.filter(user_id=user_id, is_active=True)
-                if tenant_id:
-                    qs = qs.filter(tenant_id=tenant_id)
-                return list(qs.values_list("role", flat=True))
-
-            return await _load()
+            return await sync_to_async(TenantUser.roles_for)(user_id, tenant_id)
         except Exception:
             logger.exception("Role resolution failed (FAIL-CLOSED): user=%s", user_id)
             return []
@@ -303,6 +301,7 @@ class UnifiedGate:
         action: str,
         roles: Iterable[str] | None,
         scopes: Iterable[str] | None = None,
+        tenant_id: str | None = None,
     ) -> bool:
         """Decide the role-based floor for ``action``.
 
@@ -310,6 +309,11 @@ class UnifiedGate:
         catalog permission it stands for, and that permission must be one the
         caller's roles actually grant. Both halves fail closed: an action that
         maps to nothing is denied, and roles that grant nothing are denied.
+
+        ``tenant_id`` is the organization the grant lives in (F-02). A check
+        that cannot name the organization cannot scope the grant and is
+        denied — ``permissions_for_principal`` enforces that, but the call
+        site must hand it the identity rather than inventing one.
 
         SpiceDB and OPA are not consulted here. They run afterwards and can
         only narrow what this method has already allowed.
@@ -334,13 +338,17 @@ class UnifiedGate:
         if scopes is not None:
             if not scopes:
                 return False
-            return permission in permissions_for_principal(scopes=scopes)
+            return permission in permissions_for_principal(
+                scopes=scopes, org_id=tenant_id
+            )
 
         role_list = list(roles or [])
         if not role_list:
             return False
 
-        return permission in permissions_for_principal(roles=role_list)
+        return permission in permissions_for_principal(
+            roles=role_list, org_id=tenant_id
+        )
 
     async def _check_opa(
         self,

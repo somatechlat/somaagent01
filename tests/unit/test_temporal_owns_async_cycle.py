@@ -14,9 +14,27 @@ def test_supervisord_starts_the_conversation_temporal_worker():
     assert "conversation_worker.temporal_worker" in text or "conversation-temporal" in text
 
 
-def test_supervisord_starts_the_delegation_temporal_worker():
-    text = SUPERVISOR.read_text(encoding="utf-8")
-    assert "delegation_gateway.temporal_worker" in text or "delegation-temporal" in text
+def test_only_one_temporal_worker_is_constructed():
+    """WAVE 5: A2A is folded into conversation_worker — no second Worker.
+
+    ``services/delegation_gateway/temporal_worker.py`` is a thin re-export and
+    must never construct a ``temporalio.worker.Worker`` of its own.
+    """
+    convo = (ROOT / "services" / "conversation_worker" / "temporal_worker.py").read_text(
+        encoding="utf-8"
+    )
+    dele = (ROOT / "services" / "delegation_gateway" / "temporal_worker.py").read_text(
+        encoding="utf-8"
+    )
+    # The single Worker construction lives only in conversation_worker.
+    assert "Worker(" in convo
+    assert "Worker(" not in dele, (
+        "delegation_gateway/temporal_worker.py must not construct a Worker — "
+        "A2A is folded into conversation_worker (same worker, same queue)"
+    )
+    # A2A surface is registered on the conversation worker.
+    assert "A2AWorkflow" in convo
+    assert "handle_a2a" in convo
 
 
 def test_hot_chat_token_path_is_not_behind_temporal():

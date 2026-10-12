@@ -23,22 +23,28 @@ async function login(page) {
   await page.locator('input[placeholder="Enter your password"]').fill(PASSWORD);
   await page.locator('button:has-text("Sign in")').first().click();
   await expect(page.locator('soma-composer textarea, textarea').first()).toBeVisible({ timeout: 30000 });
-  // wait until the chat shell has an agent + websocket
+  // wait until the chat shell has an agent + websocket — a send without it
+  // fails "Not connected" and is a test race, not a product answer.
   await page.waitForFunction(() => {
     const c = document.querySelector('soma-chat');
     return c && c._selectedAgentId && c._wsConnected;
-  }, { timeout: 30000 }).catch(() => {});
+  }, { timeout: 30000 });
 }
 
 async function ask(page, text) {
   const box = page.locator('soma-composer textarea, textarea').first();
+  // Cardinality gate: read the NEW assistant bubble, never the previous turn's
+  // (locator.evaluate on a pre-send .last() races the placeholder and can
+  // return the old turn or an empty shell).
+  const before = await page.locator('soma-message[message-role="assistant"]').count();
   await box.fill(text);
   await box.press('Enter');
-  const last = page.locator('soma-message[message-role="assistant"]').last();
-  if (!(await last.count())) {
-    // fallback: any soma-message after send
-    await expect(page.locator('soma-message').first()).toBeVisible({ timeout: 90000 });
-  }
+  await expect
+    .poll(async () => page.locator('soma-message[message-role="assistant"]').count(), {
+      timeout: 90000,
+    })
+    .toBeGreaterThan(before);
+  const last = page.locator('soma-message[message-role="assistant"]').nth(before);
   await expect(last).toBeVisible({ timeout: 90000 });
   await expect
     .poll(async () => last.evaluate((el) => {
@@ -47,7 +53,26 @@ async function ask(page, text) {
       return (body.textContent || '').replace(/\s+/g, ' ').trim().length;
     }), { timeout: 90000 })
     .toBeGreaterThan(0);
-  await page.waitForTimeout(1200);
+  // Wait for the STREAM to finish, not just the first token. A read at the
+  // first delta is a truncated reply (live Mission T: mid-coord cutoff).
+  // Signal: assistant text stable across two samples. The send button is NOT
+  // a signal — it stays disabled on an empty composer after send.
+  await expect
+    .poll(async () => {
+      const t1 = await last.evaluate((el) => {
+        const root = el.shadowRoot || el;
+        const body = root.querySelector('.text') || root;
+        return (body.textContent || '').replace(/\s+/g, ' ').trim();
+      });
+      await page.waitForTimeout(1500);
+      const t2 = await last.evaluate((el) => {
+        const root = el.shadowRoot || el;
+        const body = root.querySelector('.text') || root;
+        return (body.textContent || '').replace(/\s+/g, ' ').trim();
+      });
+      return t1 === t2 && t1.length > 0;
+    }, { timeout: 90000, intervals: [2000] })
+    .toBe(true);
   return (await last.evaluate((el) => {
     const root = el.shadowRoot || el;
     const body = root.querySelector('.text') || root;
@@ -87,7 +112,12 @@ test.describe('Complex context and memory (UI)', () => {
     await login(page);
     await ask(page, `Remember these facts: my name is Marco, my favorite color is terracotta, codeword is ${MARK}.`);
     await page.locator('button:has-text("New Chat"), button:has-text("New chat")').first().click();
-    await page.waitForTimeout(1500);
+    // New Chat tears down the turn channel — wait for the new one before asking
+    // or the recall question is a "Not connected" race.
+    await page.waitForFunction(() => {
+      const c = document.querySelector('soma-chat');
+      return c && c._selectedAgentId && c._wsConnected;
+    }, { timeout: 30000 });
     const reply = norm(await ask(page, 'What is my name, my favorite color, and the codeword?'));
     expect(reply.toLowerCase()).toContain('marco');
     expect(reply.toLowerCase()).toContain('terracotta');

@@ -456,6 +456,14 @@ def get_auth_config() -> AuthConfig:
 def get_feature_flag(flag_name: str, default: bool = False) -> bool:
     """Get global feature flag value.
 
+    Resolution order:
+      1. ``Config.feature_flags`` (SA01_ENABLE_* env / config.yaml / config.json)
+      2. Settings chain (Capsule → AgentSetting → InfrastructureConfig →
+         SettingsModel) under the flag name — so an operator can enable e.g.
+         ``clef_guardrail`` from the administration settings without an env
+         restart (SOMA-STD-CONFIG-001).
+      3. ``default``.
+
     Args:
         flag_name: Feature flag name
         default: Default value if flag not found
@@ -464,7 +472,26 @@ def get_feature_flag(flag_name: str, default: bool = False) -> bool:
         bool: Feature flag value
     """
     registry = get_config_registry()
-    return registry.get_feature_flag(flag_name, default)
+    config = registry.get_config()
+    if flag_name in config.feature_flags:
+        return bool(config.feature_flags[flag_name])
+    try:
+        from admin.core.helpers.capsule_settings import resolve_setting
+
+        raw = resolve_setting(flag_name, agent_id="default")
+        if raw is not None and str(raw).strip():
+            return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+    except Exception:
+        pass
+    try:
+        from admin.core.helpers.service_urls import require_setting
+
+        raw = require_setting(flag_name)
+        if raw is not None and str(raw).strip():
+            return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+    except Exception:
+        pass
+    return bool(default)
 
 
 def get_extra_config(key: str, default: Optional[Any] = None) -> Optional[Any]:

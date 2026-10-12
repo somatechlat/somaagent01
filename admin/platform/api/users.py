@@ -38,7 +38,7 @@ class TenantUserOut(BaseModel):
     id: str
     email: str
     name: str
-    role: str
+    roles: list[str]
     is_active: bool
     tenant_id: str
     created_at: str
@@ -46,15 +46,17 @@ class TenantUserOut(BaseModel):
 
 
 class UserCreateRequest(BaseModel):
-    """Add a principal to the organisation with a catalog role.
+    """Add a principal to the organisation with one or more catalog roles.
 
     ``user_id`` is the identity-provider subject and is not nullable: the row
-    must name a real principal, never an invented one.
+    must name a real principal, never an invented one. ``roles`` is explicit
+    and non-empty: a member with no role holds nothing, and inventing a
+    default role is a hidden grant.
     """
 
     email: str
     name: str
-    role: str = "member"
+    roles: list[str]
     user_id: str
 
 
@@ -62,7 +64,7 @@ class UserUpdateRequest(BaseModel):
     """Update user request."""
 
     name: Optional[str] = None
-    role: Optional[str] = None
+    roles: Optional[list[str]] = None
     is_active: Optional[bool] = None
 
 
@@ -79,7 +81,7 @@ def _user_to_out(user: TenantUser) -> TenantUserOut:
         id=str(user.id),
         email=user.email,
         name=user.display_name or "",
-        role=user.role,
+        roles=list(user.roles) if isinstance(user.roles, list) else [],
         is_active=user.is_active,
         tenant_id=str(user.tenant.id),
         created_at=user.created_at.isoformat() if user.created_at else "",
@@ -112,7 +114,8 @@ def list_users(
     qs = TenantUser.objects.filter(tenant_id=tenant_id)
 
     if role:
-        qs = qs.filter(role=role)
+        # ``roles`` is a JSON list; containment is the match, not equality.
+        qs = qs.filter(roles__contains=role)
     if status == "active":
         qs = qs.filter(is_active=True)
     elif status == "inactive":
@@ -147,8 +150,15 @@ def add_user(
     on creation because there is no pending state in a self-hosted deployment.
     """
     authorize_sync(request, action="org:user_create", resource="users")
-    if payload.role not in VALID_ROLES:
-        raise ValidationError(f"Invalid role. Must be one of: {VALID_ROLES}", field="role")
+    if not payload.roles:
+        raise ValidationError(
+            f"At least one role is required. Valid roles: {VALID_ROLES}", field="roles"
+        )
+    unknown = [r for r in payload.roles if r not in VALID_ROLES]
+    if unknown:
+        raise ValidationError(
+            f"Invalid roles: {unknown}. Must be one of: {VALID_ROLES}", field="roles"
+        )
 
     from uuid import UUID
 
@@ -168,11 +178,11 @@ def add_user(
         user_id=principal_id,
         email=payload.email,
         display_name=payload.name,
-        role=payload.role,
+        roles=list(payload.roles),
         is_active=True,
     )
 
-    logger.info("Member added: %s as %s", payload.email, payload.role)
+    logger.info("Member added: %s as %s", payload.email, payload.roles)
 
     return api_response(_user_to_out(user).model_dump(), message="Member added")
 
@@ -188,8 +198,10 @@ def get_user(
 ) -> dict:
     """Get a single user's details."""
     authorize_sync(request, action="org:user_read", resource="users")
+    # F-01: scope every lookup by the caller's tenant. A bare id is an IDOR.
+    tenant_id = getattr(request.auth, "tenant_id", None) or settings.SA01_DEFAULT_TENANT_ID
     try:
-        user = TenantUser.objects.get(id=user_id)
+        user = TenantUser.objects.get(id=user_id, tenant_id=tenant_id)
     except TenantUser.DoesNotExist:
         raise NotFoundError("user", user_id)
 
@@ -208,17 +220,20 @@ def update_user(
 ) -> dict:
     """Update a user's information."""
     authorize_sync(request, action="org:user_update", resource="users")
+    # F-01: scope every lookup by the caller's tenant.
+    tenant_id = getattr(request.auth, "tenant_id", None) or settings.SA01_DEFAULT_TENANT_ID
     try:
-        user = TenantUser.objects.get(id=user_id)
+        user = TenantUser.objects.get(id=user_id, tenant_id=tenant_id)
     except TenantUser.DoesNotExist:
         raise NotFoundError("user", user_id)
 
     if payload.name is not None:
         user.display_name = payload.name
-    if payload.role is not None:
-        if payload.role not in VALID_ROLES:
-            raise ValidationError("Invalid role", field="role")
-        user.role = payload.role
+    if payload.roles is not None:
+        unknown = [r for r in payload.roles if r not in VALID_ROLES]
+        if unknown:
+            raise ValidationError(f"Invalid roles: {unknown}", field="roles")
+        user.roles = list(payload.roles)
     if payload.is_active is not None:
         user.is_active = payload.is_active
 
@@ -239,8 +254,10 @@ def remove_user(
 ) -> dict:
     """Remove a user from the tenant."""
     authorize_sync(request, action="org:user_delete", resource="users")
+    # F-01: scope every lookup by the caller's tenant.
+    tenant_id = getattr(request.auth, "tenant_id", None) or settings.SA01_DEFAULT_TENANT_ID
     try:
-        user = TenantUser.objects.get(id=user_id)
+        user = TenantUser.objects.get(id=user_id, tenant_id=tenant_id)
     except TenantUser.DoesNotExist:
         raise NotFoundError("user", user_id)
 
@@ -252,29 +269,42 @@ def remove_user(
 
 @router.put(
     "/users/{user_id}/role",
-    summary="Change user role",
+    summary="Replace a user's role set",
     auth=AuthBearer(),
 )
 def change_user_role(
     request,
     user_id: str,
-    role: str = Query(...),
+    roles: list[str] = Query(...),
 ) -> dict:
-    """Change a user's role."""
-    authorize_sync(request, action="org:assign_roles", resource="users")
-    if role not in VALID_ROLES:
-        raise ValidationError(f"Invalid role. Must be one of: {VALID_ROLES}", field="role")
+    """Replace the full set of catalog roles a user holds in this organization.
 
+    The body is the complete new set, not an increment: multi-role is the
+    model (F-05), and a partial write would silently drop a grant.
+    """
+    authorize_sync(request, action="org:assign_roles", resource="users")
+    if not roles:
+        raise ValidationError(
+            f"At least one role is required. Valid roles: {VALID_ROLES}", field="roles"
+        )
+    unknown = [r for r in roles if r not in VALID_ROLES]
+    if unknown:
+        raise ValidationError(
+            f"Invalid roles: {unknown}. Must be one of: {VALID_ROLES}", field="roles"
+        )
+
+    # F-01: scope every lookup by the caller's tenant.
+    tenant_id = getattr(request.auth, "tenant_id", None) or settings.SA01_DEFAULT_TENANT_ID
     try:
-        user = TenantUser.objects.get(id=user_id)
+        user = TenantUser.objects.get(id=user_id, tenant_id=tenant_id)
     except TenantUser.DoesNotExist:
         raise NotFoundError("user", user_id)
 
-    user.role = role
+    user.roles = list(roles)
     user.save()
-    logger.info("User role changed: %s -> %s", user_id, role)
+    logger.info("User roles changed: %s -> %s", user_id, roles)
 
-    return api_response({"user_id": user_id, "role": role}, message="Role updated")
+    return api_response({"user_id": user_id, "roles": list(roles)}, message="Roles updated")
 
 
 # =============================================================================
@@ -289,8 +319,8 @@ class UserDetailOut(BaseModel):
     email: str
     displayName: str
     avatarUrl: Optional[str] = None
-    role: str
-    roleLabel: str
+    roles: list[str]
+    roleLabels: list[str]
     status: str  # active, pending, suspended, archived
     lastSeen: Optional[str] = None
     mfaEnabled: bool
@@ -314,10 +344,11 @@ def _load_user_bundle(user_id: str):
     except TenantUser.DoesNotExist:
         raise NotFoundError("user", user_id)
 
-    # Build role permissions
+    # Build role permissions from the full multi-role set (F-05).
     from admin.auth.api import get_permissions_for_roles
 
-    permissions = get_permissions_for_roles([user.role])
+    held_roles = list(user.roles) if isinstance(user.roles, list) else []
+    permissions = get_permissions_for_roles(held_roles)
 
     # Real agent access from AgentUser model
     from admin.platform.models.agents import AgentUser
@@ -393,14 +424,15 @@ async def get_user_detail(
     from admin.core.authz import ROLE_PRIORITY
 
     role_labels = {role: role.replace("_", " ").title() for role in ROLE_PRIORITY}
+    held_roles = list(user.roles) if isinstance(user.roles, list) else []
 
     return api_response(
         UserDetailOut(
             id=str(user.id),
             email=user.email,
             displayName=user.display_name or "",
-            role=user.role,
-            roleLabel=role_labels.get(user.role, user.role) or "",
+            roles=held_roles,
+            roleLabels=[role_labels.get(r, r) or r for r in held_roles],
             status="active" if user.is_active else "suspended",
             lastSeen=user.last_login_at.isoformat() if user.last_login_at else None,
             # MFA secret persistence is not implemented (see admin/auth/mfa.py),
@@ -489,6 +521,7 @@ class ProfileUpdateRequest(BaseModel):
     display_name: Optional[str] = None
     session_timeout: Optional[int] = None
     notifications: Optional[dict] = None
+    phone: Optional[str] = None
 
 
 class ProfileOut(BaseModel):
@@ -502,6 +535,10 @@ class ProfileOut(BaseModel):
     roles: list[str]
     permissions: list[str]
     mfa_enabled: bool
+    mfa_enrolled: bool = False
+    tenant_id: Optional[str] = None
+    tenant_name: Optional[str] = None
+    phone: str = ""
     last_login: Optional[str] = None
     session_timeout: int
     active_sessions: int
@@ -526,7 +563,7 @@ def get_profile(request) -> dict:
     if not email:
         raise UnauthorizedError("Email not found in auth context")
 
-    roles = getattr(request.auth, "roles", ["aaas_admin"])
+    roles = list(getattr(request.auth, "roles", None) or [])
 
     permissions = get_permissions_for_roles(roles)
 
@@ -549,6 +586,34 @@ def get_profile(request) -> dict:
     session_count = UserSession.objects.filter(user_id=user_id).count() or 1
     api_key_count = ApiKey.objects.filter(user_id=user_id, is_active=True).count()
 
+    # Tenant identity from the auth principal (never invented client-side).
+    tenant_id = getattr(request.auth, "effective_tenant_id", None)
+    if callable(tenant_id):
+        tenant_id = tenant_id()
+    if not tenant_id:
+        tenant_id = getattr(request.auth, "tenant_id", None) or getattr(
+            settings, "SA01_DEFAULT_TENANT_ID", None
+        )
+    tenant_name = None
+    if tenant_id:
+        from admin.platform.models.tenants import Tenant
+
+        tenant_row = Tenant.objects.filter(id=tenant_id).first()
+        if tenant_row is not None:
+            tenant_name = tenant_row.name
+            tenant_id = str(tenant_row.id)
+
+    # MFA enrollment lives on LocalIdentity (factors themselves are in Vault).
+    mfa_enrolled = False
+    try:
+        from admin.platform.models.identity import LocalIdentity
+
+        identity = LocalIdentity.objects.filter(email=email).first()
+        if identity is not None:
+            mfa_enrolled = bool(identity.mfa_enrolled)
+    except Exception:  # noqa: BLE001 — missing table must not 500 the profile
+        mfa_enrolled = False
+
     return api_response(
         ProfileOut(
             id=str(profile.user_id),
@@ -558,9 +623,13 @@ def get_profile(request) -> dict:
             role=roles[0] if roles else "user",
             roles=roles,
             permissions=permissions,
-            # MFA cannot be enabled yet: admin/auth/mfa.py fails closed because
-            # TOTP secret persistence is unimplemented.
+            # MFA cannot be *enabled* yet: admin/auth/mfa.py fails closed because
+            # TOTP secret persistence is unimplemented. Enrollment is real.
             mfa_enabled=False,
+            mfa_enrolled=mfa_enrolled,
+            tenant_id=str(tenant_id) if tenant_id else None,
+            tenant_name=tenant_name,
+            phone=profile.phone or "",
             last_login=profile.last_login_at.isoformat() if profile.last_login_at else None,
             session_timeout=profile.session_timeout,
             active_sessions=session_count,
@@ -611,6 +680,8 @@ def update_profile(
         profile.session_timeout = max(5, min(480, payload.session_timeout))
     if payload.notifications is not None:
         profile.notification_prefs = payload.notifications
+    if payload.phone is not None:
+        profile.phone = payload.phone.strip()[:20]
 
     profile.save()
 
@@ -621,6 +692,7 @@ def update_profile(
             "display_name": profile.display_name,
             "session_timeout": profile.session_timeout,
             "notifications": profile.notification_prefs,
+            "phone": profile.phone or "",
         },
         message="Profile updated",
     )

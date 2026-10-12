@@ -7,7 +7,7 @@
 # Status: Pre-Production
 # ============================================================================
 
-.PHONY: help dev dev-worker test check docs-check docs-register migrate build build-standalone up down clean health
+.PHONY: help dev dev-worker test check docs-check docs-register migrate build build-standalone up down clean health bootstrap verify-chat
 
 # Interpreter for every Python recipe. `python` is not a stable name across
 # machines (many distros ship only `python3`), so the interpreter is a single
@@ -95,6 +95,35 @@ docs-register:
 migrate:
 	@echo "Running Django migrations..."
 	DJANGO_SETTINGS_MODULE=services.gateway.settings $(PYTHON) manage.py migrate
+
+# ============================================================================
+# BOOTSTRAP (idempotent, fail-closed)
+# ============================================================================
+
+# Seed identity, tenant, LLM catalog, capsule, infra keys, brain settings and
+# Model Roles. Pass the password on stdin (never argv):
+#   echo -n "$PASSWORD" | make bootstrap BOOT_TENANT=<id> BOOT_EMAIL=<email>
+# BOOT_TENANT and BOOT_EMAIL have NO default — a default IS a hardcoded value.
+# Optional: BOOT_FLAGS="--dry-run"
+BOOT_TENANT ?=
+BOOT_EMAIL ?=
+BOOT_FLAGS ?=
+
+bootstrap:
+	@test -n "$(BOOT_TENANT)" || { echo "BOOT_TENANT is required (no default)" >&2; exit 1; }
+	@test -n "$(BOOT_EMAIL)" || { echo "BOOT_EMAIL is required (no default)" >&2; exit 1; }
+	@echo "Running bootstrap_soma (tenant=$(BOOT_TENANT), email=$(BOOT_EMAIL))..."
+	DJANGO_SETTINGS_MODULE=services.gateway.settings $(PYTHON) manage.py bootstrap_soma \
+		--tenant "$(BOOT_TENANT)" \
+		--sysadmin-email "$(BOOT_EMAIL)" \
+		--password-stdin \
+		$(BOOT_FLAGS)
+
+# 19-assert chat-ready gate. Exits non-zero on any failure.
+# Bare --check discovers scope from the settings chain / existing identity.
+verify-chat:
+	@echo "Running bootstrap_soma --check (verify_chat_ready)..."
+	DJANGO_SETTINGS_MODULE=services.gateway.settings $(PYTHON) manage.py bootstrap_soma --check $(if $(BOOT_TENANT),--tenant "$(BOOT_TENANT)") $(if $(BOOT_EMAIL),--sysadmin-email "$(BOOT_EMAIL)")
 
 # ============================================================================
 # CLEAN

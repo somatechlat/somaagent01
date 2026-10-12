@@ -221,7 +221,29 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
     user = get_current_user(request)
     user_id = user.sub
     tenant_id = user.effective_tenant_id or settings.SA01_DEFAULT_TENANT_ID
-    agent_id = payload.agent_id or str(uuid4())
+
+    from admin.core.models.core import Capsule
+    from admin.platform.models import Agent
+
+    @sync_to_async
+    def _resolve_agent_id(requested: str | None) -> str:
+        # Rule 1: never invent an agent id. Bind to a real Agent/Capsule or refuse.
+        if requested:
+            return str(requested)
+        agent = (
+            Agent.objects.filter(status="active")
+            .exclude(primary_capsule__isnull=True)
+            .order_by("-updated_at")
+            .first()
+        )
+        if agent is not None:
+            return str(agent.id)
+        capsule = Capsule.objects.filter(is_active=True).order_by("-updated_at").first()
+        if capsule is not None:
+            return str(capsule.id)
+        raise ServiceError("No active Agent/Capsule bound for chat")
+
+    agent_id = await _resolve_agent_id(payload.agent_id)
 
     orchestrator = await get_chat_orchestrator()
 

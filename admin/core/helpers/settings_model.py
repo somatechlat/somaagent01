@@ -449,9 +449,20 @@ class SettingsModel(BaseModel):
         default_factory=lambda: str(_dj("SA01_TEMPORAL_A2A_QUEUE", "a2a"))
     )
 
-    # Kafka conversation topic
+    # Kafka conversation topics (schema identifiers — not hosts).
+    # Defaults live HERE and nowhere else (R-VAL-01). Call sites must not
+    # invent topic names (R-VAL-04).
     conversation_inbound: str = Field(
         default_factory=lambda: str(_dj("CONVERSATION_INBOUND", "conversation.inbound"))
+    )
+    conversation_outbound: str = Field(
+        default_factory=lambda: str(_dj("CONVERSATION_OUTBOUND", "conversation.outbound"))
+    )
+    a2a_topic: str = Field(
+        default_factory=lambda: str(_dj("A2A_TOPIC", "a2a"))
+    )
+    tenant_config_path: str = Field(
+        default_factory=lambda: str(_dj("TENANT_CONFIG_PATH", "conf/tenants.yaml"))
     )
 
     # Feature profile (matches config.settings_registry.sa01_feature_profile)
@@ -480,8 +491,10 @@ class SettingsModel(BaseModel):
         default_factory=lambda: str(_dj("MEM_CHAT_NAMESPACE", "chat_history"))
     )
     mem_default_kind: str = Field(default_factory=lambda: str(_dj("MEM_DEFAULT_KIND", "episodic")))
-    mem_default_salience: Optional[str] = Field(
-        default_factory=lambda: _dj("MEM_DEFAULT_SALIENCE")
+    mem_default_salience: str = Field(
+        # Schema default at the declaration site (R-VAL-01). Matches
+        # MemoryWrite.salience (memory_contract.py) — not an invented number.
+        default_factory=lambda: str(_dj("MEM_DEFAULT_SALIENCE", "0.5"))
     )
     mem_default_source: str = Field(
         default_factory=mem_default_source_default

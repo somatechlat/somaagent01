@@ -32,6 +32,13 @@ OPENAI_API_BASE = "https://api.openai.com/v1"
 ANTHROPIC_API_BASE = "https://api.anthropic.com/v1"
 GOOGLE_GENERATIVE_LANGUAGE_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 GROQ_API_BASE = "https://api.groq.com/openai/v1"
+DEEPSEEK_API_BASE = "https://api.deepseek.com/v1"
+HUGGINGFACE_API_BASE = "https://api-inference.huggingface.com/v1"
+# Cloudflare API protocol root. The Workers AI run path is account-scoped:
+#   {CLOUDFLARE_API_BASE}/accounts/{account_id}/ai
+# The account id is deployment identity (Vault / settings), never inlined here.
+CLOUDFLARE_API_BASE = "https://api.cloudflare.com/client/v4"
+CLOUDFLARE_WORKERS_AI_RUN_PATH = "/ai/run/{model_id}"
 # --- Messaging / social bridge protocol bases ------------------------------
 TELEGRAM_API_BASE = "https://api.telegram.org"
 WHATSAPP_CLOUD_API_BASE = "https://graph.facebook.com"
@@ -63,6 +70,10 @@ __all__ = [
     "ANTHROPIC_API_BASE",
     "GOOGLE_GENERATIVE_LANGUAGE_API_BASE",
     "GROQ_API_BASE",
+    "DEEPSEEK_API_BASE",
+    "HUGGINGFACE_API_BASE",
+    "CLOUDFLARE_API_BASE",
+    "CLOUDFLARE_WORKERS_AI_RUN_PATH",
     "TELEGRAM_API_BASE",
     "WHATSAPP_CLOUD_API_BASE",
     "SOMA_GITHUB_REPOSITORY_URL",

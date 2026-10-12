@@ -18,11 +18,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from typing import Any, cast, Dict, List, Optional
 
 import httpx
-from django.conf import settings
 
 from services.common.circuit_breaker import CircuitBreakerError, get_circuit_breaker
 
@@ -65,24 +63,18 @@ class SomaBrainClient:
 
     @staticmethod
     def _get_base_url() -> Optional[str]:
-        """Get SomaBrain URL from Django settings or environment.
+        """Get SomaBrain URL through the settings chain only.
 
-        Returns None when disabled (standalone mode).
+        No env fallback (OPEN-07 / R-VAL-06). Returns None when unconfigured
+        (standalone mode).
         """
+        from admin.core.helpers.service_urls import require_service_url
+        from django.core.exceptions import ImproperlyConfigured
 
-        # Try Django settings first
-        if hasattr(settings, "SOMABRAIN_URL"):
-            url = str(settings.SOMABRAIN_URL)
-            if url:
-                return url
-
-        # Fallback to environment variable
-        env_url = os.environ.get("SOMABRAIN_URL")
-        if env_url:
-            return env_url
-
-        # Disabled in standalone mode
-        return None
+        try:
+            return require_service_url("SOMABRAIN_URL")
+        except ImproperlyConfigured:
+            return None
 
     @classmethod
     def get(cls) -> Optional["SomaBrainClient"]:
@@ -371,7 +363,7 @@ class SomaBrainClient:
         PlanSuggestResponse { plan: list[str] }
 
         The brain is gated on ``SOMABRAIN_USE_PLANNER`` (default False) and
-        returns ``{"plan": []}`` when the flag is off. This client does not
+        returns ``{"plan": [], "error_code": "planner_disabled"}`` when the flag is off. This client does not
         turn that flag on — enabling the planner is an operator choice.
         """
         body: Dict[str, Any] = {"task_key": task_key}
@@ -382,10 +374,16 @@ class SomaBrainClient:
         if universe is not None:
             body["universe"] = universe
         result = await self._request("POST", "/cognitive/plan/suggest", json=body)
+        # Honesty contract: never collapse a disabled/failed planner into a bare
+        # empty list. Return the brain's error_code/error_detail verbatim (SF-01).
         if isinstance(result, dict):
             plan = result.get("plan", [])
-            return list(plan) if isinstance(plan, list) else []
-        return []
+            return {
+                "plan": list(plan) if isinstance(plan, list) else [],
+                "error_code": result.get("error_code"),
+                "error_detail": result.get("error_detail"),
+            }
+        return {"plan": [], "error_code": "malformed_response", "error_detail": None}
 
     async def set_personality(self, traits: Dict[str, float]) -> Dict[str, Any]:
         """Set personality traits for the caller's tenant.

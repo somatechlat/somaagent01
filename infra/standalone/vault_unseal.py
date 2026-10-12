@@ -23,7 +23,7 @@ Usage::
 
 Environment::
 
-    VAULT_ADDR   default http://localhost:20882
+    VAULT_ADDR   required — no default (Rule 91 / Rule 164)
     T0_DIR       RAM custodian dir (tmpfs). Required unless macOS keychain works.
     KEYCHAIN_SERVICE  default soma-vault-t0 (host-side only)
 
@@ -44,7 +44,7 @@ import urllib.request
 from pathlib import Path
 from typing import NoReturn
 
-VAULT_ADDR = os.environ.get("VAULT_ADDR", "http://localhost:20882").rstrip("/")
+VAULT_ADDR = (os.environ.get("VAULT_ADDR") or "").rstrip("/")
 KEYCHAIN_SERVICE = os.environ.get("KEYCHAIN_SERVICE", "soma-vault-t0")
 T0_DIR = Path(os.environ["T0_DIR"]) if os.environ.get("T0_DIR") else None
 
@@ -249,6 +249,8 @@ def do_unseal(key: str) -> None:
 
 
 def main() -> int:
+    if not VAULT_ADDR:
+        die("VAULT_ADDR is required (Rule 91 — never defaulted).")
     for _ in range(30):
         try:
             status = health_status()

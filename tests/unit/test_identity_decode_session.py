@@ -172,15 +172,23 @@ async def test_a_session_is_a_person_and_not_an_api_key():
 
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-async def test_permissions_are_derived_from_roles_and_never_scopes():
+async def test_permissions_are_derived_from_roles_and_never_scopes(monkeypatch):
     identity = await _seed_identity(["developer", "trainer"])
     raw, _session = await _mint_session(identity)
+
+    # Authority is org-scoped (F-02). A session resolves its partition from
+    # deployment topology; without one the derivation denies, so pin it here
+    # to assert the real role -> permission mapping.
+    monkeypatch.setenv("SA01_TENANT_ID", "tenant-test-1")
 
     payload = await decode_token(raw)
 
     assert payload.permissions == sorted(
-        permissions_for_principal(roles=["developer", "trainer"])
+        permissions_for_principal(
+            roles=["developer", "trainer"], org_id="tenant-test-1"
+        )
     )
+    assert payload.permissions, "org-scoped derivation must produce real grants"
 
 
 # ---------------------------------------------------------------------------

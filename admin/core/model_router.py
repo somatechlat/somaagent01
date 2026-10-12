@@ -49,6 +49,9 @@ class SelectedModel:
     reason: str = ""  # Selection reason for logging
     # Real catalog ctx_length from LLMModelConfig — 0 means unknown, never invented.
     ctx_length: int = 0
+    # Deployment endpoint from LLMModelConfig.api_base. Empty means the caller
+    # must fail closed (or the provider has a protocol base) — never invent one.
+    api_base: str = ""
 
 
 # MIME type to capability mapping
@@ -217,7 +220,7 @@ async def select_model(
             required_capabilities, "No active model has all required capabilities"
         )
 
-    # 3b. Capsule.chat_model binding (admin/llm/api.py set_slots). The slot is
+    # 3b. Capsule.chat_model binding (admin/llm/api.py set_roles). The role is
     # authoritative over priority when the model is active and capable.
     if preferred_model_id is not None:
         preferred = next(
@@ -234,6 +237,7 @@ async def select_model(
                 cost_tier=_get_tier(preferred),
                 reason=f"Capsule.chat_model id={preferred_model_id}",
                 ctx_length=int(_get_attr(preferred, "ctx_length", 0) or 0),
+                api_base=str(_get_attr(preferred, "api_base", "") or ""),
             )
         logger.warning(
             "Capsule.chat_model id=%s is not an active capable model — "
@@ -271,6 +275,7 @@ async def select_model(
         cost_tier=_get_tier(best),
         reason=f"Selected from {len(capable_models)} capable models by priority",
         ctx_length=int(_get_attr(best, "ctx_length", 0) or 0),
+        api_base=str(_get_attr(best, "api_base", "") or ""),
     )
 
 

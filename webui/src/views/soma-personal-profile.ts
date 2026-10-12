@@ -28,6 +28,10 @@ interface UserProfile {
     language: string;
     timezone: string;
     mfaEnabled: boolean;
+    mfaEnrolled: boolean;
+    tenantId: string;
+    tenantName: string;
+    phone: string;
     lastPasswordChange?: string;
     activeSessions: number;
     notifications: {
@@ -305,6 +309,10 @@ export class SomaPersonalProfile extends LitElement {
                 }>('/platform/admin/preferences'),
                 apiClient.get<{
                     mfa_enabled?: boolean;
+                    mfa_enrolled?: boolean;
+                    tenant_id?: string | null;
+                    tenant_name?: string | null;
+                    phone?: string;
                     active_sessions?: number;
                     avatar_url?: string | null;
                 }>('/platform/admin/profile'),
@@ -319,6 +327,10 @@ export class SomaPersonalProfile extends LitElement {
                 language: prefs.language || '',
                 timezone: prefs.timezone || '',
                 mfaEnabled: Boolean(adminProfile.mfa_enabled),
+                mfaEnrolled: Boolean(adminProfile.mfa_enrolled),
+                tenantId: adminProfile.tenant_id || '',
+                tenantName: adminProfile.tenant_name || '',
+                phone: adminProfile.phone || '',
                 activeSessions: adminProfile.active_sessions ?? 0,
                 notifications: prefs.notifications ?? {
                     agentReplies: false,
@@ -347,6 +359,10 @@ export class SomaPersonalProfile extends LitElement {
                 language: this.profile.language,
                 timezone: this.profile.timezone,
                 notifications: this.profile.notifications,
+            });
+            await apiClient.put('/platform/admin/profile', {
+                display_name: this.profile.displayName,
+                phone: this.profile.phone,
             });
             this.dirty = false;
             this.dispatchEvent(new CustomEvent('show-toast', {
@@ -427,6 +443,23 @@ export class SomaPersonalProfile extends LitElement {
               <label class="form-label">Email</label>
               <input class="form-input" type="email" .value=${this.profile.email} disabled>
             </div>
+
+            <div class="form-group">
+              <label class="form-label">Phone</label>
+              <input class="form-input" type="tel" .value=${this.profile.phone}
+                     @input=${(e: Event) => this._updateField('phone', (e.target as HTMLInputElement).value)}>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Tenant</label>
+              <input class="form-input" type="text"
+                     .value=${this.profile.tenantName || this.profile.tenantId || '—'} disabled>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Tenant ID</label>
+              <input class="form-input" type="text" .value=${this.profile.tenantId || '—'} disabled>
+            </div>
           </div>
         </div>
 
@@ -477,7 +510,11 @@ export class SomaPersonalProfile extends LitElement {
             <div class="security-row">
               <div class="security-info">
                 <span class="security-label">Multi-Factor Authentication</span>
-                <span class="security-value">${this.profile.mfaEnabled ? html`<span class='material-symbols-outlined'>check_circle</span> Enabled (TOTP)` : html`<span class='material-symbols-outlined'>cancel</span> Disabled`}</span>
+                <span class="security-value">${this.profile.mfaEnabled
+                    ? html`<span class='material-symbols-outlined'>check_circle</span> Enabled (TOTP)`
+                    : this.profile.mfaEnrolled
+                        ? html`<span class='material-symbols-outlined'>check_circle</span> Enrolled (TOTP not yet active)`
+                        : html`<span class='material-symbols-outlined'>cancel</span> Disabled`}</span>
               </div>
               <button class="btn btn-secondary" @click=${() => window.dispatchEvent(new CustomEvent('soma-navigate', { detail: { route: '/mfa/setup' } }))}>Reconfigure</button>
             </div>

@@ -17,16 +17,26 @@
  * VIBE: real browser against the live stack. Every frame, button and HTTP
  * status observed comes from the running product. No mocks, no stubbed auth.
  *
- * Env: UI_BASE_URL (default http://localhost:20080)
- *      TEST_USER_EMAIL / TEST_USER_PASSWORD (default test@soma.dev /
- *      testpassword123 — the local identity this mission names explicitly).
+ * Every endpoint and credential is REQUIRED from the runner. A default IS a
+ * hardcoded value.
  */
 
 const { test, expect } = require('@playwright/test');
 
-const UI = process.env.UI_BASE_URL || 'http://localhost:20080';
-const EMAIL = process.env.TEST_USER_EMAIL || 'test@soma.dev';
-const PASSWORD = process.env.TEST_USER_PASSWORD || 'testpassword123';
+function requiredEnv(name) {
+  const value = (process.env[name] || '').trim();
+  if (!value) {
+    throw new Error(
+      `${name} is not set. Every endpoint and credential this suite uses is ` +
+        `supplied by the runner. There is no default.`
+    );
+  }
+  return value;
+}
+
+const UI = requiredEnv('UI_BASE_URL');
+const EMAIL = requiredEnv('TEST_USER_EMAIL');
+const PASSWORD = requiredEnv('TEST_USER_PASSWORD');
 
 /** The exact failure message this mission mandates when brain still 503s. */
 const REMEMBER_503 = 'memory remember 503 — brain SFM endpoint';
@@ -125,8 +135,13 @@ function memorySaveFailure(frames) {
   return null;
 }
 
+/**
+ * Outage language only. Never the bare store name: a SUCCESS payload carries
+ * `"store":"somabrain"`, and a detector that matches the name turns a healthy
+ * 200 into a false 503 (live Mission T evidence).
+ */
 function looksLike503(text) {
-  return /503|SomaBrain|unavailable|not configured|circuit open|Service Unavailable/i.test(
+  return /503|service unavailable|circuit open|not configured|brain.*unavailable|unavailable.*brain/i.test(
     text || ''
   );
 }
@@ -403,7 +418,7 @@ test.describe('Mission T: name save + recall (human, no mocks)', () => {
       return { status: r.status, body: await r.text() };
     });
 
-    if (list.status === 503 || looksLike503(list.body.slice(0, 300))) {
+    if (list.status === 503 || (list.status >= 500 && looksLike503(list.body.slice(0, 300)))) {
       throw new Error(`${REMEMBER_503} — GET /api/v2/memory/ returned ${list.status}: ${list.body.slice(0, 300)}`);
     }
     expect(

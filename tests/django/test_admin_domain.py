@@ -221,7 +221,7 @@ class TestSchemaValidation:
             id="user-1",
             email="test@example.com",
             name="Test User",
-            role="member",
+            roles=["member"],
             is_active=True,
             tenant_id="tenant-1",
             created_at="2025-01-01T00:00:00",

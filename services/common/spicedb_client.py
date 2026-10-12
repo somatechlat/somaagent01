@@ -228,9 +228,11 @@ class SpiceDBClient:
 
         start_time = time.perf_counter()
 
-        # Standalone mode: no SpiceDB configured, allow all
+        # Fail-closed: absence of an engine is not consent (F-03). Callers
+        # that want "narrowing layer absent" must check `is_configured`
+        # explicitly — UnifiedGate already does.
         if getattr(self, "_disabled", False):
-            return True
+            return False
 
         try:
             await self._ensure_connected()

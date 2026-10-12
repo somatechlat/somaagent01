@@ -261,28 +261,32 @@ class ContextBuilder:
         """Format MemoryGateway hits into the memory lane within the token budget.
 
         Fits as many hits as ``budget`` tokens (tiktoken cl100k) allow.
-        Facts rank above dialog transcripts. Each line is what the model must
-        treat as known — never invent a memory that is not listed here.
+        Facts rank above dialog transcripts; among equal facts the MORE RECENT
+        row is listed first so a superseded identity (old name) does not win
+        over the user's update. Each line is what the model must treat as
+        known — never invent a memory that is not listed here.
         """
         if not hits:
             return "[No relevant memories]"
 
-        rows: List[tuple[float, str, str]] = []
+        rows: List[tuple[float, str, str, str]] = []
         for hit in hits:
             text = getattr(hit, "text", None)
             coord = getattr(hit, "coord", None)
+            created = getattr(hit, "created_at", "") or ""
             if text is None and isinstance(hit, dict):
                 text = hit.get("text") or hit.get("content") or ""
                 coord = hit.get("coord") or hit.get("coordinate")
+                created = hit.get("created_at") or ""
             text = str(text or "").strip()
             if not text:
                 continue
-            rows.append((self._fact_rank(text), text, str(coord or "")))
-        rows.sort(key=lambda r: r[0], reverse=True)
+            rows.append((self._fact_rank(text), text, str(coord or ""), str(created or "")))
+        rows.sort(key=lambda r: (r[0], r[3]), reverse=True)
 
         parts: List[str] = []
         used = 0
-        for _rank, text, coord in rows:
+        for _rank, text, coord, _created in rows:
             suffix = f"  [id:{coord}]" if coord else ""
             line = f"- {text}{suffix}"
             cost = _token_count(line)
@@ -299,6 +303,8 @@ class ContextBuilder:
         header = (
             "KNOWN MEMORIES (SomaBrain long-term). Prefer these over guessing. "
             "For personal facts (name, favorites, codewords) answer from this list. "
+            "If two rows conflict, the later/more specific one is the user's update — "
+            "answer from that, not the superseded row. "
             "If missing, call memory_recall — never invent."
         )
         return header + "\n" + "\n".join(parts)

@@ -180,6 +180,6 @@ def test_an_unknown_role_name_is_not_authority():
     from admin.core.authz import permissions_for_principal
 
     obj = identity(roles=["developer", "not_a_real_role"])
-    perms = permissions_for_principal(roles=obj.roles)
+    perms = permissions_for_principal(roles=obj.roles, org_id="t1")
     # Whatever "not_a_real_role" means, it grants nothing.
-    assert perms == permissions_for_principal(roles=["developer"])
+    assert perms == permissions_for_principal(roles=["developer"], org_id="t1")

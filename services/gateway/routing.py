@@ -17,9 +17,10 @@ websocket_urlpatterns = [
     # - /ws/v2/events
     # - /ws/chat/{agent_id} (legacy)
     re_path(r"ws/v2/chat/?$", ChatConsumer.as_asgi()),  # type: ignore[arg-type]
-    re_path(r"ws/v2/chat/(?P<agent_id>[^/]+)$", ChatConsumer.as_asgi()),  # type: ignore[arg-type]
+    re_path(r"ws/v2/chat/(?P<agent_id>[^/]+)/?$", ChatConsumer.as_asgi()),  # type: ignore[arg-type]
     re_path(r"ws/v2/events/?$", ChatConsumer.as_asgi()),  # type: ignore[arg-type]
-    re_path(r"ws/chat/(?P<agent_id>[^/]+)$", ChatConsumer.as_asgi()),  # type: ignore[arg-type]
+    # Legacy path + optional trailing slash (UI sends ws/chat/{agent_id}/).
+    re_path(r"ws/chat/(?P<agent_id>[^/]+)/?$", ChatConsumer.as_asgi()),  # type: ignore[arg-type]
     # Voice WebSocket endpoint
     # URL: /ws/voice/
     re_path(r"ws/voice/?$", VoiceConsumer.as_asgi()),  # type: ignore[arg-type]

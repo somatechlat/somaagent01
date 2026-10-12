@@ -22,7 +22,7 @@ def get_required_env(key: str, service_name: str) -> str:
         ValueError: If environment variable is not set
 
     Example:
-        >>> SOMABRAIN_URL = get_required_env("SA01_SOMA_BASE_URL", "SomaBrain connection")
+        >>> REDIS_URL = get_required_env("SA01_REDIS_URL", "Redis connection")
     """
     value = os.environ.get(key)
     if not value:

@@ -24,6 +24,7 @@ from admin.common.exceptions import ValidationError
 from admin.common.messages import ErrorCode, get_message, SuccessCode
 from admin.core.authz import permissions_for_roles, validate_scopes
 from services.common.authorization import authorize_sync
+from admin.llm.providers import VAULT_PROVIDER_IDS
 
 # Every handler below gates with ``authorize_sync()``, which reads roles from
 # ``request.auth`` — and Django Ninja only sets ``request.auth`` when the route
@@ -216,21 +217,27 @@ def update_model(request, model_id: str, payload: ModelConfigUpdate):
 # =============================================================================
 @router.get("/roles", response=list[RoleOut], auth=AuthBearer())
 def list_roles(request):
-    authorize_sync(request, action="org:read", resource="settings")
-    from admin.platform.models.profiles import PlatformConfig
+    """Read-only role matrix, rendered from the authorization catalog.
 
-    defaults = PlatformConfig.get_instance().defaults
-    roles_data = defaults.get("roles", [])
+    ``admin.core.authz.ROLE_PERMISSIONS`` is the single source of truth for
+    what a role grants. ``PlatformConfig.defaults`` is a UI seed and may
+    drift; reading it here would let the matrix disagree with the gate, which
+    is exactly the fail-open seam ``admin.core.authz`` was written to close.
+    This endpoint is read-only: rewriting what a role grants is
+    ``PATCH /roles/{role_id}`` and requires ``system:security_policy``.
+    """
+    authorize_sync(request, action="org:read", resource="settings")
+    from admin.core.authz import ROLE_PERMISSIONS, ROLE_PRIORITY
 
     return [
         RoleOut(
-            id=r["id"],
-            name=r.get("name", r["id"]),
-            description=r.get("description", ""),
-            permissions=r.get("permissions", []),
+            id=role,
+            name=role.replace("_", " ").title(),
+            description=f"Catalog role granting {len(ROLE_PERMISSIONS.get(role, frozenset()))} permissions",
+            permissions=sorted(ROLE_PERMISSIONS.get(role, frozenset())),
             user_count=0,  # Calculation requires user scan, expensive for list
         )
-        for r in roles_data
+        for role in ROLE_PRIORITY
     ]
 
 
@@ -239,11 +246,31 @@ def list_roles(request):
 def update_role(request, role_id: str, payload: RoleUpdate):
     """Update role permissions.
 
-    ``org:assign_roles`` rather than a read permission: rewriting what a role
-    grants is how authority is handed out, which is the same class of act as
-    assigning that role to a person.
+    Rewriting what a role grants is system-tier authority (F-03). It is NOT
+    role *assignment* (`org:assign_roles`). Every permission name must be a
+    catalog permission; `system:*` grants are refused unless the caller holds
+    `system:security_policy` (provisioned sysadmin only).
     """
-    authorize_sync(request, action="org:assign_roles", resource="settings")
+    from admin.core.authz import is_known_permission
+
+    authorize_sync(request, action="system:security_policy", resource="settings")
+
+    if payload.permissions is not None:
+        unknown = [p for p in payload.permissions if not is_known_permission(p)]
+        if unknown:
+            raise ValidationError(
+                f"Unknown permissions: {unknown}", field="permissions"
+            )
+        # A role definition may never mint system:* authority from a non-system
+        # caller. security_policy is already sysadmin-only, but keep the ceiling
+        # explicit so a future caller cannot silently widen.
+        roles = list(getattr(request.auth, "roles", None) or [])
+        if any(p.startswith("system:") for p in payload.permissions):
+            if "sysadmin" not in roles:
+                raise ValidationError(
+                    "Only sysadmin may grant system:* permissions", field="permissions"
+                )
+
     from admin.platform.models.profiles import PlatformConfig
 
     gd = PlatformConfig.get_instance()
@@ -300,7 +327,7 @@ from services.common.unified_secret_manager import get_secret_manager
 class LLMProviderKeyIn(BaseModel):
     """Input for setting LLM provider API key."""
 
-    provider: str = Field(..., description="Provider name: openai, anthropic, openrouter, groq")
+    provider: str = Field(..., description="Provider id from admin.llm.providers.VAULT_PROVIDER_IDS")
     api_key: str = Field(..., description="The API key value")
 
 
@@ -323,7 +350,7 @@ def list_llm_providers(request):
     # and the leading characters of each. Read authority is explicit.
     authorize_sync(request, action="system:manage_integrations", resource="settings")
     sm = get_secret_manager()
-    providers = ["openai", "anthropic", "openrouter", "groq", "ollama", "fireworks"]
+    providers = list(VAULT_PROVIDER_IDS)
 
     result = []
     for provider in providers:
@@ -356,7 +383,7 @@ def set_llm_provider_key(request, payload: LLMProviderKeyIn):
     sm = get_secret_manager()
 
     # Validate provider name
-    valid_providers = ["openai", "anthropic", "openrouter", "groq", "ollama", "fireworks"]
+    valid_providers = list(VAULT_PROVIDER_IDS)
     provider = payload.provider.lower()
 
     if provider not in valid_providers:

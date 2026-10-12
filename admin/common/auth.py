@@ -137,9 +137,12 @@ class TokenPayload(BaseModel):
         """
         from admin.core.authz import permissions_for_principal
 
+        org = self.tenant_id or self.tenant
         if self.delegated_scopes is not None:
-            return sorted(permissions_for_principal(scopes=self.delegated_scopes))
-        return sorted(permissions_for_principal(roles=self.roles))
+            return sorted(
+                permissions_for_principal(scopes=self.delegated_scopes, org_id=org)
+            )
+        return sorted(permissions_for_principal(roles=self.roles, org_id=org))
 
     @property
     def effective_tenant_id(self) -> str | None:

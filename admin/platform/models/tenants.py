@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, List, Optional
 
 from django.db import models
 
-from admin.platform.models.choices import TenantRole, TenantStatus
+from admin.platform.models.choices import TenantStatus
 
 if TYPE_CHECKING:
     from django.db.models import Manager
@@ -163,7 +163,20 @@ class TenantUser(models.Model):
 
     display_name = models.CharField(max_length=200, blank=True, help_text="User display name")
 
-    role = models.CharField(max_length=20, choices=TenantRole.choices, default=TenantRole.MEMBER)
+    #: Catalog role names this principal holds in this organization. A list of
+    #: strings, the same shape as ``LocalIdentity.roles``: one person can hold
+    #: several roles (e.g. ``developer`` and ``trainer``), and the authority is
+    #: the union of what those roles grant in ``admin.core.authz``. An unknown
+    #: name in the list grants nothing. This field is the one role store; there
+    #: is no second column and no singular ``role`` shadowing it.
+    roles = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            "Catalog role names this principal holds in this organization. "
+            "Every name resolves through admin.core.authz; unknown names grant nothing."
+        ),
+    )
 
     is_active = models.BooleanField(default=True, db_index=True)
 
@@ -179,7 +192,6 @@ class TenantUser(models.Model):
         indexes = [
             models.Index(fields=["user_id"]),
             models.Index(fields=["email"]),
-            models.Index(fields=["role"]),
             models.Index(fields=["is_active"]),
         ]
         verbose_name = "Tenant User"
@@ -188,7 +200,8 @@ class TenantUser(models.Model):
     def __str__(self):
         """Return string representation."""
 
-        return f"{self.email} ({self.role} in {self.tenant.name})"
+        held = ",".join(self.roles) if isinstance(self.roles, list) else ""
+        return f"{self.email} ({held} in {self.tenant.name})"
 
     def to_dict(self):
         """Serialize for API response."""
@@ -198,7 +211,7 @@ class TenantUser(models.Model):
             "user_id": str(self.user_id),
             "email": self.email,
             "display_name": self.display_name,
-            "role": self.role,
+            "roles": list(self.roles) if isinstance(self.roles, list) else [],
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
@@ -253,7 +266,14 @@ class TenantUser(models.Model):
         qs = cls.objects.filter(user_id=user_id, is_active=True)
         if tenant_id:
             qs = qs.filter(tenant_id=tenant_id)
-        roles = list(qs.values_list("role", flat=True))
+        roles: List[str] = []
+        for held in qs.values_list("roles", flat=True):
+            if isinstance(held, list):
+                roles.extend(str(r) for r in held if r)
+            elif held:
+                # A non-list stored value is not a role set. It contributes
+                # nothing rather than being coerced into one.
+                pass
 
         if bound is not None:
             _ROLE_CACHE[key] = roles

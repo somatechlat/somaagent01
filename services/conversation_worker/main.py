@@ -33,7 +33,6 @@ from services.common.event_bus import (
     KafkaSettings,
     resolve_kafka_sasl_password,
 )
-from services.common.model_profiles import ModelProfileStore
 from services.common.policy_client import PolicyClient
 from services.common.publisher import DurablePublisher
 from services.common.router_client import RouterClient
@@ -97,7 +96,6 @@ class ConversationWorkerImpl:
         from admin.core.models import Session
 
         self.store = Session.objects
-        self.profiles = ModelProfileStore.from_env()
         self.tenants = TenantConfig(path=os.environ.get("TENANT_CONFIG_PATH", "conf/tenants.yaml"))
         self.budgets = BudgetManager(url=django_settings.REDIS_URL, tenant_config=self.tenants)
         self.policy = PolicyClient(base_url=django_settings.OPA_URL, tenant_config=self.tenants)
@@ -153,7 +151,6 @@ class ConversationWorkerImpl:
         await degradation_monitor.initialize()
         await degradation_monitor.start_monitoring()
         # ensure_schema not needed - Django migrations handle this
-        await self.profiles.ensure_schema()
         #         await self.store.append_event(
         #             "system", {"type": "worker_start", "event_id": str(uuid.uuid4()), "message": "online"}
         #         )

@@ -93,7 +93,7 @@ class LocalIdentity(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = "aaas_local_identity"
+        db_table = "platform_local_identity"
         verbose_name = "Local Identity"
         verbose_name_plural = "Local Identities"
         ordering = ["username"]

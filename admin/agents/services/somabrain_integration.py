@@ -102,41 +102,39 @@ async def recall_memories(
     top_k: int = 5,
     memory_type: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """Recall memories through the MemoryGateway seam (one read path)."""
-    from services.common.memory_contract import MemoryRecallUnavailable
+    """Recall memories through the MemoryGateway seam (one read path).
+
+    Fail-closed: missing tenant raises; an outage raises
+    ``MemoryRecallUnavailable``. Neither is ever reported as an empty list.
+    """
     from services.common.memory_gateway import get_memory_gateway
 
     if not agent.tenant_id:
-        LOGGER.debug("No tenant on agent; returning empty recall results")
-        return []
-    try:
-        gateway = get_memory_gateway()
-        hits = await gateway.recall(query, max(1, int(top_k)), str(agent.tenant_id))
-        memories: List[Dict[str, Any]] = []
-        for hit in hits:
-            if memory_type and hit.kind and hit.kind != memory_type:
-                continue
-            memories.append(
-                {
-                    "id": hit.coord,
-                    "coord": hit.coord,
-                    "content": hit.text,
-                    "text": hit.text,
-                    "memory_type": hit.kind or memory_type or "episodic",
-                    "score": hit.score,
-                    "created_at": hit.created_at,
-                    "session_id": hit.session_id,
-                }
-            )
-        if memories:
-            PrintStyle(font_color="cyan", padding=False).print(f"Recalled {len(memories)} memories")
-        return memories
-    except MemoryRecallUnavailable as e:
-        PrintStyle(font_color="red", padding=False).print(f"Failed to recall memories: {e}")
-        return []
-    except Exception as e:
-        PrintStyle(font_color="red", padding=False).print(f"Failed to recall memories: {e}")
-        return []
+        raise PermissionError(
+            "Missing tenant_id on agent — a recall without a tenant is "
+            "denied, never assigned to an empty result."
+        )
+    gateway = get_memory_gateway()
+    hits = await gateway.recall(query, max(1, int(top_k)), str(agent.tenant_id))
+    memories: List[Dict[str, Any]] = []
+    for hit in hits:
+        if memory_type and hit.kind and hit.kind != memory_type:
+            continue
+        memories.append(
+            {
+                "id": hit.coord,
+                "coord": hit.coord,
+                "content": hit.text,
+                "text": hit.text,
+                "memory_type": hit.kind or memory_type or "episodic",
+                "score": hit.score,
+                "created_at": hit.created_at,
+                "session_id": hit.session_id,
+            }
+        )
+    if memories:
+        PrintStyle(font_color="cyan", padding=False).print(f"Recalled {len(memories)} memories")
+    return memories
 
 
 async def get_adaptation_state(agent: "Agent") -> Optional[Dict[str, Any]]:

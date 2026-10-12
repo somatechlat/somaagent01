@@ -55,10 +55,17 @@ class ChatService:
         if not capsule:
             raise ValueError(f"Capsule not found: {agent_id}")
 
+        tenant_id = str(getattr(capsule, "tenant_id", "") or "").strip()
+        if not tenant_id:
+            raise PermissionError(
+                "Missing tenant_id on capsule — a chat turn without a tenant "
+                "is denied, never assigned to an empty string."
+            )
+
         turn = ChatTurn(
             capsule=capsule,
             user_id=user_id,
-            tenant_id="",
+            tenant_id=tenant_id,
             user_message=content,
             conversation_id=conversation_id,
         )
@@ -97,15 +104,16 @@ class ChatService:
         limit: int,
         tenant_id: str,
     ) -> List[dict]:
-        """Recall memories through the MemoryGateway seam (one read path)."""
-        from services.common.memory_contract import MemoryRecallUnavailable
+        """Recall memories through the MemoryGateway seam (one read path).
+
+        Fail-closed: an outage raises ``MemoryRecallUnavailable`` — it is
+        never reported as an empty list, which would be indistinguishable
+        from "the user has no memories".
+        """
         from services.common.memory_gateway import get_memory_gateway
 
-        try:
-            gateway = get_memory_gateway()
-            hits = await gateway.recall(query, max(1, int(limit)), tenant_id)
-        except MemoryRecallUnavailable:
-            return []
+        gateway = get_memory_gateway()
+        hits = await gateway.recall(query, max(1, int(limit)), tenant_id)
         return [
             {
                 "id": h.coord,

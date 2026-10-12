@@ -137,6 +137,7 @@ export class SomaAdminApiKeys extends LitElement {
     `;
 
     @state() private _keys: ApiKey[] = [];
+    @state() private _providers: { id: string; label: string; has_api_key: boolean }[] = [];
     @state() private _loading = true;
     @state() private _error: string | null = null;
     @state() private _showCreateModal = false;
@@ -154,8 +155,14 @@ export class SomaAdminApiKeys extends LitElement {
         this._loading = true;
         this._error = null;
         try {
-            const rows = await apiClient.get<ApiKey[]>('/platform/settings/api-keys');
+            const [rows, providers] = await Promise.all([
+                apiClient.get<ApiKey[]>('/platform/settings/api-keys'),
+                apiClient
+                    .get<{ id: string; label: string; has_api_key: boolean }[]>('/llm/providers')
+                    .catch(() => []),
+            ]);
             this._keys = getData<ApiKey[]>(rows) ?? (Array.isArray(rows) ? rows : []);
+            this._providers = providers || [];
         } catch (e) {
             this._error = e instanceof Error ? e.message : String(e);
             this._keys = [];
@@ -262,6 +269,24 @@ export class SomaAdminApiKeys extends LitElement {
                     <span class="material-symbols-outlined" style="font-size: 18px">add</span>
                     Add Key
                 </button>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px" aria-label="LLM provider keys">
+                ${this._providers.length
+                    ? this._providers.map(
+                          (p) => html`
+                              <span
+                                  style="font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 9999px; background: ${p.has_api_key
+                                      ? 'rgba(34,197,94,0.15)'
+                                      : 'rgba(234,179,8,0.15)'}; color: ${p.has_api_key
+                                      ? 'var(--soma-status-success, #16a34a)'
+                                      : 'var(--soma-status-warning, #a16207)'}"
+                              >
+                                  ${p.label} — ${p.has_api_key ? 'Key in Vault ✓' : 'Missing'}
+                              </span>
+                          `,
+                      )
+                    : html`<span style="font-size: 12px; color: var(--soma-text-secondary)">No LLM providers configured</span>`}
             </div>
 
             <div class="warning-banner">

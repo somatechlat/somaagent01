@@ -485,8 +485,24 @@ async def update_settings(request: HttpRequest, entity: str, payload: SettingsUp
 
 
 async def _emit_settings_changed(request: HttpRequest, entity: str, changed_keys: list) -> None:
-    """Publish the settings.changed audit event; never fail the write on outage."""
-    tenant = request.headers.get("X-Tenant-Id", "default")
+    """Publish the settings.changed audit event; never fail the write on outage.
+
+    The tenant is the authenticated principal's partition (F-06/F-07), never
+    the client-supplied ``X-Tenant-Id`` header and never a literal default. A
+    header is a selection vector; ``"default"`` merges strangers. If the
+    principal carries no tenant the event is not emitted — the save already
+    committed and the audit row must not lie about whose change it was.
+    """
+    auth = getattr(request, "auth", None)
+    tenant = None
+    if auth is not None:
+        tenant = getattr(auth, "tenant_id", None) or getattr(auth, "tenant", None)
+    if not tenant:
+        LOGGER.error(
+            "settings.changed not emitted: principal carries no tenant",
+            extra={"entity": entity, "changed_keys": changed_keys},
+        )
+        return
     event = {
         "type": "settings.changed",
         "entity": entity,

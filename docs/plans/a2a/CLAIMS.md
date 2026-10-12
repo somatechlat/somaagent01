@@ -78,6 +78,9 @@
 | admin/llm/__init__.py admin/core/permissions.py | MiMoCode-somaAgent01 | W2.4 dead re-export removal + W2.6 Actions constants | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
 | admin/filesv2/models.py admin/filesv2/migrations/ | MiMoCode-somaAgent01 | W3.3 partial index live rows | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
 | schemas/spicedb/schema.zed | MiMoCode-somaAgent01 | W3.9 strip subscription_tier / view_billing | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| webui/src/ docs/plans/a2a/CLAIMS.md docs/plans/a2a/LEDGER.md | MiMoCode-somaAgent01 | FULL UI/UX audit webui vs design suite (SOMA-01-UIUX-001..005, UI-S-*) + priority indicator/settings fixes | 2026-10-12T21:28:28Z | ACTIVE |
 | webui/src/services/api-client.ts webui/src/views/soma-chat.ts | MiMoCode-somaAgent01 | W4.2 ApiClient adoption + keyed repeat/virtualizer | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
 | services/common/memory_gateway.py | MiMoCode-somaAgent01 | W4.9 outbox happy-path create+IntegrityError (preserve T-6) | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
 | path/prefix | agent | task | started_at | status |
@@ -125,3 +128,39 @@
 | path/prefix | agent | task | started_at | status |
 |---|---|---|---|---|
 | docs/architecture/SOMA-ARCH-SEC-TOKEN-001.md docs/standards/SOMA-STD-SECURITY-001.md docs/plans/a2a/ infra/standalone/bootstrap_exec.py infra/standalone/init_vault.py infra/standalone/vault_unseal.py infra/standalone/vault_scoped_tokens.py infra/standalone/vault_inject.py infra/standalone/docker-compose.yml infra/standalone/vault-policies/ services/common/vault_secrets.py services/common/http_egress.py services/tool_executor/tools.py admin/filesv2/api.py | security-reviewer | SOMA-ARCH-SEC-TOKEN-001 ADR (sole trust boundary) + W0-W3 fixes (C-1 SSRF, C-2 IDOR, C-3 generation stamp). Shared files merge-additive with soma-vault-authority / soma-prod-hardening. NOT touching decisions/mod_clef. | 2026-10-12T13:53:10Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| admin/llm/providers.py admin/llm/api.py admin/llm/migrations/0006_seed_model_catalog.py admin/core/helpers/vendor_api_bases.py admin/secrets/api.py services/common/unified_secret_manager.py webui/src/views/soma-settings-models.ts | MiMoCode-wave1-model-registry | WAVE1 model registry + Clef + 5 model roles: KNOWN_PROVIDER_IDS, model_type decision, 5-role slots, bundled presets, 0006 catalog seed, vault note, provider-list collapse | 2026-10-12T20:00:00Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| infra/standalone/seed_clef_vault.py admin/core/management/commands/bootstrap_clef.py admin/llm/migrations/0006_seed_clef_decision.py admin/llm/api.py admin/core/helpers/vendor_api_bases.py admin/core/config/registry.py services/common/decisions/clef_client.py | MiMoCode-clef-decision | CLEF decision model live: vault seed, settings chain, LLMModelConfig decision row, decision_role slots/presets, feature flag | 2026-10-12T12:10:00Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| services/conversation_worker/temporal_worker.py services/conversation_worker/zero_loss_activities.py services/delegation_gateway/temporal_worker.py docs/operations/SOMA-OPS-TEMPORAL-TLS-001.md tests/unit/test_temporal_owns_async_cycle.py | MiMoCode-wave5-temporal | WAVE 5 one Temporal worker (A2A fold) + MemoryReplication/SleepConsolidation/PromotionAudit/ReplayRecovery workflows + mTLS note | 2026-10-12T22:30:00Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| admin/core/bootstrap/ admin/core/management/commands/bootstrap_soma.py admin/core/management/commands/bootstrap_platform.py admin/llm/migrations/0005_seed_mimo_flash.py infra/standalone/start.sh Makefile | MiMoCode-wave2-bootstrap | WAVE 2 BOOTSTRAP: bootstrap_soma 8-phase command + mimo-flash seed + start.sh bootstrap gate + Makefile bootstrap/verify-chat | 2026-10-12T23:30:00Z | DONE — all phases + verify_chat_ready green live; Makefile defaults hard-deleted; see LEDGER 2026-10-13 |
+| services/common/ admin/ infra/standalone/ services/conversation_worker/ services/delegation_gateway/ services/gateway/ services/bridge_worker/ services/tool_executor/ config/ tests/ webui/src/views/ admin/core/bootstrap/ admin/core/management/commands/ | MiMoCode-law-enforcement | LAW CLEANUP: hard-delete env-config, hardcoded URLs, shims/fakes on uncommitted diff + untracked bootstrap/seed files | 2026-10-12T19:49:06Z | DONE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| admin/core/chat_orchestrator.py services/gateway/consumers/chat.py services/gateway/providers.py admin/llm/ services/common/unified_secret_manager.py | MiMoCode-chat-fix | Mission T chat reply path: WS→orchestrator→LLM→reply + honest provider-key Vault path | 2026-10-13T00:00:00Z | ACTIVE |
+| tests/e2e/test_human_chat_session.spec.js tests/e2e/test_memory_human_name.spec.js tests/e2e/test_chat_context_memory.spec.js tests/e2e/ | MiMoCode-chat-fix | Mission T Playwright on real services (3 specs) + defects they expose | 2026-10-13T00:00:00Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| webui/src/views/soma-settings-models.ts webui/src/views/soma-admin-api-keys.ts webui/src/views/soma-chat.ts webui/src/views/soma-personal-profile.ts webui/src/components/soma-right-panel.ts webui/src/views/soma-login.ts webui/src/views/soma-register.ts webui/src/views/soma-forgot-password.ts admin/llm/api.py admin/core/model_router.py | MiMoCode-wave6-webui-roles | WAVE 6 WebUI model roles/presets UX: rename remaining slot wording to Model Roles, 5-role panel, Clef decision binding, presets bind all 5 roles, honest loading/error, HARD DELETE hardcoded URLs/env/placeholder secrets in webui | 2026-10-12T19:51:57Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| services/gateway/consumers/chat.py services/common/chat_service.py admin/core/chat_orchestrator.py tests/unit/test_ws_chat_error_frames.py tests/unit/test_chat_service_tenant_honesty.py | MiMoCode-wave3-chat | WAVE 3 chat/memory/cognition: bare close + missing error frames + silent failure de-fake + hardcoded defaults | 2026-10-13T00:00:00Z | DONE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| docs/reports/SOMA-RPT-TRIAD-PROOF-001.md docs/plans/a2a/CLAIMS.md docs/plans/a2a/LEDGER.md | MiMoCode-tribo | TRIAD live proof (T-1/T-6/no-mock): rg + HTTP remember/recall/chat + SFM hop diagnosis. Read-only on code; report + A2A only. | 2026-10-12T21:45:00Z | DONE — agent side PROVEN; Brain→SFM hop blocked by pre-existing SFM SOMA_BOUND_TENANT 401 |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| webui/src/views/soma-memory-view.ts webui/src/views/soma-chat.ts docs/reports/SOMA-RPT-UIUX-AUDIT-001.md docs/plans/a2a/CLAIMS.md docs/plans/a2a/LEDGER.md | MiMoCode-uiux-audit | FULL UI/UX audit webui vs design suite (UIUX-001..005, UI-S-*) + P1-P6 fixes: memory panel WM/LTM tiles + Remember/Run probe + ?turn=current, chat model LIVE chip (chat_role bound), C2 Open Memory link, honest totals | 2026-10-13T01:30:00Z | DONE — tsc exit 0; no commits |

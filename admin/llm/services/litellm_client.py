@@ -33,7 +33,6 @@ from admin.core.helpers.tokens import approximate_tokens
 from admin.llm.exceptions import LLMNotConfiguredError
 from admin.llm.services.litellm_helpers import (
     _adjust_call_args,
-    _env_flag,
     _is_transient_litellm_error,
     _merge_provider_defaults,
     _parse_chunk,
@@ -644,14 +643,26 @@ class LocalSentenceTransformerWrapper(Embeddings):
 def _get_litellm_chat(
     cls, model_name: str, provider_name: str, model_config: Optional[Any] = None, **kwargs: Any
 ):
-    """Get LiteLLM chat wrapper instance. Fail-closed on missing key/model."""
+    """Get LiteLLM chat wrapper instance. Fail-closed on missing key/model.
+
+    Gateway-keyed providers (mimo / custom / ollama) have no vendor API key —
+    they are reached via a deployment endpoint (``api_base``). Only vault-keyed
+    providers require ``UnifiedSecretManager.get_provider_key``.
+    """
+    from admin.llm.providers import provider_requires_api_key
+
     if not provider_name or not model_name:
         raise LLMNotConfiguredError(
             f"Missing model config: provider={provider_name!r} model={model_name!r}."
         )
-    api_key = kwargs.pop("api_key", None) or get_api_key(provider_name)
-    if api_key in ("None", "NA", None, ""):
-        raise LLMNotConfiguredError(f"Invalid API key for provider '{provider_name}'.")
+    api_key = kwargs.pop("api_key", None)
+    if provider_requires_api_key(provider_name):
+        api_key = api_key or get_api_key(provider_name)
+        if api_key in ("None", "NA", None, ""):
+            raise LLMNotConfiguredError(
+                f"Invalid API key for provider '{provider_name}'. Store a real key "
+                f"at secret/agent/api_keys/{provider_name.lower()}_api_key in Vault."
+            )
     if api_key:
         kwargs["api_key"] = api_key
     provider_name, model_name, kwargs = _adjust_call_args(provider_name, model_name, kwargs)
@@ -662,6 +673,8 @@ def _get_litellm_embedding(
     model_name: str, provider_name: str, model_config: Optional[Any] = None, **kwargs: Any
 ):
     """Get LiteLLM embedding wrapper instance. Fail-closed on missing key/model."""
+    from admin.llm.providers import provider_requires_api_key
+
     if not provider_name or not model_name:
         raise LLMNotConfiguredError(
             f"Missing model config: provider={provider_name!r} model={model_name!r}."
@@ -671,9 +684,13 @@ def _get_litellm_embedding(
         return LocalSentenceTransformerWrapper(
             provider=provider_name, model=model_name, model_config=model_config, **kwargs
         )
-    api_key = kwargs.pop("api_key", None) or get_api_key(provider_name)
-    if api_key in ("None", "NA", None, ""):
-        raise LLMNotConfiguredError(f"Invalid API key for embedding provider '{provider_name}'.")
+    api_key = kwargs.pop("api_key", None)
+    if provider_requires_api_key(provider_name):
+        api_key = api_key or get_api_key(provider_name)
+        if api_key in ("None", "NA", None, ""):
+            raise LLMNotConfiguredError(
+                f"Invalid API key for embedding provider '{provider_name}'."
+            )
     if api_key:
         kwargs["api_key"] = api_key
     provider_name, model_name, kwargs = _adjust_call_args(provider_name, model_name, kwargs)
@@ -685,16 +702,26 @@ def _get_litellm_embedding(
 def get_chat_model(
     provider: str, name: str, model_config: Optional[Any] = None, **kwargs: Any
 ) -> LiteLLMChatWrapper:
+    from admin.llm.providers import provider_requires_api_key
+
     orig = provider.lower()
     provider_name, kwargs = _merge_provider_defaults("chat", orig, kwargs)
-    use_llm = _env_flag("SA01_USE_LLM", True)
+    # Behaviour flag from the settings chain (SettingsModel.use_llm). Never an
+    # env var: configuration is Capsule > AgentSetting > InfrastructureConfig >
+    # SettingsModel (SOMA-STD-CONFIG-001).
+    from admin.core.helpers.settings_model import SettingsModel
+
+    use_llm = bool(SettingsModel.get("USE_LLM", True))
     api_key = kwargs.get("api_key")
     if not use_llm:
         raise LLMNotConfiguredError(
-            f"LLM disabled. Set USE_LLM=true for provider '{provider_name}'."
+            f"LLM disabled by settings (USE_LLM=false) for provider '{provider_name}'."
         )
-    if provider_name == "openai" and (not api_key or api_key in ("None", "NA")):
-        raise LLMNotConfiguredError(f"Invalid OpenAI API key for provider '{provider_name}'.")
+    if provider_requires_api_key(orig) and (not api_key or api_key in ("None", "NA")):
+        raise LLMNotConfiguredError(
+            f"Invalid API key for provider '{provider_name}'. Store a real key "
+            f"at secret/agent/api_keys/{orig}_api_key in Vault."
+        )
     return _get_litellm_chat(LiteLLMChatWrapper, name, provider_name, model_config, **kwargs)
 
 

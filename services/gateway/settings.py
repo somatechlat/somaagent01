@@ -252,13 +252,12 @@ FEATURE_PROFILE = _behaviour("sa01_feature_profile")
 AUTH_REQUIRED = True
 
 # SomaBrain (Cognitive Runtime)
-# Topology boot bridge (R-TOP-01): env may supply the first value before the
-# admin UI exists. Readers MUST resolve through require_service_url /
-# InfrastructureConfig (R-VEN-02) — Capsule > AgentSetting > InfrastructureConfig
-# > SettingsModel.service_* — never getattr with an invented host. Empty means
-# unconfigured; require_service_url raises (R-TOP-02). No get_optional_env and
-# no SA01_SOMA_BASE_URL alias (OPEN-07 / R-VAL-06).
-SOMABRAIN_URL = (os.environ.get("SOMABRAIN_URL") or "").strip()
+# Settings chain only (R-VEN-02): Capsule > AgentSetting > InfrastructureConfig
+# > SettingsModel.service_* — never getattr with an invented host, never an env
+# fallback (OPEN-07 / R-VAL-06). Empty means unconfigured; readers MUST resolve
+# through require_service_url which raises when nothing configures it (R-TOP-02).
+# No get_optional_env and no SA01_SOMA_BASE_URL alias.
+SOMABRAIN_URL = ""
 SOMABRAIN_BASE_URL = SOMABRAIN_URL  # Alias for compatibility
 # Memory addressing partition. No default (Rule 91): empty until the operator
 # sets it through Capsule.memory_pointer / AgentSetting / InfrastructureConfig.
@@ -269,7 +268,10 @@ SOMABRAIN_MEMORY_HTTP_TOKEN = get_secret_manager().get_credential("somabrain_mem
 # that fails at the far end with a 401 nobody can trace back to the missing key.
 # None is the honest "not configured", and every consumer refuses to send a
 # request on it (VIBE Rule 91).
-SOMAFRACTALMEMORY_URL = (os.environ.get("SOMAFRACTALMEMORY_URL") or "").strip()
+# SOMAFRACTALMEMORY_URL: settings chain only (R-VEN-02). Empty means
+# unconfigured; readers MUST resolve through require_service_url which raises
+# (R-TOP-02). No env fallback (OPEN-07 / R-VAL-06).
+SOMAFRACTALMEMORY_URL = ""
 # SOMABRAIN_API_KEY used to be defined here as
 #     get_credential("somabrain_api_key") or get_credential("soma_api_token") or None
 # — a silent cross-credential substitution that let a missing somabrain_api_key
@@ -331,32 +333,23 @@ DEFAULT_UTIL_MODEL_NAME = _behaviour("default_util_model_name")
 DEFAULT_EMBED_MODEL_NAME = _behaviour("default_embed_model_name")
 CB_FAILURE_THRESHOLD = _behaviour("cb_failure_threshold")
 CB_RESET_TIMEOUT_S = _behaviour("cb_reset_timeout_s")
-OPA_URL = get_optional_env("SA01_OPA_URL", "", "Open Policy Agent for authorization policies")
+OPA_URL = _behaviour("service_opa_url") or ""
 
 # Voice Services (Whisper STT + Kokoro TTS).
 # Empty when unset — require_service_url() refuses an unconfigured endpoint.
-# There is no localhost substitute (SOMA-STD-CONFIG-001 / Rule 16).
-WHISPER_URL = get_optional_env("SA01_WHISPER_URL", "", "Whisper STT base URL")
-WHISPER_API_URL = get_optional_env(
-    "SA01_WHISPER_API_URL", "", "Whisper transcribe endpoint URL"
-)
-KOKORO_URL = get_optional_env("SA01_KOKORO_URL", "", "Kokoro TTS base URL")
-KOKORO_TTS_URL = get_optional_env(
-    "SA01_KOKORO_TTS_URL", "", "Kokoro synthesize endpoint URL"
-)
-AGENTVOICEVOX_BASE_URL = get_optional_env(
-    "SA01_VOICEVOX_URL", "", "AgentVoiceVox base URL"
-)
+# There is no localhost substitute (SOMA-STD-CONFIG-001 / Rule 16). Settings
+# chain only (OPEN-07): never get_optional_env.
+WHISPER_URL = _behaviour("service_whisper_url") or ""
+WHISPER_API_URL = _behaviour("service_whisper_api_url") or ""
+KOKORO_URL = _behaviour("service_kokoro_url") or ""
+KOKORO_TTS_URL = _behaviour("service_kokoro_tts_url") or ""
+AGENTVOICEVOX_BASE_URL = _behaviour("service_agentvoicevox_base_url") or ""
 # SearxNG meta-search (web_search, TOOLS-001 §5.10). Empty when unset —
 # require_service_url() refuses; no localhost default.
-SEARXNG_URL = get_optional_env(
-    "SEARXNG_URL",
-    get_optional_env("SA01_SEARXNG_URL", "", "SearxNG meta-search base URL"),
-    "SearxNG meta-search base URL",
-)
+SEARXNG_URL = _behaviour("service_searxng_url") or ""
 
 # LLM Service
-LLM_API_URL = get_optional_env("SA01_LLM_API_URL", "", "Internal LLM chat endpoint URL")
+LLM_API_URL = _behaviour("service_llm_api_url") or ""
 # Absent becomes None, never "" — see the note on SOMABRAIN_MEMORY_HTTP_TOKEN.
 # Consumers refuse to call the LLM with a missing key rather than sending
 # `Authorization: Bearer ` and getting a 401 back.
@@ -375,19 +368,19 @@ MULTIMODAL_IMAGE_TIMEOUT_S = _behaviour("multimodal_image_timeout_s")
 MULTIMODAL_DIAGRAM_TIMEOUT_S = _behaviour("multimodal_diagram_timeout_s")
 
 
-# Multimodal Services (empty when unset — never a guessed host)
-MERMAID_CLI_URL = get_optional_env("SA01_MERMAID_CLI_URL", "", "Mermaid CLI base URL")
-IMAGE_GEN_URL = get_optional_env("SA01_IMAGE_GEN_URL", "", "Image generation endpoint URL")
-DIAGRAM_URL = get_optional_env("SA01_DIAGRAM_URL", "", "Diagram render endpoint URL")
+# Multimodal Services (empty when unset — never a guessed host; settings chain)
+MERMAID_CLI_URL = _behaviour("service_mermaid_cli_url") or ""
+IMAGE_GEN_URL = _behaviour("service_image_gen_url") or ""
+DIAGRAM_URL = _behaviour("service_diagram_url") or ""
 
 # Monitoring
-PROMETHEUS_URL = get_optional_env("SA01_PROMETHEUS_URL", "", "Prometheus base URL")
+PROMETHEUS_URL = _behaviour("service_prometheus_url") or ""
 
 # =============================================================================
 # KEYCLOAK SSO SETTINGS
 # =============================================================================
 
-KEYCLOAK_URL = get_required_env("SA01_KEYCLOAK_URL", "Keycloak OIDC identity provider base URL")
+KEYCLOAK_URL = _behaviour("service_keycloak_url") or ""
 KEYCLOAK_REALM = _behaviour("sa01_keycloak_realm")
 KEYCLOAK_CLIENT_ID = _behaviour("sa01_keycloak_client_id")
 KEYCLOAK_CLIENT_SECRET = get_secret_manager().get_credential("keycloak_client_secret") or None
@@ -398,14 +391,15 @@ KEYCLOAK_PUBLIC_KEY = _behaviour("sa01_keycloak_public_key") or ""
 # JWT Settings for Keycloak
 JWT_ALGORITHM = "RS256"
 JWT_AUDIENCE = KEYCLOAK_CLIENT_ID
-JWT_ISSUER = f"{KEYCLOAK_URL}/realms/{KEYCLOAK_REALM}"
+# Derived topology. Empty KEYCLOAK_URL = unconfigured; auth refuses (R-TOP-02).
+JWT_ISSUER = f"{KEYCLOAK_URL}/realms/{KEYCLOAK_REALM}" if KEYCLOAK_URL else ""
 
 # Unified JWT Settings (for Gateway & Admin)
 # -----------------------------------------------------------------------------
 # JWKS endpoint is derived topology from KEYCLOAK_URL + realm. An operator
 # override lives on SettingsModel (service/behaviour chain), never ENV.
 _jwt_jwks_override = _behaviour("sa01_jwt_jwks_url")
-JWT_JWKS_URL = _jwt_jwks_override or f"{JWT_ISSUER}/protocol/openid-connect/certs"
+JWT_JWKS_URL = _jwt_jwks_override or (f"{JWT_ISSUER}/protocol/openid-connect/certs" if JWT_ISSUER else "")
 JWT_ALGORITHMS = (_behaviour("sa01_jwt_algorithms") or "RS256").split(",")
 JWT_LEEWAY = _behaviour("sa01_jwt_leeway")
 # Disable issuer/audience validation for Docker dev (localhost/container hostname mismatch)
@@ -418,12 +412,8 @@ JWT_ISSUER_STRICT = (_behaviour("sa01_jwt_issuer_strict") or "true").lower() == 
 
 GOOGLE_CLIENT_ID = _behaviour("google_client_id") or ""
 GOOGLE_CLIENT_SECRET = get_secret_manager().get_credential("google_client_secret") or None
-GOOGLE_REDIRECT_URI = get_optional_env(
-    "GOOGLE_REDIRECT_URI", "", "Google OAuth redirect URI (deployment topology)"
-)
-GOOGLE_JAVASCRIPT_ORIGIN = get_optional_env(
-    "GOOGLE_JAVASCRIPT_ORIGIN", "", "Google OAuth JavaScript origin (deployment topology)"
-)
+GOOGLE_REDIRECT_URI = _behaviour("service_google_redirect_uri") or ""
+GOOGLE_JAVASCRIPT_ORIGIN = _behaviour("service_google_javascript_origin") or ""
 
 # =============================================================================
 # DJANGO CACHE (Redis)

@@ -5,7 +5,7 @@ From SRS-CONTEXT-BUILDING:
 - Uses body.persona.learned.lane_preferences if available (the body view of
   ``Capsule.persona_config["learned"]``, see
   ``admin.core.models.core.Capsule._build_body_dict``)
-- Falls back to intelligence-based defaults
+- Falls back to ``SimpleGovernor`` ratios — the one ratio authority.
 
 PhD Analyst: Mathematical allocation with normalization.
 """
@@ -14,8 +14,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Dict, TYPE_CHECKING
-
-from admin.core.agentiq.derivation import resolve_knobs
 
 if TYPE_CHECKING:
     from admin.core.models import Capsule
@@ -75,24 +73,32 @@ class LaneAllocation:
         }
 
 
-# Default allocations by intelligence level
-DEFAULT_LANES_LOW = LaneAllocation(system=0.20, history=0.20, memory=0.20, tools=0.20, buffer=0.20)
+# Default allocations are GONE as a second authority. Ratio defaults come
+# from SimpleGovernor.ratios_for() — see get_lane_allocation.
+def _gov_default_shares() -> LaneAllocation:
+    from services.common.simple_governor import get_governor
 
-DEFAULT_LANES_MID = LaneAllocation(system=0.15, history=0.30, memory=0.25, tools=0.20, buffer=0.10)
-
-DEFAULT_LANES_HIGH = LaneAllocation(system=0.10, history=0.35, memory=0.30, tools=0.15, buffer=0.10)
+    ratios = get_governor().ratios_for(is_degraded=False)
+    return LaneAllocation(
+        system=ratios["system"],
+        history=ratios["history"],
+        memory=ratios["memory"],
+        tools=ratios["tools"],
+        buffer=ratios["buffer"],
+    )
 
 
 async def get_lane_allocation(
     capsule: "Capsule", *, body: Dict[str, Any] | None = None
 ) -> LaneAllocation:
     """
-    Get lane allocation from body.persona.learned or intelligence defaults.
+    Get lane allocation from body.persona.learned or governor defaults.
 
     Priority:
     1. body.persona.learned.lane_preferences (brain-learned)
-    2. Default based on intelligence_level (resolved through the same
-       settings chain AgentIQ reports — never a second raw read)
+    2. SimpleGovernor healthy ratios — the single ratio authority. A second
+       table of defaults here would be a second authority and could disagree
+       with the governor (AP-06 / one-authority law).
 
     Args:
         capsule: Capsule model with body
@@ -142,13 +148,6 @@ async def get_lane_allocation(
                 "persona.learned.lane_preferences must be numeric shares summing to 1.0"
             ) from exc
 
-    # Intelligence-based defaults, through the same resolver AgentIQ reports.
-    knobs = resolve_knobs(capsule, body=body)
-    intelligence = int(knobs["intelligence_level"])
-
-    if intelligence <= 3:
-        return DEFAULT_LANES_LOW
-    elif intelligence <= 6:
-        return DEFAULT_LANES_MID
-    else:
-        return DEFAULT_LANES_HIGH
+    # Governor is the one ratio authority. Intelligence level no longer picks
+    # a second table of defaults — that was two authorities for one concept.
+    return _gov_default_shares()

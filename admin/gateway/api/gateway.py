@@ -162,7 +162,7 @@ async def list_keys(request: HttpRequest) -> dict:
 
     from admin.platform.models.profiles import ApiKey
 
-    tenant_id = request.headers.get("X-Tenant-Id", "")
+    tenant_id = getattr(request.auth, "tenant_id", None) or getattr(request.auth, "tenant", "")  # F-07: principal-bound, not header
     keys = await sync_to_async(list)(
         ApiKey.objects.filter(tenant_id=tenant_id, is_active=True).values(
             "id", "name", "key_prefix", "scopes", "created_at", "last_used_at"
@@ -187,7 +187,7 @@ async def create_key(request: HttpRequest, body: KeyCreateRequest) -> dict:
     from admin.platform.models.profiles import ApiKey
     from admin.core.authz import permissions_for_roles, validate_scopes
 
-    tenant_id = request.headers.get("X-Tenant-Id", "")
+    tenant_id = getattr(request.auth, "tenant_id", None) or getattr(request.auth, "tenant", "")  # F-07: principal-bound, not header
 
     auth = getattr(request, "auth", None)
     issuer_permissions = permissions_for_roles(list(getattr(auth, "roles", None) or []))
@@ -227,7 +227,7 @@ async def revoke_key(request: HttpRequest, key_id: str) -> dict:
 
     from admin.platform.models.profiles import ApiKey
 
-    tenant_id = request.headers.get("X-Tenant-Id", "")
+    tenant_id = getattr(request.auth, "tenant_id", None) or getattr(request.auth, "tenant", "")  # F-07: principal-bound, not header
     updated = await sync_to_async(ApiKey.objects.filter(id=key_id, tenant_id=tenant_id).update)(
         is_active=False
     )
@@ -254,12 +254,11 @@ async def get_constitution(request: HttpRequest) -> dict:
     📚 ISO Doc: Returns governance rules
     """
     await authorize(request, action="system:view", resource="gateway")
-    from services.common.constitution_store import ConstitutionStore
+    from admin.core.models import Constitution
 
-    tenant_id = request.headers.get("X-Tenant-Id", "default")
-    store = ConstitutionStore()
-    await store.ensure_schema()
-    rules = await store.get(tenant_id=tenant_id)
+    tenant_id = getattr(request.auth, "tenant_id", None) or getattr(request.auth, "tenant", "default")  # F-06: principal-bound
+    constitution = await Constitution.objects.filter(is_active=True).afirst()
+    rules = constitution.content if constitution else None
 
     return {"tenant_id": tenant_id, "rules": rules}
 
@@ -268,12 +267,13 @@ async def get_constitution(request: HttpRequest) -> dict:
 async def update_constitution(request: HttpRequest, body: ConstitutionUpdate) -> dict:
     """Update constitution rules."""
     await authorize(request, action="system:security_policy", resource="gateway")
-    from services.common.constitution_store import ConstitutionStore
+    from admin.core.models import Constitution
 
-    tenant_id = request.headers.get("X-Tenant-Id", "default")
-    store = ConstitutionStore()
-    await store.ensure_schema()
-    await store.update(identifier=tenant_id, changes={"rules": body.rules})
+    tenant_id = getattr(request.auth, "tenant_id", None) or getattr(request.auth, "tenant", "default")  # F-06: principal-bound
+    constitution = await Constitution.objects.filter(is_active=True).afirst()
+    if constitution is not None:
+        constitution.content = body.rules
+        await constitution.asave()
 
     return {"status": "updated", "tenant_id": tenant_id}
 

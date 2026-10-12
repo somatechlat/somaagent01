@@ -35,8 +35,14 @@ from asgiref.sync import sync_to_async
 
 from admin.common.messages import ErrorCode, get_message
 from admin.core.agentiq import derive_all_settings, UnifiedGate
+from admin.llm.exceptions import LLMNotConfiguredError
 from admin.core.context import build_context, BuiltContext
-from admin.core.model_router import detect_required_capabilities, select_model, SelectedModel
+from admin.core.model_router import (
+    NoCapableModelError,
+    SelectedModel,
+    detect_required_capabilities,
+    select_model,
+)
 from admin.core.permission_matrix import PermissionChecker
 from admin.core.somabrain_client import SomaBrainClient
 from admin.core.tool_calling import (
@@ -593,6 +599,14 @@ class V3ChatOrchestrator:
                 result.response = get_message(ErrorCode.LLM_DEGRADED_MODEL_UNAVAILABLE)
                 result.errors.append(f"Model selection circuit OPEN: {e}")
                 return result
+            except NoCapableModelError as e:
+                cap_set = ", ".join(sorted(e.capabilities)) if e.capabilities else "unknown"
+                result.response = (
+                    f"{get_message(ErrorCode.LLM_DEGRADED_MODEL_UNAVAILABLE)} "
+                    f"(required capabilities: {cap_set})"
+                )
+                result.errors.append(f"No capable model for capabilities: {cap_set}")
+                return result
             result.model_used = f"{model.provider}/{model.name}"
             logger.info("Phase 6: Model %s", result.model_used)
             self._metrics.record_turn_phase(turn_id, TurnPhase.MODEL_SELECTED)
@@ -655,12 +669,22 @@ class V3ChatOrchestrator:
             # tools=tools_for_llm is passed to LiteLLM every round; tool_calls
             # come back natively (never regex-parsed) and are executed via the
             # capsule ToolRegistry under capsule tool_policy.
-            llm = get_chat_model(
-                provider=model.provider,
-                name=model.name,
-                temperature=iq.temperature,
-                max_tokens=iq.max_tokens,
-            )
+            try:
+                llm = get_chat_model(
+                    provider=model.provider,
+                    name=model.name,
+                    api_base=model.api_base or None,
+                    temperature=iq.temperature,
+                    max_tokens=iq.max_tokens,
+                )
+            except LLMNotConfiguredError as exc:
+                # Honest failure: the provider key is missing from Vault (or
+                # the model has no deployment endpoint). Never invent a key,
+                # never fall back to env — tell the operator what is missing.
+                result.response = f"[LLM not configured] {exc}"
+                result.errors.append(str(exc))
+                result.phase_completed = 7
+                return result
             messages = self._to_langchain_messages(context, history, turn.user_message)
             self._metrics.record_turn_phase(turn_id, TurnPhase.LLM_INVOKED)
 
@@ -970,8 +994,10 @@ class V3ChatOrchestrator:
                     for k, v in neuro.items():
                         if hasattr(iq, k) and isinstance(v, (int, float)):
                             setattr(iq, k, v)
-            except Exception:  # noqa: BLE001 — never block the turn
-                pass
+            except Exception as neuro_apply_exc:
+                logger.warning(
+                    "Neuromodulator application failed this turn: %s", neuro_apply_exc
+                )
         context = await build_context(
             capsule=capsule,
             user_message=turn.user_message,
@@ -1041,6 +1067,15 @@ class V3ChatOrchestrator:
         except CircuitBreakerError:
             yield get_message(ErrorCode.LLM_DEGRADED_CIRCUIT_OPEN)
             return
+        except NoCapableModelError as exc:
+            # Never a generic internal_error: the operator must see WHICH
+            # capabilities had no model, and the turn degrades honestly.
+            cap_set = ", ".join(sorted(exc.capabilities)) if exc.capabilities else "unknown"
+            yield (
+                f"{get_message(ErrorCode.LLM_DEGRADED_MODEL_UNAVAILABLE)} "
+                f"(required capabilities: {cap_set})"
+            )
+            return
 
         # Turn metadata the UI must be able to show a person: which model is
         # actually serving this turn, the 5-lane allocation the governor
@@ -1074,12 +1109,20 @@ class V3ChatOrchestrator:
         )
 
         # Stream LLM with native tool-calling loop (Phase 8-9)
-        llm = get_chat_model(
-            provider=model.provider,
-            name=model.name,
-            temperature=iq.temperature,
-            max_tokens=iq.max_tokens,
-        )
+        try:
+            llm = get_chat_model(
+                provider=model.provider,
+                name=model.name,
+                api_base=model.api_base or None,
+                temperature=iq.temperature,
+                max_tokens=iq.max_tokens,
+            )
+        except LLMNotConfiguredError as exc:
+            # Honest failure: no provider key in Vault / no deployment
+            # endpoint. The person sees exactly what is missing — never a
+            # generic internal_error and never an invented key.
+            yield f"[LLM not configured] {exc}"
+            return
         # Real model identity — never invent which model this turn used.
         try:
             identity_line = (
@@ -1094,8 +1137,8 @@ class V3ChatOrchestrator:
                 f"the memory still exists — do not claim otherwise."
             )
             context = context.model_copy(update={"system": (context.system or "") + identity_line})
-        except Exception:
-            pass
+        except Exception as identity_exc:
+            logger.warning("Identity line injection failed: %s", identity_exc)
         messages = self._to_langchain_messages(context, history, turn.user_message)
 
         # Register the turn so the completion metrics below actually land.
@@ -1244,56 +1287,63 @@ class V3ChatOrchestrator:
         return await _get()
 
     async def _recall_history(self, conversation_id: str, tenant_id: str) -> List[Dict[str, str]]:
-        """Recall THIS conversation's turns only (T-1 via SomaBrain).
+        """Load THIS conversation's transcript turns (ARCH-INVARIANTS §3).
 
-        Session-scoped filter is mandatory: a semantic hit from another chat
-        must never be injected as history (that makes every new chat replay
-        the same answers). Unscoped hits are dropped, not guessed.
+        Postgres ``Message`` rows ARE the conversation transcript. The history
+        lane is that transcript — not semantic recall. A semantic search for
+        "session:{id}" is not a session filter and does not return a complete
+        ordered turn list; live Mission T proved it drops turn 1 while the
+        transcript still holds it. Semantic memory (``MemoryGateway.recall``)
+        is the memory lane, a different thing.
 
-        Fail-closed (T-5 / R-05): an outage raises ``MemoryRecallUnavailable``
-        and is turned into a typed degraded sentinel by the caller. It is
-        NEVER reported as an empty list — ``[]`` here means the recall ran and
-        this conversation genuinely has no stored turns.
+        Session scoping is the ``conversation_id`` column itself: a hit from
+        another chat can never be injected as history.
+
+        Fail-closed (T-5 / R-05): a database outage raises
+        ``MemoryRecallUnavailable`` and is turned into a typed degraded
+        sentinel by the caller. It is NEVER reported as an empty list — ``[]``
+        here means the query ran and this conversation genuinely has no
+        stored turns.
         """
         if not conversation_id:
             # No session to look up. That is a real empty, not a failure.
             return []
+        from django.db import DatabaseError
+
+        from admin.chat.models import Message as MessageModel
         from services.common.memory_contract import MemoryRecallUnavailable
 
-        try:
-            gateway = _require_memory_gateway()
-            hits = await gateway.recall(
-                query=f"session:{conversation_id}",
-                k=int(_mem_setting("MEM_HISTORY_LIMIT")),
-                tenant_id=tenant_id,
+        limit = int(_mem_setting("MEM_HISTORY_LIMIT"))
+
+        @sync_to_async
+        def _load() -> List[Dict[str, str]]:
+            rows = (
+                MessageModel.objects.filter(
+                    conversation_id=conversation_id, role__in=("user", "assistant")
+                )
+                .order_by("created_at")
+                .values_list("role", "content")
             )
-        except MemoryRecallUnavailable:
-            raise
-        except Exception as exc:
-            # Any other transport/config failure is still "history could not
-            # be read" — surface it as the same typed degraded signal rather
-            # than an empty list dressed as success.
+            # Keep the most recent `limit` turns, still oldest-first.
+            trimmed = list(rows)[-limit:]
+            return [
+                {"role": str(role), "content": str(content or "")}
+                for role, content in trimmed
+                if content
+            ]
+
+        try:
+            return await _load()
+        except DatabaseError as exc:
             raise MemoryRecallUnavailable(
-                f"SomaBrain history recall failed for conversation={conversation_id!r}: {exc}"
+                f"Transcript history read failed for conversation={conversation_id!r}: {exc}"
             ) from exc
 
-        messages: List[Dict[str, str]] = []
-        for h in hits or []:
-            sid = getattr(h, "session_id", None)
-            if not sid or str(sid) != str(conversation_id):
-                continue
-            role = (getattr(h, "role", None) or "user").strip().lower()
-            if role not in ("user", "assistant"):
-                continue
-            text = getattr(h, "text", "") or ""
-            if not text:
-                continue
-            messages.append({"role": role, "content": str(text)})
-        # Oldest first so the LLM sees a real turn order.
-        return messages
-
     def _to_langchain_messages(
-        self, context: BuiltContext, history: List[Dict[str, str]], user_message: str
+        self,
+        context: BuiltContext,
+        history: Optional[List[Dict[str, str]]],
+        user_message: str,
     ) -> List[Any]:
         """Convert BuiltContext (5 lanes) to LangChain messages.
 
@@ -1303,6 +1353,11 @@ class V3ChatOrchestrator:
         - tools   → SystemMessage ([Tools] available tool descriptions)
         - history → alternating AIMessage/HumanMessage
         - buffer  → HumanMessage (current user message, appended last)
+
+        ``history=None`` is the typed degraded sentinel (history recall could
+        not run) — the history lane is omitted, never dressed as an empty
+        history (T-5 / R-05). ``history=[]`` means recall ran and found no
+        stored turns.
         """
         from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
@@ -1325,13 +1380,15 @@ class V3ChatOrchestrator:
         if system_parts:
             msgs.append(SystemMessage(content="\n\n".join(system_parts)))
 
-        # Lane 2: Conversation history (individual message turns)
-        for h in history:
-            role, content = h.get("role"), h.get("content", "")
-            if role == "assistant":
-                msgs.append(AIMessage(content=content))
-            else:
-                msgs.append(HumanMessage(content=content))
+        # Lane 2: Conversation history (individual message turns).
+        # ``None`` = degraded sentinel → omit the lane entirely.
+        if history is not None:
+            for h in history:
+                role, content = h.get("role"), h.get("content", "")
+                if role == "assistant":
+                    msgs.append(AIMessage(content=content))
+                else:
+                    msgs.append(HumanMessage(content=content))
 
         # Lane 5: Buffer (current user message)
         msgs.append(HumanMessage(content=context.buffer or user_message))
@@ -1519,15 +1576,23 @@ class V3ChatOrchestrator:
             rows = list(hits or [])
             if not rows:
                 return rows
-            # Prefer fact-like rows; keep dialog only as filler.
-            def _rank(h: object) -> float:
+            # Prefer fact-like rows; keep dialog only as filler. Among equals,
+            # the NEWER fact wins — a user who updates their name must not be
+            # answered from the superseded row (Mission T: Marco → Daniel).
+            def _rank_key(h: object):
                 text = str(getattr(h, "text", "") or "")
                 if isinstance(h, dict):
                     text = str(h.get("text") or "")
                 if text.startswith("User:") or "\nAssistant:" in text:
-                    return -0.2
-                return 0.2 if len(text) <= 180 else 0.0
-            rows.sort(key=_rank, reverse=True)
+                    fact = -0.2
+                else:
+                    fact = 0.2 if len(text) <= 180 else 0.0
+                created = str(getattr(h, "created_at", "") or "")
+                if isinstance(h, dict):
+                    created = str(h.get("created_at") or "")
+                return (fact, created)
+
+            rows.sort(key=_rank_key, reverse=True)
             return rows
         except Exception as exc:
             logger.warning("MemoryGateway.recall failed: %s", exc)
@@ -1757,10 +1822,25 @@ class V3ChatOrchestrator:
           lives in the brain's Postgres and survives agent restarts.
         - ``POST /cognitive/personality``: push the capsule's Big-5 traits.
         """
-        plan = await self._cb_somabrain.call(
+        plan_result = await self._cb_somabrain.call(
             brain_client.plan_suggest,
             user_message,
         )
+        # Honesty contract (SF-01): plan_suggest returns
+        # {plan, error_code, error_detail}. A disabled/failed planner is NOT
+        # "no work" — it is an explicit degradation the caller must see.
+        if isinstance(plan_result, dict):
+            plan = plan_result.get("plan") or []
+            plan_error = plan_result.get("error_code")
+            if plan_error:
+                logger.warning(
+                    "Planner degraded for tenant=%s: %s %s",
+                    tenant_id,
+                    plan_error,
+                    plan_result.get("error_detail") or "",
+                )
+        else:
+            plan = plan_result or []
         if plan:
             await self._cb_somabrain.call(
                 brain_client.thread_create,
@@ -1839,7 +1919,12 @@ class V3ChatOrchestrator:
         )
 
     async def _load_neuromodulators(self, agent_id: str, user_context: dict) -> None:
-        """Load neuromodulator baseline from Capsule."""
+        """Load neuromodulator baseline from Capsule.
+
+        The capsule's ``neuromodulator_baseline`` is the authority. An empty
+        or missing baseline is a real "no baseline configured" state — never
+        invented defaults (a default IS hardcoded, VIBE Rule 1).
+        """
         from admin.core.models import Capsule
 
         @sync_to_async
@@ -1849,13 +1934,13 @@ class V3ChatOrchestrator:
 
         try:
             baseline = await _get()
-            neuro = baseline or {
-                "dopamine": 0.5,
-                "serotonin": 0.5,
-                "norepinephrine": 0.5,
-                "acetylcholine": 0.5,
-            }
-            logger.info("[GMD] Neuromodulators for %s: %s", agent_id[:8], neuro)
+            if not baseline:
+                logger.info(
+                    "[GMD] No neuromodulator baseline configured for agent %s",
+                    agent_id[:8],
+                )
+                return
+            logger.info("[GMD] Neuromodulators for %s: %s", agent_id[:8], baseline)
         except Exception as e:
             logger.warning("[GMD] Failed: %s", e)
 

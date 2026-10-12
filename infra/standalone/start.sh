@@ -38,6 +38,22 @@ echo "🔧 [Agent01] Running Migrations..."
 python manage.py migrate --noinput
 echo "✅ [Agent01] Migrations Complete."
 
+# ─────────────────────────────────────────────────────────────────────────────────
+# 2b. BOOTSTRAP CHECK (idempotent, no invented identity)
+# ─────────────────────────────────────────────────────────────────────────────────
+# bootstrap_soma --check exits 0 when the platform is already chat-ready.
+# A non-zero means the operator must run bootstrap_soma with explicit
+# --tenant / --sysadmin-email / --password-stdin. This script never invents
+# those values and never reads them from ENV (Rule 1 / Rule 3).
+echo "🔧 [Agent01] bootstrap_soma --check..."
+if python manage.py bootstrap_soma --check; then
+    echo "✅ [Agent01] bootstrap already complete."
+else
+    echo "❌ [Agent01] bootstrap_soma required. Operator must run:" >&2
+    echo "   python manage.py bootstrap_soma --tenant <slug> --sysadmin-email <email> --password-stdin" >&2
+    exit 1
+fi
+
 echo "🔥 [Agent01] Warming orchestrator + memory gateway..."
 python - <<'PY' || echo "⚠️ warmup skipped (non-fatal)"
 import os, django

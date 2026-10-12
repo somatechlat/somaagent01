@@ -387,24 +387,45 @@ def test_a_key_holds_its_scopes_and_never_its_issuers_roles():
     exists to prevent.
     """
     # scopes present -> roles ignored entirely
-    assert permissions_for_principal(roles=["sysadmin"], scopes=["resource:chat_send"]) == {
-        "resource:chat_send"
-    }
-    assert permissions_for_principal(roles=["sysadmin"], scopes=[]) == frozenset()
+    assert permissions_for_principal(
+        roles=["sysadmin"], scopes=["resource:chat_send"], org_id="t1"
+    ) == {"resource:chat_send"}
+    assert permissions_for_principal(
+        roles=["sysadmin"], scopes=[], org_id="t1"
+    ) == frozenset()
 
 
 def test_unknown_scopes_contribute_no_authority():
     """A scope that is not a catalog permission is not authority."""
-    assert permissions_for_principal(scopes=["not-a-permission"]) == frozenset()
-    assert permissions_for_principal(scopes=["resource:chat_send", "nope"]) == {
-        "resource:chat_send"
-    }
+    assert permissions_for_principal(scopes=["not-a-permission"], org_id="t1") == frozenset()
+    assert permissions_for_principal(
+        scopes=["resource:chat_send", "nope"], org_id="t1"
+    ) == {"resource:chat_send"}
 
 
 def test_a_person_is_authorized_by_roles_alone():
-    assert permissions_for_principal(roles=["member"]) == permissions_for_roles(["member"])
-    assert permissions_for_principal(roles=[], scopes=None) == frozenset()
-    assert permissions_for_principal() == frozenset()
+    assert permissions_for_principal(roles=["member"], org_id="t1") == permissions_for_roles(
+        ["member"]
+    )
+    assert permissions_for_principal(roles=[], scopes=None, org_id="t1") == frozenset()
+    assert permissions_for_principal(org_id="t1") == frozenset()
+
+
+def test_authority_without_an_organization_is_denied():
+    """F-02: roles are held inside an organization.
+
+    A check that cannot name the organization cannot scope the grant, so it
+    gets no authority. There is no implicit current-org and no default
+    partition.
+    """
+    for kwargs in (
+        {"roles": ["sysadmin"]},
+        {"roles": ["sysadmin"], "org_id": None},
+        {"roles": ["sysadmin"], "org_id": ""},
+        {"scopes": ["system:view"]},
+        {"scopes": ["system:view"], "org_id": None},
+    ):
+        assert permissions_for_principal(**kwargs) == frozenset(), kwargs
 
 
 def test_api_key_prefix_is_recognizable():

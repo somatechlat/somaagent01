@@ -55,11 +55,16 @@ def _backend() -> str:
 def _vault_token(provider: str, vault_key: str) -> str:
     from services.common.unified_secret_manager import get_secret_manager
 
-    key = get_secret_manager().get_provider_key(provider)
+    sm = get_secret_manager()
+    # Preferred: dedicated Clef credential (seed_clef_vault.py).
+    key = sm.get_credential("clef_api_token")
+    if not key or key in ("None", "NA"):
+        key = sm.get_provider_key(provider)
     if not key or key in ("None", "NA"):
         raise ClefConfigurationError(
             f"API token missing for backend provider {provider!r}. "
-            f"Set secret/agent/api_keys/{vault_key} in Vault (VIBE Rule 164)."
+            f"Set secret/agent/credentials/clef_api_token or "
+            f"secret/agent/api_keys/{vault_key} in Vault (VIBE Rule 164)."
         )
     return str(key)
 

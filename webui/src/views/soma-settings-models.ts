@@ -1,14 +1,19 @@
 /**
- * SomaAgent — Models settings (card library + Activate + Normal/Advanced modal)
+ * SomaAgent — Models settings (card library + 5-role panel + presets + wizard)
  *
  * Design: SOMA-UI-MODEL-ADMIN-001 v3.2 · FIELD-PARITY-001
+ * - Providers come from GET /llm/providers (never a hardcoded list)
  * - One CSS card = one model (all identity fields visible)
- * - Activate / Make live one-click
- * - Modal: Normal | Advanced | Used for
- * - Custom URL + Load models (live list) + manual Model ID
+ * - Add-model wizard: Provider → key → base URL → Load models → id →
+ *   display name → Type (Chat/Embedding/Decision) → Used for → Advanced →
+ *   Test connection → Save
+ * - Five model roles: chat_role / utility_role / embedding_role /
+ *   vision_role / decision_role. UI labels: Used for: Chat / Help / Memory /
+ *   Vision / Decisions. API surface: GET/PUT /llm/roles.
+ * - Presets panel: bundled + user, Apply to (Global / This agent / This chat),
+ *   Duplicate, Edit (all five role bindings), Delete (user only), Restore
+ *   bundled presets, Save current roles as preset
  * - API key typed here → Vault only (write-only, never echoed)
- * - No “slot” language (Used for: Chat / Help / Memory)
- * - Default LIVE seed: Groq · DeepSeek 2.8
  */
 
 import { LitElement, html, css, nothing } from 'lit';
@@ -16,8 +21,17 @@ import { customElement, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
 import '../components/soma-status-badge.js';
 
-type ModelType = 'chat' | 'embedding';
-type ModalTab = 'normal' | 'advanced' | 'used';
+type ModelType = 'chat' | 'embedding' | 'decision';
+
+interface ProviderRow {
+    id: string;
+    label: string;
+    enabled: boolean;
+    base_url: string;
+    model_name: string;
+    is_custom: boolean;
+    has_api_key: boolean;
+}
 
 interface ModelRow {
     id: string;
@@ -39,12 +53,44 @@ interface ModelRow {
     is_active: boolean;
 }
 
-interface UsedFor {
+interface RoleBindings {
+    chat_role: string | null;
+    utility_role: string | null;
+    embedding_role: string | null;
+    vision_role: string | null;
+    decision_role: string | null;
+    decision_role_id: string | null;
+    capsule_id: string | null;
+    scope: string;
+}
+
+interface PresetRoleDraft {
+    chat_model_id: string;
+    utility_model_id: string;
+    embedding_model_id: string;
+    vision_role_id: string;
+    decision_role_id: string;
+}
+
+interface PresetRow {
+    id: string;
+    name: string;
     chat_model_id: string | null;
     utility_model_id: string | null;
     embedding_model_id: string | null;
-    capsule_id: string | null;
+    vision_role_id: string | null;
+    decision_role_id: string | null;
+    is_bundled: boolean;
     scope: string;
+    notes: string;
+    created_at: string;
+    updated_at: string;
+}
+
+interface AgentRow {
+    id: string;
+    name: string;
+    capsule_id?: string;
 }
 
 interface Draft {
@@ -72,15 +118,43 @@ interface Draft {
     max_embeds: number;
 }
 
-const PROVIDERS = [
-    { id: 'groq', label: 'Groq' },
-    { id: 'openai', label: 'OpenAI' },
-    { id: 'anthropic', label: 'Anthropic' },
-    { id: 'ollama', label: 'Ollama' },
-    { id: 'custom', label: 'Custom / OpenAI-compatible' },
-];
+/** Role id → the label the product uses (Chat / Help / Memory / Vision / Decisions). */
+const ROLE_LABELS: Record<string, string> = {
+    chat_role: 'Chat',
+    utility_role: 'Help',
+    embedding_role: 'Memory',
+    vision_role: 'Vision',
+    decision_role: 'Decisions',
+};
 
-function emptyDraft(provider = 'groq'): Draft {
+const ROLE_HINTS: Record<string, string> = {
+    chat_role: 'Primary conversations',
+    utility_role: 'Summaries and background work',
+    embedding_role: 'Embeddings for memory and search',
+    vision_role: 'Images and vision critique',
+    decision_role: 'System One decisions (Clef)',
+};
+
+const ROLE_ORDER = [
+    'chat_role',
+    'utility_role',
+    'embedding_role',
+    'vision_role',
+    'decision_role',
+] as const;
+
+type RoleId = (typeof ROLE_ORDER)[number];
+
+/** model_type each role accepts (mirrors admin.llm.api._role_model_type_required). */
+const ROLE_REQUIRED_TYPE: Record<RoleId, ModelType | null> = {
+    chat_role: 'chat',
+    utility_role: null,
+    embedding_role: 'embedding',
+    vision_role: 'chat',
+    decision_role: 'decision',
+};
+
+function emptyDraft(provider = ''): Draft {
     return {
         name: '',
         display_name: '',
@@ -177,11 +251,9 @@ export class SomaSettingsModels extends LitElement {
         }
         * { box-sizing: border-box; }
         .wrap { max-width: 1120px; margin: 0 auto; padding: 24px 20px 48px; }
-        .wrap.editor {
-            max-width: 960px;
-        }
         .head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
         h1 { font-size: 1.35rem; font-weight: 650; margin: 0; flex: 1; letter-spacing: -0.02em; }
+        h2 { font-size: 1.05rem; font-weight: 650; margin: 0 0 4px; }
         .sub { color: var(--platform-text-secondary, #666666); font-size: 0.9rem; margin-bottom: 20px; }
         .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
         input, select, textarea {
@@ -221,6 +293,20 @@ export class SomaSettingsModels extends LitElement {
             color: var(--platform-danger, #ef4444);
         }
         .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+        .panel {
+            background: var(--platform-bg-card, #ffffff);
+            border: 1px solid var(--platform-border-light, #e0e0e0);
+            border-radius: var(--platform-radius-lg, 12px);
+            padding: 16px;
+            margin-bottom: 18px;
+        }
+        .panel-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .panel-head h2 { flex: 1; margin: 0; }
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -272,6 +358,10 @@ export class SomaSettingsModels extends LitElement {
             background: var(--platform-status-danger, #ef4444);
             color: var(--platform-text-inverse, #ffffff);
         }
+        .chip.ok {
+            background: var(--platform-status-success, #22c55e);
+            color: var(--platform-text-inverse, #ffffff);
+        }
         .model-id { font-weight: 650; font-size: 1rem; letter-spacing: -0.01em; }
         .meta { color: var(--platform-text-secondary, #666666); font-size: 0.8rem; line-height: 1.45; }
         .facts {
@@ -291,7 +381,6 @@ export class SomaSettingsModels extends LitElement {
             text-align: center;
             color: var(--platform-text-secondary, #666666);
         }
-        /* Full-screen model editor (not a modal). Modal is confirm-only. */
         .editor {
             max-width: 960px;
             margin: 0 auto;
@@ -304,24 +393,18 @@ export class SomaSettingsModels extends LitElement {
             margin-bottom: 8px;
         }
         .editor h2 { margin: 0 0 4px; font-size: 1.25rem; }
-        .tabs {
-            display: flex;
-            gap: 6px;
-            margin: 14px 0 16px;
-            border-bottom: 1px solid var(--platform-border-light, #e0e0e0);
+        .section {
+            border-top: 1px solid var(--platform-border-light, #e0e0e0);
+            padding-top: 14px;
+            margin-top: 14px;
         }
-        .tab {
-            background: transparent;
-            border: none;
+        .section:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
+        .section h3 {
+            margin: 0 0 10px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
             color: var(--platform-text-secondary, #666666);
-            padding: 10px 14px;
-            font-weight: 600;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-        }
-        .tab.on {
-            color: var(--platform-text-primary, #1a1a1a);
-            border-bottom-color: var(--platform-info, #3b82f6);
         }
         .field {
             display: grid;
@@ -378,36 +461,53 @@ export class SomaSettingsModels extends LitElement {
         .status { font-size: 0.85rem; min-height: 1.2em; margin: 8px 0; }
         .status.err { color: var(--platform-danger, #ef4444); }
         .status.ok { color: var(--platform-success, #22c55e); }
-        /* Confirm dialog only (delete). Glassmorphism from system tokens. */
-        .confirm-backdrop {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.35);
-            backdrop-filter: blur(var(--platform-glass-blur, 16px));
-            -webkit-backdrop-filter: blur(var(--platform-glass-blur, 16px));
+        .provider-strip {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: var(--platform-z-modal, 200);
-            padding: 16px;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 18px;
         }
-        .confirm {
-            width: min(420px, 100%);
-            background: var(--platform-glass-bg, rgba(255, 255, 255, 0.85));
-            border: 1px solid var(--platform-glass-border, rgba(0, 0, 0, 0.08));
-            border-radius: var(--platform-radius-lg, 12px);
-            box-shadow: var(--platform-shadow-glass, 0 8px 32px rgba(0, 0, 0, 0.08));
-            padding: 20px 22px;
+        .role-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        .role-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .role-item label {
+            font-size: 0.78rem;
+            font-weight: 650;
             color: var(--platform-text-primary, #1a1a1a);
         }
-        .confirm h3 { margin: 0 0 8px; font-size: 1.05rem; }
-        .confirm .editor-foot { border-top: none; padding-top: 0; }
+        .role-item .hint {
+            font-size: 0.7rem;
+            color: var(--platform-text-muted, #999999);
+        }
+        .role-item select { width: 100%; }
+        .preset-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--platform-border-light, #e0e0e0);
+        }
+        .preset-row:last-child { border-bottom: none; }
+        .preset-name { font-weight: 650; min-width: 140px; }
+        .preset-meta { font-size: 0.75rem; color: var(--platform-text-muted, #999999); flex: 1; }
+        .preset-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+        .preset-actions .btn { padding: 5px 9px; font-size: 0.75rem; }
     `;
 
     @state() private _models: ModelRow[] = [];
-    @state() private _used: UsedFor | null = null;
+    @state() private _providers: ProviderRow[] = [];
+    @state() private _roles: RoleBindings | null = null;
+    @state() private _presets: PresetRow[] = [];
+    @state() private _agents: AgentRow[] = [];
     @state() private _draft: Draft | null = null;
-    @state() private _tab: ModalTab = 'normal';
     @state() private _search = '';
     @state() private _filterType = 'all';
     @state() private _status = '';
@@ -416,6 +516,12 @@ export class SomaSettingsModels extends LitElement {
     @state() private _keySaved: Record<string, boolean> = {};
     @state() private _liveModels: string[] = [];
     @state() private _liveSource = '';
+    @state() private _applyTarget: Record<string, 'global' | 'agent' | 'chat'> = {};
+    @state() private _applyAgent: Record<string, string> = {};
+    @state() private _editingPreset: string | null = null;
+    @state() private _presetName = '';
+    @state() private _presetNotes = '';
+    @state() private _presetRoles: PresetRoleDraft | null = null;
 
     connectedCallback(): void {
         super.connectedCallback();
@@ -425,13 +531,24 @@ export class SomaSettingsModels extends LitElement {
     private async _reload(): Promise<void> {
         this._loading = true;
         try {
-            this._models = await apiClient.get<ModelRow[]>('/llm/models');
-            this._used = await apiClient.get<UsedFor>('/llm/slots');
-            const secrets = await apiClient.get<{ provider: string; configured: boolean }[]>(
-                '/secrets/providers',
-            );
+            const [models, providers, roles, presets, agents] = await Promise.all([
+                apiClient.get<ModelRow[]>('/llm/models'),
+                apiClient.get<ProviderRow[]>('/llm/providers'),
+                apiClient.get<RoleBindings>('/llm/roles'),
+                apiClient.get<PresetRow[]>('/llm/presets'),
+                apiClient.get<{ agents: AgentRow[] }>('/agents/').catch(() => ({ agents: [] })),
+            ]);
+            this._models = models || [];
+            this._providers = providers || [];
+            this._roles = roles;
+            this._presets = presets || [];
+            this._agents = (agents?.agents || []).map((a) => ({
+                id: a.id || (a as unknown as { agent_id?: string }).agent_id || '',
+                name: a.name || '',
+                capsule_id: a.capsule_id,
+            }));
             const map: Record<string, boolean> = {};
-            for (const s of secrets || []) map[s.provider] = !!s.configured;
+            for (const p of this._providers) map[p.id] = !!p.has_api_key;
             this._keySaved = map;
         } catch (e) {
             this._statusOk = false;
@@ -456,37 +573,39 @@ export class SomaSettingsModels extends LitElement {
         return rows;
     }
 
+    /** Roles this model is currently bound to (UI labels: Chat/Help/Memory/Vision/Decisions). */
     private _usedFor(id: string): string[] {
-        if (!this._used) return [];
+        if (!this._roles) return [];
         const out: string[] = [];
-        if (this._used.chat_model_id === id) out.push('Chat');
-        if (this._used.utility_model_id === id) out.push('Help');
-        if (this._used.embedding_model_id === id) out.push('Memory');
+        for (const role of ROLE_ORDER) {
+            const bound =
+                this._roles[role] ||
+                (role === 'decision_role' ? this._roles.decision_role_id : null);
+            if (bound === id) out.push(ROLE_LABELS[role]);
+        }
         return out;
     }
 
     private _isLive(id: string): boolean {
-        if (!this._used) return false;
-        if (this._used.chat_model_id === id) return true;
-        // Chat chips use provider/name (turn_meta.model). Match either form.
-        const row = this._models.find((m) => m.id === id);
-        if (row && this._used.chat_model_id) {
-            const key = `${row.provider}/${row.name}`;
-            if (this._used.chat_model_id === key || this._used.chat_model_id === row.name) {
-                return true;
-            }
-        }
-        return false;
+        return this._usedFor(id).length > 0;
+    }
+
+    private _providerBase(providerId: string): string {
+        const p = this._providers.find((x) => x.id === providerId);
+        return p?.base_url || '';
     }
 
     private async _activate(m: ModelRow): Promise<void> {
         try {
             await apiClient.patch(`/llm/models/${m.id}`, { is_active: true });
             const body: Record<string, string | null> = {};
-            if (m.model_type === 'chat') body.chat_model_id = m.id;
-            if (m.model_type === 'embedding') body.embedding_model_id = m.id;
-            if (m.model_type === 'chat' && !this._used?.utility_model_id) body.utility_model_id = m.id;
-            if (Object.keys(body).length) await apiClient.put('/llm/slots', body);
+            if (m.model_type === 'chat') {
+                body.chat_role = m.id;
+                if (!this._roles?.utility_role) body.utility_role = m.id;
+            }
+            if (m.model_type === 'embedding') body.embedding_role = m.id;
+            if (m.model_type === 'decision') body.decision_role = m.id;
+            if (Object.keys(body).length) await apiClient.put('/llm/roles', body);
             this._statusOk = true;
             this._status = `Live: ${m.name}`;
             await this._reload();
@@ -496,23 +615,33 @@ export class SomaSettingsModels extends LitElement {
         }
     }
 
-    private async _setUsed(role: 'chat' | 'help' | 'memory', id: string): Promise<void> {
-        const key =
-            role === 'chat' ? 'chat_model_id' : role === 'help' ? 'utility_model_id' : 'embedding_model_id';
-        await apiClient.put('/llm/slots', { [key]: id });
-        await this._reload();
+    private async _setRole(role: RoleId, id: string): Promise<void> {
+        const value = id || null;
+        try {
+            await apiClient.put('/llm/roles', { [role]: value });
+            this._statusOk = true;
+            this._status = value
+                ? `${ROLE_LABELS[role]} → ${this._models.find((m) => m.id === value)?.name || value}`
+                : `${ROLE_LABELS[role]} cleared.`;
+            await this._reload();
+        } catch (e) {
+            this._statusOk = false;
+            this._status = e instanceof Error ? e.message : String(e);
+        }
     }
 
     private _openCreate(): void {
-        this._draft = emptyDraft('groq');
-        this._tab = 'normal';
+        const first = this._providers.find((p) => p.id !== 'custom') || this._providers[0];
+        this._draft = emptyDraft(first?.id || '');
+        if (first?.base_url) this._draft.api_base = first.base_url;
         this._liveModels = [];
+        this._liveSource = '';
     }
 
     private _openEdit(m: ModelRow): void {
         this._draft = draftFromModel(m);
-        this._tab = 'normal';
         this._liveModels = [];
+        this._liveSource = '';
     }
 
     private async _saveKey(): Promise<void> {
@@ -523,6 +652,9 @@ export class SomaSettingsModels extends LitElement {
             });
             this._draft.api_key = '';
             this._keySaved = { ...this._keySaved, [this._draft.provider]: true };
+            this._providers = this._providers.map((p) =>
+                p.id === this._draft!.provider ? { ...p, has_api_key: true } : p,
+            );
             this._statusOk = true;
             this._status = 'Key saved to Vault (not stored in files).';
         } catch (e) {
@@ -610,9 +742,172 @@ export class SomaSettingsModels extends LitElement {
     private async _deleteModel(): Promise<void> {
         if (!this._draft?.id) return;
         if (!confirm(`Delete model “${this._draft.name}”?`)) return;
-        await apiClient.delete(`/llm/models/${this._draft.id}`);
-        this._draft = null;
-        await this._reload();
+        try {
+            await apiClient.delete(`/llm/models/${this._draft.id}`);
+            this._draft = null;
+            this._statusOk = true;
+            this._status = 'Model deleted.';
+            await this._reload();
+        } catch (e) {
+            this._statusOk = false;
+            this._status = e instanceof Error ? e.message : String(e);
+        }
+    }
+
+    // ---- Presets -------------------------------------------------------
+
+    private _capsuleFor(presetId: string): string | undefined {
+        const target = this._applyTarget[presetId] || 'global';
+        if (target === 'global') return undefined;
+        const agentId = this._applyAgent[presetId] || this._agents[0]?.id || '';
+        const agent = this._agents.find((a) => a.id === agentId);
+        return agent?.capsule_id;
+    }
+
+    private async _applyPreset(p: PresetRow): Promise<void> {
+        try {
+            const capsuleId = this._capsuleFor(p.id);
+            const qs = capsuleId ? `?capsule_id=${encodeURIComponent(capsuleId)}` : '';
+            await apiClient.post(`/llm/presets/${p.id}/apply${qs}`, {});
+            const target = this._applyTarget[p.id] || 'global';
+            this._statusOk = true;
+            this._status = `Preset “${p.name}” applied (${target}).`;
+            await this._reload();
+        } catch (e) {
+            this._statusOk = false;
+            this._status = e instanceof Error ? e.message : String(e);
+        }
+    }
+
+    private async _duplicatePreset(p: PresetRow): Promise<void> {
+        try {
+            await apiClient.post('/llm/presets', {
+                name: `${p.name} (copy)`,
+                chat_model_id: p.chat_model_id,
+                utility_model_id: p.utility_model_id,
+                embedding_model_id: p.embedding_model_id,
+                vision_role_id: p.vision_role_id,
+                decision_role_id: p.decision_role_id,
+                is_bundled: false,
+                scope: p.scope,
+                notes: p.notes,
+            });
+            this._statusOk = true;
+            this._status = `Duplicated “${p.name}”.`;
+            await this._reload();
+        } catch (e) {
+            this._statusOk = false;
+            this._status = e instanceof Error ? e.message : String(e);
+        }
+    }
+
+    private _openPresetEdit(p: PresetRow): void {
+        if (p.is_bundled) {
+            this._statusOk = false;
+            this._status = 'Bundled presets are catalog rows — use Restore bundled presets to reset them.';
+            return;
+        }
+        this._editingPreset = p.id;
+        this._presetName = p.name;
+        this._presetNotes = p.notes || '';
+        this._presetRoles = {
+            chat_model_id: p.chat_model_id || '',
+            utility_model_id: p.utility_model_id || '',
+            embedding_model_id: p.embedding_model_id || '',
+            vision_role_id: p.vision_role_id || '',
+            decision_role_id: p.decision_role_id || '',
+        };
+    }
+
+    private async _savePresetEdit(): Promise<void> {
+        const id = this._editingPreset;
+        if (!id) return;
+        const p = this._presets.find((x) => x.id === id);
+        if (!p) return;
+        const r = this._presetRoles;
+        try {
+            await apiClient.patch(`/llm/presets/${id}`, {
+                name: this._presetName.trim() || p.name,
+                chat_model_id: r?.chat_model_id || null,
+                utility_model_id: r?.utility_model_id || null,
+                embedding_model_id: r?.embedding_model_id || null,
+                vision_role_id: r?.vision_role_id || null,
+                decision_role_id: r?.decision_role_id || null,
+                is_bundled: p.is_bundled,
+                scope: p.scope,
+                notes: this._presetNotes,
+            });
+            this._editingPreset = null;
+            this._presetRoles = null;
+            this._statusOk = true;
+            this._status = 'Preset updated (all five roles).';
+            await this._reload();
+        } catch (e) {
+            this._statusOk = false;
+            this._status = e instanceof Error ? e.message : String(e);
+        }
+    }
+
+    private async _saveCurrentAsPreset(): Promise<void> {
+        const roles = this._roles;
+        const name = (this._presetName || '').trim() || `Preset ${new Date().toISOString().slice(0, 10)}`;
+        try {
+            await apiClient.post('/llm/presets', {
+                name,
+                chat_model_id: roles?.chat_role || null,
+                utility_model_id: roles?.utility_role || null,
+                embedding_model_id: roles?.embedding_role || null,
+                vision_role_id: roles?.vision_role || null,
+                decision_role_id: roles?.decision_role || roles?.decision_role_id || null,
+                is_bundled: false,
+                scope: 'global',
+                notes: this._presetNotes || 'Saved from current role bindings.',
+            });
+            this._presetName = '';
+            this._presetNotes = '';
+            this._statusOk = true;
+            this._status = `Preset “${name}” saved from current roles.`;
+            await this._reload();
+        } catch (e) {
+            this._statusOk = false;
+            this._status = e instanceof Error ? e.message : String(e);
+        }
+    }
+
+    private async _deletePreset(p: PresetRow): Promise<void> {
+        if (p.is_bundled) {
+            this._statusOk = false;
+            this._status = 'Bundled presets cannot be deleted.';
+            return;
+        }
+        if (!confirm(`Delete preset “${p.name}”?`)) return;
+        try {
+            await apiClient.delete(`/llm/presets/${p.id}`);
+            this._statusOk = true;
+            this._status = `Deleted “${p.name}”.`;
+            await this._reload();
+        } catch (e) {
+            this._statusOk = false;
+            this._status = e instanceof Error ? e.message : String(e);
+        }
+    }
+
+    private async _restoreBundled(): Promise<void> {
+        try {
+            const res = await apiClient.post<{
+                restored: string[];
+                skipped: string[];
+                total: number;
+            }>('/llm/presets/restore-bundled', {});
+            this._statusOk = res.skipped.length === 0;
+            this._status = `Restored ${res.restored.length}/${res.total} bundled presets${
+                res.skipped.length ? ` (skipped: ${res.skipped.join(', ')})` : ''
+            }.`;
+            await this._reload();
+        } catch (e) {
+            this._statusOk = false;
+            this._status = e instanceof Error ? e.message : String(e);
+        }
     }
 
     private _bind<K extends keyof Draft>(key: K) {
@@ -627,13 +922,71 @@ export class SomaSettingsModels extends LitElement {
             } else {
                 (this._draft as Draft)[key] = raw as Draft[K];
             }
+            if (key === 'provider') {
+                this._draft.api_base = this._providerBase(raw) || this._draft.api_base;
+                this._liveModels = [];
+            }
             this._draft = { ...this._draft };
         };
+    }
+
+
+    private _typeLabel(t: string): string {
+        if (t === 'embedding') return 'Embeddings';
+        if (t === 'decision') return 'Decision (Clef)';
+        return 'Chat';
+    }
+
+    private _modelLabel(id: string | null | undefined): string {
+        if (!id) return '—';
+        const m = this._models.find((x) => x.id === id);
+        return m ? (m.provider && m.name ? `${m.provider}/${m.name}` : m.name) : id;
+    }
+
+    private _presetRoleSummary(p: PresetRow): string {
+        const parts = [
+            `Chat ${this._modelLabel(p.chat_model_id)}`,
+            `Help ${this._modelLabel(p.utility_model_id)}`,
+            `Memory ${this._modelLabel(p.embedding_model_id)}`,
+            `Vision ${this._modelLabel(p.vision_role_id)}`,
+            `Decisions ${this._modelLabel(p.decision_role_id)}`,
+        ];
+        return parts.join(' · ');
+    }
+
+    private _presetRoleSelect(
+        label: string,
+        value: string,
+        required: ModelType | null,
+        onPick: (id: string) => void,
+    ) {
+        const options = required
+            ? this._models.filter((m) => m.model_type === required)
+            : this._models;
+        return html`
+            <div class="role-item">
+                <label>${label}</label>
+                <select
+                    .value=${value}
+                    @change=${(e: Event) => onPick((e.target as HTMLSelectElement).value)}
+                >
+                    <option value="">— not set —</option>
+                    ${options.map(
+                        (m) => html`
+                            <option value=${m.id} ?selected=${m.id === value}>
+                                ${m.provider}/${m.name}
+                            </option>
+                        `,
+                    )}
+                </select>
+            </div>
+        `;
     }
 
     private _card(m: ModelRow) {
         const used = this._usedFor(m.id);
         const live = this._isLive(m.id);
+        const keyOk = this._keySaved[m.provider];
         return html`
             <article
                 class="card ${live ? 'live' : ''}"
@@ -648,10 +1001,10 @@ export class SomaSettingsModels extends LitElement {
                     ${live
                         ? html`<span class="chip live">LIVE</span>`
                         : html`<span class="chip">${m.is_active ? 'Ready' : 'Off'}</span>`}
-                    <span class="chip type">${m.model_type === 'embedding' ? 'Embeddings' : 'Chat'}</span>
-                    ${!this._keySaved[m.provider]
-                        ? html`<span class="chip warn">Needs key</span>`
-                        : nothing}
+                    <span class="chip type">${this._typeLabel(m.model_type)}</span>
+                    ${keyOk
+                        ? html`<span class="chip ok">Key in Vault ✓</span>`
+                        : html`<span class="chip warn">Missing</span>`}
                 </div>
                 <div class="model-id">${m.provider && m.name ? `${m.provider}/${m.name}` : m.name}</div>
                 <div class="meta">
@@ -674,12 +1027,261 @@ export class SomaSettingsModels extends LitElement {
                               Activate
                           </button>`}
                     <button class="btn ghost" @click=${() => this._openEdit(m)}>Edit</button>
-                    <button class="btn ghost" @click=${() => {
-                        this._draft = draftFromModel(m);
-                        void this._testConnection();
-                    }}>Test</button>
+                    <button
+                        class="btn ghost"
+                        @click=${() => {
+                            this._draft = draftFromModel(m);
+                            void this._testConnection();
+                        }}
+                    >
+                        Test
+                    </button>
                 </div>
             </article>
+        `;
+    }
+
+    private _providerStrip() {
+        if (!this._providers.length) return nothing;
+        return html`
+            <div class="provider-strip" aria-label="Provider key status">
+                ${this._providers.map(
+                    (p) => html`
+                        <span class="chip ${p.has_api_key ? 'ok' : 'warn'}" title=${p.label}>
+                            ${p.label} — ${p.has_api_key ? 'Key in Vault ✓' : 'Missing'}
+                        </span>
+                    `,
+                )}
+            </div>
+        `;
+    }
+
+    private _rolesPanel() {
+        const roles = this._roles;
+        return html`
+            <section class="panel" aria-label="Model roles">
+                <div class="panel-head">
+                    <h2>Model roles</h2>
+                    <span class="meta">Used for: Chat / Help / Memory / Vision / Decisions</span>
+                </div>
+                ${this._loading
+                    ? html`<div class="empty">Loading role bindings…</div>`
+                    : !roles
+                      ? html`<div class="empty">Role bindings unavailable. Fix the error above, then Refresh.</div>`
+                      : html`
+                            <div class="role-grid">
+                                ${ROLE_ORDER.map((role) => {
+                                    const current = roles[role] || '';
+                                    const required = ROLE_REQUIRED_TYPE[role];
+                                    const options = required
+                                        ? this._models.filter((m) => m.model_type === required)
+                                        : this._models;
+                                    return html`
+                                        <div class="role-item">
+                                            <label for="role-${role}">
+                                                ${ROLE_LABELS[role]}
+                                                ${role === 'decision_role'
+                                                    ? html`<span class="chip type">Clef</span>`
+                                                    : nothing}
+                                            </label>
+                                            <select
+                                                id="role-${role}"
+                                                .value=${current}
+                                                @change=${(e: Event) => {
+                                                    void this._setRole(
+                                                        role,
+                                                        (e.target as HTMLSelectElement).value,
+                                                    );
+                                                }}
+                                            >
+                                                <option value="">— not set —</option>
+                                                ${options.map(
+                                                    (m) => html`
+                                                        <option value=${m.id} ?selected=${m.id === current}>
+                                                            ${m.provider}/${m.name}
+                                                        </option>
+                                                    `,
+                                                )}
+                                            </select>
+                                            <div class="hint">
+                                                ${ROLE_HINTS[role]}
+                                                ${current
+                                                    ? html` · bound`
+                                                    : html` · not bound`}
+                                            </div>
+                                        </div>
+                                    `;
+                                })}
+                            </div>
+                        `}
+            </section>
+        `;
+    }
+
+    private _presetsPanel() {
+        const bundled = this._presets.filter((p) => p.is_bundled);
+        const user = this._presets.filter((p) => !p.is_bundled);
+        return html`
+            <section class="panel" aria-label="Model presets">
+                <div class="panel-head">
+                    <h2>Presets</h2>
+                    <span class="meta">Each preset binds all five roles</span>
+                    <button class="btn" @click=${() => void this._saveCurrentAsPreset()}>
+                        Save current roles as preset
+                    </button>
+                    <button class="btn" @click=${() => void this._restoreBundled()}>
+                        Restore bundled presets
+                    </button>
+                </div>
+                ${this._loading
+                    ? html`<div class="empty">Loading presets…</div>`
+                    : this._presets.length === 0
+                      ? html`<div class="empty">No presets yet. Restore bundled presets or save the current roles.</div>`
+                      : html`
+                            ${bundled.length
+                                ? html`<div class="meta" style="margin-bottom: 6px">Bundled</div>
+                                      ${bundled.map((p) => this._presetRow(p))}`
+                                : nothing}
+                            ${user.length
+                                ? html`<div class="meta" style="margin: 12px 0 6px">Yours</div>
+                                      ${user.map((p) => this._presetRow(p))}`
+                                : nothing}
+                        `}
+            </section>
+        `;
+    }
+
+    private _presetRow(p: PresetRow) {
+        const target = this._applyTarget[p.id] || 'global';
+        const agentId = this._applyAgent[p.id] || this._agents[0]?.id || '';
+        const editing = this._editingPreset === p.id;
+        const r = this._presetRoles;
+        return html`
+            <div class="preset-row" style="flex-direction: column; align-items: stretch">
+                ${editing && r
+                    ? html`
+                          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px">
+                              <input
+                                  .value=${this._presetName}
+                                  @input=${(e: Event) => {
+                                      this._presetName = (e.target as HTMLInputElement).value;
+                                  }}
+                                  placeholder="Preset name"
+                                  style="min-width: 160px"
+                              />
+                              <input
+                                  .value=${this._presetNotes}
+                                  @input=${(e: Event) => {
+                                      this._presetNotes = (e.target as HTMLInputElement).value;
+                                  }}
+                                  placeholder="Notes"
+                                  style="flex: 1"
+                              />
+                          </div>
+                          <div class="role-grid" style="margin-bottom: 10px">
+                              ${this._presetRoleSelect(ROLE_LABELS.chat_role, r.chat_model_id, 'chat', (id) => {
+                                  this._presetRoles = { ...r, chat_model_id: id };
+                              })}
+                              ${this._presetRoleSelect(ROLE_LABELS.utility_role, r.utility_model_id, null, (id) => {
+                                  this._presetRoles = { ...r, utility_model_id: id };
+                              })}
+                              ${this._presetRoleSelect(ROLE_LABELS.embedding_role, r.embedding_model_id, 'embedding', (id) => {
+                                  this._presetRoles = { ...r, embedding_model_id: id };
+                              })}
+                              ${this._presetRoleSelect(ROLE_LABELS.vision_role, r.vision_role_id, 'chat', (id) => {
+                                  this._presetRoles = { ...r, vision_role_id: id };
+                              })}
+                              ${this._presetRoleSelect(ROLE_LABELS.decision_role, r.decision_role_id, 'decision', (id) => {
+                                  this._presetRoles = { ...r, decision_role_id: id };
+                              })}
+                          </div>
+                          <div class="preset-actions">
+                              <button class="btn primary" @click=${() => void this._savePresetEdit()}>
+                                  Save
+                              </button>
+                              <button
+                                  class="btn ghost"
+                                  @click=${() => {
+                                      this._editingPreset = null;
+                                      this._presetRoles = null;
+                                  }}
+                              >
+                                  Cancel
+                              </button>
+                          </div>
+                      `
+                    : html`
+                          <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+                              <span class="preset-name">${p.name}</span>
+                              <span class="chip ${p.is_bundled ? 'type' : 'ok'}">
+                                  ${p.is_bundled ? 'Bundled' : 'User'}
+                              </span>
+                              <span class="preset-meta">${p.notes || p.scope || ''}</span>
+                          </div>
+                          <div class="preset-meta" style="margin: 6px 0">
+                              ${this._presetRoleSummary(p)}
+                          </div>
+                          <div class="preset-actions">
+                              <select
+                                  .value=${target}
+                                  @change=${(e: Event) => {
+                                      this._applyTarget = {
+                                          ...this._applyTarget,
+                                          [p.id]: (e.target as HTMLSelectElement).value as
+                                              | 'global'
+                                              | 'agent'
+                                              | 'chat',
+                                      };
+                                  }}
+                                  style="padding: 5px 8px; font-size: 0.75rem"
+                              >
+                                  <option value="global">Global</option>
+                                  <option value="agent">This agent</option>
+                                  <option value="chat">This chat</option>
+                              </select>
+                              ${target !== 'global'
+                                  ? html`
+                                        <select
+                                            .value=${agentId}
+                                            @change=${(e: Event) => {
+                                                this._applyAgent = {
+                                                    ...this._applyAgent,
+                                                    [p.id]: (e.target as HTMLSelectElement).value,
+                                                };
+                                            }}
+                                            style="padding: 5px 8px; font-size: 0.75rem"
+                                        >
+                                            ${this._agents.length
+                                                ? this._agents.map(
+                                                      (a) => html`
+                                                          <option value=${a.id} ?selected=${a.id === agentId}>
+                                                              ${a.name || a.id}
+                                                          </option>
+                                                      `,
+                                                  )
+                                                : html`<option value="">No agents</option>`}
+                                        </select>
+                                    `
+                                  : nothing}
+                              <button class="btn primary" @click=${() => void this._applyPreset(p)}>
+                                  Apply
+                              </button>
+                              <button class="btn ghost" @click=${() => void this._duplicatePreset(p)}>
+                                  Duplicate
+                              </button>
+                              ${p.is_bundled
+                                  ? nothing
+                                  : html`
+                                        <button class="btn ghost" @click=${() => this._openPresetEdit(p)}>
+                                            Edit
+                                        </button>
+                                        <button class="btn danger" @click=${() => void this._deletePreset(p)}>
+                                            Delete
+                                        </button>
+                                    `}
+                          </div>
+                      `}
+            </div>
         `;
     }
 
@@ -687,7 +1289,7 @@ export class SomaSettingsModels extends LitElement {
         const d = this._draft;
         if (!d) return nothing;
         return html`
-            <div class="editor" role="region" aria-label="Model editor">
+            <div class="editor" role="region" aria-label="Add model">
                 <div class="editor-head">
                     <button class="btn ghost" @click=${() => (this._draft = null)}>
                         <span class="material-symbols-outlined">arrow_back</span>
@@ -697,317 +1299,277 @@ export class SomaSettingsModels extends LitElement {
                 <h2>${d.id ? `Model — ${d.name}` : 'Add model'}</h2>
                 <div class="meta">
                     ${d.provider}
-                    ${this._isLive(d.id || '')
-                        ? html` · <span class="chip live">LIVE</span>`
-                        : nothing}
-                </div>
-                <div class="tabs">
-                    <button
-                        class="tab ${this._tab === 'normal' ? 'on' : ''}"
-                        @click=${() => (this._tab = 'normal')}
-                    >
-                        Normal
-                    </button>
-                    <button
-                        class="tab ${this._tab === 'advanced' ? 'on' : ''}"
-                        @click=${() => (this._tab = 'advanced')}
-                    >
-                        Advanced
-                    </button>
-                    <button
-                        class="tab ${this._tab === 'used' ? 'on' : ''}"
-                        @click=${() => (this._tab = 'used')}
-                    >
-                        Used for
-                    </button>
+                    ${this._isLive(d.id || '') ? html` · <span class="chip live">LIVE</span>` : nothing}
                 </div>
 
-                    ${this._tab === 'normal'
-                        ? html`
-                              <div class="field">
-                                  <label>Provider</label>
-                                  <select .value=${d.provider} @change=${this._bind('provider')}>
-                                      ${PROVIDERS.map(
-                                          (p) =>
-                                              html`<option value=${p.id} ?selected=${p.id === d.provider}>
-                                                  ${p.label}
-                                              </option>`,
+                <div class="section">
+                    <h3>Provider</h3>
+                    <div class="field">
+                        <label>Provider</label>
+                        <select .value=${d.provider} @change=${this._bind('provider')}>
+                            ${this._providers.map(
+                                (p) => html`
+                                    <option value=${p.id} ?selected=${p.id === d.provider}>${p.label}</option>
+                                `,
+                            )}
+                        </select>
+                        <div class="hint">
+                            ${this._keySaved[d.provider]
+                                ? 'Key in Vault ✓'
+                                : 'No API key in Vault for this provider yet.'}
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>API key</label>
+                        <div class="row2">
+                            <input
+                                type="password"
+                                .value=${d.api_key}
+                                @input=${this._bind('api_key')}
+                                placeholder="${this._keySaved[d.provider]
+                                    ? '•••••• (saved in Vault)'
+                                    : 'Paste key…'}"
+                                autocomplete="off"
+                            />
+                            <button class="btn" @click=${() => void this._saveKey()}>Save to Vault</button>
+                        </div>
+                        <div class="hint">Typed here, stored in Vault only. Never files. Never shown again.</div>
+                    </div>
+                    <div class="field">
+                        <label>Base URL</label>
+                        <input
+                            .value=${d.api_base}
+                            @input=${this._bind('api_base')}
+                            placeholder="Optional provider base URL"
+                        />
+                        <div class="hint">
+                            Prefilled from the provider catalog. Empty uses the provider standard
+                            address. Used for “Load models” and runtime calls.
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Model list</label>
+                        <div>
+                            <button class="btn" @click=${() => void this._loadModels()}>Load models</button>
+                            <div class="meta" style="margin-top: 6px">Source: ${this._liveSource || '—'}</div>
+                            <div class="model-list">
+                                ${this._liveModels.length === 0
+                                    ? html`<button disabled>No models loaded yet</button>`
+                                    : this._liveModels.map(
+                                          (name) => html`
+                                              <button
+                                                  class="${name === d.name ? 'sel' : ''}"
+                                                  @click=${() => {
+                                                      this._draft = {
+                                                          ...this._draft!,
+                                                          name,
+                                                          display_name:
+                                                              this._draft!.display_name || name,
+                                                      };
+                                                  }}
+                                              >
+                                                  ${name}
+                                              </button>
+                                          `,
                                       )}
-                                  </select>
-                              </div>
-                              <div class="field">
-                                  <label>Custom URL</label>
-                                  <input
-                                      .value=${d.api_base}
-                                      @input=${this._bind('api_base')}
-                                      placeholder="https://… (optional — MiMo / gateway / local)"
-                                  />
-                                  <div class="hint">
-                                      Empty uses the provider standard address. Used for “Load models” and
-                                      runtime calls.
-                                  </div>
-                              </div>
-                              <div class="field">
-                                  <label>Provider key</label>
-                                  <div class="row2">
-                                      <input
-                                          type="password"
-                                          .value=${d.api_key}
-                                          @input=${this._bind('api_key')}
-                                          placeholder="${this._keySaved[d.provider]
-                                              ? '•••••• (saved in Vault)'
-                                              : 'Paste key…'}"
-                                          autocomplete="off"
-                                      />
-                                      <button class="btn" @click=${() => void this._saveKey()}>
-                                          Save to Vault
-                                      </button>
-                                  </div>
-                                  <div class="hint">
-                                      Typed here, stored in Vault only. Never files. Never shown again.
-                                  </div>
-                              </div>
-                              <div class="field">
-                                  <label>Model list</label>
-                                  <div>
-                                      <button class="btn" @click=${() => void this._loadModels()}>
-                                          Load models
-                                      </button>
-                                      <div class="meta" style="margin-top: 6px">
-                                          Source: ${this._liveSource || '—'}
-                                      </div>
-                                      <div class="model-list">
-                                          ${this._liveModels.length === 0
-                                              ? html`<button disabled>No models loaded yet</button>`
-                                              : this._liveModels.map(
-                                                    (name) =>
-                                                        html`<button
-                                                            class="${name === d.name ? 'sel' : ''}"
-                                                            @click=${() => {
-                                                                this._draft = {
-                                                                    ...this._draft!,
-                                                                    name,
-                                                                    display_name:
-                                                                        this._draft!.display_name || name,
-                                                                };
-                                                            }}
-                                                        >
-                                                            ${name}
-                                                        </button>`,
-                                                )}
-                                      </div>
-                                      <div class="hint">Click a name — or type below.</div>
-                                  </div>
-                              </div>
-                              <div class="field">
-                                  <label>Model ID</label>
-                                  <input .value=${d.name} @input=${this._bind('name')} />
-                              </div>
-                              <div class="field">
-                                  <label>Display name</label>
-                                  <input .value=${d.display_name} @input=${this._bind('display_name')} />
-                              </div>
-                              <div class="field">
-                                  <label>Type</label>
-                                  <select .value=${d.model_type} @change=${this._bind('model_type')}>
-                                      <option value="chat" ?selected=${d.model_type === 'chat'}>Chat</option>
-                                      <option
-                                          value="embedding"
-                                          ?selected=${d.model_type === 'embedding'}
-                                      >
-                                          Embeddings
-                                      </option>
-                                  </select>
-                              </div>
-                              <div class="field">
-                                  <label>Price level</label>
-                                  <select .value=${d.cost_tier} @change=${this._bind('cost_tier')}>
-                                      ${['free', 'low', 'standard', 'premium'].map(
-                                          (t) =>
-                                              html`<option value=${t} ?selected=${t === d.cost_tier}>
-                                                  ${t}
-                                              </option>`,
-                                      )}
-                                  </select>
-                              </div>
-                              <div class="field">
-                                  <label>Sees images</label>
-                                  <input
-                                      type="checkbox"
-                                      .checked=${d.vision}
-                                      @change=${this._bind('vision')}
-                                  />
-                              </div>
-                              <div class="field">
-                                  <label>Use this model</label>
-                                  <input
-                                      type="checkbox"
-                                      .checked=${d.is_active}
-                                      @change=${this._bind('is_active')}
-                                  />
-                              </div>
-                          `
-                        : nothing}
+                            </div>
+                            <div class="hint">Click a name — or type below.</div>
+                        </div>
+                    </div>
+                </div>
 
-                    ${this._tab === 'advanced'
+                <div class="section">
+                    <h3>Model</h3>
+                    <div class="field">
+                        <label>Model ID</label>
+                        <input .value=${d.name} @input=${this._bind('name')} />
+                    </div>
+                    <div class="field">
+                        <label>Display name</label>
+                        <input .value=${d.display_name} @input=${this._bind('display_name')} />
+                    </div>
+                    <div class="field">
+                        <label>Type</label>
+                        <select .value=${d.model_type} @change=${this._bind('model_type')}>
+                            <option value="chat" ?selected=${d.model_type === 'chat'}>Chat</option>
+                            <option value="embedding" ?selected=${d.model_type === 'embedding'}>
+                                Embeddings
+                            </option>
+                            <option value="decision" ?selected=${d.model_type === 'decision'}>
+                                Decision (Clef)
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>Used for</h3>
+                    ${ROLE_ORDER.map((role) => {
+                        const required = ROLE_REQUIRED_TYPE[role];
+                        const allowed = !required || required === d.model_type || !!d.id;
+                        return html`
+                            <div class="field">
+                                <label>
+                                    ${ROLE_LABELS[role]}
+                                    ${role === 'decision_role'
+                                        ? html`<span class="chip type">Clef</span>`
+                                        : nothing}
+                                </label>
+                                <input
+                                    type="checkbox"
+                                    .checked=${this._roles?.[role] === d.id}
+                                    ?disabled=${!d.id || !allowed}
+                                    @change=${() => {
+                                        if (!d.id) return;
+                                        const next =
+                                            this._roles?.[role] === d.id ? '' : d.id;
+                                        void this._setRole(role, next);
+                                    }}
+                                />
+                                <div class="hint">
+                                    ${ROLE_HINTS[role]}
+                                    ${required && !allowed
+                                        ? html` · needs a ${this._typeLabel(required)} model`
+                                        : nothing}
+                                </div>
+                            </div>
+                        `;
+                    })}
+                </div>
+
+                <div class="section">
+                    <h3>Advanced</h3>
+                    <div class="field">
+                        <label>Context window</label>
+                        <input
+                            type="number"
+                            .value=${String(d.ctx_length)}
+                            @input=${this._bind('ctx_length')}
+                        />
+                    </div>
+                    <div class="field">
+                        <label>Max output tokens</label>
+                        <input
+                            type="number"
+                            .value=${String(d.max_tokens)}
+                            @input=${this._bind('max_tokens')}
+                        />
+                        <div class="hint">Stored in extra options if schema has no column.</div>
+                    </div>
+                    <div class="field">
+                        <label>Timeout (seconds)</label>
+                        <input type="number" .value=${String(d.timeout)} @input=${this._bind('timeout')} />
+                    </div>
+                    <div class="field">
+                        <label>Chat history share</label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            max="1"
+                            .value=${String(d.ctx_history)}
+                            @input=${this._bind('ctx_history')}
+                        />
+                        <div class="hint">
+                            Portion of context used for chat history (Agent Zero parity).
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Max embeds</label>
+                        <input type="number" .value=${String(d.max_embeds)} @input=${this._bind('max_embeds')} />
+                    </div>
+                    <div class="field">
+                        <label>Requests / min</label>
+                        <input
+                            type="number"
+                            .value=${String(d.limit_requests)}
+                            @input=${this._bind('limit_requests')}
+                        />
+                    </div>
+                    <div class="field">
+                        <label>Input tokens / min</label>
+                        <input
+                            type="number"
+                            .value=${String(d.limit_input)}
+                            @input=${this._bind('limit_input')}
+                        />
+                    </div>
+                    <div class="field">
+                        <label>Output tokens / min</label>
+                        <input
+                            type="number"
+                            .value=${String(d.limit_output)}
+                            @input=${this._bind('limit_output')}
+                        />
+                    </div>
+                    <div class="field">
+                        <label>Priority</label>
+                        <input type="number" .value=${String(d.priority)} @input=${this._bind('priority')} />
+                    </div>
+                    <div class="field">
+                        <label>Price level</label>
+                        <select .value=${d.cost_tier} @change=${this._bind('cost_tier')}>
+                            ${['free', 'low', 'standard', 'premium'].map(
+                                (t) => html`<option value=${t} ?selected=${t === d.cost_tier}>${t}</option>`,
+                            )}
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>Good at</label>
+                        <input
+                            .value=${d.capabilities}
+                            @input=${this._bind('capabilities')}
+                            placeholder="chat, tools, reasoning"
+                        />
+                    </div>
+                    <div class="field">
+                        <label>Used in</label>
+                        <input
+                            .value=${d.domains}
+                            @input=${this._bind('domains')}
+                            placeholder="general, product"
+                        />
+                    </div>
+                    <div class="field">
+                        <label>Sees images</label>
+                        <input type="checkbox" .checked=${d.vision} @change=${this._bind('vision')} />
+                    </div>
+                    <div class="field">
+                        <label>Extra options</label>
+                        <textarea .value=${d.kwargs_text} @input=${this._bind('kwargs_text')}></textarea>
+                        <div class="hint">JSON. temperature, top_p, and other model params.</div>
+                    </div>
+                    <div class="field">
+                        <label>Use this model</label>
+                        <input type="checkbox" .checked=${d.is_active} @change=${this._bind('is_active')} />
+                    </div>
+                </div>
+
+                ${this._status
+                    ? html`<div class="status ${this._statusOk ? 'ok' : 'err'}">${this._status}</div>`
+                    : nothing}
+
+                <div class="editor-foot">
+                    <button class="btn primary" @click=${() => void this._saveModel()}>Save</button>
+                    <button class="btn" @click=${() => void this._testConnection()}>Test connection</button>
+                    ${d.id
                         ? html`
-                              <div class="field">
-                                  <label>Context window</label>
-                                  <input
-                                      type="number"
-                                      .value=${String(d.ctx_length)}
-                                      @input=${this._bind('ctx_length')}
-                                  />
-                              </div>
-                              <div class="field">
-                                  <label>Max output tokens</label>
-                                  <input
-                                      type="number"
-                                      .value=${String(d.max_tokens)}
-                                      @input=${this._bind('max_tokens')}
-                                  />
-                                  <div class="hint">Stored in extra options if schema has no column.</div>
-                              </div>
-                              <div class="field">
-                                  <label>Timeout (seconds)</label>
-                                  <input
-                                      type="number"
-                                      .value=${String(d.timeout)}
-                                      @input=${this._bind('timeout')}
-                                  />
-                              </div>
-                              <div class="field">
-                                  <label>Chat history share</label>
-                                  <input
-                                      type="number"
-                                      step="0.01"
-                                      min="0.01"
-                                      max="1"
-                                      .value=${String(d.ctx_history)}
-                                      @input=${this._bind('ctx_history')}
-                                  />
-                                  <div class="hint">
-                                      Portion of context used for chat history (Agent Zero parity).
-                                  </div>
-                              </div>
-                              <div class="field">
-                                  <label>Max embeds</label>
-                                  <input
-                                      type="number"
-                                      .value=${String(d.max_embeds)}
-                                      @input=${this._bind('max_embeds')}
-                                  />
-                              </div>
-                              <div class="field">
-                                  <label>Requests / min</label>
-                                  <input
-                                      type="number"
-                                      .value=${String(d.limit_requests)}
-                                      @input=${this._bind('limit_requests')}
-                                  />
-                              </div>
-                              <div class="field">
-                                  <label>Input tokens / min</label>
-                                  <input
-                                      type="number"
-                                      .value=${String(d.limit_input)}
-                                      @input=${this._bind('limit_input')}
-                                  />
-                              </div>
-                              <div class="field">
-                                  <label>Output tokens / min</label>
-                                  <input
-                                      type="number"
-                                      .value=${String(d.limit_output)}
-                                      @input=${this._bind('limit_output')}
-                                  />
-                              </div>
-                              <div class="field">
-                                  <label>Priority</label>
-                                  <input
-                                      type="number"
-                                      .value=${String(d.priority)}
-                                      @input=${this._bind('priority')}
-                                  />
-                              </div>
-                              <div class="field">
-                                  <label>Good at</label>
-                                  <input
-                                      .value=${d.capabilities}
-                                      @input=${this._bind('capabilities')}
-                                      placeholder="chat, tools, reasoning"
-                                  />
-                              </div>
-                              <div class="field">
-                                  <label>Used in</label>
-                                  <input
-                                      .value=${d.domains}
-                                      @input=${this._bind('domains')}
-                                      placeholder="general, product"
-                                  />
-                              </div>
-                              <div class="field">
-                                  <label>Extra options</label>
-                                  <textarea
-                                      .value=${d.kwargs_text}
-                                      @input=${this._bind('kwargs_text')}
-                                  ></textarea>
-                                  <div class="hint">JSON. temperature, top_p, and other model params.</div>
-                              </div>
-                          `
-                        : nothing}
-
-                    ${this._tab === 'used'
-                        ? html`
-                              <div class="field">
-                                  <label>Chat</label>
-                                  <input
-                                      type="checkbox"
-                                      .checked=${this._used?.chat_model_id === d.id}
-                                      @change=${() => d.id && void this._setUsed('chat', d.id)}
-                                  />
-                                  <div class="hint">Primary conversations</div>
-                              </div>
-                              <div class="field">
-                                  <label>Help</label>
-                                  <input
-                                      type="checkbox"
-                                      .checked=${this._used?.utility_model_id === d.id}
-                                      @change=${() => d.id && void this._setUsed('help', d.id)}
-                                  />
-                                  <div class="hint">Summaries and background work</div>
-                              </div>
-                              <div class="field">
-                                  <label>Memory</label>
-                                  <input
-                                      type="checkbox"
-                                      .checked=${this._used?.embedding_model_id === d.id}
-                                      @change=${() => d.id && void this._setUsed('memory', d.id)}
-                                  />
-                                  <div class="hint">Embeddings for memory and search</div>
-                              </div>
-                          `
-                        : nothing}
-
-                    ${this._status
-                        ? html`<div class="status ${this._statusOk ? 'ok' : 'err'}">${this._status}</div>`
-                        : nothing}
-
-                    <div class="editor-foot">
-                        <button class="btn primary" @click=${() => void this._saveModel()}>Save model</button>
-                        <button class="btn" @click=${() => void this._testConnection()}>
-                            Test connection
-                        </button>
-                        ${d.id
-                            ? html`<button class="btn" @click=${() => void this._activate(this._models.find((m) => m.id === d.id!)!)}>
+                              <button
+                                  class="btn"
+                                  @click=${() => {
+                                      const row = this._models.find((m) => m.id === d.id!);
+                                      if (row) void this._activate(row);
+                                  }}
+                              >
                                   Make live
                               </button>
                               <button class="btn danger" @click=${() => void this._deleteModel()}>
                                   Delete
-                              </button>`
-                            : nothing}
-                        <button class="btn ghost" @click=${() => (this._draft = null)}>Close</button>
-                    </div>
+                              </button>
+                          `
+                        : nothing}
+                    <button class="btn ghost" @click=${() => (this._draft = null)}>Close</button>
+                </div>
             </div>
         `;
     }
@@ -1019,15 +1581,28 @@ export class SomaSettingsModels extends LitElement {
                 <div class="head">
                     <h1>Models</h1>
                     <button class="btn ghost" @click=${() => void this._reload()}>Refresh</button>
-                    <button class="btn" @click=${() => window.dispatchEvent(new CustomEvent('soma-navigate', { detail: { route: '/settings' } }))}>
+                    <button
+                        class="btn"
+                        @click=${() =>
+                            window.dispatchEvent(
+                                new CustomEvent('soma-navigate', { detail: { route: '/settings' } }),
+                            )}
+                    >
                         Settings
+                    </button>
+                    <button class="btn" @click=${() => void this._restoreBundled()}>
+                        Restore bundled presets
                     </button>
                     <button class="btn primary" @click=${() => this._openCreate()}>Add model</button>
                 </div>
                 <div class="sub">
-                    Cards show the whole model. Activate to make one live. Open a card for the full
-                    model screen (Normal / Advanced / Used for). Keys go to Vault only.
+                    Cards show the whole model. Activate to make one live. Open a card for the add-model
+                    wizard (Provider → key → base URL → Load models → identity → Type → Used for →
+                    Advanced → Test → Save). Keys go to Vault only.
                 </div>
+                ${this._providerStrip()}
+                ${this._rolesPanel()}
+                ${this._presetsPanel()}
                 <div class="toolbar">
                     <input
                         style="flex: 1; min-width: 180px"
@@ -1046,6 +1621,7 @@ export class SomaSettingsModels extends LitElement {
                         <option value="all">All types</option>
                         <option value="chat">Chat</option>
                         <option value="embedding">Embeddings</option>
+                        <option value="decision">Decision (Clef)</option>
                     </select>
                 </div>
                 ${this._status
@@ -1055,8 +1631,7 @@ export class SomaSettingsModels extends LitElement {
                     ? html`<div class="empty">Loading models…</div>`
                     : this._visible.length === 0
                       ? html`<div class="empty">
-                            No models yet. <b>Add model</b> or seed Groq DeepSeek 2.8 from the agent
-                            defaults.
+                            No models yet. <b>Add model</b> or <b>Restore bundled presets</b>.
                         </div>`
                       : html`<div class="grid">${this._visible.map((m) => this._card(m))}</div>`}
             </div>
@@ -1069,3 +1644,4 @@ declare global {
         'soma-settings-models': SomaSettingsModels;
     }
 }
+

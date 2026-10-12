@@ -171,8 +171,11 @@ class PermissionChecker:
             roles = await self._roles_for(user_id, tenant_id)
 
         # Floor: role-based access control. A delegated key is authorized by
-        # its scopes alone and never by the issuer's roles.
-        granted = permissions_for_principal(roles=roles, scopes=scopes)
+        # its scopes alone and never by the issuer's roles. The grant is
+        # org-scoped (F-02): no tenant on the request means no authority.
+        granted = permissions_for_principal(
+            roles=roles, scopes=scopes, org_id=tenant_id
+        )
         if permission not in granted:
             self._cache[cache_key] = False
             return PermissionCheckResult(
@@ -208,7 +211,9 @@ class PermissionChecker:
         )
 
     async def _roles_for(self, user_id: str, tenant_id: Optional[str]) -> List[str]:
-        """Resolve the subject's roles.
+        """Resolve the subject's roles from the one membership store.
+
+        ``TenantUser.roles_for`` is the single resolver (F-05).
 
         FAIL-CLOSED: a subject with no recorded role has no authority. A
         missing role must never become a default grant.
@@ -218,16 +223,9 @@ class PermissionChecker:
         try:
             from asgiref.sync import sync_to_async
 
-            @sync_to_async
-            def _load() -> List[str]:
-                from admin.platform.models import TenantUser
+            from admin.platform.models import TenantUser
 
-                qs = TenantUser.objects.filter(user_id=user_id, is_active=True)
-                if tenant_id:
-                    qs = qs.filter(tenant_id=tenant_id)
-                return list(qs.values_list("role", flat=True))
-
-            return await _load()
+            return await sync_to_async(TenantUser.roles_for)(user_id, tenant_id)
         except Exception as exc:  # noqa: BLE001 - resolution failure is denial
             logger.warning("Role resolution failed for %s; denying: %s", user_id, exc)
             return []

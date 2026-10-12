@@ -211,6 +211,14 @@ class SimpleGovernor:
 
         return decision
 
+    def ratios_for(self, is_degraded: bool = False) -> dict[str, float]:
+        """Lane share ratios — the one authority ContextBuilder lanes use.
+
+        ``admin.core.context.lanes.get_lane_allocation`` delegates here so a
+        second set of defaults cannot disagree with the governor.
+        """
+        return dict(self.DEGRADED_RATIOS if is_degraded else self.NORMAL_RATIOS)
+
     def is_degraded(self, health_check_result: dict[str, bool]) -> bool:
         """Determine if system is degraded from health checks.
 
@@ -226,7 +234,7 @@ class SimpleGovernor:
         from services.common.degradation_contract import CRITICAL_SERVICES
 
         for service in CRITICAL_SERVICES:
-            if not health_check_result.get(service, True):
+            if not health_check_result.get(service, False):
                 logger.warning(
                     "Service %s is unhealthy - entering degraded mode",
                     service,
