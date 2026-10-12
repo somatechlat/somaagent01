@@ -410,6 +410,35 @@ class SomaBrainAdapter:
             LOGGER.info("SomaBrain forget: coord=%s not deleted (%s)", coord, payload.error)
         return bool(payload.ok)
 
+    async def get(self, coord: str, tenant_id: str) -> dict[str, Any] | None:
+        """Exact fetch via POST /memory/get.
+
+        Returns the memory dict, or ``None`` when the coordinate is absent.
+        Transport/backend failure raises (T-5: outage is not "not found").
+        """
+        body = ForgetRequest(
+            coord=coord,
+            tenant=self._brain_tenant(tenant_id),
+            tenant_id=self._brain_tenant(tenant_id),
+        )
+        try:
+            response = await self._client.post(
+                "/memory/get",
+                json=body.model_dump(exclude_none=True),
+                headers=self._headers(tenant_id),
+            )
+            response.raise_for_status()
+            payload = response.json() or {}
+        except Exception as exc:
+            LOGGER.error("SomaBrain get transport failure for coord=%s: %s", coord, exc)
+            raise MemoryWriteError(f"get transport failure for {coord}: {exc}") from exc
+        if not isinstance(payload, dict):
+            return None
+        if not payload.get("found"):
+            return None
+        mem = payload.get("memory")
+        return mem if isinstance(mem, dict) else None
+
     @staticmethod
     def _to_hit(item: Any) -> MemoryHit | None:
         """Map one brain recall result to MemoryHit."""

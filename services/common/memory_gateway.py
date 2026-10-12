@@ -17,6 +17,7 @@ from services.common.memory_contract import (
     MemoryHit,
     MemoryRecallUnavailable,
     MemoryWrite,
+    MemoryWriteError,
     coord_key_material,
     embed_text,
     get_mem_embed_dim,
@@ -215,6 +216,13 @@ class FanoutMemoryGateway:
     async def forget(self, coord: str, tenant_id: str) -> bool:
         """Forget via SomaBrain only (T-1). True when deleted."""
         return await self._brain.forget(coord, tenant_id)
+
+    async def get(self, coord: str, tenant_id: str) -> dict[str, Any] | None:
+        """Exact coordinate fetch through SomaBrain only (T-1). None = absent."""
+        getter = getattr(self._brain, "get", None)
+        if getter is None:
+            raise MemoryWriteError("brain adapter does not support get")
+        return await getter(coord, tenant_id)
 
     async def close(self) -> None:
         """Close SomaBrain client."""

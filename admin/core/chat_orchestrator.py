@@ -1572,13 +1572,19 @@ class V3ChatOrchestrator:
         except Exception:
             recall_limit = int(_mem_setting("MEM_RECALL_TOP_K"))
         try:
-            hits = await gateway.recall(query=query, k=recall_limit, tenant_id=tenant_id)
+            # Over-fetch: the store's raw cosine scores are low-discriminative,
+            # so the just-saved fact can sit outside a narrow top_k. Widen the
+            # fetch, re-rank with keyword + fact evidence, then trim to the
+            # caller's recall_limit (Mission T: Marco/terracotta vs stale Daniel).
+            import re as _re
+
+            fetch_k = min(max(recall_limit * 3, 20), 50)
+            hits = await gateway.recall(query=query, k=fetch_k, tenant_id=tenant_id)
             rows = list(hits or [])
             if not rows:
                 return rows
-            # Prefer fact-like rows; keep dialog only as filler. Among equals,
-            # the NEWER fact wins — a user who updates their name must not be
-            # answered from the superseded row (Mission T: Marco → Daniel).
+            terms = {t for t in _re.findall(r"[a-z0-9]{3,}", (query or "").lower()) if t}
+
             def _rank_key(h: object):
                 text = str(getattr(h, "text", "") or "")
                 if isinstance(h, dict):
@@ -1590,10 +1596,13 @@ class V3ChatOrchestrator:
                 created = str(getattr(h, "created_at", "") or "")
                 if isinstance(h, dict):
                     created = str(h.get("created_at") or "")
-                return (fact, created)
+                # Lexical evidence: a hit that shares the user's own words
+                # outranks unrelated noise at the same fact tier.
+                kw = sum(1 for t in terms if t in text.lower()) * 0.04 if terms else 0.0
+                return (fact + kw, created)
 
             rows.sort(key=_rank_key, reverse=True)
-            return rows
+            return rows[:recall_limit]
         except Exception as exc:
             logger.warning("MemoryGateway.recall failed: %s", exc)
             return None

@@ -286,9 +286,10 @@ class ContextBuilder:
 
         parts: List[str] = []
         used = 0
-        for _rank, text, coord, _created in rows:
+        for _rank, text, coord, created in rows:
+            ts = f"  [{created[:19]}]" if created else ""
             suffix = f"  [id:{coord}]" if coord else ""
-            line = f"- {text}{suffix}"
+            line = f"- {text}{suffix}{ts}"
             cost = _token_count(line)
             if used + cost > budget:
                 if not parts:

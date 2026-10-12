@@ -40,7 +40,24 @@ def _fact_boost(text: str) -> float:
     return 0.0
 
 
-def _digest(hits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _keyword_boost(text: str, query: str) -> float:
+    """Boost hits that share distinctive query terms (exact word overlap).
+
+    The hash embedder produces low-discriminative cosine scores, so a fact
+    that contains the user's own words can rank below unrelated chat echoes.
+    A per-term bonus makes lexical evidence count alongside the vector score.
+    """
+    if not query or not text:
+        return 0.0
+    text_lower = text.lower()
+    terms = {t for t in re.findall(r"[a-z0-9]{3,}", query.lower()) if t}
+    if not terms:
+        return 0.0
+    matched = sum(1 for t in terms if t in text_lower)
+    return matched * 0.04
+
+
+def _digest(hits: List[Dict[str, Any]], query: str = "") -> List[Dict[str, Any]]:
     """Shape hits into a ranked digest the model can answer from.
 
     Raw payloads invite re-query: they overflow the tool-message cap, the
@@ -55,7 +72,7 @@ def _digest(hits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             base_f = float(base) if base is not None else 0.0
         except (TypeError, ValueError):
             base_f = 0.0
-        scored.append({**h, "_rank_score": base_f + _fact_boost(text)})
+        scored.append({**h, "_rank_score": base_f + _fact_boost(text) + _keyword_boost(text, query)})
     scored.sort(key=lambda x: x.get("_rank_score") or 0.0, reverse=True)
 
     out: List[Dict[str, Any]] = []
@@ -70,6 +87,7 @@ def _digest(hits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 "score": h.get("score"),
                 "kind": h.get("kind"),
                 "store": h.get("store"),
+                "created_at": h.get("created_at"),
             }
         )
     return out
@@ -167,14 +185,18 @@ class MemoryRecallTool(BaseTool):
             }
 
         gateway = _memory_gateway()
+        # Over-fetch: the store's raw cosine scores are low-discriminative, so
+        # the true fact can sit outside a narrow top_k. We widen the fetch,
+        # re-rank with keyword + fact boosts, then trim to the caller's top_k.
+        fetch_k = min(max(top_k * 3, 20), 50)
         try:
-            hits = await gateway.recall(probe, top_k, tenant_id)
+            hits = await gateway.recall(probe, fetch_k, tenant_id)
         except Exception as exc:  # noqa: BLE001
             LOGGER.exception("memory_recall failed")
             raise ToolExecutionError(f"memory_recall failed: {exc}") from exc
 
         results = [_hit_to_dict(h) for h in (hits or [])]
-        digest = _digest(results)
+        digest = _digest(results, query=probe)[:top_k]
         return {
             "query": probe,
             "tenant_id": tenant_id,
@@ -184,6 +206,7 @@ class MemoryRecallTool(BaseTool):
             "enough": bool(digest),
             "digest": digest,
             "instruction": "Answer from digest summaries when they contain the fact. "
+            "When facts conflict, prefer the one with the latest created_at. "
             "Print coord as memory_id if the user asks where a memory is stored. "
             "Never invent a fact that is not in the digest.",
         }
@@ -517,24 +540,19 @@ class MemoryGetTool(BaseTool):
             raise ToolExecutionError("coord is required for memory_get")
         tenant_id = _require_tenant(args)
 
-        # SomaBrain recall with the coordinate as probe — one lane (Brain).
+        # Exact coordinate fetch through SomaBrain (T-1). Outage raises;
+        # absent is found:false — never a semantic-search guess.
         gateway = _memory_gateway()
         try:
-            hits = await gateway.recall(f"coord:{coord.strip()}", 8, tenant_id)
+            mem = await gateway.get(coord.strip(), tenant_id)
         except Exception as exc:  # noqa: BLE001
             raise ToolExecutionError(f"memory_get failed: {exc}") from exc
 
-        wanted = coord.strip()
-        for h in hits or []:
-            d = _hit_to_dict(h)
-            c = d.get("coord")
-            if isinstance(c, list):
-                c = ",".join(str(x) for x in c)
-            if c and wanted in str(c):
-                return {"found": True, "memory": d}
+        if mem is not None:
+            return {"found": True, "memory": mem}
         return {
             "found": False,
-            "coord": wanted,
+            "coord": coord.strip(),
             "hint": "Not found. Answer from what you already have, or tell the user you do not know.",
         }
 

@@ -185,7 +185,26 @@ def _register_durable_tools() -> None:
 def default_tool_definitions() -> List[Dict[str, Any]]:
     """LLM function-calling schemas for the default kit."""
     _register_durable_tools()
+    from services.tool_executor.memory_tools import (
+        MemoryForgetTool,
+        MemoryGetTool,
+        MemoryProximityTool,
+        MemoryRecallTool,
+        MemorySaveTool,
+    )
     from services.tool_executor.tools import AVAILABLE_TOOLS
+
+    # Memory kit must be in AVAILABLE_TOOLS before schema build. Otherwise
+    # default_tool_definitions() silently omits them from the LLM catalog and
+    # the model claims it has no forget/proximity tool.
+    for tool in (
+        MemoryRecallTool(),
+        MemorySaveTool(),
+        MemoryForgetTool(),
+        MemoryProximityTool(),
+        MemoryGetTool(),
+    ):
+        AVAILABLE_TOOLS.setdefault(tool.name, tool)
 
     out: List[Dict[str, Any]] = []
     for name in DEFAULT_AGENT_TOOLS:
