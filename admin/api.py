@@ -21,7 +21,7 @@ as the central router for all SomaAgent01 API endpoints.
         - ``/sessions`` - User session management
 
     Core Platform:
-        - ``/aaas`` - AAAS administration
+        - ``/platform`` - Soma Platform administration
         - ``/core`` - Core infrastructure
         - ``/agents`` - Agent management
         - ``/chat`` - Chat sessions
@@ -102,10 +102,10 @@ def create_api() -> NinjaAPI:
 
     safe_add_router("/auth", auth_router)
 
-    # AAAS Admin
-    from admin.aaas.api import router as aaas_router
+    # Soma Platform Admin
+    from admin.platform.api import router as aaas_router
 
-    safe_add_router("/aaas", aaas_router)
+    safe_add_router("/platform", aaas_router)
 
     # Core Infrastructure
     from admin.core.api import router as core_router
@@ -258,8 +258,8 @@ def create_api() -> NinjaAPI:
     # handed back signing secrets that were never stored.
 
     # Tenants (Multi-tenant management) — removed: a second facade over
-    # admin.aaas.models.Tenant with its own incompatible schema. The real
-    # CRUD is /aaas/tenants.
+    # admin.platform.models.Tenant with its own incompatible schema. The real
+    # CRUD is /platform/tenants.
 
     # Usage metering — removed: reported measured zeros over
     # a real UsageRecord table it never queried.

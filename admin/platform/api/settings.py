@@ -10,7 +10,7 @@ from typing import Optional
 from django.db import transaction
 from ninja import Router
 
-from admin.aaas.api.schemas import (
+from admin.platform.api.schemas import (
     ApiKeyCreate,
     ApiKeyOut,
     MessageResponse,
@@ -43,7 +43,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from admin.aaas.models.profiles import ApiKey
+from admin.platform.models.profiles import ApiKey
 
 
 @router.get("/api-keys", response=list[ApiKeyOut], auth=AuthBearer())
@@ -142,7 +142,7 @@ def revoke_api_key(request, key_id: str):
 @router.get("/models", response=list[ModelConfigOut], auth=AuthBearer())
 def list_models(request):
     authorize_sync(request, action="system:view", resource="settings")
-    from admin.aaas.models.profiles import PlatformConfig
+    from admin.platform.models.profiles import PlatformConfig
 
     defaults = PlatformConfig.get_instance().defaults
     models_data = defaults.get("models", [])
@@ -168,7 +168,7 @@ def list_models(request):
 def update_model(request, model_id: str, payload: ModelConfigUpdate):
     """Update model configuration in Global Defaults."""
     authorize_sync(request, action="system:configure", resource="settings")
-    from admin.aaas.models.profiles import PlatformConfig
+    from admin.platform.models.profiles import PlatformConfig
 
     gd = PlatformConfig.get_instance()
     defaults = gd.defaults
@@ -217,7 +217,7 @@ def update_model(request, model_id: str, payload: ModelConfigUpdate):
 @router.get("/roles", response=list[RoleOut], auth=AuthBearer())
 def list_roles(request):
     authorize_sync(request, action="org:read", resource="settings")
-    from admin.aaas.models.profiles import PlatformConfig
+    from admin.platform.models.profiles import PlatformConfig
 
     defaults = PlatformConfig.get_instance().defaults
     roles_data = defaults.get("roles", [])
@@ -244,7 +244,7 @@ def update_role(request, role_id: str, payload: RoleUpdate):
     assigning that role to a person.
     """
     authorize_sync(request, action="org:assign_roles", resource="settings")
-    from admin.aaas.models.profiles import PlatformConfig
+    from admin.platform.models.profiles import PlatformConfig
 
     gd = PlatformConfig.get_instance()
     defaults = gd.defaults

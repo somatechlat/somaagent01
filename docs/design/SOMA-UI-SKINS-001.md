@@ -23,7 +23,7 @@
 
 | Version | Date | Author | Description |
 |---|---|---|---|
-| 1.0.0 | 2026-10-03 | SomaTech Engineering | Initial issue. Feature specification for Capsule-owned skins. Measures the current theming state (`webui/src/styles/`, Lit `static styles`, `saas-*` elements, `theme-boot.ts`, `AAAS` palette). Defines the skin document, four-source resolution chain, theme templates, runtime application, isolation, security constraints, accessibility contract, out-of-scope boundary, acceptance criteria and RTM. Records the partial AgentSkin API/store that already exists and its stubs as tracked findings. |
+| 1.0.0 | 2026-10-03 | SomaTech Engineering | Initial issue. Feature specification for Capsule-owned skins. Measures the current theming state (`webui/src/styles/`, Lit `static styles`, `saas-*` elements, `theme-boot.ts`, `Soma Platform` palette). Defines the skin document, four-source resolution chain, theme templates, runtime application, isolation, security constraints, accessibility contract, out-of-scope boundary, acceptance criteria and RTM. Records the partial AgentSkin API/store that already exists and its stubs as tracked findings. |
 
 ## Normative References
 
@@ -38,7 +38,7 @@
 | N-7 | `admin/core/helpers/capsule_settings.py` | Categorized settings and the Capsule → AgentSetting → Django → default chain |
 | N-8 | `SOMA-SETTINGS-MODEL-001.md` | Settings taxonomy; category C7 UI |
 | N-9 | `policy/skins.rego` | OPA policy package `soma.skins` (skin CRUD authorisation surface) |
-| N-10 | `webui/src/styles/tokens.css` | Shipped `--aaas-*` design-token vocabulary |
+| N-10 | `webui/src/styles/tokens.css` | Shipped `--platform-*` design-token vocabulary |
 | N-11 | `webui/src/services/theme-boot.ts` | Light/dark polarity boot |
 | N-12 | `services/common/skins_store.py`, `admin/ui/api/skins.py` | Existing AgentSkin store and Django Ninja router (partial) |
 | N-13 | ISO 9001:2015 clause 7.5 | Control of documented information |
@@ -65,11 +65,11 @@ Appearance is hard to change because it lives in component source, not in data.
 | Surface | Measured state | Evidence |
 |---|---|---|
 | Design tokens | One flat CSS file. Header claims "Supports theming via AgentSkin" (`webui/src/styles/tokens.css:7`) but no code reads an AgentSkin document. | `webui/src/styles/tokens.css:1-448` |
-| Token vocabulary | Named `--aaas-*`. Two `:root` blocks (`:11`, `:196`) plus an opt-in dark block `[data-theme="dark"]` (`:281-285`). Colour, type, spacing, radius, shadow, motion, z-index and layout are all named here. | `webui/src/styles/tokens.css:15-114`, `:196-278`, `:285-383` |
+| Token vocabulary | Named `--platform-*`. Two `:root` blocks (`:11`, `:196`) plus an opt-in dark block `[data-theme="dark"]` (`:281-285`). Colour, type, spacing, radius, shadow, motion, z-index and layout are all named here. | `webui/src/styles/tokens.css:15-114`, `:196-278`, `:285-383` |
 | Polarity only | The only runtime theme control is light/dark. `theme-boot.ts` stores `soma-theme` in `localStorage` and sets `data-theme` on `documentElement` (`webui/src/services/theme-boot.ts:6`, `:15-25`). There is no skin document, no per-agent appearance, no template pack. | `webui/src/services/theme-boot.ts:1-58` |
 | Lit components | **69** TypeScript files declare `static styles = css\`…\`` (measured across `webui/src/components/` and `webui/src/views/`, 2026-10-03). Each holds its own CSS literal. | e.g. `webui/src/components/saas-chat-workspace.ts:33`, `webui/src/components/saas-sidebar.ts:82`, `webui/src/components/saas-composer.ts:43`, `webui/src/views/saas-login.ts:125` |
-| Hardcoded colour | **1575** hex/colour literals inside `webui/src/components/` and `webui/src/views/` TypeScript files (measured 2026-10-03), against **468** `var(--aaas-…)` references. Components mix token reads with fallback literals, e.g. `var(--aaas-bg-void, #f5f5f5)` and bare `#1a1a1a`. | `webui/src/components/saas-chat-workspace.ts:39`, `:180`; `webui/src/views/saas-login.ts:202` |
-| Dual token names | Some components read `var(--saas-…)` with inline fallbacks (`saas-button.ts`, `saas-toggle.ts`, `saas-glass-modal.ts`) while `tokens.css` defines `--aaas-*`. The `--saas-*` names are not defined in `tokens.css`. | `webui/src/components/saas-button.ts:24-60`; `webui/src/styles/tokens.css:11-114` |
+| Hardcoded colour | **1575** hex/colour literals inside `webui/src/components/` and `webui/src/views/` TypeScript files (measured 2026-10-03), against **468** `var(--platform-…)` references. Components mix token reads with fallback literals, e.g. `var(--platform-bg-void, #f5f5f5)` and bare `#1a1a1a`. | `webui/src/components/saas-chat-workspace.ts:39`, `:180`; `webui/src/views/saas-login.ts:202` |
+| Dual token names | Some components read `var(--saas-…)` with inline fallbacks (`saas-button.ts`, `saas-toggle.ts`, `saas-glass-modal.ts`) while `tokens.css` defines `--platform-*`. The `--saas-*` names are not defined in `tokens.css`. | `webui/src/components/saas-button.ts:24-60`; `webui/src/styles/tokens.css:11-114` |
 | `saas-*` elements | 30 files under `webui/src/components/` carry the `saas-` prefix (measured 2026-10-03). Each is a self-styled Lit element. | `webui/src/components/` listing |
 | Style wiring | `webui/src/main.ts:18-22` imports `tokens.css`, `material-symbols.css` and `theme-boot.js` once at boot. There is no skin application step. | `webui/src/main.ts:18-22` |
 
@@ -191,10 +191,10 @@ values are skin data.
 | Elevation | `--skin-shadow-sm`, `--skin-shadow-md`, `--skin-shadow-lg`, `--skin-shadow-overlay` | Shadow list (see §8.2 for restrictions) |
 | Motion | `--skin-motion-fast`, `--skin-motion-normal`, `--skin-motion-slow`, `--skin-motion-ease` | Time (`ms`/`s`) and timing function |
 
-Rationale for the rename `--aaas-*` → `--skin-*`: the shipped vocabulary
-(`webui/src/styles/tokens.css:15-114`) mixes light and dark aliases and an `--aaas-` prefix tied to
-the AAAS product name. The skin vocabulary is a **closed, documented contract** independent of any
-one product palette. The platform default skin (§3.5) reproduces today's AAAS look under the new
+Rationale for the rename `--platform-*` → `--skin-*`: the shipped vocabulary
+(`webui/src/styles/tokens.css:15-114`) mixes light and dark aliases and an `--platform-` prefix tied to
+the Soma Platform product name. The skin vocabulary is a **closed, documented contract** independent of any
+one product palette. The platform default skin (§3.5) reproduces today's Soma Platform look under the new
 names so migration is a rename of reads, not a redesign.
 
 **OPEN-02.** Confirm the token name set before implementation. The list above is the minimum this
@@ -311,10 +311,10 @@ tables (`saas-data-table`) are intentionally left to inherit core tokens in v1.
 
 ### 3.5 Platform default
 
-The platform default skin **is** a skin document. Its token values reproduce the shipped AAAS light
+The platform default skin **is** a skin document. Its token values reproduce the shipped Soma Platform light
 palette so that "no skin configured" and "platform default" are the same visual result, not two
 different code paths. Source values today: `webui/src/styles/tokens.css:15-114` (first `:root`) and
-`:196-278` (AAAS light block).
+`:196-278` (Soma Platform light block).
 
 Polarity (light/dark) remains orthogonal in v1: `theme-boot.ts` continues to own
 `data-theme="light" | "dark"` (`webui/src/services/theme-boot.ts:15-25`), and a skin may supply a
@@ -441,8 +441,8 @@ A template SHALL:
 
 v1 ships at least two templates so the "create in minutes" claim is testable (AC-11):
 
-- **platform-light** — reproduces the shipped AAAS light palette (`tokens.css:15-114`, `:196-278`).
-- **platform-dark** — reproduces the shipped AAAS dark palette (`tokens.css:285-383`).
+- **platform-light** — reproduces the shipped Soma Platform light palette (`tokens.css:15-114`, `:196-278`).
+- **platform-dark** — reproduces the shipped Soma Platform dark palette (`tokens.css:285-383`).
 
 Additional operator templates are data, not releases.
 
@@ -484,16 +484,16 @@ Components SHALL read skin tokens, not literals. The migration path from today's
 
 | Today | Target |
 |---|---|
-| `var(--aaas-bg-void, #f5f5f5)` | `var(--skin-color-bg-void)` |
+| `var(--platform-bg-void, #f5f5f5)` | `var(--skin-color-bg-void)` |
 | bare `#1a1a1a` | `var(--skin-color-text-primary)` |
 | `var(--saas-…, #hex)` (undefined name) | `var(--skin-…)` |
 
 Fallback literals are banned inside `static styles` once a token exists: a fallback silently
 preserves the hard-coded look when a skin fails, which defeats the framework and hides errors
-(§4.3). Exception: a component may fall back to `var(--skin-…, var(--aaas-…))` **only** during the
+(§4.3). Exception: a component may fall back to `var(--skin-…, var(--platform-…))` **only** during the
 migration window, and that window is tracked (S-F-06, below).
 
-S-F-06 (tracked migration finding, not a feature): 1575 colour literals and 468 `var(--aaas-…)`
+S-F-06 (tracked migration finding, not a feature): 1575 colour literals and 468 `var(--platform-…)`
 reads across 69 styled files must be moved onto `--skin-*` reads. That is a code migration this
 spec does not perform.
 
@@ -688,7 +688,7 @@ Honest boundary. The following are **not** skins and **SHALL NOT** be smuggled i
 | Using skins as a security boundary | Skins do not grant or deny authority. | RBAC / OPA catalog permissions |
 | Replacing light/dark polarity | Polarity stays (`theme-boot.ts`). Skins may supply variants (§OPEN-04). | `theme-boot.ts` |
 | Fixing the existing skins store stubs | S-F-01…S-F-05 are defects in present code. This spec defines the target; it does not repair the store. | Implementation work package |
-| The `--aaas-*` → `--skin-*` code migration | Tracked as S-F-06. Large, mechanical, separate. | Implementation work package |
+| The `--platform-*` → `--skin-*` code migration | Tracked as S-F-06. Large, mechanical, separate. | Implementation work package |
 
 ---
 
@@ -711,7 +711,7 @@ against the real UI. Status of every row is `NOT YET` until an implementation la
 | AC-09 | `prefers-reduced-motion: reduce` forces motion tokens to 0ms regardless of skin values. | `page.emulateMedia({ reducedMotion: 'reduce' })`; apply a skin with `--skin-motion-normal: 300ms`; assert computed `transition-duration` on a skin-styled element is `0s`. | REQ-SKIN-009 |
 | AC-10 | Hot-swap restores the previous skin on revert without reload. | Preview skin 2, revert to skin 1; assert computed tokens equal skin 1; assert no navigation. | REQ-SKIN-007 |
 | AC-11 | An operator can create a skin from a shipped template and assign it to a Capsule without any file edit under `webui/src/`. | Drive the template flow in the UI (or API); assert assignment; assert `git status` of `webui/src/` clean in the test fixture workspace; assert appearance changed. | REQ-SKIN-005 |
-| AC-12 | Platform default applies when no source defines a skin; the UI is never unstyled. | Clear Capsule/AgentSetting/tenant skins; assert computed tokens equal the platform default document's values (AAAS light reproduction). | REQ-SKIN-003, REQ-SKIN-004 |
+| AC-12 | Platform default applies when no source defines a skin; the UI is never unstyled. | Clear Capsule/AgentSetting/tenant skins; assert computed tokens equal the platform default document's values (Soma Platform light reproduction). | REQ-SKIN-003, REQ-SKIN-004 |
 | AC-13 | Focus visibility is preserved under every shipped template. | For each shipped template, `page.keyboard.press('Tab')`; assert `:focus-visible` computed outline/box-shadow is non-`none` and ≥ 3:1 against its background. | REQ-SKIN-009 |
 | AC-14 | Cross-tenant skin fetch/assign is denied. | Authenticated as tenant B, GET/assign tenant A's skin; assert 404/403; assert tenant B UI unchanged. | REQ-SKIN-008 |
 | AC-15 | Unknown token names in a skin are rejected (not ignored). | Assign a skin with `--skin-color-evil: red`; assert 4xx naming X-2/X-3. | REQ-SKIN-008 |
@@ -733,7 +733,7 @@ Requirement category `REQ-SKIN-*` is owned by this document. Identifier range: `
 | REQ-SKIN-001 | Appearance **SHALL** be Capsule data. Two Capsules **SHALL** be able to differ in appearance without any component source change. | P1 | §2, §1.2 | Analysis + Playwright | AC-01, AC-02 |
 | REQ-SKIN-002 | A skin **SHALL** be a typed document of design tokens (colour ramps, type scale, spacing, radius, elevation, motion) plus optional per-surface overrides for chat, sidebar, composer, tool timeline, login (and chrome, right panel). | P1 | §3 | Schema inspection | AC-01, AC-04 |
 | REQ-SKIN-003 | Skin resolution **SHALL** be `Capsule.skin > AgentSetting.skin > tenant default > platform default`, per token, consistent with `admin/core/helpers/capsule_settings.py:144-181`. | P1 | §4 | Playwright precedence and fall-through | AC-03, AC-04, AC-12 |
-| REQ-SKIN-004 | A platform default skin **SHALL** exist and reproduce the shipped AAAS appearance so that "no skin" is styled, not blank. | P1 | §3.5, §4.3 | Playwright | AC-12 |
+| REQ-SKIN-004 | A platform default skin **SHALL** exist and reproduce the shipped Soma Platform appearance so that "no skin" is styled, not blank. | P1 | §3.5, §4.3 | Playwright | AC-12 |
 | REQ-SKIN-005 | Operators **SHALL** be able to create a skin from a named theme template in minutes, and a template **SHALL** satisfy the minimum contract T-1…T-6. | P1 | §5 | Playwright + template validation | AC-11 |
 | REQ-SKIN-006 | Skins **SHALL** be isolated per agent host; two agents in one workspace **SHALL NOT** leak appearance onto each other or onto chrome. | P1 | §7 | Playwright | AC-05 |
 | REQ-SKIN-007 | Runtime application **SHALL** use CSS custom properties consumed by Lit 3.x `static styles` via `var(--skin-…)`, with **zero component recompiles** on a skin change. Hot-swap **SHALL** apply and revert without reload. | P1 | §6 | Playwright + build-artifact comparison | AC-02, AC-10 |

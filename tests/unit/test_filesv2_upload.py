@@ -3,7 +3,7 @@
 The local branch returns ``/api/v2/filesv2/upload-local/{file_id}``, which
 looks the ``File`` row up. Creating that row only after a successful S3
 presign — while importing ``boto3`` unconditionally (it is not in
-requirements.txt) — left the fallback 404/500-ing in AAAS-in-a-box, so no
+requirements.txt) — left the fallback 404/500-ing in Soma Platform-in-a-box, so no
 attachment could ever be uploaded from the composer.
 """
 
@@ -184,7 +184,7 @@ def test_post_upload_is_reachable_on_the_master_api():
 
 
 def test_upload_local_stores_the_bytes_for_the_created_record(monkeypatch, recorder):
-    """The AAAS-in-a-box half: multipart bytes land under the record's key."""
+    """The Soma Platform-in-a-box half: multipart bytes land under the record's key."""
     from django.core.files.uploadedfile import SimpleUploadedFile
 
     file_id = "22222222-3333-4444-5555-666666666666"

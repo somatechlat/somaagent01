@@ -419,7 +419,7 @@ Dispositions use the legends of §4.4–§4.5. `Impl` is the implementation stat
 | 5 | `DEFAULT_EMBED_MODEL_PROVIDER` | UI-S-16 | Brain | Agent | reference picker | L2 | tenant-default slot binding (admin/llm/api.py) — agent owner may override per Capsule; Django default is baseline | ro |
 | 6 | `DEFAULT_EMBED_MODEL_NAME` | UI-S-16 | Brain | Agent | reference picker | L2 | tenant-default slot binding (admin/llm/api.py) — agent owner may override per Capsule; Django default is baseline | ro |
 | 7 | `DEFAULT_VOICE_MODEL` | UI-S-02 | Brain | Agent | reference picker | L2 | voice model slot — agent owner; Capsule.voice_model FK is the body authority (core.py:225) | new |
-| 8 | `SA01_DEFAULT_CHAT_MODEL` | UI-S-16 | Brain | Platform | read-only text | L1-gated | AAAS platform default — operator baseline; shown read-only on Models for diagnosis | ro |
+| 8 | `SA01_DEFAULT_CHAT_MODEL` | UI-S-16 | Brain | Platform | read-only text | L1-gated | Soma Platform platform default — operator baseline; shown read-only on Models for diagnosis | ro |
 | 9 | `LLM_CONNECT_TIMEOUT_S` | UI-S-27 | Brain | Platform | number | L1-gated | LLM transport tunable — operator role required; KEY_CATEGORY agrees these are LLM (capsule_settings.py:75-80) | new |
 | 10 | `LLM_READ_TIMEOUT_S` | UI-S-27 | Brain | Platform | number | L1-gated | LLM transport tunable — operator role required; KEY_CATEGORY agrees these are LLM (capsule_settings.py:75-80) | new |
 | 11 | `LLM_MAX_RETRIES` | UI-S-27 | Brain | Platform | number | L1-gated | LLM transport tunable — operator role required; KEY_CATEGORY agrees these are LLM (capsule_settings.py:75-80) | new |

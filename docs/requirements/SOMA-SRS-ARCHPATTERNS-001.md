@@ -269,7 +269,7 @@ No hardware interface requirements are specified in this document.
 |--------|-------------|--------|--------|----------------|------|
 | REQ-ARCH-001 | Django framework enforcement | SRS-ARCHITECTURAL-PATTERNS | `admin/settings.py` | `admin/api.py`, `admin/*/api/*.py` | `tests/django/` |
 | REQ-ARCH-002 | Django Ninja API framework | SRS-ARCHITECTURAL-PATTERNS | `admin/api.py` | `admin/api.py`, `admin/*/api/*.py` | `tests/django/` |
-| REQ-ARCH-003 | Django ORM only | SRS-ARCHITECTURAL-PATTERNS | `admin/*/models/` | `admin/core/models/`, `admin/aaas/models/`, `admin/*/models.py` | `tests/django/` |
+| REQ-ARCH-003 | Django ORM only | SRS-ARCHITECTURAL-PATTERNS | `admin/*/models/` | `admin/core/models/`, `admin/platform/models/`, `admin/*/models.py` | `tests/django/` |
 | REQ-ARCH-004 | Django migrations only | SRS-ARCHITECTURAL-PATTERNS | `admin/*/migrations/` | `admin/*/migrations/` | Inspection |
 | REQ-ARCH-005 | Django Ninja AuthBearer | SRS-ARCHITECTURAL-PATTERNS | `admin/common/auth.py` | `admin/common/auth.py` | `tests/django/test_auth_integration.py` |
 | REQ-ARCH-008 | Four-layer architecture | SRS-ARCHITECTURAL-PATTERNS | `admin/*/` | `admin/*/api.py`, `admin/*/schemas.py`, `admin/*/services/`, `admin/*/models/` | Inspection |
@@ -277,7 +277,7 @@ No hardware interface requirements are specified in this document.
 | REQ-ARCH-011 | Schema contracts in schemas.py | SRS-ARCHITECTURAL-PATTERNS | `admin/*/schemas.py` | `admin/common/schemas.py`, `admin/*/schemas.py` | Inspection |
 | REQ-ARCH-012 | HTTP handlers in api.py | SRS-ARCHITECTURAL-PATTERNS | `admin/*/api.py` | `admin/*/api.py`, `admin/*/api/*.py` | Inspection |
 | REQ-ARCH-013 | Business logic in service modules | SRS-ARCHITECTURAL-PATTERNS | `admin/*/services/` | `admin/agents/services/`, `admin/*/services/*.py` | Inspection |
-| REQ-ARCH-014 | Domain model segregation | SRS-ARCHITECTURAL-PATTERNS | `admin/*/models/` | `admin/core/models/core.py`, `admin/core/models/zdl.py`, `admin/aaas/models/` | Inspection |
+| REQ-ARCH-014 | Domain model segregation | SRS-ARCHITECTURAL-PATTERNS | `admin/*/models/` | `admin/core/models/core.py`, `admin/core/models/zdl.py`, `admin/platform/models/` | Inspection |
 | REQ-ARCH-016 | Enum extraction pattern | SRS-ARCHITECTURAL-PATTERNS | `admin/*/enums.py` | `admin/*/scheduler_enums.py`, `admin/*/choices.py` | Inspection |
 | NFR-MNT-001 | Max 650 lines per file | SRS-ARCHITECTURAL-PATTERNS | CI pipeline | `pyproject.toml` | CI lint |
 | NFR-MNT-002 | Max cyclomatic complexity 10 | SRS-ARCHITECTURAL-PATTERNS | CI pipeline | `pyproject.toml` | CI lint |

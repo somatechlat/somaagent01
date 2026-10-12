@@ -10,7 +10,7 @@ somabrain/api/v1.py:96,104; Django serves them both with and without the
 
 The ``/api/remember`` and ``/api/recall`` dialect has NO route in somabrain
 and is not used here. It was carried by the BrainBridge stub in
-``aaas/brain.py``, which is deleted; nothing in this codebase speaks it, and
+``platform/brain.py``, which is deleted; nothing in this codebase speaks it, and
 no route is to be invented for it.
 
 Forget speaks the brain's ``ForgetRequest`` / ``ForgetResponse`` contract

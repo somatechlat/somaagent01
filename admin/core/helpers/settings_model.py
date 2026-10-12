@@ -368,7 +368,7 @@ class SettingsModel(BaseModel):
     # transactions do not each hit Postgres. The bound is an operator knob
     # (this field), never a literal at the call site. There is deliberately no
     # schema default: a cache bound nobody chose is a hardcoded value.
-    # ``admin.aaas.models.tenants._role_cache_bound`` refuses to memoise when
+    # ``admin.platform.models.tenants._role_cache_bound`` refuses to memoise when
     # this is absent, which fails closed (every lookup goes to the store).
     role_cache_max_entries: Optional[int] = Field(
         default_factory=lambda: _dj("ROLE_CACHE_MAX_ENTRIES")
@@ -554,7 +554,7 @@ class SettingsModel(BaseModel):
         default_factory=lambda: _dj("DEFAULT_VOICE_MODEL")
     )
 
-    # AAAS default tenant / quota knobs
+    # Soma Platform default tenant / quota knobs
     sa01_default_tenant_id: Optional[str] = Field(
         default_factory=lambda: _dj("SA01_DEFAULT_TENANT_ID")
     )

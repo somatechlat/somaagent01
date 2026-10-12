@@ -3,7 +3,7 @@
 **Settings — Interface** — section **Interface** inside the one Settings shell — route `/settings` (Interface tab).
 Chrome abbreviated (UI-S-00). Left section nav (7) is visible; Interface is active.
 
-**Field truth.** Persisted display preferences are only `UserPreferences` via `GET/PUT /aaas/admin/preferences` (`admin/aaas/api/users.py` 638–641, 669–674):
+**Field truth.** Persisted display preferences are only `UserPreferences` via `GET/PUT /platform/admin/preferences` (`admin/platform/api/users.py` 638–641, 669–674):
 `theme` · `language` · `timezone` · `date_format` (GET only) · `notifications` (`agentReplies`, `activitySummary`).
 Theme also boots from localStorage key `soma-theme` (`webui/src/services/theme-boot.ts:5`).
 Rows in Screen 7D with no preferences column (density, 12h/24h, chrome toggles, right-panel default) are **GATED** — never given a fake API field name.
@@ -67,7 +67,7 @@ One place for how the shell looks and reads: theme, language, timezone, date for
 | 1 | UI-C-100 | section nav (7) | Agent · Models · Voice · Interface · Tools · Integrations · Advanced. |
 | 2 | UI-C-063 | theme / language / timezone selects | Options from `THEME_CHOICES` / real locale + tz lists. No invented option. |
 | 3 | UI-C-065 | notification toggles | Bind `notifications.agentReplies` / `activitySummary` only. |
-| 4 | UI-C-067 | Save (primary, header) | `PUT /aaas/admin/preferences`. disabled-while: request in flight. |
+| 4 | UI-C-067 | Save (primary, header) | `PUT /platform/admin/preferences`. disabled-while: request in flight. |
 | 5 | UI-C-069 | Cancel (secondary, header) | Restores last saved values. |
 | 6 | UI-C-096 | date format readout | Read-only. Never an input while the API has no write field. |
 | 7 | — | GATED chrome block | Density / 12h-24h / project bar / clock / connection / right-panel default render disabled with the reason string inline. Never drawn as available. |
@@ -93,7 +93,7 @@ Route stays `/settings` (in-page section). No separate Interface path in `main.t
 
 | Click | Expect |
 |---|---|
-| Theme → `dark` → Save | `PUT /aaas/admin/preferences` `{theme:"dark"}` 200; chrome flips; `soma-theme` boot key follows |
+| Theme → `dark` → Save | `PUT /platform/admin/preferences` `{theme:"dark"}` 200; chrome flips; `soma-theme` boot key follows |
 | Language → `es` → Save | `PUT` `{language:"es"}` 200 |
 | Timezone → `Europe/Madrid` → Save | `PUT` `{timezone:"Europe/Madrid"}` 200 |
 | Toggle Agent replies → Save | `PUT` `{notifications:{agentReplies:true,…}}` 200 |
@@ -104,9 +104,9 @@ Route stays `/settings` (in-page section). No separate Interface path in `main.t
 
 | Evidence | Path |
 |---|---|
-| Preferences request fields | `somaAgent01/admin/aaas/api/users.py:638-641` |
-| Preferences GET payload | `somaAgent01/admin/aaas/api/users.py:669-674` |
-| `THEME_CHOICES` · `date_format` · `notification_prefs` | `somaAgent01/admin/aaas/models/profiles.py:281-325` |
+| Preferences request fields | `somaAgent01/admin/platform/api/users.py:638-641` |
+| Preferences GET payload | `somaAgent01/admin/platform/api/users.py:669-674` |
+| `THEME_CHOICES` · `date_format` · `notification_prefs` | `somaAgent01/admin/platform/models/profiles.py:281-325` |
 | Live profile prefs UI | `somaAgent01/webui/src/views/soma-personal-profile.ts:27-35`, `344-348` |
 | Theme boot key `soma-theme` | `somaAgent01/webui/src/services/theme-boot.ts:5` |
 | Right-panel session state | `somaAgent01/webui/src/stores/workspace-store.ts:9` |

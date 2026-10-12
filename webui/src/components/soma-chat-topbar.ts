@@ -70,7 +70,7 @@ export class SomaChatTopbar extends LitElement {
         .title {
             font-size: 15px;
             font-weight: 600;
-            color: var(--aaas-text-bright, #f8fafc);
+            color: var(--platform-text-bright, #f8fafc);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -87,13 +87,13 @@ export class SomaChatTopbar extends LitElement {
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            font-family: var(--aaas-font-mono, 'JetBrains Mono', monospace);
+            font-family: var(--platform-font-mono, 'JetBrains Mono', monospace);
             font-size: 11px;
-            color: var(--aaas-text-secondary, #a1a1a1);
+            color: var(--platform-text-secondary, #a1a1a1);
             padding: 2px 8px;
-            border-radius: var(--aaas-radius-full, 9999px);
-            background: var(--aaas-bg-void, #f5f5f5);
-            border: 1px solid var(--aaas-border-color, rgba(255,255,255,0.06));
+            border-radius: var(--platform-radius-full, 9999px);
+            background: var(--platform-bg-void, #f5f5f5);
+            border: 1px solid var(--platform-border-color, rgba(255,255,255,0.06));
             max-width: 220px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -114,16 +114,16 @@ export class SomaChatTopbar extends LitElement {
             text-transform: uppercase;
             letter-spacing: 0.5px;
             padding: 2px 8px;
-            border-radius: var(--aaas-radius-full, 9999px);
+            border-radius: var(--platform-radius-full, 9999px);
         }
 
         .status-pill.running {
-            color: var(--aaas-success, #22c55e);
+            color: var(--platform-success, #22c55e);
             background: rgba(34, 197, 94, 0.12);
         }
 
         .status-pill.paused {
-            color: var(--aaas-warning, #eab308);
+            color: var(--platform-warning, #eab308);
             background: rgba(234, 179, 8, 0.12);
         }
 
@@ -133,7 +133,7 @@ export class SomaChatTopbar extends LitElement {
             gap: 5px;
             font-size: 11px;
             padding: 3px 10px;
-            border-radius: var(--aaas-radius-full, 9999px);
+            border-radius: var(--platform-radius-full, 9999px);
             border: 1px solid transparent;
             animation: chipIn 160ms ease-out;
         }
@@ -144,13 +144,13 @@ export class SomaChatTopbar extends LitElement {
         }
 
         .conn-chip.reconnecting {
-            color: var(--aaas-warning, #f59e0b);
+            color: var(--platform-warning, #f59e0b);
             background: rgba(245, 158, 11, 0.12);
             border-color: rgba(245, 158, 11, 0.28);
         }
 
         .conn-chip.degraded {
-            color: var(--aaas-danger, #ef4444);
+            color: var(--platform-danger, #ef4444);
             background: rgba(239, 68, 68, 0.12);
             border-color: rgba(239, 68, 68, 0.28);
         }
@@ -183,10 +183,10 @@ export class SomaChatTopbar extends LitElement {
             align-items: center;
             gap: 5px;
             padding: 6px 12px;
-            border-radius: var(--aaas-radius-md, 8px);
-            border: 1px solid var(--aaas-border-color, rgba(255,255,255,0.06));
-            background: var(--aaas-surface, rgba(30,41,59,0.85));
-            color: var(--aaas-text-main, #e2e8f0);
+            border-radius: var(--platform-radius-md, 8px);
+            border: 1px solid var(--platform-border-color, rgba(255,255,255,0.06));
+            background: var(--platform-surface, rgba(30,41,59,0.85));
+            color: var(--platform-text-main, #e2e8f0);
             font-size: 12px;
             font-weight: 500;
             cursor: pointer;
@@ -195,12 +195,12 @@ export class SomaChatTopbar extends LitElement {
         }
 
         .ctl-btn:hover:not(:disabled) {
-            background: var(--aaas-surface-hover, rgba(51,65,85,0.9));
-            border-color: var(--aaas-border-hover, rgba(255,255,255,0.1));
+            background: var(--platform-surface-hover, rgba(51,65,85,0.9));
+            border-color: var(--platform-border-hover, rgba(255,255,255,0.1));
         }
 
         .ctl-btn:focus-visible {
-            outline: 2px solid var(--aaas-info, #3b82f6);
+            outline: 2px solid var(--platform-info, #3b82f6);
             outline-offset: 2px;
         }
 
@@ -210,7 +210,7 @@ export class SomaChatTopbar extends LitElement {
         }
 
         .ctl-btn.stop {
-            color: var(--aaas-danger, #ef4444);
+            color: var(--platform-danger, #ef4444);
             border-color: rgba(239, 68, 68, 0.35);
         }
 
@@ -219,7 +219,7 @@ export class SomaChatTopbar extends LitElement {
         }
 
         .ctl-btn.reset {
-            color: var(--aaas-text-dim, #64748b);
+            color: var(--platform-text-dim, #64748b);
         }
 
         .ctl-btn .material-symbols-outlined {

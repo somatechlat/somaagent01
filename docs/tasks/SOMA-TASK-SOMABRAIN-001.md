@@ -39,7 +39,7 @@
 
 ---
 
-## 📁 AAAS BRIDGE REQUIRED
+## 📁 Soma Platform BRIDGE REQUIRED
 
 ```
 admin/somabrain/
@@ -54,7 +54,7 @@ admin/somabrain/
 ## 🎯 TASKS
 
 ### Day 1: Direct Import Bridge
-- [ ] Create SomaBrainClient for AAAS mode
+- [ ] Create SomaBrainClient for Soma Platform mode
 - [ ] Import CognitiveCore directly (0ms)
 - [ ] Fallback to HTTP for standalone
 

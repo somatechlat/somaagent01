@@ -32,7 +32,7 @@ This document tracks all changes to project scope, schedule, budget, and deliver
 | CR ID | Date | Requestor | Description | Impact | Priority | Status | Approved By |
 |-------|------|-----------|-------------|--------|----------|--------|-------------|
 | CR-001 | 2026-06-15 | Engineering | Initial ISO documentation suite created across all 3 repos (25 files) | Scope addition, no schedule impact | Medium | APPROVED | PM |
-| CR-002 | 2026-06-15 | Engineering | Added compatibility matrix (SOMA-COMPAT-001) and AAAS deployment spec (SOMA-01-AAAS-001) | Scope addition, no schedule impact | Medium | APPROVED | PM |
+| CR-002 | 2026-06-15 | Engineering | Added compatibility matrix (SOMA-COMPAT-001) and Soma Platform deployment spec (SOMA-01-Soma Platform-001) | Scope addition, no schedule impact | Medium | APPROVED | PM |
 | CR-003 | 2026-06-15 | Engineering | Version bump: somaAgent01 README/AGENT.md to v2.0.0 | Documentation update | Low | APPROVED | PM |
 
 ---
@@ -73,7 +73,7 @@ APPROVAL:
 ## 5. FROZEN ITEMS (Cannot Change Without Sponsor Approval)
 
 1. **Technology stack**: Django + Django Ninja + Lit 3.x + PostgreSQL + Milvus (VIBE mandate)
-2. **Deployment modes**: Standalone (20xxx) and AAAS (63xxx) — both must be supported
+2. **Deployment modes**: Standalone (20xxx) and Soma Platform (63xxx) — both must be supported
 3. **Repo structure**: Three independent repos (somaAgent01, somabrain, somafractalmemory)
 4. **Production date**: October 19, 2026 (project closure)
 5. **Minimum test coverage**: 50% for somaAgent01

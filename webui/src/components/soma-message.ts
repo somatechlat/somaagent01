@@ -266,7 +266,7 @@ export class SomaMessage extends LitElement {
         }
 
         .text :deep(.md-code) {
-            font-family: var(--aaas-font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
+            font-family: var(--platform-font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
             font-size: 0.86em;
             padding: 0.14em 0.42em;
             border-radius: 6px;
@@ -312,7 +312,7 @@ export class SomaMessage extends LitElement {
         }
 
         .text :deep(.md-codeblock-lang) {
-            font-family: var(--aaas-font-mono, ui-monospace, monospace);
+            font-family: var(--platform-font-mono, ui-monospace, monospace);
             font-size: 11px;
             letter-spacing: 0.04em;
             text-transform: uppercase;
@@ -346,7 +346,7 @@ export class SomaMessage extends LitElement {
         }
 
         .text :deep(.md-codeblock) {
-            font-family: var(--aaas-font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
+            font-family: var(--platform-font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
             font-size: 12.5px;
             line-height: 1.6;
             color: #e2e8f0;
@@ -398,7 +398,7 @@ export class SomaMessage extends LitElement {
 
         .text :deep(pre),
         .text :deep(code) {
-            font-family: var(--aaas-font-mono, ui-monospace, monospace);
+            font-family: var(--platform-font-mono, ui-monospace, monospace);
         }
 
         .text :deep(img) {

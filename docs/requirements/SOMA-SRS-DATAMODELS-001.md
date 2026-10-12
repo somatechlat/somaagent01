@@ -137,7 +137,7 @@ The data model layer is the persistence foundation of SomaAgent01. All business 
 |----|------------|-------------|
 | CON-001 | Django ORM Only | All database access must use Django ORM; raw SQL is prohibited except in migrations |
 | CON-002 | No Hardcoded Models | LLM model references must use foreign keys to `LLMModelConfig`; no hardcoded model names in business logic |
-| CON-003 | Tenant Scoping | Every model in the AAAS, Core, Chat, and Voice domains must have a `tenant_id` or tenant foreign key |
+| CON-003 | Tenant Scoping | Every model in the Soma Platform, Core, Chat, and Voice domains must have a `tenant_id` or tenant foreign key |
 | CON-004 | Migration Safety | All schema changes must be applied via Django migrations; manual DDL is prohibited in production |
 
 ### 2.5 Assumptions and Dependencies
@@ -159,8 +159,8 @@ The data model layer is the persistence foundation of SomaAgent01. All business 
 
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
-| REQ-DM-001 | The system shall maintain Django ORM models across the following domains: Core, LLM, Chat, AAAS, Permissions, Voice, Flink, Files, Memory, and Infrastructure. | Must | Inspection | Approved |
-| REQ-DM-002 | The system shall define all models in the following files or packages: `admin/core/models/core.py`, `admin/core/models/zdl.py`, `admin/llm/models.py`, `admin/chat/models.py`, `admin/aaas/models/`, `admin/core/authz.py` (permission catalog), `admin/voice/models.py`, `admin/flink/models.py`, `admin/filesv2/models.py`, `admin/somabrain/models.py`, `admin/core/infrastructure/models.py`. | Must | Inspection | Approved |
+| REQ-DM-001 | The system shall maintain Django ORM models across the following domains: Core, LLM, Chat, Soma Platform, Permissions, Voice, Flink, Files, Memory, and Infrastructure. | Must | Inspection | Approved |
+| REQ-DM-002 | The system shall define all models in the following files or packages: `admin/core/models/core.py`, `admin/core/models/zdl.py`, `admin/llm/models.py`, `admin/chat/models.py`, `admin/platform/models/`, `admin/core/authz.py` (permission catalog), `admin/voice/models.py`, `admin/flink/models.py`, `admin/filesv2/models.py`, `admin/somabrain/models.py`, `admin/core/infrastructure/models.py`. | Must | Inspection | Approved |
 | REQ-DM-003 | The system shall maintain at minimum 47 mapped database tables derived from Django models. | Must | Inspection | Approved |
 
 #### 3.1.2 Core Domain
@@ -200,7 +200,7 @@ The data model layer is the persistence foundation of SomaAgent01. All business 
 | REQ-DM-019 | The system shall define a `Message` model with fields: `id` (UUID, PK), `conversation_id` (UUID, FK), `role`, `content`, `token_count`, `model`, `latency_ms`, `rating`, `task_type`, `tools_used` (JSON), `synced_to_brain` (boolean). | Must | Inspection | Approved |
 | REQ-DM-020 | The system shall define a `ConversationParticipant` model linking users to conversations with a role field. | Must | Inspection | Approved |
 
-#### 3.1.6 AAAS Domain
+#### 3.1.6 Soma Platform Domain
 
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
@@ -337,7 +337,7 @@ No hardware interface requirements are specified in this document.
 
 | REQ ID | Description | Source | Design | Implementation | Test |
 |--------|-------------|--------|--------|----------------|------|
-| REQ-DM-001 | Model domain inventory | SRS-DATA-MODELS | `admin/*/models/` | `admin/core/models/`, `admin/llm/models.py`, `admin/chat/models.py`, `admin/aaas/models/`, `admin/core/authz.py` (permission catalog), `admin/voice/models.py`, `admin/flink/models.py`, `admin/filesv2/models.py`, `admin/somabrain/models.py`, `admin/core/infrastructure/models.py` | `tests/django/` |
+| REQ-DM-001 | Model domain inventory | SRS-DATA-MODELS | `admin/*/models/` | `admin/core/models/`, `admin/llm/models.py`, `admin/chat/models.py`, `admin/platform/models/`, `admin/core/authz.py` (permission catalog), `admin/voice/models.py`, `admin/flink/models.py`, `admin/filesv2/models.py`, `admin/somabrain/models.py`, `admin/core/infrastructure/models.py` | `tests/django/` |
 | REQ-DM-004 | Session model | SRS-DATA-MODELS | `admin/core/models/core.py` | `admin/core/models/core.py` | `tests/django/` |
 | REQ-DM-005 | SessionEvent model | SRS-DATA-MODELS | `admin/core/models/core.py` | `admin/core/models/core.py` | `tests/django/` |
 | REQ-DM-006 | Constitution model | SRS-DATA-MODELS | `admin/core/models/core.py` | `admin/core/models/core.py` | `tests/django/` |
@@ -353,13 +353,13 @@ No hardware interface requirements are specified in this document.
 | REQ-DM-019 | Message model | SRS-DATA-MODELS | `admin/chat/models.py` | `admin/chat/models.py` | `tests/django/` |
 | REQ-DM-020 | ConversationParticipant model | SRS-DATA-MODELS | `admin/chat/models.py` | `admin/chat/models.py` | `tests/django/` |
 | REQ-DM-021 | SubscriptionTier model | SRS-DATA-MODELS | *removed* — no commerce tier model exists in the tree (see AGENT.md revision 2.1.0) | — | — |
-| REQ-DM-022 | Tenant model | SRS-DATA-MODELS | `admin/aaas/models/tenants.py` | `admin/aaas/models/tenants.py` | `tests/django/` |
-| REQ-DM-023 | TenantUser model | SRS-DATA-MODELS | `admin/aaas/models/tenants.py` | `admin/aaas/models/tenants.py` | `tests/django/` |
-| REQ-DM-024 | Agent model | SRS-DATA-MODELS | `admin/aaas/models/agents.py` | `admin/aaas/models/agents.py` | `tests/django/` |
-| REQ-DM-025 | AgentUser model | SRS-DATA-MODELS | `admin/aaas/models/agents.py` | `admin/aaas/models/agents.py` | `tests/django/` |
+| REQ-DM-022 | Tenant model | SRS-DATA-MODELS | `admin/platform/models/tenants.py` | `admin/platform/models/tenants.py` | `tests/django/` |
+| REQ-DM-023 | TenantUser model | SRS-DATA-MODELS | `admin/platform/models/tenants.py` | `admin/platform/models/tenants.py` | `tests/django/` |
+| REQ-DM-024 | Agent model | SRS-DATA-MODELS | `admin/platform/models/agents.py` | `admin/platform/models/agents.py` | `tests/django/` |
+| REQ-DM-025 | AgentUser model | SRS-DATA-MODELS | `admin/platform/models/agents.py` | `admin/platform/models/agents.py` | `tests/django/` |
 | REQ-DM-026 | UsageRecord model | SRS-DATA-MODELS | *removed* — no usage-record model exists in the tree (see AGENT.md revision 2.1.0) | — | — |
-| REQ-DM-027 | Settings models | SRS-DATA-MODELS | `admin/aaas/models/profiles.py` | `admin/aaas/models/profiles.py` | `tests/django/` |
-| REQ-DM-028 | Role model | SRS-DATA-MODELS | `admin/aaas/models/choices.py` (TenantRole/AgentRole TextChoices) | `admin/core/authz.py` (ROLE_PERMISSIONS) | `tests/unit/test_role_superset.py` |
+| REQ-DM-027 | Settings models | SRS-DATA-MODELS | `admin/platform/models/profiles.py` | `admin/platform/models/profiles.py` | `tests/django/` |
+| REQ-DM-028 | Role model | SRS-DATA-MODELS | `admin/platform/models/choices.py` (TenantRole/AgentRole TextChoices) | `admin/core/authz.py` (ROLE_PERMISSIONS) | `tests/unit/test_role_superset.py` |
 | REQ-DM-029 | Permission catalog | SRS-DATA-MODELS | `admin/core/authz.py` (Permission / _build_catalog) | `admin/core/permission_matrix.py` (PermissionChecker) | `tests/unit/test_authz_fail_closed.py` |
 | REQ-DM-030 | PermissionAction vocabulary | SRS-DATA-MODELS | `admin/core/authz.py` (resolve_action) | `schemas/spicedb/schema.zed` | `tests/unit/test_spicedb_verb_coverage.py` |
 | REQ-DM-031 | GranularPermission model | SRS-DATA-MODELS | *removed* — no `admin/permissions/` package exists; authorization is catalog-driven in `admin/core/authz.py` | — | — |
@@ -376,8 +376,8 @@ No hardware interface requirements are specified in this document.
 | REQ-DM-043 | Constitution PROTECT FK | SRS-DATA-MODELS | `admin/core/models/core.py` | `admin/core/models/core.py` | `tests/django/` |
 | REQ-DM-044 | Capsule model FKs | SRS-DATA-MODELS | `admin/core/models/core.py` | `admin/core/models/core.py` | `tests/django/` |
 | REQ-DM-045 | Capsule-Capability M2M | SRS-DATA-MODELS | `admin/core/models/core.py` | `admin/core/models/core.py` | `tests/django/` |
-| REQ-DM-047 | Agent-Capsule M2M + primary | SRS-DATA-MODELS | `admin/aaas/models/agents.py` | `admin/aaas/models/agents.py` | `tests/django/` |
-| REQ-DM-050 | Tenant-SubscriptionTier FK | SRS-DATA-MODELS | `admin/aaas/models/tenants.py` | `admin/aaas/models/tenants.py` | `tests/django/` |
+| REQ-DM-047 | Agent-Capsule M2M + primary | SRS-DATA-MODELS | `admin/platform/models/agents.py` | `admin/platform/models/agents.py` | `tests/django/` |
+| REQ-DM-050 | Tenant-SubscriptionTier FK | SRS-DATA-MODELS | `admin/platform/models/tenants.py` | `admin/platform/models/tenants.py` | `tests/django/` |
 
 ### 4.2 Requirement to Test Case Mapping
 

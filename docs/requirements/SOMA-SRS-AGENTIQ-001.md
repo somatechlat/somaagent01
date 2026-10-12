@@ -68,7 +68,7 @@ This document specifies the requirements for AgentIQ, the governor control loop 
 **Included:**
 - Setting derivation from intelligence, autonomy, and resource knobs
 - UnifiedGate permission enforcement
-- In-memory OPA caching with zero HTTP latency in AAAS mode
+- In-memory OPA caching with zero HTTP latency in Soma Platform mode
 - Chat flow integration (Phases 3 and 4)
 
 **Excluded:**
@@ -85,7 +85,7 @@ This document specifies the requirements for AgentIQ, the governor control loop 
 | **Knobs** | The three control parameters in `capsule.body.persona.knobs`: intelligence_level, autonomy_level, resource_budget |
 | **DerivedSettings** | Immutable Pydantic model containing all settings derived from knobs |
 | **HITL** | Human-in-the-Loop |
-| **AAAS** | Autonomous Adaptive Agent Stack |
+| **Soma Platform** | Autonomous Adaptive Agent Stack |
 
 ### 1.4 References
 
@@ -103,7 +103,7 @@ This document specifies the requirements for AgentIQ, the governor control loop 
 
 ### 2.1 Product Perspective
 
-AgentIQ is a core component of SomaAgent01 (Layer 4) that operates during the 12-Phase Chat Flow. It integrates with the Capsule model to derive runtime settings and with the governance subsystem to enforce permissions. In AAAS mode, AgentIQ, UnifiedGate, and OPA use in-memory caching with zero HTTP latency.
+AgentIQ is a core component of SomaAgent01 (Layer 4) that operates during the 12-Phase Chat Flow. It integrates with the Capsule model to derive runtime settings and with the governance subsystem to enforce permissions. In Soma Platform mode, AgentIQ, UnifiedGate, and OPA use in-memory caching with zero HTTP latency.
 
 ### 2.2 Product Functions
 
@@ -127,7 +127,7 @@ AgentIQ is a core component of SomaAgent01 (Layer 4) that operates during the 12
 
 | ID | Constraint | Description |
 |----|------------|-------------|
-| CON-001 | Zero HTTP Latency | In AAAS mode, all derivation and permission checks must use in-memory operations |
+| CON-001 | Zero HTTP Latency | In Soma Platform mode, all derivation and permission checks must use in-memory operations |
 | CON-002 | Fail-Closed Security | Any error in permission checking must result in denial |
 | CON-003 | Bounded Inputs | Knob values must be clamped to valid ranges (intelligence: 1-10, autonomy: 1-10, budget: non-negative) |
 
@@ -247,7 +247,7 @@ AgentIQ is a core component of SomaAgent01 (Layer 4) that operates during the 12
 
 | ID | Constraint | Source |
 |----|------------|--------|
-| DC-001 | In AAAS mode, all derivation and gate checks use in-memory operations with zero HTTP calls. | AAAS Architecture |
+| DC-001 | In Soma Platform mode, all derivation and gate checks use in-memory operations with zero HTTP calls. | Soma Platform Architecture |
 | DC-002 | All settings are derived from `capsule.body.persona.knobs`; no hardcoded values permitted. | VIBE Rule 91 |
 | DC-003 | OPA cache key must use content hash, not object identity, for cross-worker safety. | Security Requirement |
 
@@ -284,11 +284,11 @@ AgentIQ is a core component of SomaAgent01 (Layer 4) that operates during the 12
 | REQ-007 | TC-AIQ-003 | Unit test | `lookup_autonomy(2).require_hitl == True` |
 | REQ-009 | TC-AIQ-004 | Unit test | `lookup_autonomy(5).egress_allowed == "whitelist"` |
 | REQ-013 | TC-AIQ-005 | Unit test | `lookup_intelligence(0)` clamps to range (1,3) |
-| REQ-016 | TC-AIQ-006 | AAAS Direct | OPA policy allow=True permits action |
-| REQ-017 | TC-AIQ-007 | AAAS Direct | Missing OPA policy results in denial |
+| REQ-016 | TC-AIQ-006 | Soma Platform Direct | OPA policy allow=True permits action |
+| REQ-017 | TC-AIQ-007 | Soma Platform Direct | Missing OPA policy results in denial |
 | REQ-024 | TC-AIQ-008 | Unit test | Exception in check() returns False |
-| REQ-028 | TC-AIQ-009 | AAAS Direct | Chat orchestrator calls derive_all_settings in Phase 3 |
-| REQ-029 | TC-AIQ-010 | AAAS Direct | Chat orchestrator calls UnifiedGate.check in Phase 4 |
+| REQ-028 | TC-AIQ-009 | Soma Platform Direct | Chat orchestrator calls derive_all_settings in Phase 3 |
+| REQ-029 | TC-AIQ-010 | Soma Platform Direct | Chat orchestrator calls UnifiedGate.check in Phase 4 |
 
 ---
 
@@ -297,7 +297,7 @@ AgentIQ is a core component of SomaAgent01 (Layer 4) that operates during the 12
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-01-15 | Core Engineering Team | Initial derivation tables |
-| 6.0 | 2026-01-16 | Core Engineering Team | AAAS Direct Calls Enforced, UnifiedGate added |
+| 6.0 | 2026-01-16 | Core Engineering Team | Soma Platform Direct Calls Enforced, UnifiedGate added |
 | 6.1 | 2026-05-21 | Core Engineering Team | Refactored to ISO/IEC/IEEE 29148 template; removed personas, emojis, and excessive code blocks; extracted requirements as REQ-XXX |
 
 ---

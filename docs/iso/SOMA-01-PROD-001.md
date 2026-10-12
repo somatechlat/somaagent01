@@ -90,7 +90,7 @@ SomaAgent01 is **NOT production-ready**. The system scores approximately 45% (D+
 |------|------|-------|-------------|------|
 | 1 | Fix authorization bypass in `permissions/api.py:336` | Backend | Wire endpoint to UnifiedGate | GATE-01 |
 | 1 | Fix WebSocket routing: add `agent_id` to frontend | Frontend | Updated `websocket-client.ts` + agent selector | GATE-02 |
-| 1 | Generate and commit Django migrations | Backend | Migration files for `admin/aaas` + `admin/core` | GATE-03 |
+| 1 | Generate and commit Django migrations | Backend | Migration files for `admin/platform` + `admin/core` | GATE-03 |
 | 2 | Fix `RoleRequired` to return 403 | Backend | Updated `auth.py:277` | — |
 | 2 | Remove hardcoded hostname in `brain.py:92` | Backend | Environment variable resolution | — |
 | 2 | Fix Redis env var inconsistency (`rate_limiter.py:67`) | Backend | Use `SA01_REDIS_URL` | — |
@@ -154,8 +154,8 @@ SomaAgent01 is **NOT production-ready**. The system scores approximately 45% (D+
 |--------|--------|
 | Repository | `../somabrain` (sibling directory) |
 | Package | `somabrain` Python package |
-| Integration | `aaas/brain.py` (direct) + `admin/core/somabrain_client.py` (HTTP) |
-| Port | 63996 (AAAS) / 9696 (direct) |
+| Integration | `platform/brain.py` (direct) + `admin/core/somabrain_client.py` (HTTP) |
+| Port | 63996 (Soma Platform) / 9696 (direct) |
 | Blocking Issue | `pyproject.toml:21` references as path dependency |
 | Required Action | Publish to private PyPI; make import conditional for Standalone mode |
 
@@ -165,7 +165,7 @@ SomaAgent01 is **NOT production-ready**. The system scores approximately 45% (D+
 |--------|--------|
 | Repository | `../somafractalmemory` (sibling directory) |
 | Integration | `services/common/adapters/` (HTTP) |
-| Port | 63901 (AAAS) / 10101 (direct) |
+| Port | 63901 (Soma Platform) / 10101 (direct) |
 | Blocking Issue | None (HTTP-only integration) |
 | Required Action | Document API contract; verify adapter implementation |
 
@@ -176,7 +176,7 @@ SomaAgent01 is **NOT production-ready**. The system scores approximately 45% (D+
 | PostgreSQL | 16 | Both | Required |
 | Redis | 7 | Both | Required |
 | Keycloak | 24 | Both | Required |
-| Kafka | 3.7 (KRaft) | AAAS (optional Standalone) | Optional |
+| Kafka | 3.7 (KRaft) | Soma Platform (optional Standalone) | Optional |
 | Milvus | 2.3 | Both | Required for vector storage |
 | SpiceDB | 1.29 | Both | Schema defined; runtime integration verified |
 | OPA | Latest | Both | Policies defined; runtime integration verified |

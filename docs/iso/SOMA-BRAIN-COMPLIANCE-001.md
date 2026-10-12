@@ -91,15 +91,15 @@
 
 `somabrain/memory/direct_backend.py` + `memory/backends.py` factory — in-process SFM bypasses HTTP tenant/coord contract.
 
-**Action:** delete or feature-flag **off** by default with explicit AAAS justification (OD-1 default: delete).
+**Action:** delete or feature-flag **off** by default with explicit Soma Platform justification (OD-1 default: delete).
 
 ### BF-05 · MED · Fail-open security leftovers
 
 | Location | Issue |
 |----------|-------|
-| `aaas/webhooks.py:58` | `return True  # Allow in development` |
+| `platform/webhooks.py:58` | `return True  # Allow in development` |
 | `core/security/vault_client.py:74` | test env Vault bypass |
-| `aaas/granular.py:483` | AAAS_ADMIN bypass comment path |
+| `platform/granular.py:483` | AAAS_ADMIN bypass comment path |
 | `bootstrap/runtime_init.py:202` | pytest disable enforcement |
 
 **Action:** development bypasses must be compile-time/settings-gated and off in STANDALONE/production profile.

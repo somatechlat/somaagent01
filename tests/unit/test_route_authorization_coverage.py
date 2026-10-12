@@ -51,12 +51,12 @@ INTENTIONALLY_PUBLIC: frozenset[str] = frozenset(
     {
         # Liveness and readiness. A probe that required a principal could not
         # tell the orchestrator the process is up.
-        "admin/aaas/api/health.py::get_platform_health",
-        "admin/aaas/api/health.py::check_database_health",
-        "admin/aaas/api/health.py::check_cache_health",
-        "admin/aaas/api/health.py::check_keycloak_health",
-        "admin/aaas/api/health.py::check_somabrain_health",
-        "admin/aaas/api/health.py::get_degradation_status",
+        "admin/platform/api/health.py::get_platform_health",
+        "admin/platform/api/health.py::check_database_health",
+        "admin/platform/api/health.py::check_cache_health",
+        "admin/platform/api/health.py::check_keycloak_health",
+        "admin/platform/api/health.py::check_somabrain_health",
+        "admin/platform/api/health.py::get_degradation_status",
         "admin/core/api/general.py::ping",
         "admin/core/api/health.py::brain_connector_health",
         "admin/core/api/health.py::health_check",

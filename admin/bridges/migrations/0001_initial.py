@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("aaas", "0001_initial"),
+        ("platform", "0001_initial"),
         ("core", "0008_asset_delegationtask_executionrecord_modelprofile_and_more"),
     ]
 
@@ -91,7 +91,7 @@ class Migration(migrations.Migration):
                         help_text="Owning tenant; required — no default tenant",
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="bridge_channels",
-                        to="aaas.tenant",
+                        to="platform.tenant",
                     ),
                 ),
             ],

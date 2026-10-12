@@ -1,4 +1,4 @@
-"""AAAS Admin Model Choices (Enums).
+"""Soma Platform Admin Model Choices (Enums).
 
 ``TenantRole`` is the **vocabulary** of the one role store. What a role
 *grants* lives in ``admin.core.authz.ROLE_PERMISSIONS`` and nowhere else; this

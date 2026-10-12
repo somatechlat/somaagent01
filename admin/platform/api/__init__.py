@@ -1,4 +1,4 @@
-"""AAAS Admin API Package.
+"""Soma Platform Admin API Package.
 
 Django Ninja routers for administering this agent: its users, its agents,
 its settings, its audit trail and its health.
@@ -18,7 +18,7 @@ from .settings import router as settings_router
 from .tenant_agents import router as tenant_agents_router
 from .users import router as users_router
 
-# Main AAAS router - mounts all sub-routers
+# Main Soma Platform router - mounts all sub-routers
 router = Router(tags=["Agent Administration"])
 
 router.add_router("/settings", settings_router, tags=["Settings"])

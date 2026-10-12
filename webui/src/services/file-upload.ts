@@ -96,7 +96,7 @@ async function putBytes(ticket: UploadTicket, file: File, mime: string): Promise
         return;
     }
 
-    // AAAS-in-a-box: the API handed back its own multipart endpoint.
+    // Soma Platform-in-a-box: the API handed back its own multipart endpoint.
     const form = new FormData();
     form.append('file', file, file.name);
     const res = await fetch(ticket.upload_url, {

@@ -83,7 +83,7 @@ This document specifies the security and multi-tenancy requirements for the Soma
 
 | Term | Definition |
 |------|------------|
-| AAAS | Agent-as-a-Service administrative layer |
+| Soma Platform | Agent-as-a-Service administrative layer |
 | AuthContext | Runtime object carrying authenticated user identity, tenant ID, and roles |
 | Capsule | Agent identity unit containing configuration, models, and capabilities |
 | Fail-closed | Default-deny behavior when authorization system is unavailable |
@@ -129,7 +129,7 @@ The security and multi-tenancy subsystem is foundational to the SomaAgent01 plat
 
 | User Type | Role | Technical Level | Access |
 |-----------|------|-----------------|--------|
-| Platform Admin | AAAS SysAdmin | High | All tenants, platform configuration |
+| Platform Admin | Soma Platform SysAdmin | High | All tenants, platform configuration |
 | Tenant Admin | Tenant SysAdmin | Medium | Single tenant, user and agent management |
 | Tenant User | Member / Viewer | Low | Assigned agents, chat, read-only memory |
 | Service Account | Internal microservice | High | Inter-service mTLS or service token |
@@ -322,7 +322,7 @@ No hardware interface requirements are specified in this document.
 
 | REQ ID | Description | Source | Design | Implementation | Test |
 |--------|-------------|--------|--------|----------------|------|
-| REQ-TI-001 | PostgreSQL tenant_id column | SRS-SECURITY-MULTITENANCY | `admin/aaas/models/tenants.py` | `admin/aaas/models/tenants.py`, `admin/core/models/core.py` | `tests/saas/test_phase1_security_regressions.py` |
+| REQ-TI-001 | PostgreSQL tenant_id column | SRS-SECURITY-MULTITENANCY | `admin/platform/models/tenants.py` | `admin/platform/models/tenants.py`, `admin/core/models/core.py` | `tests/saas/test_phase1_security_regressions.py` |
 | REQ-TI-002 | Milvus collection per tenant | SRS-SECURITY-MULTITENANCY | `admin/core/models/core.py` | `services/memory_replicator/` | `tests/saas/test_phase1_security_regressions.py` |
 | REQ-TI-003 | Redis key prefix | SRS-SECURITY-MULTITENANCY | `admin/common/rate_limit.py` | `admin/common/rate_limit.py` | `tests/saas/test_phase1_security_regressions.py` |
 | REQ-TI-004 | Kafka topic per tenant | SRS-SECURITY-MULTITENANCY | `config/settings_registry.py` | `services/delegation_gateway/`, `services/conversation_worker/` | Integration test |
@@ -345,11 +345,11 @@ No hardware interface requirements are specified in this document.
 | REQ-DS-003 | TLS 1.3 in transit | SRS-SECURITY-MULTITENANCY | `infra/k8s/` | Load balancer / ingress configuration | Security audit |
 | REQ-DS-004 | Vault auto-unseal | SRS-SECURITY-MULTITENANCY | `infra/k8s/vault/` | Vault Helm values / configuration | Security audit |
 | REQ-DS-005 | PII redaction | SRS-SECURITY-MULTITENANCY | `admin/core/context/models.py` | ContextBuilder redaction logic | `tests/saas/test_phase1_security_regressions.py` |
-| REQ-AL-001 | AuditEvent schema | SRS-SECURITY-MULTITENANCY | `admin/aaas/models/audit.py` | `admin/aaas/models/audit.py`, `admin/audit/api.py` | `tests/saas/test_phase1_security_regressions.py` |
-| REQ-AL-002 | Hot storage 30 days | SRS-SECURITY-MULTITENANCY | `admin/aaas/models/audit.py` | `admin/aaas/models/audit.py` | Inspection |
+| REQ-AL-001 | AuditEvent schema | SRS-SECURITY-MULTITENANCY | `admin/platform/models/audit.py` | `admin/platform/models/audit.py`, `admin/audit/api.py` | `tests/saas/test_phase1_security_regressions.py` |
+| REQ-AL-002 | Hot storage 30 days | SRS-SECURITY-MULTITENANCY | `admin/platform/models/audit.py` | `admin/platform/models/audit.py` | Inspection |
 | REQ-AL-003 | Cold storage 7 years | SRS-SECURITY-MULTITENANCY | `services/memory_service/` | Archival pipeline | Inspection |
 | REQ-AL-004 | Kafka to Elasticsearch | SRS-SECURITY-MULTITENANCY | `config/settings_registry.py` | Kafka Connect / Logstash | Integration test |
-| REQ-RL-001 | Tier-based rate limits | SRS-SECURITY-MULTITENANCY | `admin/aaas/models/tiers.py` | `admin/common/rate_limit.py` | `tests/saas/test_phase1_security_regressions.py` |
+| REQ-RL-001 | Tier-based rate limits | SRS-SECURITY-MULTITENANCY | `admin/platform/models/tiers.py` | `admin/common/rate_limit.py` | `tests/saas/test_phase1_security_regressions.py` |
 | REQ-RL-002 | HTTP 429 on exceed | SRS-SECURITY-MULTITENANCY | `admin/common/rate_limit.py` | `admin/common/rate_limit.py` | `tests/saas/test_phase1_security_regressions.py` |
 | REQ-RL-003 | Redis counters | SRS-SECURITY-MULTITENANCY | `admin/common/rate_limit.py` | `admin/common/rate_limit.py` | `tests/saas/test_phase1_security_regressions.py` |
 

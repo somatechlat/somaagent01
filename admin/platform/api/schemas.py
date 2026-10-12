@@ -1,5 +1,5 @@
 """
-AAAS Admin API Schemas
+Soma Platform Admin API Schemas
 Django Ninja/Pydantic schemas for request/response validation.
 
 Scope: schemas for administering this agent — its API keys, its model

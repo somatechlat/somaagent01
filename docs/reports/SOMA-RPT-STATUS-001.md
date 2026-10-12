@@ -35,7 +35,7 @@
 
 ## 1. Executive summary
 
-**One sentence:** The memory lane (T-1) and durable-before-hop (T-6) are real and committed; Temporal has full workflow definitions but workers still cannot attach under AAAS compose; the cognitive control plane has dead routes under a live UI Save button; the UI is largely honest (no DEV_MODE/mocks) but missing turn controls, agent switcher, and thin top strip — that is the UI/UX continuation objective.
+**One sentence:** The memory lane (T-1) and durable-before-hop (T-6) are real and committed; Temporal has full workflow definitions but workers still cannot attach under Soma Platform compose; the cognitive control plane has dead routes under a live UI Save button; the UI is largely honest (no DEV_MODE/mocks) but missing turn controls, agent switcher, and thin top strip — that is the UI/UX continuation objective.
 
 | Track | Verdict |
 |---|---|
@@ -108,7 +108,7 @@
 |---|---|---|
 | **F01** | Routes call nonexistent `SomaBrainClient` methods → `AttributeError` → HTTP 500 | `admin/somabrain/cognitive.py:300`, `core_brain.py:363,440`, `migrate.py:92,128`, `api_router.py:163`, `somabrain_integration.py:42,55,71` |
 | **F02** | UI cognitive **Save params** targets F01 (dead control) | `webui/src/views/soma-cognitive-panel.ts:790` → `PATCH /somabrain/cognitive/params/{id}` |
-| **F03** | Temporal env mismatch: compose exports `SA01_TEMPORAL_URI`; workers read `SA01_TEMPORAL_HOST` → workers refuse | `infra/aaas/aaas/docker-compose.yml:68` vs `temporal_worker.py:321`, `delegation_gateway/temporal_worker.py:72` |
+| **F03** | Temporal env mismatch: compose exports `SA01_TEMPORAL_URI`; workers read `SA01_TEMPORAL_HOST` → workers refuse | `infra/platform/platform/docker-compose.yml:68` vs `temporal_worker.py:321`, `delegation_gateway/temporal_worker.py:72` |
 
 ### 4.2 HIGH (ADV-1 + wiring)
 
@@ -184,7 +184,7 @@
 
 | Step | Action | Files |
 |---|---|---|
-| D1a | **One env key** — export `SA01_TEMPORAL_HOST` (or read `SA01_TEMPORAL_URI`) on both sides | `infra/aaas/aaas/docker-compose.yml:68`, workers |
+| D1a | **One env key** — export `SA01_TEMPORAL_HOST` (or read `SA01_TEMPORAL_URI`) on both sides | `infra/platform/platform/docker-compose.yml:68`, workers |
 | D1b | Add Temporal to standalone compose **or** remove registry claim | `infra/standalone/docker-compose.yml`, `config/settings_registry.py:263` |
 | D1c | Delete dead `TEMPORAL_HOST`/`TEMPORAL_NAMESPACE` settings + lying comment | `services/gateway/settings.py:202-206` |
 | D2 | Prove workers stay up (`docker compose ps`) — not source-grep | replace `test_temporal_owns_async_cycle.py` greps with behavior |

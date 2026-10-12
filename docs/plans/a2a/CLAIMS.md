@@ -12,7 +12,7 @@
 | admin/core/somabrain_client.py | MiMoCode-somaAgent01 | W1.5 client methods / reward path | 2026-10-08T14:42:13Z | ACTIVE |
 | admin/core/chat_orchestrator.py | MiMoCode-somaAgent01 | W1.5 settings gates + evaluate contract | 2026-10-08T14:42:13Z | ACTIVE |
 | webui/src/views/soma-cognitive-panel.ts webui/src/views/soma-chat.ts | MiMoCode-somaAgent01 | W1.8 panel agent-id + data source | 2026-10-08T14:42:13Z | ACTIVE |
-| infra/aaas/aaas/docker-compose.yml services/conversation_worker/temporal_worker.py services/delegation_gateway/temporal_worker.py services/gateway/settings.py | MiMoCode-somaAgent01 | W1.10 Temporal host authority | 2026-10-08T14:42:13Z | ACTIVE |
+| infra/platform/platform/docker-compose.yml services/conversation_worker/temporal_worker.py services/delegation_gateway/temporal_worker.py services/gateway/settings.py | MiMoCode-somaAgent01 | W1.10 Temporal host authority | 2026-10-08T14:42:13Z | ACTIVE |
 | services/common/adapters/somabrain_adapter.py | MiMoCode-somaAgent01 | W1.9 R-15 MemoryAck | 2026-10-08T14:42:13Z | ACTIVE |
 | path/prefix | agent | task | started_at | status |
 |---|---|---|---|---|
@@ -36,7 +36,7 @@
 | admin/core/authz.py | MiMoCode-somaAgent01 | role:tool_execute grants | 2026-10-08T22:00:36Z | ACTIVE |
 | admin/core/models/core.py admin/core/helpers | MiMoCode-somaAgent01 | capsule bootstrap default-kit capabilities | 2026-10-08T22:00:36Z | ACTIVE |
 | services/tool_executor/request_handler.py | MiMoCode-somaAgent01 | Kafka path reuses decide_and_authorize_tool | 2026-10-08T22:00:36Z | ACTIVE |
-| infra/aaas infra/standalone tests/e2e | MiMoCode-somaAgent01 | Temporal workers + codeword e2e | 2026-10-08T22:00:36Z | ACTIVE |
+| infra/platform infra/standalone tests/e2e | MiMoCode-somaAgent01 | Temporal workers + codeword e2e | 2026-10-08T22:00:36Z | ACTIVE |
 | 2026-10-08T22:02:54Z | MiMoCode-somaAgent01 | W3.3 ResearchReportWorkflow + research_report/job_status tools (research_workflow.py, assistant_tools/research_report.py, tests) | 2026-10-08T22:02:54Z | ACTIVE |
 | path/prefix | agent | task | started_at | status |
 |---|---|---|---|---|
@@ -62,7 +62,7 @@
 | path/prefix | agent | task | started_at | status |
 |---|---|---|---|---|
 | docs/plans/2026-10-09-RAPID-DATA-REMEDIATION-001.md docs/reports/ | MiMoCode-somaAgent01 | RAPID-DATA-REMEDIATION-001 plan + three-way audit report | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
-| admin/aaas/models/profiles.py admin/aaas/migrations/ | MiMoCode-somaAgent01 | W0.1+W0.2 ApiKey.key_hash + UserSession.refresh_token_hash UNIQUE/index | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| admin/platform/models/profiles.py admin/platform/migrations/ | MiMoCode-somaAgent01 | W0.1+W0.2 ApiKey.key_hash + UserSession.refresh_token_hash UNIQUE/index | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
 | admin/core/models/zdl.py | MiMoCode-somaAgent01 | W0.3 atomic IdempotencyRecord.check_and_set | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
 | admin/core/models/core.py admin/core/migrations/ | MiMoCode-somaAgent01 | W0.5 CHECK constraints + W3.2/W3.4/W3.8 indexes/types (shared — merge additive) | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
 | admin/auth/mfa.py | MiMoCode-somaAgent01 | W0.6 MFA fail-first (remove dead QR/backup codes) | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
@@ -72,9 +72,9 @@
 | admin/core/chat_orchestrator.py | MiMoCode-somaAgent01 | W1.5 parallel SomaBrain writes + W4.1 TurnPlan extraction (shared — merge additive) | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
 | admin/core/helpers/capsule_settings.py | MiMoCode-somaAgent01 | W1.6 AgentSetting resolution cache | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
 | admin/core/api/settings_v2.py | MiMoCode-somaAgent01 | W1.8 bulk settings save | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
-| admin/common/api_keys.py admin/gateway/api/gateway.py admin/aaas/api/settings.py | MiMoCode-somaAgent01 | W2.1 unify mint_api_key | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| admin/common/api_keys.py admin/gateway/api/gateway.py admin/platform/api/settings.py | MiMoCode-somaAgent01 | W2.1 unify mint_api_key | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
 | admin/common/responses.py | MiMoCode-somaAgent01 | W2.2 one envelope + timestamp fix | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
-| admin/common/health_probe.py admin/core/api/health.py admin/aaas/api/health.py admin/core/infrastructure/health_checker.py | MiMoCode-somaAgent01 | W2.3 shared health probes | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| admin/common/health_probe.py admin/core/api/health.py admin/platform/api/health.py admin/core/infrastructure/health_checker.py | MiMoCode-somaAgent01 | W2.3 shared health probes | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
 | admin/llm/__init__.py admin/core/permissions.py | MiMoCode-somaAgent01 | W2.4 dead re-export removal + W2.6 Actions constants | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
 | admin/filesv2/models.py admin/filesv2/migrations/ | MiMoCode-somaAgent01 | W3.3 partial index live rows | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
 | schemas/spicedb/schema.zed | MiMoCode-somaAgent01 | W3.9 strip subscription_tier / view_billing | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |

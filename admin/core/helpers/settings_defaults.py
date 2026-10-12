@@ -424,7 +424,7 @@ def get_default_settings(agent_id: str = "default"):
         # Role resolution cache bound. Absent (None) means "do not memoise" —
         # every lookup goes to the one store. There is no code-level default
         # number: a cache bound is operator-chosen. See
-        # admin.aaas.models.tenants._role_cache_bound.
+        # admin.platform.models.tenants._role_cache_bound.
         role_cache_max_entries=_env_or_db(
             "SA01_ROLE_CACHE_MAX_ENTRIES", agent_id, "role_cache_max_entries"
         ),

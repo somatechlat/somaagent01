@@ -1,6 +1,6 @@
-"""AAAS Django Admin - Agent and Feature Admins.
+"""Soma Platform Django Admin - Agent and Feature Admins.
 
-Split from admin/aaas/admin.py for 650-line compliance.
+Split from admin/platform/admin.py for 650-line compliance.
 """
 
 try:
@@ -8,7 +8,7 @@ try:
     from django.contrib import admin
     from django.utils.html import format_html
 
-    from admin.aaas.models import Agent, AgentUser, AuditLog
+    from admin.platform.models import Agent, AgentUser, AuditLog
 
     class AgentUserInline(admin.TabularInline):
         """Inline for managing users assigned to an agent."""

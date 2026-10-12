@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SUPERVISOR = ROOT / "infra" / "aaas" / "aaas" / "supervisord.conf"
+SUPERVISOR = ROOT / "infra" / "platform" / "platform" / "supervisord.conf"
 
 
 def test_supervisord_starts_the_conversation_temporal_worker():

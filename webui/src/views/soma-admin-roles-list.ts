@@ -1,12 +1,12 @@
 /**
  * Roles list — the one role catalogue screen.
  *
- * Backed by GET /aaas/settings/roles (PlatformConfig Global Defaults) and
+ * Backed by GET /platform/settings/roles (PlatformConfig Global Defaults) and
  * GET /auth/me for the caller's real permissions. The deleted /permissions/*
  * router used to mint fabricated CRUD; this view never talks to it.
  *
  * System / provisioned roles are locked. The real authority to rewrite what a
- * role grants is `org:assign_roles` (admin/aaas/api/settings.py update_role).
+ * role grants is `org:assign_roles` (admin/platform/api/settings.py update_role).
  */
 
 import { LitElement, html, css, nothing } from 'lit';
@@ -87,7 +87,7 @@ export class SomaAdminRolesList extends LitElement {
         this._error = '';
         try {
             const [roles, me] = await Promise.all([
-                apiClient.get<RoleRow[]>('/aaas/settings/roles'),
+                apiClient.get<RoleRow[]>('/platform/settings/roles'),
                 apiClient.get<{ permissions?: string[] }>('/auth/me'),
             ]);
             this._roles = roles || [];

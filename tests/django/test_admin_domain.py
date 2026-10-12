@@ -92,7 +92,7 @@ class TestTenantUserEndpoints:
 
     def test_users_router_exists(self):
         """Test users router is properly configured."""
-        from admin.aaas.api.users import router
+        from admin.platform.api.users import router
 
         assert router is not None
 
@@ -103,7 +103,7 @@ class TestTenantUserEndpoints:
         from inside an organization — that boundary is what stops organization
         authority from reaching the system tier.
         """
-        from admin.aaas.api.users import VALID_ROLES
+        from admin.platform.api.users import VALID_ROLES
         from admin.core.authz import ORG_ASSIGNABLE_ROLES, PROVISIONED_ROLES
 
         assert set(VALID_ROLES) == set(ORG_ASSIGNABLE_ROLES)
@@ -121,13 +121,13 @@ class TestTenantAgentEndpoints:
 
     def test_tenant_agents_router_exists(self):
         """Test tenant agents router is properly configured."""
-        from admin.aaas.api.tenant_agents import router
+        from admin.platform.api.tenant_agents import router
 
         assert router is not None
 
     def test_quota_status_schema(self):
         """Test QuotaStatus schema."""
-        from admin.aaas.api.tenant_agents import QuotaStatus
+        from admin.platform.api.tenant_agents import QuotaStatus
 
         quota = QuotaStatus(
             agents_used=5,
@@ -149,7 +149,7 @@ class TestTenantAgentEndpoints:
         """Test AgentSchema."""
         from datetime import datetime
 
-        from admin.aaas.api.tenant_agents import AgentSchema
+        from admin.platform.api.tenant_agents import AgentSchema
 
         agent = AgentSchema(
             id="test-id",
@@ -179,8 +179,8 @@ class TestApiIntegration:
         assert len(api._routers) >= 7
 
     def test_aaas_router_includes_users(self):
-        """Test AAAS router includes user management."""
-        from admin.aaas.api import router
+        """Test Soma Platform router includes user management."""
+        from admin.platform.api import router
 
         # Router should have sub-routers for users and agents
         assert router is not None
@@ -215,7 +215,7 @@ class TestSchemaValidation:
 
     def test_tenant_user_schema(self):
         """Test TenantUserOut validation."""
-        from admin.aaas.api.users import TenantUserOut
+        from admin.platform.api.users import TenantUserOut
 
         user = TenantUserOut(
             id="user-1",

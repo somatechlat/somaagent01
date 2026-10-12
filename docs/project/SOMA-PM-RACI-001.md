@@ -64,7 +64,7 @@
 | T1.8 Fix BrainBridge URL | I | **R/A** | I | I | C | I | C | — | I |
 | T1.9 Fix rate limiter URL | I | **R/A** | I | I | I | I | — | — | I |
 | T1.10 Standalone Docker | I | C | I | I | **R/A** | C | — | C | I |
-| T1.11 AAAS Docker | I | C | I | I | **R/A** | C | C | C | I |
+| T1.11 Soma Platform Docker | I | C | I | I | **R/A** | C | C | C | I |
 | T1.12 Phase 1 gate | **A** | R | R | R | R | R | C | C | I |
 
 ### Phase 2: SECURE
@@ -132,7 +132,7 @@
 
 | Task | PM | BL | FL | SL | DL | QL | BT | ST | ED |
 |------|----|----|----|----|----|----|----|----|----|
-| T6.1 AAAS E2E test | I | C | C | C | C | **R/A** | C | C | I |
+| T6.1 Soma Platform E2E test | I | C | C | C | C | **R/A** | C | C | I |
 | T6.2 COMPAT validation | I | C | I | I | I | **R/A** | C | C | I |
 | T6.3 Deploy validation | I | C | I | I | **R/A** | C | C | C | I |
 | T6.4 Doc audit | **R/A** | C | C | C | C | C | C | C | I |

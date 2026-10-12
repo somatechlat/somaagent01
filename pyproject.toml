@@ -18,7 +18,7 @@ django-ninja = "^1.3.0"
 uvicorn = {extras = ["standard"], version = "^0.32.0"}
 httpx = "^0.28.0"
 # Optional integration extras (deployment-specific).
-# In development: pip install -e ../somabrain && pip install -e ".[aaas]"
+# In development: pip install -e ../somabrain && pip install -e ".[platform]"
 # In production: published somabrain package (or omit for standalone mode)
 somabrain = { path = "../somabrain", develop = true, optional = true }
 # T-2 coordinate contract — one _stable_coord for the whole triad. Pure stdlib.
@@ -97,7 +97,7 @@ websockets = "^14.0.0"
 pyclamd = "^0.4.0"
 
 [tool.poetry.extras]
-aaas = ["somabrain"]
+platform = ["somabrain"]
 
 [tool.poetry.group.dev.dependencies]
 # Developer tools

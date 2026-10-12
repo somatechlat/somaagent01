@@ -32,7 +32,7 @@ This document provides an overview of the SomaAgent01 enterprise multi-agent cog
 
 This document covers:
 - System architecture and technology stack
-- Deployment modes (Standalone and AAAS)
+- Deployment modes (Standalone and Soma Platform)
 - Quick start procedures for development and testing
 - Security considerations and known issues
 - Project structure and component inventory
@@ -69,7 +69,7 @@ The following documents are referenced in this specification:
 
 | Term | Definition |
 |------|------------|
-| AAAS | Agent-As-A-Service: deployment mode where Agent, Brain, and Memory run as an integrated stack |
+| Soma Platform | Agent-As-A-Service: deployment mode where Agent, Brain, and Memory run as an integrated stack |
 | Standalone | Deployment mode where only the Agent service runs, without Brain or Memory dependencies |
 | SomaBrain | Cognitive runtime service for agent neuromodulation and reasoning |
 | SomaFractalMemory | Vector memory storage service with fractal coordinate indexing |
@@ -118,7 +118,7 @@ SomaAgent01 is an enterprise-grade multi-agent cognitive platform built on Djang
 | Authorization | SpiceDB 1.29 | Schema defined; `UnifiedGate` makes real gRPC calls; some RBAC API endpoints remain stubbed |
 | Policy Engine | OPA | Policy files exist; `UnifiedGate` and `PolicyClient` make real HTTP calls to OPA |
 | Observability | Prometheus + Grafana + OpenTelemetry | Partially wired |
-| Memory System | SomaFractalMemory + SomaBrain | Requires sibling repositories in AAAS mode |
+| Memory System | SomaFractalMemory + SomaBrain | Requires sibling repositories in Soma Platform mode |
 
 ---
 
@@ -153,7 +153,7 @@ The system comprises three primary layers:
 - Uses port namespace 20xxx
 - Suitable for development and agent-only deployments
 
-#### 5.3.2 AAAS Mode
+#### 5.3.2 Soma Platform Mode
 
 - Integrated stack: Agent + SomaBrain + SomaFractalMemory
 - Uses port namespace 63xxx
@@ -172,7 +172,7 @@ The system comprises three primary layers:
 | Keycloak | 20880 |
 | Vault | 20882 |
 
-**AAAS Namespace (63xxx)**
+**Soma Platform Namespace (63xxx)**
 
 | Service | Port |
 |---------|------|
@@ -250,13 +250,13 @@ Create an administrative user:
 docker compose exec somaagent_standalone python manage.py createsuperuser
 ```
 
-### 6.3 AAAS Deployment
+### 6.3 Soma Platform Deployment
 
-**Warning**: AAAS deployment requires the SomaBrain and SomaFractalMemory repositories as sibling directories. These repositories are not included in this distribution.
+**Warning**: Soma Platform deployment requires the SomaBrain and SomaFractalMemory repositories as sibling directories. These repositories are not included in this distribution.
 
 ```bash
 # From a parent directory containing somaAgent01/, somabrain/, and somafractalmemory/
-cd somaAgent01/infra/aaas/aaas
+cd somaAgent01/infra/platform/platform
 ./build_saas.sh
 ```
 
@@ -349,7 +349,7 @@ somaagent01/
 │   ├── api.py               # Master Django Ninja API router
 │   ├── auth/                # Authentication and authorization
 │   ├── core/               # Core models and business logic
-│   ├── aaas/               # Multi-tenant features
+│   ├── platform/               # Multi-tenant features
 │   ├── chat/               # Chat API endpoints
 │   └── [50+ additional apps]
 ├── services/                 # Service layer implementations
@@ -369,7 +369,7 @@ somaagent01/
 ├── policy/                  # OPA Rego policy files
 ├── infra/                   # Infrastructure configurations
 │   ├── standalone/          # Standalone deployment
-│   ├── aaas/                # AAAS deployment
+│   ├── platform/                # Soma Platform deployment
 │   └── k8s/                 # Kubernetes manifests
 ├── tests/                   # Test suite
 ├── docs/                    # Documentation

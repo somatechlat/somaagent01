@@ -1,10 +1,10 @@
-# Deployment Modes - AAAS vs STANDALONE
+# Deployment Modes - Soma Platform vs STANDALONE
 
 ## Document Control
 
 | Field | Value |
 |---|---|
-| Document Title | Deployment Modes - AAAS vs STANDALONE |
+| Document Title | Deployment Modes - Soma Platform vs STANDALONE |
 | Document Identifier | SOMA-OPS-MODES-001 |
 | Version | 1.0.0 |
 | Date | 2026-09-28 |
@@ -33,10 +33,10 @@ SomaAgent01 supports two deployment modes that determine how components interact
 
 | Mode | Environment Variable | Description |
 |-------|-------------------|-------------|
-| **AAAS** | `SA01_DEPLOYMENT_MODE="AAAS"` | Full multi-tenant AAAS deployment with HTTP service calls |
+| **Soma Platform** | `SA01_DEPLOYMENT_MODE="Soma Platform"` | Full multi-tenant Soma Platform deployment with HTTP service calls |
 | **STANDALONE** | `SA01_DEPLOYMENT_MODE="STANDALONE"` | Single-instance deployment with embedded modules |
 
-**Default**: AAAS  
+**Default**: Soma Platform  
 **Detection**: Checked from `DEPLOYMENT_MODE` environment variable at startup
 
 ---
@@ -45,7 +45,7 @@ SomaAgent01 supports two deployment modes that determine how components interact
 
 ### 1. Chat Orchestrator (`admin/core/chat_orchestrator.py`)
 
-| Feature | AAAS Mode | STANDALONE Mode |
+| Feature | Soma Platform Mode | STANDALONE Mode |
 |----------|-------------|-----------------|
 | **SomaBrain Integration** | HTTP client (`SomaBrainClient.get_async()`) to `http://localhost:9696` | Embedded Python modules (direct imports) |
 | **LLM Timeout** | 60 seconds (network calls) | 30 seconds (local/embedded) |
@@ -56,7 +56,7 @@ SomaAgent01 supports two deployment modes that determine how components interact
 ```python
 # admin/core/chat_orchestrator.py
 
-AAAS_MODE = DEPLOYMENT_MODE == "AAAS"
+AAAS_MODE = DEPLOYMENT_MODE == "Soma Platform"
 STANDALONE_MODE = DEPLOYMENT_MODE == "STANDALONE"
 
 # Timeout configuration
@@ -68,7 +68,7 @@ LLM_TIMEOUT_STANDALONE = 30  # seconds
 
 ### 2. SimpleGovernor (`services/common/simple_governor.py`)
 
-| Feature | AAAS Mode | STANDALONE Mode |
+| Feature | Soma Platform Mode | STANDALONE Mode |
 |----------|-------------|-----------------|
 | **Budget Allocation** | Same in both modes (fixed ratios) | Same in both modes (fixed ratios) |
 | **Health Decision** | Binary: HEALTHY vs DEGRADED | Binary: HEALTHY vs DEGRADED |
@@ -107,7 +107,7 @@ def allocate_budget(
 
 ### 3. Context Builder (`admin/core/context/builder.py`)
 
-| Feature | AAAS Mode | STANDALONE Mode |
+| Feature | Soma Platform Mode | STANDALONE Mode |
 |----------|-------------|-----------------|
 | **Memory Retrieval** | HTTP POST `/v1/context/evaluate` to SomaBrain | Direct embedded module calls |
 | **Connection** | `SomaBrainClient.get_async()` (HTTP client) | Embedded Python imports (somabrain package) |
@@ -116,7 +116,7 @@ def allocate_budget(
 **Memory Retrieval Flow**:
 
 ```
-AAAS Mode:
+Soma Platform Mode:
   ChatService → SomaBrainClient.get_async()
            → HTTP POST to http://localhost:9696/v1/context/evaluate
            → JSON response: {"snippets": [...]}
@@ -137,7 +137,7 @@ STANDALONE Mode:
 
 ### 4. SomaBrain Client
 
-**AAAS Mode**:
+**Soma Platform Mode**:
 - Location: `admin/core/somabrain_client.py`
 - Initialization: `SomaBrainClient.get_async()`
 - Endpoints:
@@ -157,7 +157,7 @@ STANDALONE Mode:
 
 ### 5. HealthMonitor (`services/common/health_monitor.py`)
 
-| Component Checked | AAAS Mode | STANDALONE Mode |
+| Component Checked | Soma Platform Mode | STANDALONE Mode |
 |-----------------|-------------|-----------------|
 | **SomaBrain** | HTTP endpoint reachability | Module import availability |
 | **PostgreSQL** | Database response time | Database response time |
@@ -185,7 +185,7 @@ def get_overall_health() -> OverallHealth:
 
 ### 6. Infrastructure Connections
 
-| Component | AAAS Mode | STANDALONE Mode | Source |
+| Component | Soma Platform Mode | STANDALONE Mode | Source |
 |-----------|-------------|-----------------|--------|
 | **PostgreSQL** | Port 63932 (Docker Compose) | Port 63932 (Docker Compose) | `DJANGO_DATABASES` |
 | **Redis** | Port 63979 (session store) | Port 63979 (session store) | Django channels settings |
@@ -205,7 +205,7 @@ def get_overall_health() -> OverallHealth:
 **Both Modes**:
 ```bash
 # Deployment mode (REQUIRED)
-export SA01_DEPLOYMENT_MODE="AAAS"  # OR "STANDALONE"
+export SA01_DEPLOYMENT_MODE="Soma Platform"  # OR "STANDALONE"
 
 # Database
 export SA01_DB_HOST="localhost"
@@ -215,16 +215,16 @@ export SA01_DB_USER="soma"
 export SA01_DB_PASSWORD="soma"
 
 # SomaBrain
-export SA01_SOMA_BASE_URL="http://localhost:63996"  # AAAS only
+export SA01_SOMA_BASE_URL="http://localhost:63996"  # Soma Platform only
 
 # LLM Provider
 export OPENAI_API_KEY="sk-..."  # from Vault
 export ANTHROPIC_API_KEY="sk-ant-..."  # from Vault
 ```
 
-**AAAS Mode Only**:
+**Soma Platform Mode Only**:
 ```bash
-# Additional AAAS-specific vars
+# Additional Soma Platform-specific vars
 export SA01_KAFKA_BROKERS="localhost:63932"
 export SA01_REDIS_HOST="localhost"
 export SA01_REDIS_PORT="63979"
@@ -241,7 +241,7 @@ export SA01_MINIO_ENDPOINT="http://localhost:63938"
 
 ## Docker Compose Configuration
 
-### AAAS Mode (`infra/aaas/docker-compose.yml`)
+### Soma Platform Mode (`infra/platform/docker-compose.yml`)
 ```yaml
 services:
   postgres:
@@ -262,13 +262,13 @@ services:
     image: somatechlat/somabrain:latest
     ports: ["63996:9696"]
     environment:
-      DEPLOYMENT_MODE: "AAAS"
+      DEPLOYMENT_MODE: "Soma Platform"
   
-  aaas:
+  platform:
     image: somatechlat/somaagent01:latest
     ports: ["63900:9000"]
     environment:
-      SA01_DEPLOYMENT_MODE: "AAAS"
+      SA01_DEPLOYMENT_MODE: "Soma Platform"
       SA01_SOMA_BASE_URL: "http://somabrain:9696"
 ```
 
@@ -295,7 +295,7 @@ services:
 
 ### Scenario 1: SomaBrain Unreachable
 
-**AAAS Mode Behavior**:
+**Soma Platform Mode Behavior**:
 1. HealthMonitor detects SomaBrain down
 2. SimpleGovernor uses DEGRADED ratios (40% system, no tools)
 3. SomaBrainClient.get_async() returns `None`
@@ -345,8 +345,8 @@ services:
 
 ## Mode Selection Guidelines
 
-### Choose AAAS Mode When:
-- Multi-tenant AAAS deployment
+### Choose Soma Platform Mode When:
+- Multi-tenant Soma Platform deployment
 - Separate SomaBrain service required
 - External services (Kafka, Redis, MinIO) available
 - Production environment with infrastructure team
@@ -363,7 +363,7 @@ services:
 
 ## Migration Between Modes
 
-### AAAS → STANDALONE
+### Soma Platform → STANDALONE
 ```bash
 # 1. Change environment variable
 export SA01_DEPLOYMENT_MODE="STANDALONE"
@@ -372,25 +372,25 @@ export SA01_DEPLOYMENT_MODE="STANDALONE"
 unset SA01_SOMA_BASE_URL
 
 # 3. Restart service
-docker compose restart aaas
+docker compose restart platform
 
 # 4. Verify embedded module imports
 # Check logs for "SomaBrain embedded modules loaded"
 ```
 
-### STANDALONE → AAAS
+### STANDALONE → Soma Platform
 ```bash
 # 1. Change environment variable
-export SA01_DEPLOYMENT_MODE="AAAS"
+export SA01_DEPLOYMENT_MODE="Soma Platform"
 
 # 2. Set SomaBrain URL
 export SA01_SOMA_BASE_URL="http://localhost:63996"
 
 # 3. Start infrastructure
-docker compose -f infra/aaas/docker-compose.yml up -d
+docker compose -f infra/platform/docker-compose.yml up -d
 
 # 4. Restart service
-docker compose restart aaas
+docker compose restart platform
 
 # 5. Verify HTTP connection
 # Check logs for "SomaBrainClient connected: http://localhost:63996"
@@ -402,7 +402,7 @@ docker compose restart aaas
 
 ### Issue: "SomaBrain connection timeout"
 
-**AAAS Mode**:
+**Soma Platform Mode**:
 ```bash
 # Check SomaBrain service
 docker ps | grep somabrain  # Should be "up"
@@ -434,7 +434,7 @@ curl http://localhost:63900/api/v2/health
 # Verify all components show "healthy"
 
 # Check SimpleGovernor logs
-docker logs aaas | grep "is_degraded"
+docker logs platform | grep "is_degraded"
 # Should show: "is_degraded: False" (when healthy)
 ```
 
@@ -457,7 +457,7 @@ docker logs aaas | grep "is_degraded"
 # Software Deployment Modes (SomaStack)
 
 **Purpose:** Define software-level modes for the three services when run
-standalone or as a unified AAAS.
+standalone or as a unified Soma Platform.
 
 **Last Updated:** 2026-01-13 by SOMA Collective Intelligence Audit
 
@@ -484,8 +484,8 @@ SA01_DEPLOYMENT_MODE=PROD
 └── No dev defaults allowed
 
 SOMA_AAAS_MODE=true
-├── aaas/brain.py → Direct Python import of somabrain
-├── aaas/memory.py → Direct Python import of fractal_memory
+├── platform/brain.py → Direct Python import of somabrain
+├── platform/memory.py → Direct Python import of fractal_memory
 └── 100x performance (0.05ms vs 5ms per operation)
 
 SOMA_AAAS_MODE=false
@@ -500,7 +500,7 @@ SOMA_AAAS_MODE=false
 
 - **StandAlone**: Each service runs independently with its own auth, storage,
   and configuration.
-- **SomaStackClusterMode**: All three services run as a unified AAAS with shared
+- **SomaStackClusterMode**: All three services run as a unified Soma Platform with shared
   tenant identity, shared authorization, and coupled Brain+Memory runtime.
 
 These names are canonical for documentation and future configuration flags.
@@ -535,7 +535,7 @@ In `SA01_DEPLOYMENT_MODE=PROD`:
 - All service URLs MUST be explicitly configured
 - Missing configuration MUST crash on startup
 
-**Implementation**: See `aaas/config.py` function `_get_required_host()`
+**Implementation**: See `platform/config.py` function `_get_required_host()`
 
 ### Rule 164: Zero-Hardcode Mandate
 
@@ -543,7 +543,7 @@ In `SA01_DEPLOYMENT_MODE=PROD`:
 - All secrets MUST come from Vault or environment variables
 - Dev defaults allowed ONLY in `SA01_DEPLOYMENT_MODE=DEV` with warnings
 
-**Implementation**: See `aaas/config.py` function `_get_secret()`
+**Implementation**: See `platform/config.py` function `_get_secret()`
 
 ---
 
@@ -555,7 +555,7 @@ In `SA01_DEPLOYMENT_MODE=PROD`:
 |----------|----------------------|--------|----------|
 | **Deployment Mode** | `SA01_DEPLOYMENT_MODE` | `DEV` / `PROD` | Controls fail-fast behavior, localhost fallbacks |
 | **Software Mode** | `SOMASTACK_SOFTWARE_MODE` | `StandAlone` / `SomaStackClusterMode` | Service coupling and dependencies |
-| **AAAS Mode** | `SOMA_AAAS_MODE` | `true` / `false` | In-process imports vs HTTP calls |
+| **Soma Platform Mode** | `SOMA_AAAS_MODE` | `true` / `false` | In-process imports vs HTTP calls |
 | **Target Platform** | `SA01_DEPLOYMENT_TARGET` | `LOCAL`, `FARGATE`, `EKS`, `ECS_EC2`, `EC2`, `APP_RUNNER` | Infrastructure target |
 | **Chat Provider** | `SA01_CHAT_PROVIDER` | `openrouter` (code) / `openai` / `anthropic` | Default chat_model_provider |
 | **Default Model** | `SA01_CHAT_MODEL` | `openai/gpt-4.1` / `gpt-4o` / etc. | Default chat_model_name |

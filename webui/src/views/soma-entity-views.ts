@@ -63,7 +63,7 @@ export class SomaUsersView extends BaseEntityView {
       <main class="main">
         <entity-manager
           entity="user"
-          api-base="/api/v2/aaas/admin"
+          api-base="/api/v2/platform/admin"
           .permissions=${this.permissions}
         ></entity-manager>
       </main>
@@ -81,7 +81,7 @@ export class SomaAgentsView extends BaseEntityView {
       <main class="main">
         <entity-manager
           entity="agent"
-          api-base="/api/v2/aaas/admin"
+          api-base="/api/v2/platform/admin"
           .permissions=${this.permissions}
         ></entity-manager>
       </main>

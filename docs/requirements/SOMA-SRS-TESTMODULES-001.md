@@ -61,14 +61,14 @@
 
 ### 1.1 Purpose
 
-This document specifies the module-based test suite design for the SomaAgent01 system. It defines test coverage requirements across Unit, AAAS Direct, and Integration test categories for each core module, following the 12-Phase Chat Flow architecture.
+This document specifies the module-based test suite design for the SomaAgent01 system. It defines test coverage requirements across Unit, Soma Platform Direct, and Integration test categories for each core module, following the 12-Phase Chat Flow architecture.
 
 ### 1.2 Scope
 
 **Included:**
 - Test suite organization by module (AgentIQ, Context Builder, Chat Orchestrator, Budget System, Feature Flags, Model Router, Multimodal, Tool System, SomaBrain Client, Billing, Permission Matrix)
 - Test execution commands and environment requirements
-- Coverage requirements for Unit, AAAS Direct, and Integration test types
+- Coverage requirements for Unit, Soma Platform Direct, and Integration test types
 
 **Excluded:**
 - E2E HTTP endpoint tests (covered in SRS-TEST-WORKBENCH)
@@ -80,10 +80,10 @@ This document specifies the module-based test suite design for the SomaAgent01 s
 | Term | Definition |
 |------|------------|
 | **Unit Test** | Pure logic verification with no external dependencies |
-| **AAAS Direct Test** | Test executed against real infrastructure (Postgres, Redis, Milvus) |
+| **Soma Platform Direct Test** | Test executed against real infrastructure (Postgres, Redis, Milvus) |
 | **Integration Test** | Cross-module verification requiring multiple components |
 | **12-Phase Chat Flow** | The canonical message processing pipeline from tenant resolution through response delivery |
-| **AAAS** | Autonomous Adaptive Agent Stack |
+| **Soma Platform** | Autonomous Adaptive Agent Stack |
 
 ### 1.4 References
 
@@ -100,14 +100,14 @@ This document specifies the module-based test suite design for the SomaAgent01 s
 
 ### 2.1 Product Perspective
 
-The test suite is an integral part of the SomaAgent01 development lifecycle. Tests are organized by module and test type, with AAAS Direct tests requiring the AAAS infrastructure stack defined in SRS-SAAS-INFRASTRUCTURE. The test hierarchy follows: Unit (no infra) -> AAAS Direct (real infra) -> Integration (cross-module).
+The test suite is an integral part of the SomaAgent01 development lifecycle. Tests are organized by module and test type, with Soma Platform Direct tests requiring the Soma Platform infrastructure stack defined in SRS-SAAS-INFRASTRUCTURE. The test hierarchy follows: Unit (no infra) -> Soma Platform Direct (real infra) -> Integration (cross-module).
 
 ### 2.2 Product Functions
 
 | ID | Function | Description |
 |----|----------|-------------|
 | FUNC-001 | Unit Test Execution | Run pure logic tests without external services |
-| FUNC-002 | AAAS Direct Test Execution | Run tests against real Postgres, Redis, Milvus, and SpiceDB |
+| FUNC-002 | Soma Platform Direct Test Execution | Run tests against real Postgres, Redis, Milvus, and SpiceDB |
 | FUNC-003 | Integration Test Execution | Run cross-module verification tests |
 | FUNC-004 | Test Discovery | Pytest-based automatic test discovery per module directory |
 | FUNC-005 | Coverage Reporting | Generate coverage reports for each test category |
@@ -117,14 +117,14 @@ The test suite is an integral part of the SomaAgent01 development lifecycle. Tes
 | User Type | Role | Technical Level | Access |
 |-----------|------|-----------------|--------|
 | Backend Developer | Write and run unit tests | Intermediate | Unit test directories |
-| QA Engineer | Execute AAAS Direct and integration tests | Advanced | Full test suite |
+| QA Engineer | Execute Soma Platform Direct and integration tests | Advanced | Full test suite |
 | CI/CD Pipeline | Automated test execution | Automated | All test commands |
 
 ### 2.4 Constraints
 
 | ID | Constraint | Description |
 |----|------------|-------------|
-| CON-001 | AAAS Direct Requires Infra | AAAS Direct tests require `SA01_INFRA_AVAILABLE=1` and running Docker Compose stack |
+| CON-001 | Soma Platform Direct Requires Infra | Soma Platform Direct tests require `SA01_INFRA_AVAILABLE=1` and running Docker Compose stack |
 | CON-002 | Pytest Only | All tests must be compatible with pytest framework |
 | CON-003 | No Hardcoded Values | Tests must use Django settings or UUID isolation (VIBE Rule 91) |
 
@@ -132,7 +132,7 @@ The test suite is an integral part of the SomaAgent01 development lifecycle. Tes
 
 | ID | Assumption / Dependency | Impact if Invalid |
 |----|------------------------|-------------------|
-| AD-001 | Docker Compose stack defined in `infra/aaas/docker-compose.yml` is available | AAAS Direct tests cannot execute |
+| AD-001 | Docker Compose stack defined in `infra/platform/docker-compose.yml` is available | Soma Platform Direct tests cannot execute |
 | AD-002 | Pytest and pytest-django are installed in the virtual environment | Test execution fails |
 | AD-003 | Django settings module is set for each test category | Database-backed tests fail |
 
@@ -149,8 +149,8 @@ The test suite is an integral part of the SomaAgent01 development lifecycle. Tes
 | REQ-001 | The AgentIQ module shall have unit tests verifying autonomy level derivation from `capsule.body.persona.knobs.autonomy_level`. | Must | Test | Draft |
 | REQ-002 | The AgentIQ module shall have unit tests verifying intelligence level affects tool permissions. | Must | Test | Draft |
 | REQ-003 | The AgentIQ module shall have unit tests verifying budget ratios (tokens, tools, images) from knobs. | Must | Test | Draft |
-| REQ-004 | The AgentIQ module shall have AAAS Direct tests verifying UnifiedGate permission checks against real SpiceDB. | Must | Test | Draft |
-| REQ-005 | The AgentIQ module shall have AAAS Direct tests verifying governor denies actions when budget is exhausted. | Must | Test | Draft |
+| REQ-004 | The AgentIQ module shall have Soma Platform Direct tests verifying UnifiedGate permission checks against real SpiceDB. | Must | Test | Draft |
+| REQ-005 | The AgentIQ module shall have Soma Platform Direct tests verifying governor denies actions when budget is exhausted. | Must | Test | Draft |
 
 **Rationale:** AgentIQ is the governance and security layer; comprehensive testing is critical.
 
@@ -161,26 +161,26 @@ The test suite is an integral part of the SomaAgent01 development lifecycle. Tes
 | REQ-006 | The Context Builder module shall have unit tests verifying default lane allocation percentages (system=15%, history=30%, memory=25%, tools=20%, buffer=10%). | Must | Test | Draft |
 | REQ-007 | The Context Builder module shall have unit tests verifying total tokens do not exceed `model.context_window`. | Must | Test | Draft |
 | REQ-008 | The Context Builder module shall have unit tests verifying `capsule.body.learned.lane_preferences` override defaults. | Must | Test | Draft |
-| REQ-009 | The Context Builder module shall have AAAS Direct tests verifying memory recall populates the memory lane via SomaBrain. | Must | Test | Draft |
-| REQ-010 | The Context Builder module shall have AAAS Direct tests verifying available tools populate the tools lane. | Must | Test | Draft |
-| REQ-011 | The Context Builder module shall have AAAS Direct tests verifying history lane truncates oldest messages when over limit. | Must | Test | Draft |
+| REQ-009 | The Context Builder module shall have Soma Platform Direct tests verifying memory recall populates the memory lane via SomaBrain. | Must | Test | Draft |
+| REQ-010 | The Context Builder module shall have Soma Platform Direct tests verifying available tools populate the tools lane. | Must | Test | Draft |
+| REQ-011 | The Context Builder module shall have Soma Platform Direct tests verifying history lane truncates oldest messages when over limit. | Must | Test | Draft |
 
 #### 3.1.3 Chat Orchestrator (12-Phase Flow)
 
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
-| REQ-012 | The Chat Orchestrator shall have AAAS Direct tests for Phase 1: tenant resolution from token. | Must | Test | Draft |
-| REQ-013 | The Chat Orchestrator shall have AAAS Direct tests for Phase 2: capsule loaded from database. | Must | Test | Draft |
-| REQ-014 | The Chat Orchestrator shall have AAAS Direct tests for Phase 3: budget checked before processing. | Must | Test | Draft |
-| REQ-015 | The Chat Orchestrator shall have AAAS Direct tests for Phase 4: AgentIQ derives settings from knobs. | Must | Test | Draft |
-| REQ-016 | The Chat Orchestrator shall have AAAS Direct tests for Phase 5: context assembled from lanes. | Must | Test | Draft |
-| REQ-017 | The Chat Orchestrator shall have AAAS Direct tests for Phase 6: model selected based on task complexity. | Must | Test | Draft |
-| REQ-018 | The Chat Orchestrator shall have AAAS Direct tests for Phase 7: LLM called with built context. | Must | Test | Draft |
-| REQ-019 | The Chat Orchestrator shall have AAAS Direct tests for Phase 8: tool executed if requested. | Must | Test | Draft |
-| REQ-020 | The Chat Orchestrator shall have AAAS Direct tests for Phase 9: image and audio processed. | Must | Test | Draft |
-| REQ-021 | The Chat Orchestrator shall have AAAS Direct tests for Phase 10: SomaBrain memorize called. | Must | Test | Draft |
-| REQ-022 | The Chat Orchestrator shall have AAAS Direct tests for Phase 11: billing event emitted. | Must | Test | Draft |
-| REQ-023 | The Chat Orchestrator shall have AAAS Direct tests for Phase 12: response streamed to client. | Must | Test | Draft |
+| REQ-012 | The Chat Orchestrator shall have Soma Platform Direct tests for Phase 1: tenant resolution from token. | Must | Test | Draft |
+| REQ-013 | The Chat Orchestrator shall have Soma Platform Direct tests for Phase 2: capsule loaded from database. | Must | Test | Draft |
+| REQ-014 | The Chat Orchestrator shall have Soma Platform Direct tests for Phase 3: budget checked before processing. | Must | Test | Draft |
+| REQ-015 | The Chat Orchestrator shall have Soma Platform Direct tests for Phase 4: AgentIQ derives settings from knobs. | Must | Test | Draft |
+| REQ-016 | The Chat Orchestrator shall have Soma Platform Direct tests for Phase 5: context assembled from lanes. | Must | Test | Draft |
+| REQ-017 | The Chat Orchestrator shall have Soma Platform Direct tests for Phase 6: model selected based on task complexity. | Must | Test | Draft |
+| REQ-018 | The Chat Orchestrator shall have Soma Platform Direct tests for Phase 7: LLM called with built context. | Must | Test | Draft |
+| REQ-019 | The Chat Orchestrator shall have Soma Platform Direct tests for Phase 8: tool executed if requested. | Must | Test | Draft |
+| REQ-020 | The Chat Orchestrator shall have Soma Platform Direct tests for Phase 9: image and audio processed. | Must | Test | Draft |
+| REQ-021 | The Chat Orchestrator shall have Soma Platform Direct tests for Phase 10: SomaBrain memorize called. | Must | Test | Draft |
+| REQ-022 | The Chat Orchestrator shall have Soma Platform Direct tests for Phase 11: billing event emitted. | Must | Test | Draft |
+| REQ-023 | The Chat Orchestrator shall have Soma Platform Direct tests for Phase 12: response streamed to client. | Must | Test | Draft |
 
 **Rationale:** The 12-Phase Flow is the core business logic of the system.
 
@@ -193,7 +193,7 @@ The test suite is an integral part of the SomaAgent01 development lifecycle. Tes
 | REQ-026 | The Budget System shall have unit tests verifying budget available returns true when under limit. | Must | Test | Draft |
 | REQ-027 | The Budget System shall have unit tests verifying budget available returns false when exceeded. | Must | Test | Draft |
 | REQ-028 | The Budget System shall have unit tests verifying remaining budget calculation is accurate. | Must | Test | Draft |
-| REQ-029 | The Budget System shall have AAAS Direct tests verifying budget enforcement against real Redis. | Must | Test | Draft |
+| REQ-029 | The Budget System shall have Soma Platform Direct tests verifying budget enforcement against real Redis. | Must | Test | Draft |
 
 #### 3.1.5 Feature Flags
 
@@ -203,7 +203,7 @@ The test suite is an integral part of the SomaAgent01 development lifecycle. Tes
 | REQ-031 | The Feature Flags module shall have unit tests verifying high-tier features are disabled for default tenants. | Must | Test | Draft |
 | REQ-032 | The Feature Flags module shall have unit tests verifying Redis override enables features. | Must | Test | Draft |
 | REQ-033 | The Feature Flags module shall have unit tests verifying dependency chain enforcement. | Must | Test | Draft |
-| REQ-034 | The Feature Flags module shall have AAAS Direct tests verifying feature state against real Redis. | Must | Test | Draft |
+| REQ-034 | The Feature Flags module shall have Soma Platform Direct tests verifying feature state against real Redis. | Must | Test | Draft |
 
 #### 3.1.6 Model Router
 
@@ -212,16 +212,16 @@ The test suite is an integral part of the SomaAgent01 development lifecycle. Tes
 | REQ-035 | The Model Router shall have unit tests verifying task complexity classification (simple, moderate, complex). | Must | Test | Draft |
 | REQ-036 | The Model Router shall have unit tests verifying fallback chain order: Primary to Secondary to Tertiary. | Must | Test | Draft |
 | REQ-037 | The Model Router shall have unit tests verifying selected model supports required capabilities (vision, tools). | Must | Test | Draft |
-| REQ-038 | The Model Router shall have AAAS Direct tests verifying model configuration loads from real database. | Must | Test | Draft |
-| REQ-039 | The Model Router shall have AAAS Direct tests verifying circuit breaker triggers on model failure. | Must | Test | Draft |
+| REQ-038 | The Model Router shall have Soma Platform Direct tests verifying model configuration loads from real database. | Must | Test | Draft |
+| REQ-039 | The Model Router shall have Soma Platform Direct tests verifying circuit breaker triggers on model failure. | Must | Test | Draft |
 
 #### 3.1.7 Multimodal
 
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
-| REQ-040 | The Multimodal module shall have AAAS Direct tests verifying image generation checks budget first. | Must | Test | Draft |
-| REQ-041 | The Multimodal module shall have AAAS Direct tests verifying vision tasks route to vision-capable models. | Must | Test | Draft |
-| REQ-042 | The Multimodal module shall have AAAS Direct tests verifying text-to-speech requires `voice_synthesis` feature enabled. | Must | Test | Draft |
+| REQ-040 | The Multimodal module shall have Soma Platform Direct tests verifying image generation checks budget first. | Must | Test | Draft |
+| REQ-041 | The Multimodal module shall have Soma Platform Direct tests verifying vision tasks route to vision-capable models. | Must | Test | Draft |
+| REQ-042 | The Multimodal module shall have Soma Platform Direct tests verifying text-to-speech requires `voice_synthesis` feature enabled. | Must | Test | Draft |
 
 #### 3.1.8 Tool System
 
@@ -229,25 +229,25 @@ The test suite is an integral part of the SomaAgent01 development lifecycle. Tes
 |----|-------------|----------|--------------|--------|
 | REQ-043 | The Tool System shall have unit tests verifying all registered tools are discoverable. | Must | Test | Draft |
 | REQ-044 | The Tool System shall have unit tests verifying tool parameters are validated against schema. | Must | Test | Draft |
-| REQ-045 | The Tool System shall have AAAS Direct tests verifying SpiceDB permission check before execution. | Must | Test | Draft |
-| REQ-046 | The Tool System shall have AAAS Direct tests verifying tool execution is logged to AuditLog. | Must | Test | Draft |
-| REQ-047 | The Tool System shall have AAAS Direct tests verifying tool calls increment the usage counter. | Must | Test | Draft |
+| REQ-045 | The Tool System shall have Soma Platform Direct tests verifying SpiceDB permission check before execution. | Must | Test | Draft |
+| REQ-046 | The Tool System shall have Soma Platform Direct tests verifying tool execution is logged to AuditLog. | Must | Test | Draft |
+| REQ-047 | The Tool System shall have Soma Platform Direct tests verifying tool calls increment the usage counter. | Must | Test | Draft |
 
 #### 3.1.9 SomaBrain Client
 
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
-| REQ-048 | The SomaBrain Client shall have AAAS Direct tests verifying direct import mode (not HTTP) in AAAS context. | Must | Test | Draft |
-| REQ-049 | The SomaBrain Client shall have AAAS Direct tests verifying `recall()` returns semantic memories. | Must | Test | Draft |
-| REQ-050 | The SomaBrain Client shall have AAAS Direct tests verifying `memorize()` persists to vector store. | Must | Test | Draft |
-| REQ-051 | The SomaBrain Client shall have AAAS Direct tests verifying `learn()` updates `capsule.body.learned`. | Must | Test | Draft |
+| REQ-048 | The SomaBrain Client shall have Soma Platform Direct tests verifying direct import mode (not HTTP) in Soma Platform context. | Must | Test | Draft |
+| REQ-049 | The SomaBrain Client shall have Soma Platform Direct tests verifying `recall()` returns semantic memories. | Must | Test | Draft |
+| REQ-050 | The SomaBrain Client shall have Soma Platform Direct tests verifying `memorize()` persists to vector store. | Must | Test | Draft |
+| REQ-051 | The SomaBrain Client shall have Soma Platform Direct tests verifying `learn()` updates `capsule.body.learned`. | Must | Test | Draft |
 
 #### 3.1.10 Budget & Usage
 
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
-| REQ-052 | The budget module shall have AAAS Direct tests verifying usage is recorded against tenant counters after requests. | Must | Test | Draft |
-| REQ-053 | The budget module shall have AAAS Direct tests verifying the tenant plan tier resolves from the local `Tenant.tier` relation. | Must | Test | Draft |
+| REQ-052 | The budget module shall have Soma Platform Direct tests verifying usage is recorded against tenant counters after requests. | Must | Test | Draft |
+| REQ-053 | The budget module shall have Soma Platform Direct tests verifying the tenant plan tier resolves from the local `Tenant.tier` relation. | Must | Test | Draft |
 
 #### 3.1.11 Permission Matrix
 
@@ -255,7 +255,7 @@ The test suite is an integral part of the SomaAgent01 development lifecycle. Tes
 |----|-------------|----------|--------------|--------|
 | REQ-054 | The Permission Matrix shall have unit tests verifying role permissions inherit correctly. | Must | Test | Draft |
 | REQ-055 | The Permission Matrix shall have unit tests verifying explicit deny takes precedence over allow. | Must | Test | Draft |
-| REQ-056 | The Permission Matrix shall have AAAS Direct tests verifying SpiceDB `check_permission` returns correct results. | Must | Test | Draft |
+| REQ-056 | The Permission Matrix shall have Soma Platform Direct tests verifying SpiceDB `check_permission` returns correct results. | Must | Test | Draft |
 
 ---
 
@@ -266,14 +266,14 @@ The test suite is an integral part of the SomaAgent01 development lifecycle. Tes
 | ID | Requirement | Target | Verification |
 |----|-------------|--------|--------------|
 | NFR-PERF-001 | Unit tests shall complete within 30 seconds for the full suite. | 30s | Test |
-| NFR-PERF-002 | AAAS Direct tests shall complete within 5 minutes for the full suite. | 300s | Test |
+| NFR-PERF-002 | Soma Platform Direct tests shall complete within 5 minutes for the full suite. | 300s | Test |
 
 #### 3.2.2 Reliability
 
 | ID | Requirement | Target | Verification |
 |----|-------------|--------|--------------|
 | NFR-REL-001 | Tests shall use unique test data (UUID isolation) to prevent cross-test contamination. | 100% | Inspection |
-| NFR-REL-002 | AAAS Direct tests shall skip gracefully when infrastructure is unavailable. | 100% | Test |
+| NFR-REL-002 | Soma Platform Direct tests shall skip gracefully when infrastructure is unavailable. | 100% | Test |
 
 #### 3.2.3 Maintainability
 
@@ -288,7 +288,7 @@ The test suite is an integral part of the SomaAgent01 development lifecycle. Tes
 
 #### 3.3.1 Software Interfaces
 
-The test suite interfaces with pytest for execution and the following real services during AAAS Direct tests:
+The test suite interfaces with pytest for execution and the following real services during Soma Platform Direct tests:
 
 | Interface | Protocol | Format | Authentication |
 |-----------|----------|--------|----------------|
@@ -304,7 +304,7 @@ The test suite interfaces with pytest for execution and the following real servi
 | ID | Constraint | Source |
 |----|------------|--------|
 | DC-001 | All tests must use Django settings for configuration values (VIBE Rule 91). | VIBE Rule 91 |
-| DC-002 | AAAS Direct tests must be marked with `@pytest.mark.aaas`. | Test Convention |
+| DC-002 | Soma Platform Direct tests must be marked with `@pytest.mark.platform`. | Test Convention |
 | DC-003 | Unit tests must not require any running services. | Test Pyramid |
 
 ---
@@ -346,14 +346,14 @@ The test suite interfaces with pytest for execution and the following real servi
 | REQ ID | Test Case ID | Test Method | Expected Result |
 |--------|--------------|-------------|-----------------|
 | REQ-001 | TC-AGENTIQ-001 | Unit test | Autonomy derived correctly from knobs |
-| REQ-004 | TC-AGENTIQ-002 | AAAS Direct | UnifiedGate returns correct permission against SpiceDB |
+| REQ-004 | TC-AGENTIQ-002 | Soma Platform Direct | UnifiedGate returns correct permission against SpiceDB |
 | REQ-006 | TC-CONTEXT-001 | Unit test | Lane percentages match specification |
-| REQ-012 | TC-ORCH-001 | AAAS Direct | Tenant resolved from JWT token |
+| REQ-012 | TC-ORCH-001 | Soma Platform Direct | Tenant resolved from JWT token |
 | REQ-024 | TC-BUDGET-001 | Unit test | Usage counter initialized to zero |
 | REQ-035 | TC-ROUTER-001 | Unit test | Task classified into correct complexity bucket |
 | REQ-043 | TC-TOOLS-001 | Unit test | All tools discoverable via registry |
-| REQ-048 | TC-BRAIN-001 | AAAS Direct | Client mode equals "direct" in AAAS context |
-| REQ-052 | TC-BILLING-001 | AAAS Direct | Usage counter incremented by exact amount |
+| REQ-048 | TC-BRAIN-001 | Soma Platform Direct | Client mode equals "direct" in Soma Platform context |
+| REQ-052 | TC-BILLING-001 | Soma Platform Direct | Usage counter incremented by exact amount |
 | REQ-054 | TC-PERM-001 | Unit test | Child role inherits parent permissions |
 
 ---

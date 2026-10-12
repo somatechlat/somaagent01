@@ -64,7 +64,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt || pip install -e ".[aaas]" || pip install -e .
+          pip install -r requirements.txt || pip install -e ".[platform]" || pip install -e .
           pip install pytest pytest-asyncio pytest-django
       - name: Run unit tests
         env:

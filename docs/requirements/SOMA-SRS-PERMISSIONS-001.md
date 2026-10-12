@@ -81,7 +81,7 @@ This document specifies the role-based access control (RBAC), permission matrix,
 
 | Term | Definition |
 |------|------------|
-| AAAS Admin | Platform super administrator with full system access |
+| Soma Platform Admin | Platform super administrator with full system access |
 | Agent Owner | User who owns and configures a specific agent |
 | Capsule | Agent identity unit containing configuration and capabilities |
 | DEV Mode | Developer debugging mode for agent inspection |
@@ -130,7 +130,7 @@ The permission matrix subsystem sits between the authentication layer (Keycloak)
 
 | User Type | Role | Technical Level | Access |
 |-----------|------|-----------------|--------|
-| AAAS Admin | Platform administrator | High | All tenants, roles, permissions, billing |
+| Soma Platform Admin | Platform administrator | High | All tenants, roles, permissions, billing |
 | Tenant SysAdmin | Tenant super administrator | Medium | Single tenant, full control |
 | Tenant Admin | Tenant administrator | Medium | Single tenant, users and agents, no billing |
 | Agent Owner | Agent owner | Medium | Agent configuration, users, chat |
@@ -143,8 +143,8 @@ The permission matrix subsystem sits between the authentication layer (Keycloak)
 
 | ID | Constraint | Description |
 |----|------------|-------------|
-| CON-001 | Role Immutability | System roles (AAAS SysAdmin, Tenant SysAdmin, etc.) shall not be modifiable or deletable |
-| CON-002 | Last SysAdmin Protection | The system shall prevent removal of the last AAAS SysAdmin |
+| CON-001 | Role Immutability | System roles (Soma Platform SysAdmin, Tenant SysAdmin, etc.) shall not be modifiable or deletable |
+| CON-002 | Last SysAdmin Protection | The system shall prevent removal of the last Soma Platform SysAdmin |
 | CON-003 | Tier Ceiling | A tenant cannot exceed the maximum limits defined by its subscription tier |
 | CON-004 | Cross-Tenant Isolation | A user with a role in Tenant A shall have no permissions in Tenant B |
 
@@ -172,7 +172,7 @@ The permission matrix subsystem sits between the authentication layer (Keycloak)
 | REQ-PM-003 | The system shall gate features by subscription tier: Free, Starter, Team, Enterprise. | Must | Test | Approved |
 | REQ-PM-004 | The system shall enforce quota limits (agents, users, tokens, storage) based on tier. | Must | Test | Approved |
 | REQ-PM-005 | The system shall scope roles such that a role is only valid within the tenant or agent for which it was created. | Must | Test | Approved |
-| REQ-PM-006 | The system shall allow only AAAS Admin users to impersonate other users. | Must | Test | Approved |
+| REQ-PM-006 | The system shall allow only Soma Platform Admin users to impersonate other users. | Must | Test | Approved |
 
 **Rationale:** Hierarchical permission model ensures least privilege while enabling administrative override where necessary.
 
@@ -201,7 +201,7 @@ The permission matrix subsystem sits between the authentication layer (Keycloak)
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
 | REQ-PM-017 | The system shall reject unauthenticated requests with HTTP 401. | Must | Test | Approved |
-| REQ-PM-018 | The system shall allow AAAS Admin requests to bypass tenant and tier checks (god mode). | Must | Test | Approved |
+| REQ-PM-018 | The system shall allow Soma Platform Admin requests to bypass tenant and tier checks (god mode). | Must | Test | Approved |
 | REQ-PM-019 | The system shall reject requests for suspended tenants with HTTP 403. | Must | Test | Approved |
 | REQ-PM-020 | The system shall reject requests for features not allowed by the tenant's tier with HTTP 403. | Must | Test | Approved |
 | REQ-PM-021 | The system shall check SpiceDB for explicit permission grants after authentication and tier validation. | Must | Test | Approved |
@@ -211,7 +211,7 @@ The permission matrix subsystem sits between the authentication layer (Keycloak)
 
 The system shall enforce the following access levels for user journeys:
 
-| Journey | AAAS Admin | Tenant SysAdmin | Tenant Admin | Agent Owner | Developer | Trainer | User | Viewer |
+| Journey | Soma Platform Admin | Tenant SysAdmin | Tenant Admin | Agent Owner | Developer | Trainer | User | Viewer |
 |---------|------------|-----------------|--------------|-------------|-----------|---------|------|--------|
 | UC-01 Chat with Agent | Full | Full | Full | Full | Full | Full | Full | View |
 | UC-02 Create Conversation | Full | Full | Full | Full | Full | Full | Full | None |
@@ -235,7 +235,7 @@ The system shall enforce the following access levels for user journeys:
 
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
-| REQ-PM-023 | The system shall restrict Platform Dashboard (`/aaas`) and Tenant List (`/aaas/tenants`) to AAAS Admin. | Must | Test | Approved |
+| REQ-PM-023 | The system shall restrict Platform Dashboard (`/platform`) and Tenant List (`/platform/tenants`) to Soma Platform Admin. | Must | Test | Approved |
 | REQ-PM-024 | The system shall restrict Tenant Dashboard (`/admin`) to Tenant SysAdmin and Tenant Admin. | Must | Test | Approved |
 | REQ-PM-025 | The system shall restrict Agent Overview (`/agent/:id`) and Agent Config (`/agent/:id/config`) to Agent Owner, Tenant Admin, and Tenant SysAdmin. | Must | Test | Approved |
 | REQ-PM-026 | The system shall restrict DEV Mode screens (`/dev/*`) to Developer and Agent Owner with DEV mode enabled. | Must | Test | Approved |
@@ -246,7 +246,7 @@ The system shall enforce the following access levels for user journeys:
 
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
-| REQ-PM-029 | The system shall restrict AAAS tenant endpoints (`/api/v2/aaas/tenants`) to AAAS Admin. | Must | Test | Approved |
+| REQ-PM-029 | The system shall restrict Soma Platform tenant endpoints (`/api/v2/platform/tenants`) to Soma Platform Admin. | Must | Test | Approved |
 | REQ-PM-030 | The system shall restrict admin user endpoints (`/api/v2/admin/users`) to Tenant SysAdmin and Tenant Admin. | Must | Test | Approved |
 | REQ-PM-031 | The system shall restrict agent configuration endpoints (`/api/v2/agent/{id}/config`) to Agent Owner, Tenant Admin, and Tenant SysAdmin. | Must | Test | Approved |
 | REQ-PM-032 | The system shall restrict chat message endpoints (`/api/v2/chat/messages`) to all authenticated users except Viewer. | Must | Test | Approved |
@@ -257,12 +257,12 @@ The system shall enforce the following access levels for user journeys:
 
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
-| REQ-PM-035 | The system shall provide an API to list all roles at `/api/v2/aaas/roles`. | Must | Test | Approved |
-| REQ-PM-036 | The system shall provide an API to create, update, and delete custom roles at `/api/v2/aaas/roles`. | Must | Test | Approved |
+| REQ-PM-035 | The system shall provide an API to list all roles at `/api/v2/platform/roles`. | Must | Test | Approved |
+| REQ-PM-036 | The system shall provide an API to create, update, and delete custom roles at `/api/v2/platform/roles`. | Must | Test | Approved |
 | REQ-PM-037 | The system shall prevent deletion of a role that has assigned users. | Must | Test | Approved |
 | REQ-PM-038 | The system shall prevent modification of system roles. | Must | Test | Approved |
 | REQ-PM-039 | The system shall prevent creation of duplicate role names within the same scope. | Must | Test | Approved |
-| REQ-PM-040 | The system shall provide a permission browser API at `/api/v2/aaas/permissions`. | Must | Test | Approved |
+| REQ-PM-040 | The system shall provide a permission browser API at `/api/v2/platform/permissions`. | Must | Test | Approved |
 
 #### 3.1.9 Edge Cases
 
@@ -271,7 +271,7 @@ The system shall enforce the following access levels for user journeys:
 | REQ-PM-041 | The system shall warn and block deletion of a role that has assigned users, requiring reassignment first. | Must | Test | Approved |
 | REQ-PM-042 | The system shall reject edits to system roles with an error indicating system roles are immutable. | Must | Test | Approved |
 | REQ-PM-043 | The system shall reject duplicate role creation with an error naming the existing role. | Must | Test | Approved |
-| REQ-PM-044 | The system shall prevent removal of the last AAAS SysAdmin. | Must | Test | Approved |
+| REQ-PM-044 | The system shall prevent removal of the last Soma Platform SysAdmin. | Must | Test | Approved |
 | REQ-PM-045 | The system shall warn when reducing tier limits below current tenant usage. | Should | Test | Approved |
 
 #### 3.1.10 SpiceDB Schema Requirements
@@ -341,7 +341,7 @@ The system shall enforce the following access levels for user journeys:
 
 #### 3.3.1 User Interfaces
 
-Role administration is exposed through the AAAS admin web UI at routes `/aaas/roles/*` and `/aaas/permissions/*`.
+Role administration is exposed through the Soma Platform admin web UI at routes `/platform/roles/*` and `/platform/permissions/*`.
 
 #### 3.3.2 Software Interfaces
 
@@ -374,21 +374,21 @@ No hardware interface requirements are specified in this document.
 | REQ ID | Description | Source | Design | Implementation | Test |
 |--------|-------------|--------|--------|----------------|------|
 | REQ-PM-001 | Permission cascade | SRS-PERMISSION-MATRIX | `admin/permissions/definitions.py` | `admin/permissions/api.py`, `admin/core/permission_matrix.py` | `tests/django/test_auth_integration.py` |
-| REQ-PM-003 | Tier gating | SRS-PERMISSION-MATRIX | `admin/aaas/models/tiers.py` | `admin/aaas/models/tiers.py`, `admin/aaas/models/features.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-003 | Tier gating | SRS-PERMISSION-MATRIX | `admin/platform/models/tiers.py` | `admin/platform/models/tiers.py`, `admin/platform/models/features.py` | `tests/django/test_auth_integration.py` |
 | REQ-PM-007 | Platform permissions | SRS-PERMISSION-MATRIX | `admin/permissions/definitions.py` | `admin/permissions/definitions.py` | `tests/django/test_auth_integration.py` |
 | REQ-PM-008 | Tenant permissions | SRS-PERMISSION-MATRIX | `admin/permissions/definitions.py` | `admin/permissions/definitions.py` | `tests/django/test_auth_integration.py` |
 | REQ-PM-009 | Agent permissions | SRS-PERMISSION-MATRIX | `admin/permissions/definitions.py` | `admin/permissions/definitions.py` | `tests/django/test_auth_integration.py` |
 | REQ-PM-010 | Resource permissions | SRS-PERMISSION-MATRIX | `admin/permissions/definitions.py` | `admin/permissions/granular.py` | `tests/django/test_auth_integration.py` |
-| REQ-PM-012 | STD/RO mode availability | SRS-PERMISSION-MATRIX | `admin/aaas/models/tiers.py` | `admin/aaas/models/features.py` | `tests/django/test_auth_integration.py` |
-| REQ-PM-013 | DEV/TRN mode tier restriction | SRS-PERMISSION-MATRIX | `admin/aaas/models/tiers.py` | `admin/aaas/models/features.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-012 | STD/RO mode availability | SRS-PERMISSION-MATRIX | `admin/platform/models/tiers.py` | `admin/platform/models/features.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-013 | DEV/TRN mode tier restriction | SRS-PERMISSION-MATRIX | `admin/platform/models/tiers.py` | `admin/platform/models/features.py` | `tests/django/test_auth_integration.py` |
 | REQ-PM-017 | Unauthenticated 401 | SRS-PERMISSION-MATRIX | `admin/common/auth.py` | `admin/common/auth.py` | `tests/django/test_auth_integration.py` |
-| REQ-PM-019 | Suspended tenant 403 | SRS-PERMISSION-MATRIX | `admin/aaas/models/tenants.py` | `admin/common/auth.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-019 | Suspended tenant 403 | SRS-PERMISSION-MATRIX | `admin/platform/models/tenants.py` | `admin/common/auth.py` | `tests/django/test_auth_integration.py` |
 | REQ-PM-021 | SpiceDB permission check | SRS-PERMISSION-MATRIX | `admin/permissions/api.py` | `services/common/spicedb_client.py` | `tests/django/test_auth_integration.py` |
 | REQ-PM-022 | Quota exceeded 429 | SRS-PERMISSION-MATRIX | `admin/common/rate_limit.py` | `admin/common/rate_limit.py` | `tests/saas/test_phase1_security_regressions.py` |
 | REQ-PM-023 | Platform screen restriction | SRS-PERMISSION-MATRIX | `webui/src/guards/permission-guard.ts` | `webui/src/guards/permission-guard.ts` | E2E test |
 | REQ-PM-025 | Agent config screen restriction | SRS-PERMISSION-MATRIX | `webui/src/guards/permission-guard.ts` | `webui/src/guards/permission-guard.ts` | E2E test |
-| REQ-PM-029 | AAAS API restriction | SRS-PERMISSION-MATRIX | `admin/permissions/api.py` | `admin/permissions/api.py` | `tests/django/test_auth_integration.py` |
-| REQ-PM-030 | Admin user API restriction | SRS-PERMISSION-MATRIX | `admin/aaas/api/users.py` | `admin/aaas/api/users.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-029 | Soma Platform API restriction | SRS-PERMISSION-MATRIX | `admin/permissions/api.py` | `admin/permissions/api.py` | `tests/django/test_auth_integration.py` |
+| REQ-PM-030 | Admin user API restriction | SRS-PERMISSION-MATRIX | `admin/platform/api/users.py` | `admin/platform/api/users.py` | `tests/django/test_auth_integration.py` |
 | REQ-PM-031 | Agent config API restriction | SRS-PERMISSION-MATRIX | `admin/agents/api/agents.py` | `admin/agents/api/agents.py` | `tests/django/test_auth_integration.py` |
 | REQ-PM-035 | Role list API | SRS-PERMISSION-MATRIX | `admin/permissions/api.py` | `admin/permissions/api.py` | `tests/django/test_auth_integration.py` |
 | REQ-PM-036 | Role CRUD API | SRS-PERMISSION-MATRIX | `admin/permissions/api.py` | `admin/permissions/api.py` | `tests/django/test_auth_integration.py` |

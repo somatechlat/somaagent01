@@ -304,7 +304,7 @@ async def _decode_api_key(raw_key: str) -> TokenPayload:
     """
     from asgiref.sync import sync_to_async
 
-    from admin.aaas.models.profiles import ApiKey
+    from admin.platform.models.profiles import ApiKey
 
     @sync_to_async
     def _verify():
@@ -370,8 +370,8 @@ async def _decode_session(raw_token: str) -> TokenPayload:
     """
     from asgiref.sync import sync_to_async
 
-    from admin.aaas.models.identity import LocalIdentity
-    from admin.aaas.models.session import LocalSession
+    from admin.platform.models.identity import LocalIdentity
+    from admin.platform.models.session import LocalSession
 
     @sync_to_async
     def _resolve():

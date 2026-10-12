@@ -136,7 +136,7 @@ async def describe_workflow(request: HttpRequest, workflow_id: str) -> dict:
 
 
 # === API Keys Management ===
-# Canonical source: admin.aaas.models.profiles.ApiKey (Django ORM)
+# Canonical source: admin.platform.models.profiles.ApiKey (Django ORM)
 
 
 class KeyCreateRequest(BaseModel):
@@ -160,7 +160,7 @@ async def list_keys(request: HttpRequest) -> dict:
     await authorize(request, action="org:apikey_read", resource="keys")
     from asgiref.sync import sync_to_async
 
-    from admin.aaas.models.profiles import ApiKey
+    from admin.platform.models.profiles import ApiKey
 
     tenant_id = request.headers.get("X-Tenant-Id", "")
     keys = await sync_to_async(list)(
@@ -184,7 +184,7 @@ async def create_key(request: HttpRequest, body: KeyCreateRequest) -> dict:
 
     from asgiref.sync import sync_to_async
 
-    from admin.aaas.models.profiles import ApiKey
+    from admin.platform.models.profiles import ApiKey
     from admin.core.authz import permissions_for_roles, validate_scopes
 
     tenant_id = request.headers.get("X-Tenant-Id", "")
@@ -198,7 +198,7 @@ async def create_key(request: HttpRequest, body: KeyCreateRequest) -> dict:
 
         raise ValidationError(str(exc), field="scopes")
 
-    # Same shape as admin.aaas.api.settings.create_api_key: one format, one
+    # Same shape as admin.platform.api.settings.create_api_key: one format, one
     # prefix length. The previous version wrote a 12-character prefix into
     # ApiKey.key_prefix, which is a CharField(max_length=8).
     from admin.common.auth import API_KEY_PREFIX
@@ -225,7 +225,7 @@ async def revoke_key(request: HttpRequest, key_id: str) -> dict:
     await authorize(request, action="org:apikey_revoke", resource="keys")
     from asgiref.sync import sync_to_async
 
-    from admin.aaas.models.profiles import ApiKey
+    from admin.platform.models.profiles import ApiKey
 
     tenant_id = request.headers.get("X-Tenant-Id", "")
     updated = await sync_to_async(ApiKey.objects.filter(id=key_id, tenant_id=tenant_id).update)(

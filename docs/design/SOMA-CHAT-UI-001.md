@@ -16,7 +16,7 @@
 | Next Review | 2027-01-08 |
 | Related | `docs/design/SOMA-UI-CHAT-WORKSPACE-001.md`, `docs/design/SOMA-UI-IA-001.md` |
 | Base | Agent Zero webui structure + Soma Capsule / Memory / Tools |
-| Tokens | `--aaas-*` light/dark (`tokens.css`) |
+| Tokens | `--platform-*` light/dark (`tokens.css`) |
 
 ## Revision History
 

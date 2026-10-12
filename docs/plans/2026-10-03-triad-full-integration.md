@@ -57,10 +57,10 @@ Do not redo what is already true. Do not trust the parity docs' "EXISTS" rows �
 |---|---|
 | R-03 delete fake services | `infra/mocks/` absent |
 | R-01 one write lane on the hot path | `memory_gateway.py:29-100` SomaBrain-only; `sfm_adapter.py` deleted |
-| BrainBridge stub | `aaas/brain.py` gone |
+| BrainBridge stub | `platform/brain.py` gone |
 | `unified_urls.py` fake mounts | gone |
 | somabrain silent direct→HTTP fallback | now raises |
-| somabrain/aaas + SFM/aaas (Lago/SaaS) | deleted (uncommitted) |
+| somabrain/platform + SFM/platform (Lago/SaaS) | deleted (uncommitted) |
 | Vault secret migration | zero live secret assignments in `.env` |
 | **Tool loop IS wired** | `tool_calling.py:208` passes `tools=` into `acompletion`; results fed back |
 | **Stream deltas ARE rendered** | `saas-chat.ts:1595,2379` live `_streamContent` → `saas-message` |
@@ -125,10 +125,10 @@ Waves are barriers: Phase N+1 starts when Phase N's exit test is green.
 - `fix(config): fail closed on MinIO endpoint and absent credentials`
 
 ### Task 0.2 — Land somabrain (173 entries)
-`python3 -m compileall somabrain -q`. Slices: `refactor(brain): delete the aaas commerce surface`, `feat(brain): gRPC transport with UDS and TCP bindings`, `fix(brain): one field assembly for every store body`. Assert `git show --name-only` stays inside `somabrain/`.
+`python3 -m compileall somabrain -q`. Slices: `refactor(brain): delete the platform commerce surface`, `feat(brain): gRPC transport with UDS and TCP bindings`, `fix(brain): one field assembly for every store body`. Assert `git show --name-only` stays inside `somabrain/`.
 
 ### Task 0.3 — Land somafractalmemory (15 entries)
-Include the untracked `somafractalmemory/migrations/0006_drop_apikey_usagerecord.py`. Slices: `refactor(sfm): delete the aaas product surface`, `fix(sfm): no credential defaults in django settings`.
+Include the untracked `somafractalmemory/migrations/0006_drop_apikey_usagerecord.py`. Slices: `refactor(sfm): delete the platform product surface`, `fix(sfm): no credential defaults in django settings`.
 
 ### Task 0.4 — Exit
 
@@ -602,11 +602,11 @@ somaAgent01 already does this correctly: token is **file-only** (`services/commo
 |---|---|---|---|
 | `services/gateway/settings.py` | 78 | `manage.py:10`, Makefile | **yes** (`:141-143`, DATABASES only) |
 | `config/settings.py` | 64 | `config/asgi.py:10` | no |
-| `infra/aaas/unified_settings.py` | 32 | AAAS wsgi/asgi | no |
+| `infra/platform/unified_settings.py` | 32 | Soma Platform wsgi/asgi | no |
 
 `config/settings_registry.py` is the declared Rule-100 source of truth for topology. It is not being used as one.
 
-**Step 1.** Map every key in `config/settings.py` and `infra/aaas/unified_settings.py` onto the registry (they already exist as `BaseSettings` fields at `config/settings_registry.py:72-163`).
+**Step 1.** Map every key in `config/settings.py` and `infra/platform/unified_settings.py` onto the registry (they already exist as `BaseSettings` fields at `config/settings_registry.py:72-163`).
 **Step 2.** Make both modules delegate to `get_settings()` instead of `os.environ`.
 **Step 3.** Delete `admin/core/helpers/dotenv.py`'s runtime read/write path (`admin/core/helpers/runtime.py:86-117,266,276` call `load_dotenv(override=True)` / `save_dotenv_value`). It contradicts `settings_registry.py:35-38` ("`.env` files carry no configuration").
 **Commit:** `refactor(settings): one registry, one django settings module`
@@ -674,7 +674,7 @@ Missing (verified):
 3. Entity-level, not key-level RBAC (`ENTITY_SPECS` at `settings_v2.py:85-140`).
 4. somabrain settings endpoints are api-key-only — `brain_settings.py:31,40,67` — any token holder can flip `BrainSetting` mode.
 5. `admin/config/api.py:360` hardcodes the credential inventory `["llm_api_key", "somabrain_memory_http_token", "postgres_password"]` — derive it from Vault listing instead.
-6. `admin/aaas/api/settings.py` `create_api_key` hardcodes `scopes=[]` — populate it so keys can be narrowed.
+6. `admin/platform/api/settings.py` `create_api_key` hardcodes `scopes=[]` — populate it so keys can be narrowed.
 
 **Commit:** `feat(authz): every settings write is authorized and tenant-scoped`
 

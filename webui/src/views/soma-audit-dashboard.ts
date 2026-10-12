@@ -4,7 +4,7 @@
  *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation
- * - Uses existing /api/v2/aaas/audit endpoints
+ * - Uses existing /api/v2/platform/audit endpoints
  * - Permission-aware (audit:view)
  * - Light theme, minimal, professional
  * - Material Symbols icons
@@ -354,7 +354,7 @@ export class SomaAuditDashboard extends LitElement {
             pageSize?: number;
             page?: number;
             totalPages?: number;
-        }>(`/aaas/audit?${params}`);
+        }>(`/platform/audit?${params}`);
         this.logs = data.items || [];
         // A missing total is not zero.
         this.total = typeof data.total === 'number' ? data.total : null;
@@ -363,13 +363,13 @@ export class SomaAuditDashboard extends LitElement {
     }
 
     private async fetchStats() {
-        this.stats = await apiClient.get<AuditStats>('/aaas/audit/stats');
+        this.stats = await apiClient.get<AuditStats>('/platform/audit/stats');
     }
 
     private async fetchFilters() {
         const [actionsData, typesData] = await Promise.all([
-            apiClient.get<{ actions?: string[] }>('/aaas/audit/actions'),
-            apiClient.get<{ resource_types?: string[] }>('/aaas/audit/resource-types'),
+            apiClient.get<{ actions?: string[] }>('/platform/audit/actions'),
+            apiClient.get<{ resource_types?: string[] }>('/platform/audit/resource-types'),
         ]);
         this.actions = actionsData.actions || [];
         this.resourceTypes = typesData.resource_types || [];
@@ -381,7 +381,7 @@ export class SomaAuditDashboard extends LitElement {
         if (this.resourceFilter) params.set('resource_type', this.resourceFilter);
         if (this.searchQuery.trim()) params.set('search', this.searchQuery.trim());
 
-        window.location.href = `/api/v2/aaas/audit/export?${params}`;
+        window.location.href = `/api/v2/platform/audit/export?${params}`;
     }
 
     private getActionBadgeClass(action: string): string {

@@ -106,7 +106,7 @@ The Soma Cognitive Triad Production Readiness Program successfully brought the s
 
 | Directory | Files | Purpose |
 |-----------|-------|---------|
-| `docs/iso/` | 12 | ISO compliance (ARCH, SRS, SDP, VV, SEC, AUDIT, RISK, QMS, PROD, COMPAT, AAAS, RELEASE) |
+| `docs/iso/` | 12 | ISO compliance (ARCH, SRS, SDP, VV, SEC, AUDIT, RISK, QMS, PROD, COMPAT, Soma Platform, RELEASE) |
 | `docs/project/` | 8 | Project management (CHARTER, WBS, DELIV, MILE, COMM, CHANGE, RACI, CLOSURE) |
 | `tests/unit/` | 10 | Unit tests |
 | `tests/e2e/` | 4 | E2E tests + validation docs (pentest, DR, UAT) |

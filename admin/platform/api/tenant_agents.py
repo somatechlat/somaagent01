@@ -15,7 +15,7 @@ from django.conf import settings
 from ninja import Query, Router
 from pydantic import BaseModel
 
-from admin.aaas.models import Agent, AgentStatus, Tenant, TenantUser
+from admin.platform.models import Agent, AgentStatus, Tenant, TenantUser
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import NotFoundError, ValidationError
 from admin.common.responses import api_response, paginated_response

@@ -34,8 +34,8 @@ export class SomaAgentHeader extends LitElement {
         }
         :host {
             display: block;
-            background: var(--aaas-bg-card, #1e1e1e);
-            border-bottom: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            background: var(--platform-bg-card, #1e1e1e);
+            border-bottom: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
             padding: 12px 20px;
         }
 
@@ -55,8 +55,8 @@ export class SomaAgentHeader extends LitElement {
         .agent-avatar {
             width: 36px;
             height: 36px;
-            border-radius: var(--aaas-radius-lg, 12px);
-            background: linear-gradient(135deg, var(--aaas-accent, #e8e4dc), var(--aaas-text-muted, #999999));
+            border-radius: var(--platform-radius-lg, 12px);
+            background: linear-gradient(135deg, var(--platform-accent, #e8e4dc), var(--platform-text-muted, #999999));
             display: flex;
             align-items: center;
             justify-content: center;
@@ -73,12 +73,12 @@ export class SomaAgentHeader extends LitElement {
         .agent-name {
             font-size: 15px;
             font-weight: 600;
-            color: var(--aaas-text-primary, #ffffff);
+            color: var(--platform-text-primary, #ffffff);
         }
 
         .agent-status {
             font-size: 12px;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             display: flex;
             align-items: center;
             gap: 6px;
@@ -88,18 +88,18 @@ export class SomaAgentHeader extends LitElement {
             width: 6px;
             height: 6px;
             border-radius: 50%;
-            background: var(--aaas-success, #22c55e);
+            background: var(--platform-success, #22c55e);
         }
 
-        .status-dot.paused { background: var(--aaas-warning, #f59e0b); }
-        .status-dot.error { background: var(--aaas-danger, #ef4444); }
+        .status-dot.paused { background: var(--platform-warning, #f59e0b); }
+        .status-dot.error { background: var(--platform-danger, #ef4444); }
 
         .iq-badge {
             display: flex;
             align-items: center;
             gap: 4px;
             padding: 3px 10px;
-            border-radius: var(--aaas-radius-full, 9999px);
+            border-radius: var(--platform-radius-full, 9999px);
             font-size: 12px;
             font-weight: 600;
             background: rgba(34, 197, 94, 0.15);
@@ -138,18 +138,18 @@ export class SomaAgentHeader extends LitElement {
             align-items: center;
             gap: 6px;
             padding: 6px 14px;
-            border-radius: var(--aaas-radius-full, 9999px);
-            background: var(--aaas-bg-hover, #141414);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            color: var(--aaas-text-secondary, #a1a1a1);
+            border-radius: var(--platform-radius-full, 9999px);
+            background: var(--platform-bg-hover, #141414);
+            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
+            color: var(--platform-text-secondary, #a1a1a1);
             font-size: 13px;
             cursor: pointer;
             transition: all 150ms ease;
         }
 
         .pill-btn:hover {
-            border-color: var(--aaas-border-medium, rgba(255,255,255,0.1));
-            color: var(--aaas-text-primary, #ffffff);
+            border-color: var(--platform-border-medium, rgba(255,255,255,0.1));
+            color: var(--platform-text-primary, #ffffff);
         }
 
         .pill-btn .chevron {
@@ -166,12 +166,12 @@ export class SomaAgentHeader extends LitElement {
             top: calc(100% + 6px);
             right: 0;
             min-width: 220px;
-            background: var(--aaas-bg-card, #1e1e1e);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            border-radius: var(--aaas-radius-lg, 12px);
+            background: var(--platform-bg-card, #1e1e1e);
+            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
+            border-radius: var(--platform-radius-lg, 12px);
             padding: 6px;
             z-index: 200;
-            box-shadow: var(--aaas-shadow-lg, 0 8px 24px rgba(0,0,0,0.6));
+            box-shadow: var(--platform-shadow-lg, 0 8px 24px rgba(0,0,0,0.6));
         }
 
         .dropdown-item {
@@ -179,21 +179,21 @@ export class SomaAgentHeader extends LitElement {
             align-items: center;
             gap: 10px;
             padding: 8px 12px;
-            border-radius: var(--aaas-radius-md, 8px);
+            border-radius: var(--platform-radius-md, 8px);
             cursor: pointer;
             font-size: 13px;
-            color: var(--aaas-text-secondary, #a1a1a1);
+            color: var(--platform-text-secondary, #a1a1a1);
             transition: all 100ms ease;
         }
 
         .dropdown-item:hover {
-            background: var(--aaas-bg-hover, #141414);
-            color: var(--aaas-text-primary, #ffffff);
+            background: var(--platform-bg-hover, #141414);
+            color: var(--platform-text-primary, #ffffff);
         }
 
         .dropdown-item.active {
-            background: var(--aaas-bg-active, #1a1a1a);
-            color: var(--aaas-accent, #e8e4dc);
+            background: var(--platform-bg-active, #1a1a1a);
+            color: var(--platform-accent, #e8e4dc);
         }
 
         .dropdown-item .item-icon {
@@ -202,7 +202,7 @@ export class SomaAgentHeader extends LitElement {
 
         .dropdown-divider {
             height: 1px;
-            background: var(--aaas-border-light, rgba(255,255,255,0.06));
+            background: var(--platform-border-light, rgba(255,255,255,0.06));
             margin: 4px 0;
         }
 
@@ -212,18 +212,18 @@ export class SomaAgentHeader extends LitElement {
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: var(--aaas-radius-md, 8px);
+            border-radius: var(--platform-radius-md, 8px);
             background: transparent;
             border: none;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             cursor: pointer;
             font-size: 16px;
             transition: all 150ms ease;
         }
 
         .icon-btn:hover {
-            background: var(--aaas-bg-hover, #141414);
-            color: var(--aaas-text-secondary, #a1a1a1);
+            background: var(--platform-bg-hover, #141414);
+            color: var(--platform-text-secondary, #a1a1a1);
         }
     `;
 
@@ -312,7 +312,7 @@ export class SomaAgentHeader extends LitElement {
                                     >
                                         <span class="item-icon material-symbols-outlined">bolt</span>
                                         <span>${p.name}</span>
-                                        <span style="margin-left:auto;color:var(--aaas-text-muted);font-size:11px">${p.model}</span>
+                                        <span style="margin-left:auto;color:var(--platform-text-muted);font-size:11px">${p.model}</span>
                                     </div>
                                 `)}
                             </div>

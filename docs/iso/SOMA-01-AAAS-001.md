@@ -1,11 +1,11 @@
-# SOMA AAAS — AGENT AS A SERVICE DEPLOYMENT SPECIFICATION
+# SOMA Soma Platform — AGENT AS A SERVICE DEPLOYMENT SPECIFICATION
 
 ## Document Control
 
 | Field | Value |
 |---|---|
-| Document Title | Soma AAAS Deployment Specification |
-| Document Identifier | SOMA-01-AAAS-001 |
+| Document Title | Soma Soma Platform Deployment Specification |
+| Document Identifier | SOMA-01-Soma Platform-001 |
 | Version | 1.0.0 |
 | Date | 2026-06-15 |
 | Status | Draft |
@@ -21,15 +21,15 @@
 |---------|------|--------|-------------|
 
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control. Prior status value `Active` is outside the closed set `Draft \| In Review \| Approved \| Obsolete`; normalised to `Draft` — no approver has signed this document. |
-| 1.0.0 | 2026-06-15 | SomaTech Engineering | Initial AAAS deployment specification |
+| 1.0.0 | 2026-06-15 | SomaTech Engineering | Initial Soma Platform deployment specification |
 
 ---
 
 ## 1. Purpose
 
-This document specifies the **Agent As A Service (AAAS) deployment model** — a single-click deployment of the complete Soma Cognitive Triad as an integrated, production-ready AI agent platform.
+This document specifies the **Agent As A Service (Soma Platform) deployment model** — a single-click deployment of the complete Soma Cognitive Triad as an integrated, production-ready AI agent platform.
 
-AAAS is the mechanism by which a user deploys **SomaAgent01 + SomaBrain + SomaFractalMemory** as a single unit, selecting versions from the compatibility matrix.
+Soma Platform is the mechanism by which a user deploys **SomaAgent01 + SomaBrain + SomaFractalMemory** as a single unit, selecting versions from the compatibility matrix.
 
 ---
 
@@ -39,7 +39,7 @@ AAAS is the mechanism by which a user deploys **SomaAgent01 + SomaBrain + SomaFr
 ┌─────────────────────────────────────────────────────────────┐
 │                    DEPLOYMENT MODES                         │
 ├──────────────────────┬──────────────────────────────────────┤
-│     STANDALONE       │              AAAS                    │
+│     STANDALONE       │              Soma Platform                    │
 │                      │                                      │
 │  Single component    │  All three as one unit               │
 │  Own infrastructure  │  Shared infrastructure               │
@@ -54,9 +54,9 @@ AAAS is the mechanism by which a user deploys **SomaAgent01 + SomaBrain + SomaFr
 
 ---
 
-## 3. AAAS Architecture
+## 3. Soma Platform Architecture
 
-### 3.1 System Topology (AAAS Mode)
+### 3.1 System Topology (Soma Platform Mode)
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -114,7 +114,7 @@ AAAS is the mechanism by which a user deploys **SomaAgent01 + SomaBrain + SomaFr
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.2 Data Flow: Chat Message (AAAS Mode)
+### 3.2 Data Flow: Chat Message (Soma Platform Mode)
 
 ```
 1. User sends message via WebSocket (ws://host:63900/ws/v2/chat/{agent_id})
@@ -146,11 +146,11 @@ AAAS is the mechanism by which a user deploys **SomaAgent01 + SomaBrain + SomaFr
 
 ### 4.1 User-Facing Version Selector
 
-When deploying AAAS, the user selects versions from the compatibility matrix:
+When deploying Soma Platform, the user selects versions from the compatibility matrix:
 
 ```
 ╔══════════════════════════════════════════════════╗
-║         SOMA AAAS — DEPLOYMENT WIZARD            ║
+║         SOMA Soma Platform — DEPLOYMENT WIZARD            ║
 ╠══════════════════════════════════════════════════╣
 ║                                                  ║
 ║  SomaAgent01          [v2.0.0 ▼]                 ║
@@ -206,7 +206,7 @@ images:
 
 ```
 STEP 1: Deployer validates selected versions against SOMA-COMPAT-001
-STEP 2: Deployer generates docker-compose.aaas.yml with:
+STEP 2: Deployer generates docker-compose.platform.yml with:
   - Versioned image tags
   - Shared infrastructure (PostgreSQL, Redis, Kafka, Keycloak, Vault, OPA, SpiceDB, Milvus)
   - Network configuration (shared network between all services)
@@ -217,7 +217,7 @@ STEP 3: Deployer generates environment files:
   - .env.somabrain (DB DSN, Redis URL, Kafka URL, SFM endpoint, OPA URL)
   - .env.somafractalmemory (DB DSN, Redis URL, Milvus URL, Vault URL, OPA URL)
   - .env.shared (PostgreSQL creds, Redis creds, Keycloak admin, Vault token)
-STEP 4: docker compose -f docker-compose.aaas.yml --env-file .env.shared up -d
+STEP 4: docker compose -f docker-compose.platform.yml --env-file .env.shared up -d
 STEP 5: Health check loop (wait for all services healthy, timeout 120s):
   - curl http://localhost:63900/api/health/ → {"status": "ok"}
   - curl http://localhost:63996/health → {"status": "healthy"}
@@ -239,20 +239,20 @@ STEP 8: Report success with URLs:
 ### 5.3 Teardown
 
 ```
-docker compose -f docker-compose.aaas.yml down -v
+docker compose -f docker-compose.platform.yml down -v
 ```
 
 ---
 
 ## 6. Configuration Wiring
 
-### 6.1 Environment Variables (AAAS Mode)
+### 6.1 Environment Variables (Soma Platform Mode)
 
-**NOTE**: Container-to-container communication uses Docker service names with **internal** ports (e.g., `somabrain:9696`). External host access uses **AAAS namespace** ports (e.g., `localhost:63996`). The port mapping is: 63996→9696 (SomaBrain), 63901→10101 (SFM), 63900→8010 (Agent).
+**NOTE**: Container-to-container communication uses Docker service names with **internal** ports (e.g., `somabrain:9696`). External host access uses **Soma Platform namespace** ports (e.g., `localhost:63996`). The port mapping is: 63996→9696 (SomaBrain), 63901→10101 (SFM), 63900→8010 (Agent).
 
 **SomaAgent01 (Gateway):**
 ```bash
-SA01_DEPLOYMENT_MODE=AAAS
+SA01_DEPLOYMENT_MODE=Soma Platform
 SA01_DB_DSN=postgresql://<user>:<password>@postgres:5432/somaagent
 SA01_REDIS_URL=redis://redis:6379/0
 SA01_KEYCLOAK_URL=http://keycloak:8080
@@ -370,7 +370,7 @@ SOMA_OPA_URL=http://opa:8181
 
 ---
 
-## 10. Security (AAAS Mode)
+## 10. Security (Soma Platform Mode)
 
 ### 10.1 Network Isolation
 

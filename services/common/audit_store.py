@@ -29,7 +29,7 @@ class AuditStore(BaseStore[Dict[str, Any]]):
         payload: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Persist an audit event."""
-        from admin.aaas.models import AuditLog
+        from admin.platform.models import AuditLog
 
         await AuditLog.objects.acreate(
             action=event_type,
@@ -72,7 +72,7 @@ class AuditStore(BaseStore[Dict[str, Any]]):
         """
         import uuid as _uuid
 
-        from admin.aaas.models import AuditLog
+        from admin.platform.models import AuditLog
 
         def _as_uuid(value: Optional[str]) -> Optional[_uuid.UUID]:
             if not value:
@@ -107,7 +107,7 @@ class AuditStore(BaseStore[Dict[str, Any]]):
 
     async def get(self, identifier: str) -> Optional[Dict[str, Any]]:
         """Retrieve a single audit event by ID."""
-        from admin.aaas.models import AuditLog
+        from admin.platform.models import AuditLog
 
         event = await AuditLog.objects.filter(id=identifier).afirst()
         if not event:
@@ -120,7 +120,7 @@ class AuditStore(BaseStore[Dict[str, Any]]):
         limit: int = 100,
     ) -> List[Dict[str, Any]]:
         """List audit events."""
-        from admin.aaas.models import AuditLog
+        from admin.platform.models import AuditLog
 
         qs = AuditLog.objects.all().order_by("-created_at")
         if event_type:
@@ -176,7 +176,7 @@ class AuditStore(BaseStore[Dict[str, Any]]):
 
     async def delete(self, identifier: str) -> bool:
         """Remove an audit event."""
-        from admin.aaas.models import AuditLog
+        from admin.platform.models import AuditLog
 
         deleted, _ = await AuditLog.objects.filter(id=identifier).adelete()
         return deleted > 0

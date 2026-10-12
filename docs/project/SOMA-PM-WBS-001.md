@@ -100,7 +100,7 @@
 | 1.1.3 | Permissions check real | /check calls SpiceDB/OPA | 8h |
 | 1.1.4 | Chat flow works | WS connect → message → response | 24h |
 | 1.1.5 | Dependencies fixed | No path deps, correct env vars | 8h |
-| 1.1.6 | Docker verified | Standalone + AAAS compose up | 16h |
+| 1.1.6 | Docker verified | Standalone + Soma Platform compose up | 16h |
 | 1.1.7 | Gate signed off | PM + leads approve | 4h |
 
 ### 1.2 SECURE
@@ -150,7 +150,7 @@
 | WBS | Deliverable | Acceptance Criteria | Effort |
 |-----|-------------|---------------------|--------|
 | 1.6.1 | Integration validated | Full triad E2E | 24h |
-| 1.6.2 | Deploy validated | Single-click AAAS works | 16h |
+| 1.6.2 | Deploy validated | Single-click Soma Platform works | 16h |
 | 1.6.3 | Docs audited | ISO docs match code | 16h |
 | 1.6.4 | Pentest clean | No critical/high findings | 40h |
 | 1.6.5 | DR drill success | Restore within RTO | 16h |

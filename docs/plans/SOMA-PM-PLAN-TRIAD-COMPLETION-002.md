@@ -107,7 +107,7 @@ Owner ruling: *"Why are you using JSON for roles?! … unified whole pattern RBA
 
 | # | Task | Gate |
 |---|---|---|
-| C1 | Delete `LocalIdentity.roles` as an authority; delete `PlatformConfig.defaults["roles"]` and the decoy `PATCH /aaas/settings/roles/{id}` | one store answers every role question |
+| C1 | Delete `LocalIdentity.roles` as an authority; delete `PlatformConfig.defaults["roles"]` and the decoy `PATCH /platform/settings/roles/{id}` | one store answers every role question |
 | C2 | `sysadmin` becomes a superset of every role (today it cannot chat); same for `org_admin` | `test_role_superset.py` |
 | C3 | `TenantRole` vocabulary equals `ROLE_PERMISSIONS` exactly — enforced at import | mismatch fails at boot |
 | C4 | SpiceDB always consulted, may only narrow; unmapped verb denies; no tenant denies (T-5) | `check_endpoint_permission` uses the same map as `check()` |

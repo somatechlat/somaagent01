@@ -33,7 +33,7 @@ def _seed_pair() -> tuple[int, int, object]:
 
     Returns (preferred_id, high_priority_id, capsule_id).
     """
-    from admin.aaas.models import Tenant
+    from admin.platform.models import Tenant
     from admin.core.models import Capsule
     from admin.llm.models import LLMModelConfig
 

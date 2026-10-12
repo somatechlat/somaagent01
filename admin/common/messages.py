@@ -34,15 +34,15 @@ class ErrorCode(str, Enum):
     INVALID_PERMISSIONS = "invalid_permissions"
 
 
-    # AAAS - Features
+    # Soma Platform - Features
     FEATURE_NOT_FOUND = "feature_not_found"
     FEATURE_DEPENDENCY_MISSING = "feature_dependency_missing"
 
-    # AAAS - Tenants
+    # Soma Platform - Tenants
     TENANT_NOT_FOUND = "tenant_not_found"
     TENANT_SUSPENDED = "tenant_suspended"
 
-    # AAAS - Integrations
+    # Soma Platform - Integrations
 
     # Capsule
     CAPSULE_NOT_FOUND = "capsule_not_found"
@@ -142,7 +142,7 @@ class SuccessCode(str, Enum):
     UPDATED = "updated"
     DELETED = "deleted"
 
-    # AAAS
+    # Soma Platform
     FEATURE_REMOVED = "feature_removed"
 
     # Capsule
@@ -217,7 +217,7 @@ MESSAGES: dict[str | ErrorCode | SuccessCode, str | Any] = {
     ErrorCode.TOKEN_INVALID_OR_EXPIRED: _("Token is invalid or expired"),
     ErrorCode.API_KEY_NOT_FOUND: _("API key {key_id} not found"),
     ErrorCode.INVALID_PERMISSIONS: _("Invalid permissions"),
-    # AAAS
+    # Soma Platform
     ErrorCode.FEATURE_NOT_FOUND: _("Feature '{feature}' not found"),
     ErrorCode.FEATURE_DEPENDENCY_MISSING: _(
         "Feature '{feature}' requires missing dependency: {dependency}"

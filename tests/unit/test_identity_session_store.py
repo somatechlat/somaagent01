@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from admin.aaas.models.session import LocalSession
+from admin.platform.models.session import LocalSession
 from services.common.identity.session import (
     ABSOLUTE_TIMEOUT,
     SESSION_TOKEN_PREFIX,

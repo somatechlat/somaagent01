@@ -14,7 +14,7 @@ from uuid import uuid4
 from ninja import Query, Router
 from pydantic import BaseModel
 
-from admin.aaas.models import AgentRole, AgentUser
+from admin.platform.models import AgentRole, AgentUser
 from admin.common.auth import AuthBearer
 from admin.core.authz import AGENT_ASSIGNABLE_ROLES
 from admin.common.exceptions import ForbiddenError, NotFoundError, ValidationError

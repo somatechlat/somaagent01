@@ -27,7 +27,7 @@ from django.utils import timezone
 @pytest.mark.db
 def test_api_key_key_hash_is_unique(db):
     """DB-CRIT-1: a second row with the same ``key_hash`` is rejected by the DB."""
-    from admin.aaas.models import ApiKey
+    from admin.platform.models import ApiKey
 
     digest = "a" * 64
     ApiKey.objects.create(
@@ -53,7 +53,7 @@ def test_api_key_key_hash_lookup_uses_index(db):
     """DB-CRIT-1 behavioral: hash lookup is satisfied by an index, not a seq scan."""
     from django.db import connection
 
-    from admin.aaas.models import ApiKey
+    from admin.platform.models import ApiKey
 
     ApiKey.objects.create(
         key_type="platform",
@@ -75,7 +75,7 @@ def test_api_key_key_hash_lookup_uses_index(db):
 @pytest.mark.db
 def test_api_key_verify_resolves_by_hash(db):
     """Auth lookup path still works after the UNIQUE change."""
-    from admin.aaas.models import ApiKey
+    from admin.platform.models import ApiKey
 
     raw = "sk_live_" + "x" * 32
     digest = ApiKey.hash_key(raw)
@@ -101,7 +101,7 @@ def test_api_key_verify_resolves_by_hash(db):
 @pytest.mark.db
 def test_user_session_refresh_token_hash_is_unique(db):
     """DB-HIGH-8: duplicate refresh-token hashes are rejected by the DB."""
-    from admin.aaas.models import UserSession
+    from admin.platform.models import UserSession
 
     digest = "b" * 64
     expires = timezone.now() + timezone.timedelta(days=7)
@@ -126,7 +126,7 @@ def test_user_session_refresh_token_hash_is_unique(db):
 @pytest.mark.db
 def test_user_session_blank_refresh_token_hash_allowed_multiple(db):
     """DB-HIGH-8: sessions with no refresh token may share the empty hash."""
-    from admin.aaas.models import UserSession
+    from admin.platform.models import UserSession
 
     expires = timezone.now() + timezone.timedelta(days=7)
     for _ in range(3):
@@ -148,7 +148,7 @@ def test_user_session_token_lookup_uses_index(db):
     from django.db import connection
     from django.utils import timezone as _tz
 
-    from admin.aaas.models import UserSession
+    from admin.platform.models import UserSession
 
     UserSession.objects.create(
         user_id=_uuid.uuid4(),
@@ -270,7 +270,7 @@ def test_feature_flag_rollout_percentage_bounded(db):
 
 @pytest.mark.db
 def test_capsule_status_rejects_unknown_value(db):
-    from admin.aaas.models import Tenant
+    from admin.platform.models import Tenant
     from admin.core.models import Capsule
 
     tenant = Tenant.objects.create(

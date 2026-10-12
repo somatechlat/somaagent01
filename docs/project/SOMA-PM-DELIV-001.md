@@ -30,7 +30,7 @@
 | D-003 | Permissions check wired | 1 | Security | Jun 18 | OPEN | /check returns real SpiceDB result |
 | D-004 | Chat flow E2E working | 1 | Frontend+Backend | Jun 23 | OPEN | WS → V3 → LLM → stream → client |
 | D-005 | Standalone Docker verified | 1 | DevOps | Jun 25 | OPEN | `docker compose up -d` all healthy |
-| D-006 | AAAS Docker verified | 1 | DevOps | Jun 27 | OPEN | Full triad starts, health checks pass |
+| D-006 | Soma Platform Docker verified | 1 | DevOps | Jun 27 | OPEN | Full triad starts, health checks pass |
 | D-007 | Auth features functional | 2 | Backend | Jul 7 | OPEN | Login/register/MFA/reset/logout work |
 | D-008 | Frontend security hardened | 2 | Frontend | Jul 10 | OPEN | httpOnly cookies, CSP, CSRF tokens |
 | D-009 | K8s credentials secured | 2 | DevOps | Jul 9 | OPEN | No hardcoded passwords in manifests |
@@ -45,8 +45,8 @@
 | D-018 | K8s production manifests | 5 | DevOps | Aug 29 | OPEN | Probes, limits, HPA, PDB, NetworkPolicy |
 | D-019 | Grafana dashboards | 5 | DevOps | Sep 8 | OPEN | Dashboards as code committed |
 | D-020 | Load test baseline | 5 | QA | Sep 14 | OPEN | p95 latency < 200ms for chat |
-| D-021 | Full AAAS E2E test | 6 | QA | Sep 18 | OPEN | Cognitive agent works end-to-end |
-| D-022 | Single-click deploy | 6 | DevOps | Sep 22 | OPEN | AAAS deploy in one command |
+| D-021 | Full Soma Platform E2E test | 6 | QA | Sep 18 | OPEN | Cognitive agent works end-to-end |
+| D-022 | Single-click deploy | 6 | DevOps | Sep 22 | OPEN | Soma Platform deploy in one command |
 | D-023 | Security pentest passed | 6 | Security | Sep 30 | OPEN | No critical/high findings |
 | D-024 | DR drill successful | 6 | DevOps | Oct 2 | OPEN | Restore within RTO |
 | D-025 | UAT signed off | 6 | QA | Oct 5 | OPEN | Stakeholders approve |

@@ -382,7 +382,7 @@ export class SomaPlatformProfile extends LitElement {
 
         this.saving = true;
         try {
-            await apiClient.put('/aaas/admin/profile', {
+            await apiClient.put('/platform/admin/profile', {
                 display_name: this.profile.displayName,
                 session_timeout: this.profile.sessionTimeout,
                 notifications: this.profile.notifications,

@@ -1,11 +1,11 @@
-# AAAS Standalone Deployment Guide
+# Soma Platform Standalone Deployment Guide
 
 ## Document Control
 
 | Field | Value |
 |---|---|
-| Document Title | AAAS Standalone Deployment Guide |
-| Document Identifier | SOMA-OPS-AAAS-001 |
+| Document Title | Soma Platform Standalone Deployment Guide |
+| Document Identifier | SOMA-OPS-Soma Platform-001 |
 | Version | 1.0.0 |
 | Date | 2026-09-28 |
 | Status | Draft |
@@ -28,12 +28,12 @@
 ---
 
 ## 1. Overview
-The SOMA AAAS Deployment is a **"Repository-Agnostic"** infrastructure. It enables the deployment of the entire SOMA Triad (Agent, Brain, Memory) from a single directory, treating the application repositories as interchangeable modules.
+The SOMA Soma Platform Deployment is a **"Repository-Agnostic"** infrastructure. It enables the deployment of the entire SOMA Triad (Agent, Brain, Memory) from a single directory, treating the application repositories as interchangeable modules.
 
 ## 2. Deployment Structure
 
 ```
-infra/aaas/
+infra/platform/
 ├── docker-compose.yml       # Infrastructure Definition
 ├── start_aaas.sh            # Startup Orchestrator
 ├── supervisord.conf         # Process Manager Config

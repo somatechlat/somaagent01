@@ -9,7 +9,7 @@
  *   Right  — the one surface registry (`soma-right-panel`, UI-X-01…08)
  *
  * Transport: WebSocket /ws/v2/chat/:id + REST /chat/conversations*.
- * Dark-first, AAAS token palette. No mocks, no placeholders.
+ * Dark-first, Soma Platform token palette. No mocks, no placeholders.
  */
 
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
@@ -85,9 +85,9 @@ export class SomaChat extends LitElement {
         :host {
             display: flex;
             height: 100vh;
-            background: var(--aaas-bg-void, #0A0A0A);
-            font-family: var(--aaas-font-sans, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-            color: var(--aaas-text-primary, #ffffff);
+            background: var(--platform-bg-void, #0A0A0A);
+            font-family: var(--platform-font-sans, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+            color: var(--platform-text-primary, #ffffff);
             overflow: hidden;
         }
 
@@ -96,7 +96,7 @@ export class SomaChat extends LitElement {
         }
 
         *:focus-visible {
-            outline: 2px solid var(--aaas-info, #3b82f6);
+            outline: 2px solid var(--platform-info, #3b82f6);
             outline-offset: 2px;
         }
 
@@ -132,8 +132,8 @@ export class SomaChat extends LitElement {
            ========================= */
         .sidebar {
             width: 272px;
-            background: var(--aaas-bg-sidebar, #111111);
-            border-right: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            background: var(--platform-bg-sidebar, #111111);
+            border-right: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
@@ -158,7 +158,7 @@ export class SomaChat extends LitElement {
         .brand-icon {
             width: 32px;
             height: 32px;
-            background: var(--aaas-accent, #3B82F6);
+            background: var(--platform-accent, #3B82F6);
             border-radius: 8px;
             display: flex;
             align-items: center;
@@ -169,7 +169,7 @@ export class SomaChat extends LitElement {
         .brand-icon svg {
             width: 16px;
             height: 16px;
-            stroke: var(--aaas-bg-void, #f5f5f5);
+            stroke: var(--platform-bg-void, #f5f5f5);
             fill: none;
         }
 
@@ -182,9 +182,9 @@ export class SomaChat extends LitElement {
         .new-chat-btn {
             margin: 4px 16px 12px;
             padding: 10px 14px;
-            border-radius: var(--aaas-radius-md, 8px);
-            background: var(--aaas-accent, #3B82F6);
-            color: var(--aaas-bg-void, #f5f5f5);
+            border-radius: var(--platform-radius-md, 8px);
+            background: var(--platform-accent, #3B82F6);
+            color: var(--platform-bg-void, #f5f5f5);
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
@@ -197,7 +197,7 @@ export class SomaChat extends LitElement {
         }
 
         .new-chat-btn:hover {
-            background: var(--aaas-accent-hover, #2563EB);
+            background: var(--platform-accent-hover, #2563EB);
         }
 
         .new-chat-btn .material-symbols-outlined {
@@ -215,28 +215,28 @@ export class SomaChat extends LitElement {
             top: 50%;
             transform: translateY(-50%);
             font-size: 16px;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             pointer-events: none;
         }
 
         .search-input {
             width: 100%;
             padding: 8px 10px 8px 34px;
-            border-radius: var(--aaas-radius-md, 8px);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            background: var(--aaas-bg-card, #1A1A1A);
-            color: var(--aaas-text-primary, #ffffff);
+            border-radius: var(--platform-radius-md, 8px);
+            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
+            background: var(--platform-bg-card, #1A1A1A);
+            color: var(--platform-text-primary, #ffffff);
             font-size: 13px;
             outline: none;
             transition: border-color 150ms ease;
         }
 
         .search-input:focus {
-            border-color: var(--aaas-border-medium, rgba(255,255,255,0.16));
+            border-color: var(--platform-border-medium, rgba(255,255,255,0.16));
         }
 
         .search-input::placeholder {
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
         }
 
         .conversations-section {
@@ -249,7 +249,7 @@ export class SomaChat extends LitElement {
         .section-label {
             font-size: 10px;
             text-transform: uppercase;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             padding: 10px 10px 6px;
             font-weight: 600;
             letter-spacing: 0.08em;
@@ -258,7 +258,7 @@ export class SomaChat extends LitElement {
         .conversation-item {
             position: relative;
             padding: 9px 10px;
-            border-radius: var(--aaas-radius-md, 8px);
+            border-radius: var(--platform-radius-md, 8px);
             cursor: pointer;
             transition: background 120ms ease;
             margin-bottom: 2px;
@@ -269,11 +269,11 @@ export class SomaChat extends LitElement {
 
         .conversation-item:hover,
         .conversation-item:focus-within {
-            background: var(--aaas-bg-hover, #141414);
+            background: var(--platform-bg-hover, #141414);
         }
 
         .conversation-item.active {
-            background: var(--aaas-bg-active, #1a1a1a);
+            background: var(--platform-bg-active, #1a1a1a);
         }
 
         .conversation-item .conv-body {
@@ -288,12 +288,12 @@ export class SomaChat extends LitElement {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            color: var(--aaas-text-primary, #ffffff);
+            color: var(--platform-text-primary, #ffffff);
         }
 
         .conversation-meta {
             font-size: 11px;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -319,17 +319,17 @@ export class SomaChat extends LitElement {
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             transition: background 120ms ease, color 120ms ease;
         }
 
         .conv-action:hover {
-            background: var(--aaas-bg-active, #1a1a1a);
-            color: var(--aaas-text-primary, #ffffff);
+            background: var(--platform-bg-active, #1a1a1a);
+            color: var(--platform-text-primary, #ffffff);
         }
 
         .conv-action.danger:hover {
-            color: var(--aaas-danger, #ef4444);
+            color: var(--platform-danger, #ef4444);
         }
 
         .conv-action .material-symbols-outlined {
@@ -348,15 +348,15 @@ export class SomaChat extends LitElement {
             min-width: 0;
             padding: 3px 6px;
             border-radius: 4px;
-            border: 1px solid var(--aaas-info, #3b82f6);
-            background: var(--aaas-bg-card, #1A1A1A);
-            color: var(--aaas-text-primary, #ffffff);
+            border: 1px solid var(--platform-info, #3b82f6);
+            background: var(--platform-bg-card, #1A1A1A);
+            color: var(--platform-text-primary, #ffffff);
             font-size: 12px;
             outline: none;
         }
 
         .rename-confirm {
-            color: var(--aaas-success, #22c55e);
+            color: var(--platform-success, #22c55e);
             width: 22px;
             height: 22px;
             display: flex;
@@ -373,8 +373,8 @@ export class SomaChat extends LitElement {
 
         .skeleton-row {
             height: 46px;
-            border-radius: var(--aaas-radius-md, 8px);
-            background: linear-gradient(90deg, var(--aaas-bg-hover, #141414) 25%, var(--aaas-bg-active, #1a1a1a) 50%, var(--aaas-bg-hover, #141414) 75%);
+            border-radius: var(--platform-radius-md, 8px);
+            background: linear-gradient(90deg, var(--platform-bg-hover, #141414) 25%, var(--platform-bg-active, #1a1a1a) 50%, var(--platform-bg-hover, #141414) 75%);
             background-size: 200% 100%;
             animation: shimmer 1.4s ease-in-out infinite;
             margin-bottom: 6px;
@@ -388,7 +388,7 @@ export class SomaChat extends LitElement {
         .empty-list {
             padding: 24px 14px;
             text-align: center;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             font-size: 12px;
             line-height: 1.55;
         }
@@ -396,7 +396,7 @@ export class SomaChat extends LitElement {
         /* Nav links */
         .nav-links {
             padding: 8px 12px;
-            border-top: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            border-top: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
         }
 
         .nav-link {
@@ -404,9 +404,9 @@ export class SomaChat extends LitElement {
             align-items: center;
             gap: 10px;
             padding: 8px 10px;
-            border-radius: var(--aaas-radius-md, 8px);
+            border-radius: var(--platform-radius-md, 8px);
             font-size: 13px;
-            color: var(--aaas-text-secondary, #a1a1a1);
+            color: var(--platform-text-secondary, #a1a1a1);
             cursor: pointer;
             transition: background 120ms ease, color 120ms ease;
             width: 100%;
@@ -414,8 +414,8 @@ export class SomaChat extends LitElement {
         }
 
         .nav-link:hover {
-            background: var(--aaas-bg-hover, #141414);
-            color: var(--aaas-text-primary, #ffffff);
+            background: var(--platform-bg-hover, #141414);
+            color: var(--platform-text-primary, #ffffff);
         }
 
         .nav-link .material-symbols-outlined {
@@ -427,7 +427,7 @@ export class SomaChat extends LitElement {
         /* User card */
         .user-section {
             padding: 12px 16px;
-            border-top: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            border-top: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
             display: flex;
             align-items: center;
             gap: 10px;
@@ -437,8 +437,8 @@ export class SomaChat extends LitElement {
             width: 34px;
             height: 34px;
             border-radius: 50%;
-            background: var(--aaas-bg-active, #1a1a1a);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            background: var(--platform-bg-active, #1a1a1a);
+            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
             display: flex;
             align-items: center;
             justify-content: center;
@@ -462,7 +462,7 @@ export class SomaChat extends LitElement {
 
         .user-role {
             font-size: 11px;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -474,7 +474,7 @@ export class SomaChat extends LitElement {
             border-radius: 6px;
             background: transparent;
             border: none;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -483,8 +483,8 @@ export class SomaChat extends LitElement {
         }
 
         .logout-btn:hover {
-            background: var(--aaas-bg-hover, #141414);
-            color: var(--aaas-danger, #ef4444);
+            background: var(--platform-bg-hover, #141414);
+            color: var(--platform-danger, #ef4444);
         }
 
         /* =========================
@@ -497,13 +497,13 @@ export class SomaChat extends LitElement {
             position: relative;
             overflow: hidden;
             min-width: 0;
-            background: var(--aaas-bg-void, #0A0A0A);
+            background: var(--platform-bg-void, #0A0A0A);
         }
 
         .header {
             padding: 12px 24px;
-            background: var(--aaas-bg-void, #0A0A0A);
-            border-bottom: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            background: var(--platform-bg-void, #0A0A0A);
+            border-bottom: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
             display: flex;
             align-items: center;
             gap: 16px;
@@ -532,25 +532,25 @@ export class SomaChat extends LitElement {
             align-items: center;
             gap: 6px;
             padding: 6px 10px;
-            border-radius: var(--aaas-radius-md, 8px);
-            background: var(--aaas-surface, #141414);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            border-radius: var(--platform-radius-md, 8px);
+            background: var(--platform-surface, #141414);
+            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
             font-size: 12px;
             font-weight: 500;
-            color: var(--aaas-text-secondary, #a1a1a1);
+            color: var(--platform-text-secondary, #a1a1a1);
             cursor: pointer;
             transition: all 120ms ease;
         }
 
         .mode-btn:hover {
-            background: var(--aaas-surface-hover, #1a1a1a);
+            background: var(--platform-surface-hover, #1a1a1a);
         }
 
         .mode-badge {
             padding: 2px 6px;
             border-radius: 4px;
-            background: var(--aaas-accent, #3B82F6);
-            color: var(--aaas-bg-void, #f5f5f5);
+            background: var(--platform-accent, #3B82F6);
+            color: var(--platform-bg-void, #f5f5f5);
             font-size: 10px;
             font-weight: 700;
         }
@@ -559,10 +559,10 @@ export class SomaChat extends LitElement {
             position: absolute;
             top: calc(100% + 6px);
             right: 0;
-            background: var(--aaas-bg-card, #1A1A1A);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            border-radius: var(--aaas-radius-lg, 12px);
-            box-shadow: var(--aaas-shadow-lg, 0 8px 24px rgba(0,0,0,0.6));
+            background: var(--platform-bg-card, #1A1A1A);
+            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
+            border-radius: var(--platform-radius-lg, 12px);
+            box-shadow: var(--platform-shadow-lg, 0 8px 24px rgba(0,0,0,0.6));
             min-width: 240px;
             z-index: 100;
             overflow: hidden;
@@ -577,7 +577,7 @@ export class SomaChat extends LitElement {
         .mode-option {
             padding: 10px 12px;
             cursor: pointer;
-            border-radius: var(--aaas-radius-md, 8px);
+            border-radius: var(--platform-radius-md, 8px);
             transition: background 120ms ease;
             border: none;
             width: 100%;
@@ -587,11 +587,11 @@ export class SomaChat extends LitElement {
         }
 
         .mode-option:hover {
-            background: var(--aaas-bg-hover, #141414);
+            background: var(--platform-bg-hover, #141414);
         }
 
         .mode-option.active {
-            background: var(--aaas-bg-active, #1a1a1a);
+            background: var(--platform-bg-active, #1a1a1a);
         }
 
         .mode-option.locked {
@@ -609,17 +609,17 @@ export class SomaChat extends LitElement {
         .mode-option-title {
             font-size: 13px;
             font-weight: 500;
-            color: var(--aaas-text-primary, #ffffff);
+            color: var(--platform-text-primary, #ffffff);
         }
 
         .mode-option-desc {
             font-size: 11px;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
         }
 
         .lock-icon {
             font-size: 12px;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
         }
 
         /* Messages */
@@ -687,7 +687,7 @@ export class SomaChat extends LitElement {
         .welcome-hero p {
             margin: 0.45rem 0 0;
             font-size: 1.15rem;
-            color: var(--aaas-text-secondary, #a1a1aa);
+            color: var(--platform-text-secondary, #a1a1aa);
         }
 
         .welcome-banner {
@@ -699,7 +699,7 @@ export class SomaChat extends LitElement {
             border: 1px solid color-mix(in srgb, #f59e0b 35%, transparent);
             background: color-mix(in srgb, #f59e0b 12%, transparent);
             font-size: 13px;
-            color: var(--aaas-text-bright, #f8fafc);
+            color: var(--platform-text-bright, #f8fafc);
         }
 
         .wb-action {
@@ -734,9 +734,9 @@ export class SomaChat extends LitElement {
             gap: 8px;
             padding: 18px 12px;
             border-radius: 8px;
-            border: 1px solid var(--aaas-border-light, rgba(255, 255, 255, 0.06));
-            background: color-mix(in srgb, var(--aaas-bg-card, #1a1a1a) 88%, transparent);
-            color: var(--aaas-text-bright, #f8fafc);
+            border: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.06));
+            background: color-mix(in srgb, var(--platform-bg-card, #1a1a1a) 88%, transparent);
+            color: var(--platform-text-bright, #f8fafc);
             cursor: pointer;
             transition: transform 0.15s ease, border-color 0.15s ease;
         }
@@ -788,7 +788,7 @@ export class SomaChat extends LitElement {
             font-weight: 600;
             letter-spacing: 0.02em;
             text-transform: uppercase;
-            color: var(--aaas-text-secondary, #a1a1aa);
+            color: var(--platform-text-secondary, #a1a1aa);
         }
 
         .ws-link {
@@ -820,12 +820,12 @@ export class SomaChat extends LitElement {
         .ws-card-title {
             font-size: 14px;
             font-weight: 600;
-            color: var(--aaas-text-bright, #f8fafc);
+            color: var(--platform-text-bright, #f8fafc);
         }
 
         .ws-card-desc {
             font-size: 12px;
-            color: var(--aaas-text-secondary, #a1a1aa);
+            color: var(--platform-text-secondary, #a1a1aa);
             line-height: 1.4;
             min-height: 2.6em;
         }
@@ -848,7 +848,7 @@ export class SomaChat extends LitElement {
             gap: 6px;
             margin-top: 4px;
             font-size: 12px;
-            color: var(--aaas-text-secondary, #a1a1aa);
+            color: var(--platform-text-secondary, #a1a1aa);
         }
 
         .ws-dot {
@@ -872,13 +872,13 @@ export class SomaChat extends LitElement {
 
         .sys-name {
             font-size: 12px;
-            color: var(--aaas-text-secondary, #a1a1aa);
+            color: var(--platform-text-secondary, #a1a1aa);
         }
 
         .sys-track {
             height: 8px;
             border-radius: 999px;
-            background: color-mix(in srgb, var(--aaas-border-light, rgba(255, 255, 255, 0.08)) 80%, transparent);
+            background: color-mix(in srgb, var(--platform-border-light, rgba(255, 255, 255, 0.08)) 80%, transparent);
             overflow: hidden;
         }
 
@@ -891,14 +891,14 @@ export class SomaChat extends LitElement {
         .sys-val {
             font-size: 12px;
             font-variant-numeric: tabular-nums;
-            color: var(--aaas-text-secondary, #a1a1aa);
+            color: var(--platform-text-secondary, #a1a1aa);
             white-space: nowrap;
         }
 
         .welcome-footer {
             text-align: center;
             font-size: 11px;
-            color: var(--aaas-text-secondary, #71717a);
+            color: var(--platform-text-secondary, #71717a);
             padding: 8px 0 16px;
         }
 
@@ -1191,7 +1191,7 @@ export class SomaChat extends LitElement {
             margin: 0;
             font-size: 14px;
             font-weight: 600;
-            color: var(--aaas-text-bright, #F8FAFC);
+            color: var(--platform-text-bright, #F8FAFC);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -1210,7 +1210,7 @@ export class SomaChat extends LitElement {
 
         .turn-state {
             font-size: 11px;
-            color: var(--aaas-text-secondary, #a1a1aa);
+            color: var(--platform-text-secondary, #a1a1aa);
         }
 
         .title-spacer {
@@ -1220,7 +1220,7 @@ export class SomaChat extends LitElement {
         .hdr-btn {
             border: 0;
             background: transparent;
-            color: var(--aaas-text-secondary, #a1a1aa);
+            color: var(--platform-text-secondary, #a1a1aa);
             cursor: pointer;
             display: inline-flex;
             padding: 4px;
@@ -1228,8 +1228,8 @@ export class SomaChat extends LitElement {
         }
 
         .hdr-btn:hover {
-            background: color-mix(in srgb, var(--aaas-border-light, rgba(255,255,255,0.08)) 80%, transparent);
-            color: var(--aaas-text-bright, #f8fafc);
+            background: color-mix(in srgb, var(--platform-border-light, rgba(255,255,255,0.08)) 80%, transparent);
+            color: var(--platform-text-bright, #f8fafc);
         }
 
         .memory-ghost {
@@ -1238,7 +1238,7 @@ export class SomaChat extends LitElement {
             gap: 6px;
             margin-top: 4px;
             font-size: 11px;
-            color: var(--aaas-text-secondary, #71717a);
+            color: var(--platform-text-secondary, #71717a);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -1259,8 +1259,8 @@ export class SomaChat extends LitElement {
             gap: 10px;
             height: 40px;
             padding: 0 14px;
-            border-bottom: 1px solid var(--aaas-border-light, rgba(255, 255, 255, 0.06));
-            background: var(--aaas-bg-card, #141414);
+            border-bottom: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.06));
+            background: var(--platform-bg-card, #141414);
             width: 100%;
         }
 
@@ -1269,13 +1269,13 @@ export class SomaChat extends LitElement {
             font-weight: 600;
             letter-spacing: 0.04em;
             text-transform: uppercase;
-            color: var(--aaas-text-bright, #f8fafc);
+            color: var(--platform-text-bright, #f8fafc);
         }
 
         .strip-clock {
             font-size: 12px;
             font-variant-numeric: tabular-nums;
-            color: var(--aaas-text-secondary, #a1a1aa);
+            color: var(--platform-text-secondary, #a1a1aa);
             margin-left: 8px;
         }
 
@@ -1286,7 +1286,7 @@ export class SomaChat extends LitElement {
         .sidebar-toggle-hint {
             border: 0;
             background: transparent;
-            color: var(--aaas-text-secondary, #a1a1aa);
+            color: var(--platform-text-secondary, #a1a1aa);
             cursor: pointer;
             display: inline-flex;
             padding: 4px;
@@ -1303,7 +1303,7 @@ export class SomaChat extends LitElement {
         .msg-skeleton .bar {
             height: 12px;
             border-radius: 6px;
-            background: linear-gradient(90deg, var(--aaas-bg-hover, #141414) 25%, var(--aaas-bg-active, #1a1a1a) 50%, var(--aaas-bg-hover, #141414) 75%);
+            background: linear-gradient(90deg, var(--platform-bg-hover, #141414) 25%, var(--platform-bg-active, #1a1a1a) 50%, var(--platform-bg-hover, #141414) 75%);
             background-size: 200% 100%;
             animation: shimmer 1.4s ease-in-out infinite;
         }
@@ -1317,8 +1317,8 @@ export class SomaChat extends LitElement {
         .right-canvas {
             display: flex;
             flex-direction: row;
-            border-left: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            background: var(--aaas-bg-sidebar, #111111);
+            border-left: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
+            background: var(--platform-bg-sidebar, #111111);
             height: 100vh;
             flex-shrink: 0;
         }
@@ -1338,17 +1338,17 @@ export class SomaChat extends LitElement {
             align-items: center;
             gap: 6px;
             padding: 12px 0;
-            border-right: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            border-right: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
         }
 
         .rail-btn {
             width: 36px;
             height: 36px;
-            border-radius: var(--aaas-radius-md, 8px);
+            border-radius: var(--platform-radius-md, 8px);
             border: none;
             background: transparent;
             cursor: pointer;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1357,13 +1357,13 @@ export class SomaChat extends LitElement {
         }
 
         .rail-btn:hover {
-            background: var(--aaas-bg-hover, #141414);
-            color: var(--aaas-text-primary, #ffffff);
+            background: var(--platform-bg-hover, #141414);
+            color: var(--platform-text-primary, #ffffff);
         }
 
         .rail-btn.active {
-            background: var(--aaas-bg-active, #1a1a1a);
-            color: var(--aaas-accent, #e8e4dc);
+            background: var(--platform-bg-active, #1a1a1a);
+            color: var(--platform-accent, #e8e4dc);
         }
 
         .rail-btn .material-symbols-outlined {
@@ -1388,10 +1388,10 @@ export class SomaChat extends LitElement {
         /* Agent selector */
         .agent-select {
             padding: 5px 8px;
-            border-radius: var(--aaas-radius-md, 8px);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            background: var(--aaas-surface, #141414);
-            color: var(--aaas-text-primary, #ffffff);
+            border-radius: var(--platform-radius-md, 8px);
+            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
+            background: var(--platform-surface, #141414);
+            color: var(--platform-text-primary, #ffffff);
             font-size: 12px;
             outline: none;
             max-width: 160px;
@@ -1405,7 +1405,7 @@ export class SomaChat extends LitElement {
 
         .conversations-section::-webkit-scrollbar-thumb,
         .messages::-webkit-scrollbar-thumb {
-            background: var(--aaas-border-light, rgba(255,255,255,0.08));
+            background: var(--platform-border-light, rgba(255,255,255,0.08));
             border-radius: 3px;
         }
 

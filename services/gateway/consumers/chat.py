@@ -231,7 +231,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
             # Phase 2: LOAD CAPSULE (ONCE)
             # Agent ID (from URL) → Agent → primary_capsule (different UUIDs)
-            from admin.aaas.models import Agent as AgentModel
+            from admin.platform.models import Agent as AgentModel
             from admin.core.models import Capsule
 
             if not self.agent_id:

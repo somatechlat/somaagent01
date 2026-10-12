@@ -25,7 +25,7 @@
 
 ### 1.1 Service URLs
 
-| Service | Standalone | AAAS | Health Check |
+| Service | Standalone | Soma Platform | Health Check |
 |---------|-----------|------|-------------|
 | SomaAgent01 | http://localhost:20020 | http://localhost:63900 | GET /api/health/ |
 | SomaBrain | — | http://localhost:63996 | GET /health |
@@ -195,7 +195,7 @@ docker compose exec redis redis-cli KEYS "session:*"
 docker compose exec somaagent python -c "
 from services.common.deployment_mode import DeploymentMode
 print(f'Mode: {DeploymentMode.get()}')
-print(f'AAAS: {DeploymentMode.is_aaas()}')
+print(f'Soma Platform: {DeploymentMode.is_aaas()}')
 "
 
 # Check the memory.wal outbox for unacked writes

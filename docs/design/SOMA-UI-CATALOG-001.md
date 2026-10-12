@@ -81,7 +81,7 @@
 | UI-S-50 | Settings · Agent | personality, prompt, knowledge, limits | `soma-settings` |
 | UI-S-51 | Settings · Models | cards + modal | `soma-settings-models` + `ModelIn` |
 | UI-S-48-settings-voice | Settings · Voice | personas CRUD | `VoicePersona*` + synthesize/transcribe |
-| UI-S-54-settings-interface | Settings · Interface | theme, language, timezone, prefs | `/aaas/admin/preferences` |
+| UI-S-54-settings-interface | Settings · Interface | theme, language, timezone, prefs | `/platform/admin/preferences` |
 | UI-S-55-settings-tools | Settings · Tools | Capability enable + limits | `GET/PUT /tools/catalog` + agent limits |
 | UI-S-52 | Settings · Integrations | Vault keys, channels | `PUT /secrets/providers/{id}` |
 | UI-S-53 | Settings · Advanced | modules, quotas, API keys | `/platform/api-keys` |

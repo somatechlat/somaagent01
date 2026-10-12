@@ -105,7 +105,7 @@ def django_db_setup():
                 "django.contrib.auth",
                 "django.contrib.postgres",
                 "admin.core",
-                "admin.aaas",
+                "admin.platform",
                 "admin.chat",
                 "admin.agents",
             ],
@@ -128,7 +128,7 @@ def django_db_setup():
         )
         django.setup()
 
-        # Tables already exist in real AAAS database
+        # Tables already exist in real Soma Platform database
         # No need to create them - they're managed by Django migrations in the running container
         # VIBE Rule 7: Real infrastructure means real databases with real schema
 

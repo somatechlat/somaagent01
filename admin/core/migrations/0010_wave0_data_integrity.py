@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("aaas", "0007_wave0_data_integrity"),
+        ("platform", "0007_wave0_data_integrity"),
         ("core", "0009_drop_pending_memory"),
         ("llm", "0005_model_type_decision"),
     ]

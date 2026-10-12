@@ -75,7 +75,7 @@ class AllowingGate:
 
 @sync_to_async
 def _create_tenant() -> object:
-    from admin.aaas.models import Tenant
+    from admin.platform.models import Tenant
 
     return Tenant.objects.create(
         name="Transcript Tenant",
@@ -95,7 +95,7 @@ def _create_capsule(tenant: object) -> Capsule:
 
 @sync_to_async
 def _create_member(tenant: object, role: str = "member") -> str:
-    from admin.aaas.models import TenantUser
+    from admin.platform.models import TenantUser
 
     user_id = uuid.uuid4()
     TenantUser.objects.create(

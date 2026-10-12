@@ -69,7 +69,7 @@ Inventory below matches the working tree on 2026-10-08.
 | Identifier | Title | File | Status |
 |---|---|---|---|
 | SOMA-01-DOCS-002 | Document Register | `docs/iso/DOCUMENT-REGISTER.md` | Draft |
-| SOMA-01-AAAS-001 | Soma AAAS Deployment Specification | `docs/iso/SOMA-01-AAAS-001.md` | Draft |
+| SOMA-01-Soma Platform-001 | Soma Soma Platform Deployment Specification | `docs/iso/SOMA-01-Soma Platform-001.md` | Draft |
 | SOMA-01-ARCH-001 | SomaAgent01 System Architecture Document | `docs/iso/SOMA-01-ARCH-001.md` | Draft |
 | SOMA-01-AUDIT-002 | SomaAgent01 Code-Verified Deep Audit Report | `docs/iso/SOMA-01-AUDIT-002.md` | Draft |
 | SOMA-01-COMPAT-001 | Soma Cognitive Triad Version Compatibility Matrix | `docs/iso/SOMA-01-COMPAT-001.md` | Draft |
@@ -122,7 +122,7 @@ Inventory below matches the working tree on 2026-10-08.
 | SOMA-SRS-MULTITENANCY-001 | SRS-SECURITY-MULTITENANCY — Security and Tenant Isolation | `docs/requirements/SOMA-SRS-MULTITENANCY-001.md` | Draft |
 | SOMA-SRS-PERMISSIONS-001 | SRS-PERMISSION-MATRIX — Permission Matrix and Role Administration | `docs/requirements/SOMA-SRS-PERMISSIONS-001.md` | Draft |
 | SOMA-SRS-RLM-001 | SRS-RLM-ENGINE — Recursive Language Model Execution | `docs/requirements/SOMA-SRS-RLM-001.md` | Draft |
-| SOMA-SRS-SAASINFRA-001 | SRS-SAAS-INFRASTRUCTURE — AAAS Deployment Architecture | `docs/requirements/SOMA-SRS-SAASINFRA-001.md` | Draft |
+| SOMA-SRS-SAASINFRA-001 | SRS-SAAS-INFRASTRUCTURE — Soma Platform Deployment Architecture | `docs/requirements/SOMA-SRS-SAASINFRA-001.md` | Draft |
 | SOMA-SRS-SOMABRAIN-001 | SRS-SOMABRAIN-INTEGRATION — L3 Cognitive Engine | `docs/requirements/SOMA-SRS-SOMABRAIN-001.md` | Draft |
 | SOMA-SRS-SOVEREIGNTY-001 | SRS-650-LINE-SOVEREIGNTY — VIBE Rule 245 Enforcement | `docs/requirements/SOMA-SRS-SOVEREIGNTY-001.md` | Draft |
 | SOMA-SRS-TESTBENCH-001 | SRS-TEST-WORKBENCH — Cross-Repository Test Audit | `docs/requirements/SOMA-SRS-TESTBENCH-001.md` | Draft |
@@ -133,9 +133,9 @@ Inventory below matches the working tree on 2026-10-08.
 
 | Identifier | Title | File | Status |
 |---|---|---|---|
-| SOMA-OPS-AAAS-001 | AAAS Standalone Deployment Guide | `docs/operations/SOMA-OPS-AAAS-001.md` | Draft |
+| SOMA-OPS-Soma Platform-001 | Soma Platform Standalone Deployment Guide | `docs/operations/SOMA-OPS-Soma Platform-001.md` | Draft |
 | SOMA-OPS-DEPLOY-001 | Deployment Guide | `docs/operations/SOMA-OPS-DEPLOY-001.md` | Draft |
-| SOMA-OPS-MODES-001 | Deployment Modes — AAAS vs STANDALONE | `docs/operations/SOMA-OPS-MODES-001.md` | Draft |
+| SOMA-OPS-MODES-001 | Deployment Modes — Soma Platform vs STANDALONE | `docs/operations/SOMA-OPS-MODES-001.md` | Draft |
 | SOMA-OPS-PLAN-001 | SomaAgent01 — Complete Deployment Plan | `docs/operations/SOMA-OPS-PLAN-001.md` | Draft |
 | SOMA-OPS-READINESS-001 | SomaAgent01 Deployment Readiness Plan | `docs/operations/SOMA-OPS-READINESS-001.md` | Draft |
 | SOMA-OPS-SOFTMODES-001 | Software Deployment Modes | `docs/operations/SOMA-OPS-SOFTMODES-001.md` | Draft |

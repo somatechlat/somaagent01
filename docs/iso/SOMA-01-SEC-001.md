@@ -42,7 +42,7 @@ This security assessment evaluates the SomaAgent01 platform against ISO/IEC 2700
 | Control | ID | Requirement | Status | Evidence |
 |---------|----|-------------|--------|----------|
 | Policies for information security | A.5.1 | Documented security policies | Partial | VIBE coding rules exist (`docs/standards/SOMA-STD-CODING-001.md`); no formal ISMS policy |
-| Roles and responsibilities | A.5.2 | Defined security roles | Partial | `admin/aaas/models.py` defines tenant roles; no formal security role assignments |
+| Roles and responsibilities | A.5.2 | Defined security roles | Partial | `admin/platform/models.py` defines tenant roles; no formal security role assignments |
 | Segregation of duties | A.5.3 | Duty separation enforced | Partial | Multi-tenant isolation via Django ORM; no formal segregation matrix |
 | Management responsibilities | A.5.4 | Management direction for security | Partial | Documented in audit reports; no formal management review records |
 | Contact with authorities | A.5.5 | Incident reporting procedures | Gap | No documented incident response procedure |
@@ -111,7 +111,7 @@ This security assessment evaluates the SomaAgent01 platform against ISO/IEC 2700
 | Secure coding | A.8.28 | Coding standards | Partial | VIBE rules define standards; 2.8% test coverage undermines verification |
 | Security testing in development | A.8.29 | Security testing | Gap | No security testing in development pipeline |
 | Outsourced development | A.8.30 | Third-party development | N/A | In-house development |
-| Separation of environments | A.8.31 | Environment isolation | Partial | Standalone/AAAS mode separation; no formal dev/staging/prod separation |
+| Separation of environments | A.8.31 | Environment isolation | Partial | Standalone/Soma Platform mode separation; no formal dev/staging/prod separation |
 | Change management | A.8.32 | Change control | Gap | No formal change management process |
 | Test information | A.8.33 | Test data protection | Gap | No test data anonymization |
 | Protection during audit testing | A.8.34 | Audit safeguards | Partial | Audit testing uses real infrastructure per VIBE rules |
@@ -126,7 +126,7 @@ This security assessment evaluates the SomaAgent01 platform against ISO/IEC 2700
 |----|--------------|-------------|-----------|--------|
 | VULN-001 | Authorization bypass: permissions API returns `allowed:true` unconditionally | 9.1 | `admin/permissions/api.py:336` | **Open** |
 | VULN-002 | WebSocket routing broken: `agent_id` not provided by frontend | 8.6 | `services/gateway/consumers/chat.py:136` | **Open** |
-| VULN-003 | Django migrations out of sync | 8.1 | `admin/aaas/migrations/`, `admin/core/migrations/` | **Open** |
+| VULN-003 | Django migrations out of sync | 8.1 | `admin/platform/migrations/`, `admin/core/migrations/` | **Open** |
 
 ### 3.2 High Vulnerabilities
 
@@ -141,7 +141,7 @@ This security assessment evaluates the SomaAgent01 platform against ISO/IEC 2700
 
 | ID | Vulnerability | CVSS (est.) | File:Line | Status |
 |----|--------------|-------------|-----------|--------|
-| VULN-008 | Hardcoded Docker hostname fallback | 5.0 | `aaas/brain.py:92` | **Open** |
+| VULN-008 | Hardcoded Docker hostname fallback | 5.0 | `platform/brain.py:92` | **Open** |
 | VULN-009 | Inconsistent Redis env var (`REDIS_URL` vs `SA01_REDIS_URL`) | 4.5 | `services/common/rate_limiter.py:67` | **Open** |
 | VULN-010 | Regex-based tool call extraction | 4.0 | `admin/core/chat_orchestrator.py:750` | **Open** |
 | VULN-011 | No TLS at application layer | 5.5 | N/A | **Open** |
@@ -235,7 +235,7 @@ Request → AuthBearer → UnifiedGate → PolicyClient (HTTP/OPA)
 
 1. **Fix authorization bypass** (`admin/permissions/api.py:336`) — Wire to UnifiedGate
 2. **Fix WebSocket routing** — Add `agent_id` to frontend WebSocket URL
-3. **Generate and commit Django migrations** — Sync `admin/aaas` and `admin/core`
+3. **Generate and commit Django migrations** — Sync `admin/platform` and `admin/core`
 
 ### 6.2 Short-Term (High)
 

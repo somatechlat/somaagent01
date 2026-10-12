@@ -130,16 +130,16 @@
 
 ---
 
-## 6. Multi-tenant AAAS (P1)
+## 6. Multi-tenant Soma Platform (P1)
 
-### 6.1 From SRS-AAAS-TENANT-CREATION.md
+### 6.1 From SRS-Soma Platform-TENANT-CREATION.md
 | Task | Effort | Status |
 |------|--------|--------|
 | Tenant creation wizard (5 steps) | 2d | ⚠️ Partial |
 | TenantSettings model | 0.5d | ❌ |
 | Tenant usage tracking | 1d | ❌ |
 
-### 6.2 From SRS-UNIFIED-AAAS.md
+### 6.2 From SRS-UNIFIED-Soma Platform.md
 | Task | Effort | Status |
 |------|--------|--------|
 | StandAlone mode toggle | 0.5d | ✅ |
@@ -246,7 +246,7 @@ class Agent(models.Model):
         unique_together = ['tenant', 'slug']
 
 class SubscriptionTier(models.Model):
-    """Actual implementation in admin/aaas/models/tiers.py:15-135"""
+    """Actual implementation in admin/platform/models/tiers.py:15-135"""
     name = models.CharField(max_length=50, unique=True)
     slug = models.SlugField(max_length=50, unique=True)
     description = models.TextField(blank=True)
@@ -405,16 +405,16 @@ definition agent {
 
 | Component | Priority | Estimated |
 |-----------|----------|-----------|
-| `aaas-shell` (app shell) | P0 | 4h |
-| `aaas-nav` (navigation) | P0 | 3h |
-| `aaas-card` (stat card) | P0 | 2h |
-| `aaas-table` (data table) | P0 | 4h |
-| `aaas-modal` (dialog) | P0 | 3h |
-| `aaas-form` (form wrapper) | P0 | 3h |
-| `aaas-input` (form input) | P0 | 2h |
-| `aaas-button` (buttons) | P0 | 1h |
-| `aaas-toast` (notifications) | P0 | 2h |
-| `aaas-badge` (status badges) | P0 | 1h |
+| `platform-shell` (app shell) | P0 | 4h |
+| `platform-nav` (navigation) | P0 | 3h |
+| `platform-card` (stat card) | P0 | 2h |
+| `platform-table` (data table) | P0 | 4h |
+| `platform-modal` (dialog) | P0 | 3h |
+| `platform-form` (form wrapper) | P0 | 3h |
+| `platform-input` (form input) | P0 | 2h |
+| `platform-button` (buttons) | P0 | 1h |
+| `platform-toast` (notifications) | P0 | 2h |
+| `platform-badge` (status badges) | P0 | 1h |
 
 ### 4.2 Design Tokens
 
@@ -425,47 +425,47 @@ definition agent {
 
 :root {
   /* Backgrounds - Light Theme */
-  --aaas-bg-page: #f5f5f5;
-  --aaas-bg-card: #ffffff;
-  --aaas-bg-hover: #fafafa;
+  --platform-bg-page: #f5f5f5;
+  --platform-bg-card: #ffffff;
+  --platform-bg-hover: #fafafa;
   
   /* Text - Light Theme */  
-  --aaas-text-primary: #1a1a1a;
-  --aaas-text-secondary: #666666;
-  --aaas-text-muted: #999999;
+  --platform-text-primary: #1a1a1a;
+  --platform-text-secondary: #666666;
+  --platform-text-muted: #999999;
   
   /* Accent - Primary Action */
-  --aaas-accent: #1a1a1a;
-  --aaas-accent-hover: #333333;
+  --platform-accent: #1a1a1a;
+  --platform-accent-hover: #333333;
   
   /* Status Colors */
-  --aaas-status-success: #22c55e;
-  --aaas-status-warning: #f59e0b;
-  --aaas-status-danger: #ef4444;
-  --aaas-status-info: #3b82f6;
+  --platform-status-success: #22c55e;
+  --platform-status-warning: #f59e0b;
+  --platform-status-danger: #ef4444;
+  --platform-status-info: #3b82f6;
   
   /* Spacing */
-  --aaas-space-xs: 4px;
-  --aaas-space-sm: 8px;
-  --aaas-space-md: 16px;
-  --aaas-space-lg: 24px;
-  --aaas-space-xl: 32px;
+  --platform-space-xs: 4px;
+  --platform-space-sm: 8px;
+  --platform-space-md: 16px;
+  --platform-space-lg: 24px;
+  --platform-space-xl: 32px;
   
   /* Typography */
-  --aaas-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --aaas-font-mono: 'JetBrains Mono', monospace;
+  --platform-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --platform-font-mono: 'JetBrains Mono', monospace;
   
   /* Borders */
-  --aaas-radius-sm: 4px;
-  --aaas-radius-md: 8px;
-  --aaas-radius-lg: 12px;
-  --aaas-radius-full: 9999px;
-  --aaas-border-color: #e2e8f0;
+  --platform-radius-sm: 4px;
+  --platform-radius-md: 8px;
+  --platform-radius-lg: 12px;
+  --platform-radius-full: 9999px;
+  --platform-border-color: #e2e8f0;
   
   /* Shadows */
-  --aaas-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --aaas-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-  --aaas-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  --platform-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --platform-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --platform-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
 }
 ```
 
@@ -504,7 +504,7 @@ api = NinjaAPI(
 )
 
 # Include routers
-api.add_router("/aaas/", aaas_router, tags=["Platform Admin"])
+api.add_router("/platform/", aaas_router, tags=["Platform Admin"])
 api.add_router("/admin/", admin_router, tags=["Tenant Admin"])
 api.add_router("/agent/", agent_router, tags=["Agent Config"])
 api.add_router("/chat/", chat_router, tags=["Chat"])
@@ -640,7 +640,7 @@ async def logout(request):
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
-@customElement('aaas-login')
+@customElement('platform-login')
 export class AaasLogin extends LitElement {
   @state() private loading = false;
   @state() private error = '';
@@ -652,14 +652,14 @@ export class AaasLogin extends LitElement {
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      background: var(--aaas-bg-secondary);
+      background: var(--platform-bg-secondary);
     }
     
     .login-card {
-      background: var(--aaas-bg-primary);
-      border-radius: var(--aaas-radius-lg);
-      box-shadow: var(--aaas-shadow-lg);
-      padding: var(--aaas-space-8);
+      background: var(--platform-bg-primary);
+      border-radius: var(--platform-radius-lg);
+      box-shadow: var(--platform-shadow-lg);
+      padding: var(--platform-space-8);
       width: 100%;
       max-width: 400px;
     }
@@ -668,9 +668,9 @@ export class AaasLogin extends LitElement {
       background: #fef2f2;
       border: 1px solid #fecaca;
       color: #dc2626;
-      padding: var(--aaas-space-3);
-      border-radius: var(--aaas-radius-md);
-      margin-bottom: var(--aaas-space-4);
+      padding: var(--platform-space-3);
+      border-radius: var(--platform-radius-md);
+      margin-bottom: var(--platform-space-4);
     }
   `;
   
@@ -682,39 +682,39 @@ export class AaasLogin extends LitElement {
         ${this.error ? html`<div class="error">${this.error}</div>` : ''}
         
         <form @submit=${this.handleSubmit}>
-          <aaas-input
+          <platform-input
             type="email"
             name="email"
             label="Email"
             required
-          ></aaas-input>
+          ></platform-input>
           
-          <aaas-input
+          <platform-input
             type="password"
             name="password"
             label="Password"
             required
-          ></aaas-input>
+          ></platform-input>
           
           <label>
             <input type="checkbox" name="remember">
             Remember me
           </label>
           
-          <aaas-button type="submit" ?loading=${this.loading}>
+          <platform-button type="submit" ?loading=${this.loading}>
             Sign In
-          </aaas-button>
+          </platform-button>
         </form>
         
         <div class="divider">or</div>
         
-        <aaas-button variant="outline" @click=${this.handleGoogleLogin}>
+        <platform-button variant="outline" @click=${this.handleGoogleLogin}>
           Sign in with Google
-        </aaas-button>
+        </platform-button>
         
-        <aaas-button variant="outline" @click=${this.handleGithubLogin}>
+        <platform-button variant="outline" @click=${this.handleGithubLogin}>
           Sign in with GitHub
-        </aaas-button>
+        </platform-button>
         
         <a href="/auth/forgot-password">Forgot password?</a>
       </div>
@@ -765,7 +765,7 @@ export class AaasLogin extends LitElement {
 | Create MFA setup endpoint | P0 | 3h |
 | Create MFA verify endpoint | P0 | 2h |
 | Create `saas-mfa-setup.ts` | P0 | 4h |
-| Create `aaas-mfa-verify.ts` | P0 | 3h |
+| Create `platform-mfa-verify.ts` | P0 | 3h |
 | Generate backup codes | P0 | 2h |
 | Store backup codes (encrypted) | P0 | 2h |
 
@@ -892,8 +892,8 @@ class TokenRefreshMiddleware:
 | Create forgot password endpoint | P0 | 2h |
 | Create reset password endpoint | P0 | 2h |
 | Email template | P0 | 1h |
-| Create `aaas-forgot-password.ts` | P0 | 2h |
-| Create `aaas-reset-password.ts` | P0 | 2h |
+| Create `platform-forgot-password.ts` | P0 | 2h |
+| Create `platform-reset-password.ts` | P0 | 2h |
 
 ### 5.2 Flow
 
@@ -939,7 +939,7 @@ sequenceDiagram
 | Create invitation endpoint | P0 | 3h |
 | Create accept invitation endpoint | P0 | 3h |
 | Invitation email template | P0 | 1h |
-| Create `aaas-accept-invite.ts` | P0 | 3h |
+| Create `platform-accept-invite.ts` | P0 | 3h |
 | Handle expired invitations | P0 | 1h |
 
 ### 6.2 Flow
@@ -1007,35 +1007,35 @@ sequenceDiagram
 
 ---
 
-## 1. AAAS Platform Admin
+## 1. Soma Platform Platform Admin
 
 ### 1.1 Endpoints
 
 | Endpoint | Method | Task | Estimated |
 |----------|--------|------|-----------|
-| `/aaas/stats` | GET | Platform statistics | 2h |
-| `/aaas/tenants` | GET | List tenants | 2h |
-| `/aaas/tenants` | POST | Create tenant | 4h |
-| `/aaas/tenants/{id}` | GET | Get tenant | 1h |
-| `/aaas/tenants/{id}` | PUT | Update tenant | 2h |
-| `/aaas/tenants/{id}` | DELETE | Delete tenant | 3h |
-| `/aaas/tenants/{id}/suspend` | POST | Suspend tenant | 2h |
-| `/aaas/tenants/{id}/impersonate` | POST | Impersonate | 3h |
-| `/aaas/subscriptions` | GET/PUT | Manage tiers | 3h |
-| `/aaas/billing/revenue` | GET | Revenue report | 3h |
-| `/aaas/health` | GET | System health | 2h |
+| `/platform/stats` | GET | Platform statistics | 2h |
+| `/platform/tenants` | GET | List tenants | 2h |
+| `/platform/tenants` | POST | Create tenant | 4h |
+| `/platform/tenants/{id}` | GET | Get tenant | 1h |
+| `/platform/tenants/{id}` | PUT | Update tenant | 2h |
+| `/platform/tenants/{id}` | DELETE | Delete tenant | 3h |
+| `/platform/tenants/{id}/suspend` | POST | Suspend tenant | 2h |
+| `/platform/tenants/{id}/impersonate` | POST | Impersonate | 3h |
+| `/platform/subscriptions` | GET/PUT | Manage tiers | 3h |
+| `/platform/billing/revenue` | GET | Revenue report | 3h |
+| `/platform/health` | GET | System health | 2h |
 
 ### 1.2 Components
 
 | Component | Screens | Estimated |
 |-----------|---------|-----------|
-| `aaas-platform-dashboard.ts` | Dashboard | 6h |
-| `aaas-tenant-list.ts` | Tenant list | 4h |
-| `aaas-tenant-create.ts` | Create modal | 3h |
-| `aaas-tenant-detail.ts` | Tenant detail | 4h |
-| `aaas-subscription-tiers.ts` | Tier config | 4h |
-| `aaas-platform-health.ts` | Health dashboard | 4h |
-| `aaas-revenue-dashboard.ts` | Revenue charts | 5h |
+| `platform-platform-dashboard.ts` | Dashboard | 6h |
+| `platform-tenant-list.ts` | Tenant list | 4h |
+| `platform-tenant-create.ts` | Create modal | 3h |
+| `platform-tenant-detail.ts` | Tenant detail | 4h |
+| `platform-subscription-tiers.ts` | Tier config | 4h |
+| `platform-platform-health.ts` | Health dashboard | 4h |
+| `platform-revenue-dashboard.ts` | Revenue charts | 5h |
 
 ---
 
@@ -1067,18 +1067,18 @@ sequenceDiagram
 
 | Component | Screens | Estimated |
 |-----------|---------|-----------|
-| `aaas-tenant-dashboard.ts` | Dashboard | 5h |
-| `aaas-users.ts` | User list | 4h |
-| `aaas-user-invite.ts` | Invite modal | 3h |
-| `aaas-user-detail.ts` | User detail | 3h |
-| `aaas-agents.ts` | Agent grid | 5h |
-| `aaas-agent-create.ts` | Create modal | 4h |
-| `aaas-agent-config.ts` | Config page | 6h |
-| `aaas-agent-users.ts` | Agent users | 3h |
-| `aaas-tenant-settings.ts` | Settings tabs | 5h |
-| `aaas-tenant-audit.ts` | Audit log | 4h |
-| `aaas-usage.ts` | Usage charts | 4h |
-| `aaas-tenant-billing.ts` | Billing page | 5h |
+| `platform-tenant-dashboard.ts` | Dashboard | 5h |
+| `platform-users.ts` | User list | 4h |
+| `platform-user-invite.ts` | Invite modal | 3h |
+| `platform-user-detail.ts` | User detail | 3h |
+| `platform-agents.ts` | Agent grid | 5h |
+| `platform-agent-create.ts` | Create modal | 4h |
+| `platform-agent-config.ts` | Config page | 6h |
+| `platform-agent-users.ts` | Agent users | 3h |
+| `platform-tenant-settings.ts` | Settings tabs | 5h |
+| `platform-tenant-audit.ts` | Audit log | 4h |
+| `platform-usage.ts` | Usage charts | 4h |
+| `platform-tenant-billing.ts` | Billing page | 5h |
 
 ---
 
@@ -1233,7 +1233,7 @@ None. There is no billing integration to implement in this system.
 | Usage metering | `admin/core/budget/limits.py` — Django cache counters |
 | Limit enforcement | `admin/core/budget/gate.py` — `@budget_gate` decorator |
 | Metric definitions | `admin/core/budget/registry.py` — `METRIC_REGISTRY` |
-| Plan tiers | `admin/aaas/models/tiers.py` — `SubscriptionTier` |
+| Plan tiers | `admin/platform/models/tiers.py` — `SubscriptionTier` |
 | Invoices | None. Invoice views report empty rather than inventing data. |
 
 ---
@@ -1363,7 +1363,7 @@ async def logout(request):
 import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 
-@customElement('aaas-login')
+@customElement('platform-login')
 export class AaasLogin extends LitElement {
   @state() private loading = false;
   @state() private error = '';
@@ -1375,14 +1375,14 @@ export class AaasLogin extends LitElement {
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      background: var(--aaas-bg-secondary);
+      background: var(--platform-bg-secondary);
     }
     
     .login-card {
-      background: var(--aaas-bg-primary);
-      border-radius: var(--aaas-radius-lg);
-      box-shadow: var(--aaas-shadow-lg);
-      padding: var(--aaas-space-8);
+      background: var(--platform-bg-primary);
+      border-radius: var(--platform-radius-lg);
+      box-shadow: var(--platform-shadow-lg);
+      padding: var(--platform-space-8);
       width: 100%;
       max-width: 400px;
     }
@@ -1391,9 +1391,9 @@ export class AaasLogin extends LitElement {
       background: #fef2f2;
       border: 1px solid #fecaca;
       color: #dc2626;
-      padding: var(--aaas-space-3);
-      border-radius: var(--aaas-radius-md);
-      margin-bottom: var(--aaas-space-4);
+      padding: var(--platform-space-3);
+      border-radius: var(--platform-radius-md);
+      margin-bottom: var(--platform-space-4);
     }
   `;
   
@@ -1405,39 +1405,39 @@ export class AaasLogin extends LitElement {
         ${this.error ? html`<div class="error">${this.error}</div>` : ''}
         
         <form @submit=${this.handleSubmit}>
-          <aaas-input
+          <platform-input
             type="email"
             name="email"
             label="Email"
             required
-          ></aaas-input>
+          ></platform-input>
           
-          <aaas-input
+          <platform-input
             type="password"
             name="password"
             label="Password"
             required
-          ></aaas-input>
+          ></platform-input>
           
           <label>
             <input type="checkbox" name="remember">
             Remember me
           </label>
           
-          <aaas-button type="submit" ?loading=${this.loading}>
+          <platform-button type="submit" ?loading=${this.loading}>
             Sign In
-          </aaas-button>
+          </platform-button>
         </form>
         
         <div class="divider">or</div>
         
-        <aaas-button variant="outline" @click=${this.handleGoogleLogin}>
+        <platform-button variant="outline" @click=${this.handleGoogleLogin}>
           Sign in with Google
-        </aaas-button>
+        </platform-button>
         
-        <aaas-button variant="outline" @click=${this.handleGithubLogin}>
+        <platform-button variant="outline" @click=${this.handleGithubLogin}>
           Sign in with GitHub
-        </aaas-button>
+        </platform-button>
         
         <a href="/auth/forgot-password">Forgot password?</a>
       </div>
@@ -1488,7 +1488,7 @@ export class AaasLogin extends LitElement {
 | Create MFA setup endpoint | P0 | 3h |
 | Create MFA verify endpoint | P0 | 2h |
 | Create `saas-mfa-setup.ts` | P0 | 4h |
-| Create `aaas-mfa-verify.ts` | P0 | 3h |
+| Create `platform-mfa-verify.ts` | P0 | 3h |
 | Generate backup codes | P0 | 2h |
 | Store backup codes (encrypted) | P0 | 2h |
 
@@ -1615,8 +1615,8 @@ class TokenRefreshMiddleware:
 | Create forgot password endpoint | P0 | 2h |
 | Create reset password endpoint | P0 | 2h |
 | Email template | P0 | 1h |
-| Create `aaas-forgot-password.ts` | P0 | 2h |
-| Create `aaas-reset-password.ts` | P0 | 2h |
+| Create `platform-forgot-password.ts` | P0 | 2h |
+| Create `platform-reset-password.ts` | P0 | 2h |
 
 ### 5.2 Flow
 
@@ -1662,7 +1662,7 @@ sequenceDiagram
 | Create invitation endpoint | P0 | 3h |
 | Create accept invitation endpoint | P0 | 3h |
 | Invitation email template | P0 | 1h |
-| Create `aaas-accept-invite.ts` | P0 | 3h |
+| Create `platform-accept-invite.ts` | P0 | 3h |
 | Handle expired invitations | P0 | 1h |
 
 ### 6.2 Flow
@@ -1730,35 +1730,35 @@ sequenceDiagram
 
 ---
 
-## 1. AAAS Platform Admin
+## 1. Soma Platform Platform Admin
 
 ### 1.1 Endpoints
 
 | Endpoint | Method | Task | Estimated |
 |----------|--------|------|-----------|
-| `/aaas/stats` | GET | Platform statistics | 2h |
-| `/aaas/tenants` | GET | List tenants | 2h |
-| `/aaas/tenants` | POST | Create tenant | 4h |
-| `/aaas/tenants/{id}` | GET | Get tenant | 1h |
-| `/aaas/tenants/{id}` | PUT | Update tenant | 2h |
-| `/aaas/tenants/{id}` | DELETE | Delete tenant | 3h |
-| `/aaas/tenants/{id}/suspend` | POST | Suspend tenant | 2h |
-| `/aaas/tenants/{id}/impersonate` | POST | Impersonate | 3h |
-| `/aaas/subscriptions` | GET/PUT | Manage tiers | 3h |
-| `/aaas/billing/revenue` | GET | Revenue report | 3h |
-| `/aaas/health` | GET | System health | 2h |
+| `/platform/stats` | GET | Platform statistics | 2h |
+| `/platform/tenants` | GET | List tenants | 2h |
+| `/platform/tenants` | POST | Create tenant | 4h |
+| `/platform/tenants/{id}` | GET | Get tenant | 1h |
+| `/platform/tenants/{id}` | PUT | Update tenant | 2h |
+| `/platform/tenants/{id}` | DELETE | Delete tenant | 3h |
+| `/platform/tenants/{id}/suspend` | POST | Suspend tenant | 2h |
+| `/platform/tenants/{id}/impersonate` | POST | Impersonate | 3h |
+| `/platform/subscriptions` | GET/PUT | Manage tiers | 3h |
+| `/platform/billing/revenue` | GET | Revenue report | 3h |
+| `/platform/health` | GET | System health | 2h |
 
 ### 1.2 Components
 
 | Component | Screens | Estimated |
 |-----------|---------|-----------|
-| `aaas-platform-dashboard.ts` | Dashboard | 6h |
-| `aaas-tenant-list.ts` | Tenant list | 4h |
-| `aaas-tenant-create.ts` | Create modal | 3h |
-| `aaas-tenant-detail.ts` | Tenant detail | 4h |
-| `aaas-subscription-tiers.ts` | Tier config | 4h |
-| `aaas-platform-health.ts` | Health dashboard | 4h |
-| `aaas-revenue-dashboard.ts` | Revenue charts | 5h |
+| `platform-platform-dashboard.ts` | Dashboard | 6h |
+| `platform-tenant-list.ts` | Tenant list | 4h |
+| `platform-tenant-create.ts` | Create modal | 3h |
+| `platform-tenant-detail.ts` | Tenant detail | 4h |
+| `platform-subscription-tiers.ts` | Tier config | 4h |
+| `platform-platform-health.ts` | Health dashboard | 4h |
+| `platform-revenue-dashboard.ts` | Revenue charts | 5h |
 
 ---
 
@@ -1790,18 +1790,18 @@ sequenceDiagram
 
 | Component | Screens | Estimated |
 |-----------|---------|-----------|
-| `aaas-tenant-dashboard.ts` | Dashboard | 5h |
-| `aaas-users.ts` | User list | 4h |
-| `aaas-user-invite.ts` | Invite modal | 3h |
-| `aaas-user-detail.ts` | User detail | 3h |
-| `aaas-agents.ts` | Agent grid | 5h |
-| `aaas-agent-create.ts` | Create modal | 4h |
-| `aaas-agent-config.ts` | Config page | 6h |
-| `aaas-agent-users.ts` | Agent users | 3h |
-| `aaas-tenant-settings.ts` | Settings tabs | 5h |
-| `aaas-tenant-audit.ts` | Audit log | 4h |
-| `aaas-usage.ts` | Usage charts | 4h |
-| `aaas-tenant-billing.ts` | Billing page | 5h |
+| `platform-tenant-dashboard.ts` | Dashboard | 5h |
+| `platform-users.ts` | User list | 4h |
+| `platform-user-invite.ts` | Invite modal | 3h |
+| `platform-user-detail.ts` | User detail | 3h |
+| `platform-agents.ts` | Agent grid | 5h |
+| `platform-agent-create.ts` | Create modal | 4h |
+| `platform-agent-config.ts` | Config page | 6h |
+| `platform-agent-users.ts` | Agent users | 3h |
+| `platform-tenant-settings.ts` | Settings tabs | 5h |
+| `platform-tenant-audit.ts` | Audit log | 4h |
+| `platform-usage.ts` | Usage charts | 4h |
+| `platform-tenant-billing.ts` | Billing page | 5h |
 
 ---
 
@@ -1954,7 +1954,7 @@ None. There is no billing integration to implement in this system.
 | Usage metering | `admin/core/budget/limits.py` — Django cache counters |
 | Limit enforcement | `admin/core/budget/gate.py` — `@budget_gate` decorator |
 | Metric definitions | `admin/core/budget/registry.py` — `METRIC_REGISTRY` |
-| Plan tiers | `admin/aaas/models/tiers.py` — `SubscriptionTier` |
+| Plan tiers | `admin/platform/models/tiers.py` — `SubscriptionTier` |
 | Invoices | None. Invoice views report empty rather than inventing data. |
 
 ---
@@ -1962,7 +1962,7 @@ None. There is no billing integration to implement in this system.
 ## 6. Checklist
 
 ### Week 1
-- [ ] AAAS platform dashboard
+- [ ] Soma Platform platform dashboard
 - [ ] Tenant list/create/edit
 - [ ] Tenant suspend/delete
 - [ ] Impersonation flow

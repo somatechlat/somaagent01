@@ -12,7 +12,7 @@
  * Usage:
  * <entity-manager
  *   entity="user"
- *   api-base="/api/v2/aaas/admin"
+ *   api-base="/api/v2/platform/admin"
  *   .permissions=${userPermissions}
  * />
  */
@@ -62,7 +62,7 @@ interface ActionDef {
 
 // Blocking reasons for controls whose backend handler is not mounted on this
 // deployment. Printed inline (REQ-UIX-005). Verified against
-// admin/aaas/api/users.py, admin/aaas/api/tenant_agents.py, admin/auth/api.py.
+// admin/platform/api/users.py, admin/platform/api/tenant_agents.py, admin/auth/api.py.
 const REASON_NO_PASSWORD_RESET =
     'Blocked: no password-reset route is mounted (admin/auth/api.py).';
 const REASON_NO_EDIT_SCREEN =
@@ -76,7 +76,7 @@ const REASON_NO_DUPLICATE_API =
 
 // Only the two entity types that have both a mounted screen and a mounted
 // API. Tenant, feature-flag and rate-limit configs were declared here with
-// no reader (no view mounts them) and no matching /aaas/admin route — a
+// no reader (no view mounts them) and no matching /platform/admin route — a
 // setting with no reader is a lie, so they are gone.
 // Column keys are the field names the server actually returns (TenantUserOut,
 // AgentSchema) — never invented aliases.
@@ -85,7 +85,7 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
         displayName: 'User',
         displayNamePlural: 'Users',
         icon: 'person',
-        // TenantUserOut (admin/aaas/api/users.py:35-45): id, email, name,
+        // TenantUserOut (admin/platform/api/users.py:35-45): id, email, name,
         // role, is_active, tenant_id, created_at, last_login_at.
         defaultColumns: [
             { key: 'email', label: 'Email', sortable: true },
@@ -112,7 +112,7 @@ const ENTITY_CONFIGS: Record<string, EntityConfig> = {
         displayName: 'Agent',
         displayNamePlural: 'Agents',
         icon: 'smart_toy',
-        // AgentSchema (admin/aaas/api/tenant_agents.py:35-48): id, name, slug,
+        // AgentSchema (admin/platform/api/tenant_agents.py:35-48): id, name, slug,
         // status, tenant_id, chat_model, memory_enabled, voice_enabled,
         // created_at, conversations, tokens_used. No message_count exists.
         defaultColumns: [
@@ -471,8 +471,8 @@ export class EntityManager extends LitElement {
     private async toggleUserSuspended(row: Record<string, unknown>) {
         const id = row.id as string;
         const active = row.is_active === true;
-        // POST /aaas/admin/users/{id}/suspend and /unsuspend
-        // (admin/aaas/api/users.py:418-461). One verb per real endpoint.
+        // POST /platform/admin/users/{id}/suspend and /unsuspend
+        // (admin/platform/api/users.py:418-461). One verb per real endpoint.
         const verb = active ? 'suspend' : 'unsuspend';
         try {
             await apiClient.post(this.apiPath(`users/${id}/${verb}`), {});

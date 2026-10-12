@@ -21,7 +21,7 @@
 |---------|------|--------|-------------|
 | 1.0.0 | 2026-06-01 | SomaTech Engineering | Initial deployment readiness assessment and plan |
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control. Prior status value `Pre-Production` is outside the closed set `Draft \| In Review \| Approved \| Obsolete`; normalised to `Draft` — no approver has signed this document. Revision History table unbroken. |
-| 1.1.0 | 2026-10-03 | SomaTech Engineering | Truth pass against the code. Removed the BrainBridge / `recall()` claim — `aaas/brain.py` was deleted in `6395bd78`. The memory seam is `MemoryGateway` → `SomaBrainAdapter` (T-1). |
+| 1.1.0 | 2026-10-03 | SomaTech Engineering | Truth pass against the code. Removed the BrainBridge / `recall()` claim — `platform/brain.py` was deleted in `6395bd78`. The memory seam is `MemoryGateway` → `SomaBrainAdapter` (T-1). |
 
 ---
 
@@ -43,7 +43,7 @@ This plan covers:
 This plan does not cover:
 - Production deployment procedures
 - Kubernetes production deployment
-- AAAS mode deployment (requires external repositories)
+- Soma Platform mode deployment (requires external repositories)
 
 ---
 
@@ -102,7 +102,7 @@ This plan does not cover:
 2. **Root docker-compose.yml exists** -- `docker-compose.yml` is present at project root
 3. **Authorization** -- `UnifiedGate` now makes real OPA/SpiceDB calls; some high-level RBAC API endpoints still return stubs
 4. **Chat Pipeline** -- V3 orchestrator is the WebSocket/REST production path; conversation worker still uses a separate use-case pipeline
-5. **Memory seam** -- `MemoryGateway` → `SomaBrainAdapter` is the only path (T-1). `BrainBridge` (`aaas/brain.py`) was deleted in `6395bd78`.
+5. **Memory seam** -- `MemoryGateway` → `SomaBrainAdapter` is the only path (T-1). `BrainBridge` (`platform/brain.py`) was deleted in `6395bd78`.
 6. **Test Coverage** -- 24 test files for ~570 source files
 7. **pyproject.toml** -- References `somabrain` as `../somabrain` path dependency
 8. **WebUI** -- `webui/Dockerfile` exists; `DEV_MODE = false` in `webui/src/main.ts`
@@ -183,7 +183,7 @@ cd ../..
 pytest tests/integration/ -v
 ```
 
-Phase 4: SaaS Tests (requires AAAS stack -- will skip without it)
+Phase 4: SaaS Tests (requires Soma Platform stack -- will skip without it)
 
 ```bash
 pytest tests/saas/ -v
@@ -238,15 +238,15 @@ pytest tests/saas/ -v
 | Image Name | Dockerfile | Status | Notes |
 |------------|------------|--------|-------|
 | `somaagent_standalone` | `infra/standalone/Dockerfile` | Buildable | Agent-only; works |
-| `somatech/soma-aaas:latest` | `infra/aaas/aaas/Dockerfile` | Buildable with siblings | Requires `../somabrain` and `../somafractalmemory` |
+| `somatech/soma-platform:latest` | `infra/platform/platform/Dockerfile` | Buildable with siblings | Requires `../somabrain` and `../somafractalmemory` |
 | `somaagent-webui` | `webui/Dockerfile` | Buildable | Nginx-served Lit frontend; `DEV_MODE=false` |
 
 ### 6.2 Missing Images
 
 | Image Name | Required For | Blocker |
 |------------|--------------|---------|
-| `somatech/soma-brain:latest` | AAAS / K8s | No Dockerfile in this repo |
-| `somatech/soma-memory:latest` | AAAS / K8s | No Dockerfile in this repo |
+| `somatech/soma-brain:latest` | Soma Platform / K8s | No Dockerfile in this repo |
+| `somatech/soma-memory:latest` | Soma Platform / K8s | No Dockerfile in this repo |
 | `somaagent-gateway:latest` | Makefile target | Dockerfile does not exist |
 | `somaagent-worker:latest` | Makefile target | Dockerfile does not exist |
 | `somaagent-analyzer:latest` | Makefile target | Dockerfile does not exist |
@@ -259,7 +259,7 @@ The terms "SomaBrain image" and "SomaFractalMemory image" in documentation refer
 
 2. **Docker images**: `somatech/soma-brain:latest` and `somatech/soma-memory:latest`. These are referenced in Kubernetes manifests but have no Dockerfiles in this repository. They are built from separate repositories (`somabrain` and `somafractalmemory`).
 
-**Conclusion**: For standalone testing, only the `somaagent_standalone` image is required and available. AAAS testing requires the external repositories.
+**Conclusion**: For standalone testing, only the `somaagent_standalone` image is required and available. Soma Platform testing requires the external repositories.
 
 ---
 
@@ -290,7 +290,7 @@ The terms "SomaBrain image" and "SomaFractalMemory image" in documentation refer
 | RISK-002 | Tests fail due to Django settings mismatch | Medium | Medium | Standardize on `services.gateway.settings` |
 | RISK-003 | Keycloak startup delays cause health check failures | Medium | Low | Health checks have retries configured |
 | RISK-004 | Port conflicts on 20xxx range | Low | Medium | Document port namespace; allow override |
-| RISK-005 | Missing sibling repos block AAAS testing | High | High | Clearly document standalone as primary test path |
+| RISK-005 | Missing sibling repos block Soma Platform testing | High | High | Clearly document standalone as primary test path |
 
 ---
 
@@ -300,7 +300,7 @@ The terms "SomaBrain image" and "SomaFractalMemory image" in documentation refer
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `SA01_DEPLOYMENT_MODE` | Yes | `DEV` | Deployment mode: STANDALONE, AAAS, DEV |
+| `SA01_DEPLOYMENT_MODE` | Yes | `DEV` | Deployment mode: STANDALONE, Soma Platform, DEV |
 | `SA01_DB_DSN` | Yes | None | PostgreSQL connection string |
 | `SA01_REDIS_URL` | Yes | None | Redis connection string |
 | `SA01_KEYCLOAK_URL` | Yes | None | Keycloak base URL |
@@ -311,7 +311,7 @@ The terms "SomaBrain image" and "SomaFractalMemory image" in documentation refer
 
 ### Appendix B: Port Reference
 
-| Service | Standalone Port | AAAS Port | Protocol |
+| Service | Standalone Port | Soma Platform Port | Protocol |
 |---------|----------------|-----------|----------|
 | SomaAgent API | 20020 | 63900 | HTTP |
 | PostgreSQL | 20432 | 63932 | TCP |

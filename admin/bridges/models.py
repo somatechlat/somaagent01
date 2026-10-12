@@ -57,7 +57,7 @@ class Channel(models.Model):
 
     # Required tenant binding — NO default tenant (fail-closed, T-5).
     tenant = models.ForeignKey(
-        "aaas.Tenant",
+        "platform.Tenant",
         on_delete=models.CASCADE,
         related_name="bridge_channels",
         db_index=True,

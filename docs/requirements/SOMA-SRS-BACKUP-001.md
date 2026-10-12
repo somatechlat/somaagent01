@@ -66,7 +66,7 @@ This document specifies the backup, audit trail, and disaster recovery system fo
 ### 1.2 Scope
 
 **In scope:**
-- Immutable audit logging (`admin/aaas/models/audit.py`)
+- Immutable audit logging (`admin/platform/models/audit.py`)
 - Capsule export with cryptographic signing
 - Capsule import with signature and constitution verification
 - Rollback to previous states using `old_value` snapshots
@@ -155,7 +155,7 @@ The Backup System spans the SomaAgent01 data layer and file system. It relies on
 
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
-| REQ-BKP-001 | The system shall maintain an append-only `AuditLog` (`admin/aaas/models/audit.py`, table `audit_logs`) recording `actor_id`, `actor_email`, `tenant`, `action`, `resource_type`, `resource_id`, `old_value`, `new_value`, `ip_address`, `user_agent`, `request_id`, and `created_at`. | Must | Inspection | Draft |
+| REQ-BKP-001 | The system shall maintain an append-only `AuditLog` (`admin/platform/models/audit.py`, table `audit_logs`) recording `actor_id`, `actor_email`, `tenant`, `action`, `resource_type`, `resource_id`, `old_value`, `new_value`, `ip_address`, `user_agent`, `request_id`, and `created_at`. | Must | Inspection | Draft |
 | REQ-BKP-002 | The system shall prevent UPDATE and DELETE operations on `audit_logs` via database constraints or triggers. | Must | Inspection | Draft |
 | REQ-BKP-003 | The system shall generate audit entries for the following actions: `capsule.created`, `capsule.updated`, `capsule.certified`, `capsule.archived`, `capsule.exported`, `capsule.imported`, `capsule.cloned`, `capsule.revoked`, `tenant.created`, `agent.created`, `tier.updated`. | Must | Test | Draft |
 
@@ -326,9 +326,9 @@ None.
 
 | REQ ID | Description | Source | Design | Implementation | Test |
 |--------|-------------|--------|--------|----------------|------|
-| REQ-BKP-001 | Append-only AuditLog model | Product backlog | `audit.py` | `admin/aaas/models/audit.py` | `tests/unit/test_audit_log.py` |
+| REQ-BKP-001 | Append-only AuditLog model | Product backlog | `audit.py` | `admin/platform/models/audit.py` | `tests/unit/test_audit_log.py` |
 | REQ-BKP-002 | Prevent UPDATE/DELETE on audit_logs | Compliance | DB triggers | PostgreSQL migration | `tests/unit/test_audit_triggers.py` |
-| REQ-BKP-003 | Standard audit event types | Product backlog | `audit.py` | `admin/aaas/models/audit.py` | `tests/unit/test_audit_events.py` |
+| REQ-BKP-003 | Standard audit event types | Product backlog | `audit.py` | `admin/platform/models/audit.py` | `tests/unit/test_audit_events.py` |
 | REQ-BKP-004 | Signed export bundles | Security req | Export service | `admin/services/export.py` | `tests/unit/test_export_signing.py` |
 | REQ-BKP-005 | Export audit entry | Security req | Export service | `admin/services/export.py` | `tests/unit/test_export_audit.py` |
 | REQ-BKP-006 | Import verification chain | Security req | Import service | `admin/services/import.py` | `tests/unit/test_import_verification.py` |

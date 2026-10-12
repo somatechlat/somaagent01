@@ -17,7 +17,7 @@ from jose import jwt, JWTError
 from ninja import Router
 from ninja.responses import Response as NinjaResponse
 
-from admin.aaas.models import Tenant
+from admin.platform.models import Tenant
 from admin.auth.api_helpers import (
     determine_redirect_path,
     get_highest_role,
@@ -66,7 +66,7 @@ async def _emit_auth_audit(
     from asgiref.sync import sync_to_async
 
     try:
-        from admin.aaas.models import AuditLog
+        from admin.platform.models import AuditLog
 
         await sync_to_async(AuditLog.objects.create, thread_sensitive=False)(
             # NULL = no authenticated actor. A sentinel string cannot be
@@ -385,7 +385,7 @@ async def _login_local(request, payload: "LoginRequest"):
     from asgiref.sync import sync_to_async
     from django.utils import timezone
 
-    from admin.aaas.models.identity import LocalIdentity
+    from admin.platform.models.identity import LocalIdentity
     from services.common.identity.authenticate import (
         decide_authentication,
     )
@@ -488,7 +488,7 @@ async def _login_local(request, payload: "LoginRequest"):
     # decode_token classifies on shape - `ses_` is what routes a bearer to the
     # local-session stack instead of the JWT stack.
     from admin.auth.api_helpers import get_highest_role
-    from admin.aaas.models.session import LocalSession
+    from admin.platform.models.session import LocalSession
     from services.common.identity.session import generate_session_token
 
     raw_token, token_hash = generate_session_token()
@@ -817,7 +817,7 @@ async def register_user(request, payload: RegisterRequest):
 
 
 # =============================================================================
-# IMPERSONATION - AAAS Super Admin Only
+# IMPERSONATION - Soma Platform Super Admin Only
 # =============================================================================
 
 
@@ -875,7 +875,7 @@ async def impersonate_tenant(request, payload: ImpersonationRequest):
 
     @sync_to_async
     def create_audit():
-        from admin.aaas.models import AuditLog
+        from admin.platform.models import AuditLog
 
         return AuditLog.objects.create(
             actor_id=as_uuid(current_user.sub),

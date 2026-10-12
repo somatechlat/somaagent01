@@ -1,6 +1,6 @@
-"""AAAS API handlers must not touch the ORM from an async context.
+"""Soma Platform API handlers must not touch the ORM from an async context.
 
-Regression: handlers in ``admin/aaas/api/`` were declared ``async def`` but
+Regression: handlers in ``admin/platform/api/`` were declared ``async def`` but
 their bodies called the synchronous ORM directly. Django's ``async_unsafe``
 guard raises ``SynchronousOnlyOperation`` the moment a queryset runs under a
 live event loop, so those routes 500'd on request.
@@ -11,7 +11,7 @@ to be async. A handler that genuinely awaits external I/O — like
 ``get_user_detail``, which awaits the Redis session manager — must stay
 ``async def`` and push its ORM half through ``sync_to_async``.
 
-``admin/aaas/api/integrations.py`` is the other valid shape: it stays async
+``admin/platform/api/integrations.py`` is the other valid shape: it stays async
 because it uses the real async ORM API (``afirst``/``asave``).
 
 These tests assert on the failure *class*, not on a successful response, so
@@ -72,14 +72,14 @@ class TestAaasApiAsyncSafety:
         """Async handler that also awaits Redis: its ORM half must be threaded."""
         from django.test import RequestFactory
 
-        from admin.aaas.api.users import get_user_detail
+        from admin.platform.api.users import get_user_detail
 
-        request = RequestFactory().get("/api/v2/aaas/users/missing/detail")
+        request = RequestFactory().get("/api/v2/platform/users/missing/detail")
         _run_expecting_no_async_unsafe(get_user_detail, request, "missing")
 
     def test_get_user_detail_stays_async_for_redis(self):
         """It must remain a coroutine function — the session manager is awaited."""
-        from admin.aaas.api.users import get_user_detail
+        from admin.platform.api.users import get_user_detail
 
         assert inspect.iscoroutinefunction(get_user_detail)
 
@@ -93,7 +93,7 @@ class TestAaasApiAsyncSafety:
         the loop. Asserting the wrapper is not a coroutine function asserted
         the opposite of that and could never pass.
         """
-        from admin.aaas.api.users import _load_user_bundle
+        from admin.platform.api.users import _load_user_bundle
 
         # Awaitable from the async view.
         assert inspect.iscoroutinefunction(_load_user_bundle)
@@ -108,6 +108,6 @@ class TestAaasApiAsyncSafety:
 
     def test_handlers_using_async_orm_may_stay_async(self):
         """Counter-example: real async ORM API is the one valid way to stay async."""
-        from admin.aaas.api.integrations import get_integration
+        from admin.platform.api.integrations import get_integration
 
         assert inspect.iscoroutinefunction(get_integration)

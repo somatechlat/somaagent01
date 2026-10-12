@@ -39,11 +39,11 @@ export class SomaComposerMenu extends LitElement {
             bottom: calc(100% + 8px);
             left: 0;
             min-width: 220px;
-            background: var(--aaas-bg-card, #1e1e1e);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            border-radius: var(--aaas-radius-lg, 12px);
+            background: var(--platform-bg-card, #1e1e1e);
+            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
+            border-radius: var(--platform-radius-lg, 12px);
             padding: 6px;
-            box-shadow: var(--aaas-shadow-lg, 0 8px 24px rgba(0,0,0,0.6));
+            box-shadow: var(--platform-shadow-lg, 0 8px 24px rgba(0,0,0,0.6));
             animation: menuIn 150ms ease-out;
         }
 
@@ -57,10 +57,10 @@ export class SomaComposerMenu extends LitElement {
             align-items: center;
             gap: 10px;
             padding: 9px 12px;
-            border-radius: var(--aaas-radius-md, 8px);
+            border-radius: var(--platform-radius-md, 8px);
             cursor: pointer;
             font-size: 13px;
-            color: var(--aaas-text-secondary, #a1a1a1);
+            color: var(--platform-text-secondary, #a1a1a1);
             transition: all 100ms ease;
             border: none;
             background: transparent;
@@ -70,12 +70,12 @@ export class SomaComposerMenu extends LitElement {
         }
 
         .menu-item:hover {
-            background: var(--aaas-bg-hover, #141414);
-            color: var(--aaas-text-primary, #ffffff);
+            background: var(--platform-bg-hover, #141414);
+            color: var(--platform-text-primary, #ffffff);
         }
 
         .menu-item:focus-visible {
-            outline: 2px solid var(--aaas-info, #3b82f6);
+            outline: 2px solid var(--platform-info, #3b82f6);
             outline-offset: -1px;
         }
 
@@ -87,7 +87,7 @@ export class SomaComposerMenu extends LitElement {
 
         .menu-divider {
             height: 1px;
-            background: var(--aaas-border-light, rgba(255,255,255,0.06));
+            background: var(--platform-border-light, rgba(255,255,255,0.06));
             margin: 4px 0;
         }
 
@@ -98,11 +98,11 @@ export class SomaComposerMenu extends LitElement {
         .notice {
             padding: 6px 12px;
             font-size: 11px;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
         }
 
         .notice.error {
-            color: var(--aaas-danger, #ef4444);
+            color: var(--platform-danger, #ef4444);
         }
     `;
 

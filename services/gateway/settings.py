@@ -1,5 +1,5 @@
 """
-Django settings for SomaAgent01 AAAS Admin.
+Django settings for SomaAgent01 Soma Platform Admin.
 
 This module is used for Django management commands (makemigrations, migrate, etc.)
 This module is the runtime configuration for the gateway.
@@ -89,7 +89,7 @@ INSTALLED_APPS = [
     "admin.somabrain",
     "admin.notifications",
     "admin.orchestrator",
-    "admin.aaas",
+    "admin.platform",
     "admin.tools",
     "admin.ui",
     "admin.utils",
@@ -107,8 +107,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # OPA on EVERY request (fail-closed) — one policy plane with Brain.
-    "services.common.opa_middleware.OpaMiddleware",
 ]
 
 ROOT_URLCONF = "services.gateway.urls"
@@ -198,7 +196,7 @@ WHITENOISE_ROOT = BASE_DIR / "webui" / "dist"  # Root for SPA assets
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # =============================================================================
-# AAAS ADMIN DEFAULTS (Centralized — behaviour via SettingsModel, not ENV)
+# Soma Platform ADMIN DEFAULTS (Centralized — behaviour via SettingsModel, not ENV)
 # =============================================================================
 
 # SECURITY WARNING: keep the HSTS max-age an operator knob (R-BEH-01).
@@ -497,7 +495,7 @@ LOGGING = {
         },
         # Admin apps
         "admin": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
-        "admin.aaas": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
+        "admin.platform": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
         "admin.core": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
         "admin.agents": {"handlers": ["json_console"], "level": "DEBUG", "propagate": False},
         # Services

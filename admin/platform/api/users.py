@@ -16,7 +16,7 @@ from django.db.models import Q
 from ninja import Query, Router
 from pydantic import BaseModel
 
-from admin.aaas.models import TenantUser
+from admin.platform.models import TenantUser
 from admin.core.authz import ORG_ASSIGNABLE_ROLES
 from admin.common.auth import AuthBearer
 from admin.common.exceptions import NotFoundError, UnauthorizedError, ValidationError
@@ -320,7 +320,7 @@ def _load_user_bundle(user_id: str):
     permissions = get_permissions_for_roles([user.role])
 
     # Real agent access from AgentUser model
-    from admin.aaas.models.agents import AgentUser
+    from admin.platform.models.agents import AgentUser
 
     agent_user_links = AgentUser.objects.filter(user_id=user.user_id).select_related("agent")[:20]
     agent_access = [
@@ -334,7 +334,7 @@ def _load_user_bundle(user_id: str):
     ]
 
     # Real activity log from AuditLog
-    from admin.aaas.models.audit import AuditLog
+    from admin.platform.models.audit import AuditLog
 
     audit_entries = AuditLog.objects.filter(actor_id=user.user_id).order_by("-created_at")[:10]
     activity_log = [
@@ -517,7 +517,7 @@ class ProfileOut(BaseModel):
 def get_profile(request) -> dict:
     """Get current authenticated user's profile."""
     authorize_sync(request, action="org:user_read", resource="users")
-    from admin.aaas.models import AdminProfile, ApiKey, UserSession
+    from admin.platform.models import AdminProfile, ApiKey, UserSession
     from admin.auth.api import get_permissions_for_roles
 
     user_id = getattr(request.auth, "sub", None)
@@ -586,7 +586,7 @@ def update_profile(
 ) -> dict:
     """Update current user's profile settings."""
     authorize_sync(request, action="org:user_update", resource="users")
-    from admin.aaas.models import AdminProfile
+    from admin.platform.models import AdminProfile
 
     user_id = getattr(request.auth, "sub", None)
     email = getattr(request.auth, "email", None)
@@ -649,12 +649,12 @@ class PreferencesUpdateRequest(BaseModel):
 def get_preferences(request) -> dict:
     """Read theme / language / timezone / notifications for the caller.
 
-    Backed by ``UserPreferences`` (`admin/aaas/models/profiles.py`). Values
+    Backed by ``UserPreferences`` (`admin/platform/models/profiles.py`). Values
     that have never been saved come from the model defaults — never from a
     browser-side guess.
     """
     authorize_sync(request, action="identity:self", resource="identity")
-    from admin.aaas.models import UserPreferences
+    from admin.platform.models import UserPreferences
 
     user_id = getattr(request.auth, "sub", None)
     if not user_id:
@@ -684,7 +684,7 @@ def get_preferences(request) -> dict:
 def update_preferences(request, payload: PreferencesUpdateRequest) -> dict:
     """Persist theme / language / timezone / notifications for the caller."""
     authorize_sync(request, action="identity:self", resource="identity")
-    from admin.aaas.models import UserPreferences
+    from admin.platform.models import UserPreferences
 
     user_id = getattr(request.auth, "sub", None)
     if not user_id:

@@ -86,8 +86,8 @@ One lane only. T-1 seam untouched. This plan **never** adds a second memory clie
 
 | # | Task | Finding | Owner | Files | Gate |
 |---|---|---|---|---|---|
-| W0.1 | `ApiKey.key_hash` → `unique=True` + index. Dedupe first. | DB-CRIT-1 | somaAgent01 | `admin/aaas/models/profiles.py` + migration | Auth lookup is an index scan; duplicate hashes rejected by DB |
-| W0.2 | `UserSession.refresh_token_hash` → `unique=True` + partial index | DB-HIGH-8 | somaAgent01 | `admin/aaas/models/profiles.py` + migration | Session revoke is an index scan |
+| W0.1 | `ApiKey.key_hash` → `unique=True` + index. Dedupe first. | DB-CRIT-1 | somaAgent01 | `admin/platform/models/profiles.py` + migration | Auth lookup is an index scan; duplicate hashes rejected by DB |
+| W0.2 | `UserSession.refresh_token_hash` → `unique=True` + partial index | DB-HIGH-8 | somaAgent01 | `admin/platform/models/profiles.py` + migration | Session revoke is an index scan |
 | W0.3 | Atomic `IdempotencyRecord.check_and_set` (`transaction.atomic` + `select_for_update`) | DB-CRIT-5 | somaAgent01 | `admin/core/models/zdl.py` | Concurrent double-submit yields one `is_new=True` |
 | W0.4 | Backfill `Message.content` for the `chat/0002`→`chat/0004` window from WAL/SomaBrain | DB-CRIT-3 | somaAgent01 + somabrain (recall assist) | data migration | Zero rows with `content=''` AND `coordinate<>''` |
 | W0.5 | CHECK constraints: `rollout_percentage` 0–100, `Capsule.status` enum, `Job.priority` bounds, partial unique one-active-`Constitution` | DB-CRIT-4 | somaAgent01 | `admin/core/models/*` + migration | Raw insert of `-999` / `"banana"` rejected by DB |
@@ -118,7 +118,7 @@ One lane only. T-1 seam untouched. This plan **never** adds a second memory clie
 
 | # | Task | Finding | Owner | Files | Gate |
 |---|---|---|---|---|---|
-| W2.1 | One `mint_api_key()` + one `ApiKeyOut` + one authz resource name | SIMP-01 | somaAgent01 | new `admin/common/api_keys.py`; `admin/gateway/api/gateway.py`; `admin/aaas/api/settings.py` | Both routes call one function; key-format change is one edit |
+| W2.1 | One `mint_api_key()` + one `ApiKeyOut` + one authz resource name | SIMP-01 | somaAgent01 | new `admin/common/api_keys.py`; `admin/gateway/api/gateway.py`; `admin/platform/api/settings.py` | Both routes call one function; key-format change is one edit |
 | W2.2 | One success/error envelope (`api_response`/`error_response`); fix `+00:00Z` timestamp bug | SIMP-03 / SIMP-19 | somaAgent01 | `admin/common/responses.py` + ~16 call sites | api-client unwrap is single-path; ISO-8601 valid |
 | W2.3 | Shared health probes (`probe_postgres` / `probe_redis`) | SIMP-07 | somaAgent01 | new `admin/common/health_probe.py`; 3 call sites | One probe implementation; three schemas map `ProbeResult` |
 | W2.4 | Delete dead `admin/llm/__init__` re-export layer | SIMP-09 | somaAgent01 | `admin/llm/__init__.py` | Zero external callers of the wrappers (already verified) |
@@ -153,7 +153,7 @@ One lane only. T-1 seam untouched. This plan **never** adds a second memory clie
 |---|---|---|---|---|---|
 | W4.1 | Extract `TurnPlan` / `_prepare_turn()` shared phases | SIMP-04 | somaAgent01 | `admin/core/chat_orchestrator.py` | `process_turn` and `stream_turn` share one pipeline core; e2e green |
 | W4.2 | Route all webui fetches through `ApiClient`; keyed `repeat()` + virtualizer in chat | SIMP-05 / PERF-11 | somaAgent01 | `webui/src/**` | Zero raw `fetch` outside `api-client.ts`; streaming re-render is O(1) |
-| W4.3 | Settings base module + adopt `env_config` (keep mode topology) | SIMP-06 | somaAgent01 | `config/`, `services/gateway/settings.py`, `infra/aaas/unified_settings.py` | 88 duplicated names → one declaration; mode table intact |
+| W4.3 | Settings base module + adopt `env_config` (keep mode topology) | SIMP-06 | somaAgent01 | `config/`, `services/gateway/settings.py`, `infra/platform/unified_settings.py` | 88 duplicated names → one declaration; mode table intact |
 | W4.4 | Split long functions (`run_tool_loop` 255, `_login_local` 179, `_handle_chat` 172) | SIMP-11 | somaAgent01 | multi | Every function < 50 lines (project law) |
 | W4.5 | Request dataclasses for 8+ arg functions | SIMP-13 | somaAgent01 | multi | Call sites take a frozen dataclass |
 | W4.6 | Replace bare `except Exception` with typed/logged handlers | SIMP-14 | somaAgent01 | multi | Zero silent swallows; every handler logs `exc_info` |

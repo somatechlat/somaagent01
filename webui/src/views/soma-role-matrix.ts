@@ -1,8 +1,8 @@
 /**
  * Role Matrix — one permission matrix + the folded-in permissions list.
  *
- * Backed by GET /aaas/settings/roles (each role carries its granted permission
- * names) and PATCH /aaas/settings/roles/{id} which requires `org:assign_roles`.
+ * Backed by GET /platform/settings/roles (each role carries its granted permission
+ * names) and PATCH /platform/settings/roles/{id} which requires `org:assign_roles`.
  * The deleted /permissions/* router used to mint fabricated CRUD; this screen
  * never talks to it. Verb names come from the role rows the catalog returns —
  * the UI does not invent a permission vocabulary.
@@ -118,7 +118,7 @@ export class SomaRoleMatrix extends LitElement {
         this.error = '';
         try {
             const [roles, me] = await Promise.all([
-                apiClient.get<RoleOut[]>('/aaas/settings/roles'),
+                apiClient.get<RoleOut[]>('/platform/settings/roles'),
                 apiClient.get<{ permissions?: string[] }>('/auth/me'),
             ]);
             this.roles = roles || [];
@@ -190,7 +190,7 @@ export class SomaRoleMatrix extends LitElement {
                     for (const p of before) { if (!after.has(p)) { changed = true; break; } }
                 }
                 if (!changed) continue;
-                await apiClient.patch(`/aaas/settings/roles/${role.id}`, {
+                await apiClient.patch(`/platform/settings/roles/${role.id}`, {
                     permissions: Array.from(after).sort(),
                 });
             }

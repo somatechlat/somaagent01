@@ -3,7 +3,7 @@
 ``decode_token`` receives a bearer and has to decide which validation stack
 is responsible for it. This file covers the session stack: the glue between
 the pure routing decision (``services.common.identity.credential``) and the
-row that answers for it (``admin.aaas.models.session.LocalSession``).
+row that answers for it (``admin.platform.models.session.LocalSession``).
 
 Three rules are load-bearing here.
 
@@ -36,8 +36,8 @@ from asgiref.sync import sync_to_async
 
 from admin.common.auth import TokenPayload, decode_token
 from admin.common.exceptions import UnauthorizedError
-from admin.aaas.models.identity import LocalIdentity
-from admin.aaas.models.session import LocalSession
+from admin.platform.models.identity import LocalIdentity
+from admin.platform.models.session import LocalSession
 from admin.core.authz import permissions_for_principal
 from services.common.identity.session import (
     ABSOLUTE_TIMEOUT,

@@ -79,7 +79,7 @@ The following issues identified in the previous audit have been **verified as fi
 
 ### 1.5 BrainBridge.recall() Implementation
 
-**File:** `aaas/brain.py` lines 132–161
+**File:** `platform/brain.py` lines 132–161
 
 **Fix:** `recall()` is now implemented for both direct (in-process) and HTTP modes. Previously it raised `NotImplementedError`.
 
@@ -153,9 +153,9 @@ The following issues identified in the previous audit have been **verified as fi
 
 #### P0-003: Django Migrations Out of Sync
 
-**Files:** `admin/aaas/migrations/`, `admin/core/migrations/`
+**Files:** `admin/platform/migrations/`, `admin/core/migrations/`
 
-**Issue:** Django migrations are out of sync with the current model definitions for both `admin/aaas` and `admin/core` apps. Running `migrate` may fail or produce incorrect schema.
+**Issue:** Django migrations are out of sync with the current model definitions for both `admin/platform` and `admin/core` apps. Running `migrate` may fail or produce incorrect schema.
 
 **Risk:** Deployment failures; data integrity issues.
 
@@ -207,7 +207,7 @@ The following issues identified in the previous audit have been **verified as fi
 
 #### P2-001: Hardcoded Docker Hostname
 
-**File:** `aaas/brain.py` line 92
+**File:** `platform/brain.py` line 92
 
 **Issue:** BrainBridge falls back to Docker hostname `somastack_aaas:9696` when no URL is configured. This is a hardcoded Docker networking assumption that will fail outside the specific Docker Compose setup.
 

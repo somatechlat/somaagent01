@@ -4,7 +4,7 @@
  *
  * SRS Reference: Section 9.4
  *
- * Backed by /api/v2/aaas/settings/api-keys. The previous version of this
+ * Backed by /api/v2/platform/settings/api-keys. The previous version of this
  * view rendered five hardcoded keys with fabricated `type`, `keyMasked` and
  * `status` fields, offered a "Safe & Verify" button that did nothing, and
  * claimed "Keys are stored securely in Secret Manager". Nothing in this
@@ -25,7 +25,7 @@ import '../components/soma-action-menu.js';
 import type { TableColumn } from '../components/soma-data-table.js';
 import { apiClient, getData } from '../services/api-client.js';
 
-/** Matches admin.aaas.api.schemas.ApiKeyOut — no invented fields. */
+/** Matches admin.platform.api.schemas.ApiKeyOut — no invented fields. */
 interface ApiKey {
     id: string;
     name: string;
@@ -36,7 +36,7 @@ interface ApiKey {
     expires_at: string | null;
 }
 
-/** Shape returned by POST /aaas/settings/api-keys — `key` only exists once. */
+/** Shape returned by POST /platform/settings/api-keys — `key` only exists once. */
 interface ApiKeyCreated {
     id: string;
     name: string;
@@ -154,7 +154,7 @@ export class SomaAdminApiKeys extends LitElement {
         this._loading = true;
         this._error = null;
         try {
-            const rows = await apiClient.get<ApiKey[]>('/aaas/settings/api-keys');
+            const rows = await apiClient.get<ApiKey[]>('/platform/settings/api-keys');
             this._keys = getData<ApiKey[]>(rows) ?? (Array.isArray(rows) ? rows : []);
         } catch (e) {
             this._error = e instanceof Error ? e.message : String(e);
@@ -181,7 +181,7 @@ export class SomaAdminApiKeys extends LitElement {
         if (!Number.isNaN(days) && days > 0) body.expires_in_days = days;
 
         try {
-            const created = await apiClient.post<ApiKeyCreated>('/aaas/settings/api-keys', body);
+            const created = await apiClient.post<ApiKeyCreated>('/platform/settings/api-keys', body);
             this._created = created;
             this._showCreateModal = false;
             this._newName = '';
@@ -195,7 +195,7 @@ export class SomaAdminApiKeys extends LitElement {
 
     private async _revoke(row: ApiKey) {
         try {
-            await apiClient.delete(`/aaas/settings/api-keys/${row.id}`);
+            await apiClient.delete(`/platform/settings/api-keys/${row.id}`);
             await this._load();
         } catch (e) {
             this._error = e instanceof Error ? e.message : String(e);

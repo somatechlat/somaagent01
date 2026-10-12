@@ -29,8 +29,8 @@ from __future__ import annotations
 import pytest
 from asgiref.sync import sync_to_async
 
-from admin.aaas.models.identity import LocalIdentity
-from admin.aaas.models.session import LocalSession
+from admin.platform.models.identity import LocalIdentity
+from admin.platform.models.session import LocalSession
 from services.common.identity.password import hash_password
 from services.common.identity.pepper import get_password_pepper
 from services.common.identity.session import hash_session_token

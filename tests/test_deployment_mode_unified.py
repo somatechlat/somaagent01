@@ -4,7 +4,7 @@ Tests for Week 1 P0 tasks: CTX-002, CHAT-003, HEALTH-002, METRICS-002, GOV-002
 
 VIBE COMPLIANT:
 - Real implementation tests
-- Live standalone cluster scenarios (AAAS mode removed)
+- Live standalone cluster scenarios (Soma Platform mode removed)
 - Production-grade error validation
 - No mocks - use real infrastructure where possible
 """

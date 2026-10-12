@@ -8,12 +8,12 @@ from django.utils.text import slugify
 
 
 def map_capsule_tenants_to_fk(apps, schema_editor):
-    """Map legacy Capsule.tenant string values to aaas.Tenant rows.
+    """Map legacy Capsule.tenant string values to platform.Tenant rows.
 
     Runs before Capsule.tenant is altered from CharField to ForeignKey.
     """
-    Tenant = apps.get_model("aaas", "Tenant")
-    SubscriptionTier = apps.get_model("aaas", "SubscriptionTier")
+    Tenant = apps.get_model("platform", "Tenant")
+    SubscriptionTier = apps.get_model("platform", "SubscriptionTier")
     Capsule = apps.get_model("core", "Capsule")
 
     fallback_tier, _ = SubscriptionTier.objects.get_or_create(
@@ -71,7 +71,7 @@ def map_capsule_tenants_to_fk(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("aaas", "0001_initial"),
+        ("platform", "0001_initial"),
         ("core", "0007_remove_capsule_legacy_fields"),
         (
             "llm",
@@ -365,7 +365,7 @@ class Migration(migrations.Migration):
                 help_text="Owning tenant",
                 on_delete=django.db.models.deletion.CASCADE,
                 related_name="capsules",
-                to="aaas.tenant",
+                to="platform.tenant",
             ),
         ),
         migrations.AlterField(

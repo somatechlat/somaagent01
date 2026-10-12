@@ -71,7 +71,7 @@ CANONICAL = (
 
 
 def _remap(apps, schema_editor, model_name, role_map):
-    Model = apps.get_model("aaas", model_name)
+    Model = apps.get_model("platform", model_name)
     for old, new in role_map.items():
         # Only touch rows that still hold the retired name. Values outside
         # both the retired set and the canonical set are left in place on
@@ -101,7 +101,7 @@ def noop(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("aaas", "0001_initial"),
+        ("platform", "0001_initial"),
     ]
 
     operations = [

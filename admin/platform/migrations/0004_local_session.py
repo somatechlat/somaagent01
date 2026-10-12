@@ -31,7 +31,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("aaas", "0003_local_identity"),
+        ("platform", "0003_local_identity"),
     ]
 
     operations = [

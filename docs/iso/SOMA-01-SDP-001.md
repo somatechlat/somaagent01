@@ -113,7 +113,7 @@ Each phase has:
 |----------|--------|-------------|
 | Local development | `make dev` (uvicorn hot reload) | Developer machine |
 | Standalone testing | `docker compose up -d` | Local Docker |
-| AAAS testing | `docker compose -f docker-compose.aaas.yml up -d` | Local Docker |
+| Soma Platform testing | `docker compose -f docker-compose.platform.yml up -d` | Local Docker |
 | Staging deployment | K8s manifests + Helm | Staging cluster |
 | Production deployment | K8s manifests + Helm + canary | Production cluster |
 
@@ -151,7 +151,7 @@ Each phase has:
 
 ### 4.3 Infrastructure (per SOMA-01-ARCH-001)
 
-| Service | Standalone Port | AAAS Port | Purpose |
+| Service | Standalone Port | Soma Platform Port | Purpose |
 |---------|----------------|-----------|---------|
 | PostgreSQL | 20432 | 63932 | Primary database |
 | Redis | 20379 | 63979 | Cache, sessions, rate limiting |

@@ -70,10 +70,10 @@ To define, in one place, everything required to:
 |-----------|------------|---------------|---------|
 | Agent identity | Profile + settings JSON | **Capsule** (soul/body/hands/governance/lineage, signed Constitution) | Soma superior |
 | Memory | FAISS + local files | **Brain (WM/LTM) + SFM (768-dim Milvus)**, one canonical lane | Soma superior |
-| Multi-tenancy | Single user | Tenant isolation, AAAS, tiers, billing | Soma superior |
+| Multi-tenancy | Single user | Tenant isolation, Soma Platform, tiers, billing | Soma superior |
 | Governance | None | Constitution, Ed25519, AgentIQ derivation, UnifiedGate (OPA/SpiceDB) | Soma superior |
 | Extensibility | Plugins (loose) | **Capsules + Capabilities** (typed, policy-bound) | Soma superior |
-| Deployment | Single container | Standalone **and** AAAS enterprise stack | Soma superior |
+| Deployment | Single container | Standalone **and** Soma Platform enterprise stack | Soma superior |
 | Plugin contract | Mature, ergonomic | Must adopt (§7 maps A0 → Capsule) | A0 superior today → clone |
 | Chat UX completeness | Mature | Partial (no queue/branch/tool UI) | A0 superior today → clone + improve |
 | Settings UX | Deep, progressive | Thin | A0 superior today → clone + improve |
@@ -299,7 +299,7 @@ Status: **DONE** · **PARTIAL** · **STUB** (fake/hardcoded) · **MISSING** · *
 | U-04 | Dark-first, glass surfaces | Keep Soma `saas-glass-*` language; drop Alpine for Lit 3.x |
 | U-05 | Keyboard-first | Full shortcuts map (send, queue, stop, branch, palette) |
 | U-06 | Honest UI | Never show fabricated metrics (`brain-store.ts` hardcoded `memoryUsage` **must die**) |
-| U-07 | Two modes, one UI | Standalone / AAAS; enterprise adds panels only |
+| U-07 | Two modes, one UI | Standalone / Soma Platform; enterprise adds panels only |
 | U-08 | Bridge-aware | Channel badge on every conversation (WhatsApp/Telegram/Web) |
 
 ### 5.2 Design system (canonical)
@@ -337,7 +337,7 @@ CORE
     /settings/modules            feature toggles (billing, LDAP, OPA, Vault, Kafka…)
     /settings/backup             backup/restore
     /settings/security           API keys, sessions, audit
-    /settings/tenants            AAAS only
+    /settings/tenants            Soma Platform only
   /profile
 
 RIGHT RAIL SURFACES (chat)
@@ -386,10 +386,10 @@ webui/src/
 | Channels | WhatsApp, Telegram, Email, Slack | new `/bridges` | `bridge_*` |
 | Voice | STT/TTS, personas | `/voice` | `voice` |
 | UI | theme, language, density | `/ui` | core |
-| Modules | toggle every enterprise feature | `/features`, `/aaas/features` | all |
+| Modules | toggle every enterprise feature | `/features`, `/platform/features` | all |
 | Backup | create/inspect/restore | new `/backup` | `backup` |
 | Security | keys, sessions, audit | `/apikeys`, `/audit` | core |
-| Tenants | AAAS admin | `/aaas/*` | `aaas` |
+| Tenants | Soma Platform admin | `/platform/*` | `platform` |
 
 ### 5.6 UX flows (must implement)
 
@@ -491,7 +491,7 @@ webui/src/
 | D-07 | Embed-dim 768 constant | **3 repos** | MED | contract constant | local defaults |
 | D-08 | DTO twins (`RecallHit`×3, `MemoryAck`×2, …) | many | MED | contract DTOs | `core/models.py` mem DTOs, 2× RecallHit |
 | D-09 | HTTP helpers / bearer builders | 3+15 sites | MED | thin `soma-http` | per-site httpx, `memory_client_helpers` (DEAD) |
-| D-10 | SFM dual auth | 2 | MED | `admin/aaas/auth.py` | `StandaloneAuth` dup (keep tenant-pin behaviour) |
+| D-10 | SFM dual auth | 2 | MED | `admin/platform/auth.py` | `StandaloneAuth` dup (keep tenant-pin behaviour) |
 | D-11 | Settings resolvers | **6** | MED | Django settings + `get_memory_setting` | `env_config`, `unified_settings`, mode class dup |
 | D-12 | infra/mocks + wrong dialect | 2 | HIGH | delete mocks | `infra/mocks/**` |
 | D-13 | Mocked tests | 5 files | MED | live integration tests | `test_seam_contract.py` etc. |
@@ -526,7 +526,7 @@ webui/src/
 | Capsule Modules (plugins) | **somaAgent01/admin/modules** | bridge_worker | security | UI |
 | Channels/bridges runtime | **somaAgent01/services/bridge_worker** | modules | security | ops |
 | UI design system | **somaAgent01/webui** | — | UX | all |
-| Feature flags / tiers | **somaAgent01/features + aaas** | — | PM | UI |
+| Feature flags / tiers | **somaAgent01/features + platform** | — | PM | UI |
 | AuthN/AuthZ | **somaAgent01/auth + unified_gate** | SFM/brain auth adapters | security | all |
 | Tests honesty | **each repo tests/** | CI | QA | PM |
 | ISO docs | **docs/iso** (this series) | each WP | PM | all |
@@ -645,7 +645,7 @@ webui/src/
 
 | # | Decision | Options | Default if silent | Blocks |
 |---|----------|---------|-------------------|--------|
-| OD-1 | `direct_backend` in Brain (in-process SFM) keep or delete? | Keep as AAAS optimization vs delete (HTTP-only) | **Delete** (T-1 simplicity) | B5 |
+| OD-1 | `direct_backend` in Brain (in-process SFM) keep or delete? | Keep as Soma Platform optimization vs delete (HTTP-only) | **Delete** (T-1 simplicity) | B5 |
 | OD-2 | Embedder migration | Re-embed all vs accept mixed vectors | **Re-embed** offline job | B4 |
 | OD-3 | Shared package layout | `soma-memory-contract` PyPI-style package vs git submodule vs copy-with-CI-equality | **Package in monorepo folder + installable** | B3 |
 | OD-4 | Eye-of-god Brain admin UI | Strangler into saas-* vs keep dual UI | **Strangler** | W7 |
@@ -740,8 +740,8 @@ Execution is 23 P0 parity items, 7 remediation waves, and 30+ work packages, del
 | ~~`admin/analytics/api.py`~~ | deleted: fabricated empty aggregates, no analytics store behind them | removed — do not rebuild without a real store |
 | `admin/multimodal/execution.py:300,423` | Playwright “in production” stubs | **IMPLEMENT** |
 | `admin/a2a/api.py` | Temporal stubs | **IMPLEMENT** or flag off |
-| `admin/aaas/api/features.py:206` | `return []` | **IMPLEMENT** |
-| `admin/aaas/api/integrations.py:128` | provider stub fallback | **DELETE** stub fallback |
+| `admin/platform/api/features.py:206` | `return []` | **IMPLEMENT** |
+| `admin/platform/api/integrations.py:128` | provider stub fallback | **DELETE** stub fallback |
 
 ### C.2 Infra fakes
 

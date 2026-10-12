@@ -35,7 +35,7 @@
 | Quality Manual | SOMA-01-QMS-001 | `docs/iso/SOMA-01-QMS-001.md` |
 | Production Readiness | SOMA-01-PROD-001 | `docs/iso/SOMA-01-PROD-001.md` |
 | Compatibility Matrix | SOMA-01-COMPAT-001 | `docs/iso/SOMA-01-COMPAT-001.md` |
-| AAAS Deployment | SOMA-01-AAAS-001 | `docs/iso/SOMA-01-AAAS-001.md` |
+| Soma Platform Deployment | SOMA-01-Soma Platform-001 | `docs/iso/SOMA-01-Soma Platform-001.md` |
 | Work Breakdown | SOMA-PM-WBS-001 | `docs/project/SOMA-PM-WBS-001.md` |
 | Deliverables | SOMA-PM-DELIV-001 | `docs/project/SOMA-PM-DELIV-001.md` |
 | Milestones | SOMA-PM-MILE-001 | `docs/project/SOMA-PM-MILE-001.md` |
@@ -56,12 +56,12 @@ SomaTech LAT — Engineering Leadership
 SomaTech Engineering Team Lead
 
 ### 1.4 Project Purpose
-Bring the Soma Cognitive Triad (SomaAgent01 + SomaBrain + SomaFractalMemory) from pre-production state to production-ready deployment, enabling single-click AAAS (Agent As A Service) deployment of complete cognitive AI agents.
+Bring the Soma Cognitive Triad (SomaAgent01 + SomaBrain + SomaFractalMemory) from pre-production state to production-ready deployment, enabling single-click Soma Platform (Agent As A Service) deployment of complete cognitive AI agents.
 
 ### 1.5 Business Case
 - **Market Need**: Enterprise customers need autonomous AI agents with persistent memory, cognitive reasoning, and multi-tenant isolation
 - **Competitive Advantage**: The Soma Triad's biologically-inspired architecture (HRR vectors, neuromodulation, sleep consolidation) is unique in the market
-- **Revenue Model**: AAAS subscription tiers (Starter, Pro, Enterprise) with per-tenant usage metering and plan limits
+- **Revenue Model**: Soma Platform subscription tiers (Starter, Pro, Enterprise) with per-tenant usage metering and plan limits
 
 ---
 
@@ -74,7 +74,7 @@ Bring the Soma Cognitive Triad (SomaAgent01 + SomaBrain + SomaFractalMemory) fro
 | SomaAgent01 | D+ (~45%), 15 tests, no CI/CD | Production ready, 70%+ test coverage, full CI/CD |
 | SomaBrain | Late Beta (~75%), 95 tests | Production ready, documentation complete |
 | SomaFractalMemory | Production Ready (v0.2.0) | Hardened, ML-grade embeddings |
-| AAAS Deployment | Manual, fragmented | Single-click, version-matched |
+| Soma Platform Deployment | Manual, fragmented | Single-click, version-matched |
 | ISO Documentation | Created (v2.0.0) | Reviewed, maintained, audited |
 
 ### 2.2 Out of Scope
@@ -120,7 +120,7 @@ PHASE 7: RELEASE (Weeks 17-18)         ← Production deployment
 | Task ID | Task | Owner | Start | End | Deliverable |
 |---------|------|-------|-------|-----|-------------|
 | T1.1 | Fix `browser_use_monkeypatch` startup crash | Backend | Jun 16 | Jun 17 | App starts without crash |
-| T1.2 | Commit Django migrations (admin/aaas, admin/core) | Backend | Jun 16 | Jun 16 | Migrations committed, tested |
+| T1.2 | Commit Django migrations (admin/platform, admin/core) | Backend | Jun 16 | Jun 16 | Migrations committed, tested |
 | T1.3 | Fix permissions/api.py check endpoint stub | Security | Jun 17 | Jun 18 | /check calls real SpiceDB/OPA |
 | T1.4 | Fix WebSocket routing (add agent_id resolution) | Frontend | Jun 18 | Jun 20 | Chat connects with agent_id |
 | T1.5 | Fix frontend agent list (empty array bug) | Backend | Jun 18 | Jun 19 | /agents returns real data |
@@ -129,13 +129,13 @@ PHASE 7: RELEASE (Weeks 17-18)         ← Production deployment
 | T1.8 | Fix BrainBridge URL fallback | Backend | Jun 17 | Jun 17 | Uses settings.SOMABRAIN_URL |
 | T1.9 | Fix rate limiter Redis URL | Backend | Jun 17 | Jun 17 | Uses SA01_REDIS_URL |
 | T1.10 | Verify standalone Docker deployment | DevOps | Jun 23 | Jun 25 | docker compose up -d works |
-| T1.11 | Verify AAAS Docker deployment | DevOps | Jun 25 | Jun 27 | Full triad starts |
+| T1.11 | Verify Soma Platform Docker deployment | DevOps | Jun 25 | Jun 27 | Full triad starts |
 | T1.12 | Phase 1 gate review | PM | Jun 27 | Jun 29 | Gate report signed off |
 
 **Phase 1 Exit Criteria**:
 - App starts without crash
 - Chat flow works end-to-end (WebSocket → V3 → LLM → Stream)
-- Standalone and AAAS Docker deployments verified
+- Standalone and Soma Platform Docker deployments verified
 - All P0 issues resolved
 
 #### PHASE 2: SECURE (Weeks 3-4) — June 30 – July 13, 2026
@@ -237,9 +237,9 @@ PHASE 7: RELEASE (Weeks 17-18)         ← Production deployment
 
 | Task ID | Task | Owner | Start | End | Deliverable |
 |---------|------|-------|-------|-----|-------------|
-| T6.1 | Full AAAS integration test (3 repos) | QA | Sep 15 | Sep 18 | End-to-end cognitive agent |
+| T6.1 | Full Soma Platform integration test (3 repos) | QA | Sep 15 | Sep 18 | End-to-end cognitive agent |
 | T6.2 | Version compatibility matrix validation | QA | Sep 18 | Sep 19 | COMPAT doc verified |
-| T6.3 | Single-click deploy validation | DevOps | Sep 19 | Sep 22 | AAAS deploy works |
+| T6.3 | Single-click deploy validation | DevOps | Sep 19 | Sep 22 | Soma Platform deploy works |
 | T6.4 | Documentation audit (all 3 repos) | PM | Sep 22 | Sep 24 | Docs match code |
 | T6.5 | ISO documentation review cycle | PM | Sep 24 | Sep 26 | All ISO docs reviewed |
 | T6.6 | Security penetration test | Security | Sep 26 | Sep 30 | Pentest report clean |
@@ -248,7 +248,7 @@ PHASE 7: RELEASE (Weeks 17-18)         ← Production deployment
 | T6.9 | Phase 6 gate review | PM | Oct 5 | Oct 5 | Gate report signed off |
 
 **Phase 6 Exit Criteria**:
-- Full AAAS stack tested end-to-end
+- Full Soma Platform stack tested end-to-end
 - Single-click deployment verified
 - Security pentest passed
 - DR drill successful

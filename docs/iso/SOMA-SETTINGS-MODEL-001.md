@@ -287,7 +287,7 @@ parsed type at the read site. Code fallbacks, where they exist, are cited only a
 
 | Key | Owner | Type | Description | Capsule-overridable | Source |
 |---|---|---|---|---|---|
-| `SA01_DEPLOYMENT_MODE` | Env | str | Deployment mode selector (`STANDALONE` \| `AAAS` \| `DEV` \| `PROD`) driving SettingsRegistry dispatch | No | `config/settings_registry.py:362`, `config/settings.py:18` |
+| `SA01_DEPLOYMENT_MODE` | Env | str | Deployment mode selector (`STANDALONE` \| `Soma Platform` \| `DEV` \| `PROD`) driving SettingsRegistry dispatch | No | `config/settings_registry.py:362`, `config/settings.py:18` |
 | `SA01_DEPLOYMENT_TARGET` | Env | str | Deployment target (`LOCAL` \| `EKS` \| `GKE`) | No | `config/settings_registry.py:171` |
 | `SA01_ENVIRONMENT` | Env | str | Environment name; drives `IS_DEV_ENV` | No | `services/gateway/settings.py:24` |
 | `SA01_ALLOWED_HOSTS` / `ALLOWED_HOSTS` | Env | csv str | Django `ALLOWED_HOSTS` | No | `services/gateway/settings.py:46-52`, `config/settings_registry.py:198` |
@@ -324,10 +324,10 @@ parsed type at the read site. Code fallbacks, where they exist, are cited only a
 | `TOOL_EXECUTOR_GROUP` | Env | str | Tool-executor consumer group | No | `services/tool_executor/config.py` |
 | `TASK_FEEDBACK_TOPIC` | Env | str | Task feedback topic | No | `services/tool_executor/result_publisher.py` |
 | `MEMORY_REPLICATOR_GROUP` | Env | str | Memory replicator consumer group | No | `services/memory_replicator/main.py` |
-| `MILVUS_HOST` | Env | str | Milvus host (AAAS) | No | `config/settings_registry.py:298` |
+| `MILVUS_HOST` | Env | str | Milvus host (Soma Platform) | No | `config/settings_registry.py:298` |
 | `MILVUS_PORT` | Env | int | Milvus port | No | `config/settings_registry.py:301` |
-| `SOMA_MILVUS_HOST` | Env | str | SFM-side Milvus host | No | `infra/aaas/unified_settings.py` |
-| `SOMA_MILVUS_PORT` | Env | int | SFM-side Milvus port | No | `infra/aaas/unified_settings.py` |
+| `SOMA_MILVUS_HOST` | Env | str | SFM-side Milvus host | No | `infra/platform/unified_settings.py` |
+| `SOMA_MILVUS_PORT` | Env | int | SFM-side Milvus port | No | `infra/platform/unified_settings.py` |
 | `SPICEDB_HOST` | Env | str | SpiceDB host | No | `config/settings_registry.py:186` |
 | `SPICEDB_PORT` | Env | int | SpiceDB port | No | `config/settings_registry.py:187` |
 | `SPICEDB_INSECURE` | Env | bool | SpiceDB plaintext flag | No | `config/settings_registry.py:189` |
@@ -419,8 +419,8 @@ parsed type at the read site. Code fallbacks, where they exist, are cited only a
 | `SFM_NAMESPACE` | Env | str | SFM namespace | **Yes** | `config/settings.py:56` |
 | `SOMABRAIN_NAMESPACE` | Env | str | SomaBrain namespace | **Yes** | `config/settings.py:57` |
 | `SA01_MEMORY_NAMESPACE` | Env | str | Registry memory namespace | No | `config/settings_registry.py:223` |
-| `SOMA_MEMORY_NAMESPACE` | Env | str | AAAS memory namespace | No | `infra/aaas/unified_settings.py` |
-| `SOMA_NAMESPACE` | Env | str | AAAS general namespace | No | `infra/aaas/unified_settings.py` |
+| `SOMA_MEMORY_NAMESPACE` | Env | str | Soma Platform memory namespace | No | `infra/platform/unified_settings.py` |
+| `SOMA_NAMESPACE` | Env | str | Soma Platform general namespace | No | `infra/platform/unified_settings.py` |
 | `SA01_NAMESPACE` | Env | str | Tool-executor namespace | No | `services/tool_executor/result_publisher.py` |
 | `SA01_TENANT_ID` | Env | str | Default tenant id for idempotency | No | `config/settings_registry.py:222` |
 | `memory_recall_enabled` | Agent | bool | Enable recall | **Yes** | `settings_model.py:94` |
@@ -440,7 +440,7 @@ parsed type at the read site. Code fallbacks, where they exist, are cited only a
 | `Capsule.memory_pointer.{tenant,namespace,recall_limit,similarity_threshold}` | Agent | mixed | Per-capsule memory namespace pointer | **Yes** | `core.py:279-290` |
 | `Capsule.persona_config.memory.{recall_limit,similarity_threshold}` | Agent | mixed | Per-capsule recall policy | **Yes** | `core.py:261,407` |
 | `SA01_CACHE_WM_LIMIT` | Django | int | Working-memory cache limit | No | `admin/core/helpers/memory.py` |
-| `SOMABRAIN_DEFAULT_TENANT` | Env | str | SomaBrain default tenant | No | `infra/aaas/unified_settings.py` |
+| `SOMABRAIN_DEFAULT_TENANT` | Env | str | SomaBrain default tenant | No | `infra/platform/unified_settings.py` |
 | `SOMABRAIN_HRR_DIM` | Django | int | HRR vector dim (SomaBrain) | No | `somabrain/settings/cognitive.py:245` |
 | `SOMABRAIN_HRR_DTYPE` | Django | str | HRR dtype | No | `somabrain/settings/cognitive.py` |
 | `SOMABRAIN_QUANTUM_DIM` | Django | int | Quantum/HRR quantum dim | No | `somabrain/settings/cognitive.py:274` |
@@ -456,7 +456,7 @@ parsed type at the read site. Code fallbacks, where they exist, are cited only a
 | `DEFAULT_EMBED_MODEL_PROVIDER` | Django | str | Default embedding provider | **Yes** | `config/settings.py:104` |
 | `DEFAULT_EMBED_MODEL_NAME` | Django | str | Default embedding model | **Yes** | `config/settings.py:105` |
 | `DEFAULT_VOICE_MODEL` | Django | str | Default voice model | **Yes** | `config/settings.py:99`, `services/gateway/settings.py:309` |
-| `SA01_DEFAULT_CHAT_MODEL` | Django | str | AAAS default chat model | No | `services/gateway/settings.py:198` |
+| `SA01_DEFAULT_CHAT_MODEL` | Django | str | Soma Platform default chat model | No | `services/gateway/settings.py:198` |
 | `LLM_CONNECT_TIMEOUT_S` | Django | float | LLM connect timeout (`SA01_LLM_CONNECT_TIMEOUT`) | No | `config/settings.py:88` |
 | `LLM_READ_TIMEOUT_S` | Django | float | LLM read timeout | No | `config/settings.py:89` |
 | `LLM_MAX_RETRIES` | Django | int | LLM max retries | No | `config/settings.py:90` |

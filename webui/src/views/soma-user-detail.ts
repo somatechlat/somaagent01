@@ -377,13 +377,13 @@ export class SomaUserDetail extends LitElement {
     private async _loadUser() {
         this.loading = true;
         try {
-            // UserDetailOut lives on GET /aaas/admin/users/{id}/detail
-            // (admin/aaas/api/users.py:354-413). GET /aaas/admin/users/{id}
+            // UserDetailOut lives on GET /platform/admin/users/{id}/detail
+            // (admin/platform/api/users.py:354-413). GET /platform/admin/users/{id}
             // returns TenantUserOut — a different, narrower shape with none
             // of displayName/roleLabel/mfaEnabled/permissions/agentAccess/
             // activityLog/sessions. Calling the narrow endpoint typed as
             // UserDetail made six tabs render empty instead of wrong.
-            this.user = await apiClient.get<UserDetail>(`/aaas/admin/users/${this.userId}/detail`);
+            this.user = await apiClient.get<UserDetail>(`/platform/admin/users/${this.userId}/detail`);
         } catch (e) {
             console.error('Failed to load user:', e);
         } finally {
@@ -398,10 +398,10 @@ export class SomaUserDetail extends LitElement {
     private async _changeRole(newRole: string) {
         if (!this.user) return;
         try {
-            // admin/aaas/api/users.py:253-274 takes `role` as a query
+            // admin/platform/api/users.py:253-274 takes `role` as a query
             // parameter, not a JSON body.
             await apiClient.put(
-                `/aaas/admin/users/${this.userId}/role?role=${encodeURIComponent(newRole)}`,
+                `/platform/admin/users/${this.userId}/role?role=${encodeURIComponent(newRole)}`,
                 {},
             );
             this._loadUser();
@@ -415,9 +415,9 @@ export class SomaUserDetail extends LitElement {
         const verb = suspended ? 'unsuspend' : 'suspend';
         if (!confirm(`Are you sure you want to ${verb} this user?`)) return;
         try {
-            // Two real endpoints (admin/aaas/api/users.py:418-461). The
+            // Two real endpoints (admin/platform/api/users.py:418-461). The
             // button label follows the row state and so does the verb.
-            await apiClient.post(`/aaas/admin/users/${this.userId}/${verb}`, {});
+            await apiClient.post(`/platform/admin/users/${this.userId}/${verb}`, {});
             this._loadUser();
         } catch (e) {
             console.error(`Failed to ${verb} user:`, e);
@@ -506,7 +506,7 @@ export class SomaUserDetail extends LitElement {
         if (!this.user) return nothing;
 
         // UserDetailOut.permissions is the real catalog list from
-        // get_permissions_for_roles (admin/aaas/api/users.py:414). Render it
+        // get_permissions_for_roles (admin/platform/api/users.py:414). Render it
         // as sent — never check it against an invented group catalog.
         const permissions = this.user.permissions ?? [];
 

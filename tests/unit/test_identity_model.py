@@ -25,7 +25,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from admin.aaas.models.identity import LocalIdentity
+from admin.platform.models.identity import LocalIdentity
 from services.common.identity.lockout import LockoutState
 from services.common.identity.password import (
     PasswordPolicyError,

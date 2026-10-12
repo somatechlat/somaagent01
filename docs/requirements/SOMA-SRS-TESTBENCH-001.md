@@ -84,7 +84,7 @@ This document specifies the unified testing standard across the SomaStack Triad 
 | **SomaStack Triad** | The three-layer system: SomaFractalMemory (Layer 2), SomaBrain (Layer 3), SomaAgent01 (Layer 4) |
 | **Gold Standard** | SomaBrain's test infrastructure, used as the canonical pattern for all repositories |
 | **Agent Journey** | The end-to-end interaction chain from chat request through Brain to Memory and back |
-| **AAAS Direct** | Tests executed against real infrastructure without mocks |
+| **Soma Platform Direct** | Tests executed against real infrastructure without mocks |
 | **Bridge Test** | Tests verifying direct import chains between repository layers |
 
 ### 1.4 References
@@ -136,7 +136,7 @@ The unified test workbench provides cross-repository testing standards and audit
 |----|------------------------|-------------------|
 | AD-001 | All three repositories are cloneable and runnable in the test environment | Cross-repo tests cannot execute |
 | AD-002 | SomaBrain `settings.SOMABRAIN_API_URL` is configured | Brain integration tests fail |
-| AD-003 | Docker Compose stack provides all backing services | AAAS Direct tests cannot run |
+| AD-003 | Docker Compose stack provides all backing services | Soma Platform Direct tests cannot run |
 
 ---
 
@@ -163,7 +163,7 @@ The unified test workbench provides cross-repository testing standards and audit
 |----|-------------|----------|--------------|--------|
 | REQ-007 | The unified test workbench shall verify the Agent Journey: chat request enters SomaAgent01, budget and feature checks execute via Redis, AgentIQ derivation occurs, Brain recall query flows to Memory search, LLM inference occurs, Brain memorize persists to Memory store, and response returns to the client. | Must | Test | Draft |
 | REQ-008 | SomaAgent01 shall provide E2E tests for Phase 1 (Tenant Resolution) and Phase 2 (Capsule Load). | Must | Test | Draft |
-| REQ-009 | SomaAgent01 shall provide AAAS Direct tests for Phase 3 (Budget Gate). | Must | Test | Draft |
+| REQ-009 | SomaAgent01 shall provide Soma Platform Direct tests for Phase 3 (Budget Gate). | Must | Test | Draft |
 | REQ-010 | SomaAgent01 shall provide tests for Phase 10 (Memory Update) via direct SomaBrain calls. | Must | Test | Draft |
 | REQ-011 | SomaAgent01 shall provide tests for Phase 12 (Response Delivery). | Must | Test | Draft |
 | REQ-012 | SomaBrain shall provide E2E tests for memory recall and memorize operations via `test_memory_e2e.py`. | Must | Test | Draft |
@@ -173,7 +173,7 @@ The unified test workbench provides cross-repository testing standards and audit
 
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
-| REQ-014 | SomaAgent01 shall provide bridge tests verifying SomaBrain is imported directly (not via HTTP) in AAAS mode. | Must | Test | Draft |
+| REQ-014 | SomaAgent01 shall provide bridge tests verifying SomaBrain is imported directly (not via HTTP) in Soma Platform mode. | Must | Test | Draft |
 | REQ-015 | SomaAgent01 shall provide bridge tests verifying `SomaBrainClient.recall()` calls SomaBrain directly and returns a list. | Must | Test | Draft |
 | REQ-016 | SomaAgent01 shall provide bridge tests verifying `SomaBrainClient.memorize()` persists to the vector store. | Must | Test | Draft |
 | REQ-017 | SomaAgent01 shall provide bridge tests verifying `SomaBrainClient.learn()` updates `capsule.body.learned`. | Must | Test | Draft |
@@ -192,7 +192,7 @@ The unified test workbench provides cross-repository testing standards and audit
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
 | REQ-022 | SomaAgent01 unit tests shall execute with `pytest tests/unit/ -v`. | Must | Test | Draft |
-| REQ-023 | SomaAgent01 AAAS Direct tests shall execute with `DJANGO_SETTINGS_MODULE=services.gateway.settings SA01_INFRA_AVAILABLE=1 pytest tests/aaas_direct/ -v`. | Must | Test | Draft |
+| REQ-023 | SomaAgent01 Soma Platform Direct tests shall execute with `DJANGO_SETTINGS_MODULE=services.gateway.settings SA01_INFRA_AVAILABLE=1 pytest tests/aaas_direct/ -v`. | Must | Test | Draft |
 | REQ-024 | SomaBrain tests shall execute with `DJANGO_SETTINGS_MODULE=somabrain.settings pytest tests/ -v`. | Must | Test | Draft |
 | REQ-025 | SomaFractalMemory tests shall execute with `DJANGO_SETTINGS_MODULE=sfm.settings pytest tests/ -v`. | Must | Test | Draft |
 
@@ -219,7 +219,7 @@ The unified test workbench provides cross-repository testing standards and audit
 |----|-------------|--------|--------------|
 | NFR-QG-001 | Unit test coverage shall meet or exceed 80%. | 80% | Coverage report |
 | NFR-QG-002 | Integration test coverage shall meet or exceed 60%. | 60% | Coverage report |
-| NFR-QG-003 | AAAS Direct coverage shall be 100% for all critical paths. | 100% | Coverage report |
+| NFR-QG-003 | Soma Platform Direct coverage shall be 100% for all critical paths. | 100% | Coverage report |
 | NFR-QG-004 | Zero hardcoded configuration values shall exist in test code. | 100% | Static analysis |
 | NFR-QG-005 | Health checks before test execution shall be present in all repositories. | 100% | Inspection |
 
@@ -261,10 +261,10 @@ The unified test workbench provides cross-repository testing standards and audit
 | REQ-004 | UUID test data isolation | SomaBrain Pattern | Test fixtures | Test fixtures | All test suites |
 | REQ-005 | Real HTTP calls only | VIBE Rule | Test design | Test implementations | `tests/integration/` |
 | REQ-007 | Agent Journey E2E | Architecture | Cross-repo design | `tests/e2e/` | `tests/e2e/test_chat_flow_e2e.py` |
-| REQ-014 | Direct import bridge tests | AAAS Architecture | `admin/core/somabrain_client.py` | `tests/aaas_direct/test_brain_bridge.py` | `tests/aaas_direct/test_brain_bridge.py` |
+| REQ-014 | Direct import bridge tests | Soma Platform Architecture | `admin/core/somabrain_client.py` | `tests/aaas_direct/test_brain_bridge.py` | `tests/aaas_direct/test_brain_bridge.py` |
 | REQ-018 | SFM directory restructure | Audit Finding | `somafractalmemory/tests/` | Directory restructure | Directory inspection |
 | REQ-022 | Unit test command | Test Convention | `pytest.ini` | Shell command | CI pipeline |
-| REQ-023 | AAAS Direct test command | Test Convention | `pytest.ini` | Shell command | CI pipeline |
+| REQ-023 | Soma Platform Direct test command | Test Convention | `pytest.ini` | Shell command | CI pipeline |
 
 ### 4.2 Requirement to Test Case Mapping
 
@@ -272,7 +272,7 @@ The unified test workbench provides cross-repository testing standards and audit
 |--------|--------------|-------------|-----------------|
 | REQ-003 | TC-WB-001 | Integration test | Test suite skips if `/healthz` returns non-200 |
 | REQ-007 | TC-WB-002 | E2E test | Full Agent Journey completes with valid response |
-| REQ-014 | TC-WB-003 | Bridge test | `SomaBrainClient` has `_direct_brain` attribute in AAAS mode |
+| REQ-014 | TC-WB-003 | Bridge test | `SomaBrainClient` has `_direct_brain` attribute in Soma Platform mode |
 | REQ-018 | TC-WB-004 | Inspection | `somafractalmemory/tests/` contains `unit/`, `integration/`, `e2e/` |
 | REQ-022 | TC-WB-005 | Shell execution | `pytest tests/unit/ -v` exits 0 |
 | REQ-023 | TC-WB-006 | Shell execution | `SA01_INFRA_AVAILABLE=1 pytest tests/aaas_direct/ -v` exits 0 or skips gracefully |

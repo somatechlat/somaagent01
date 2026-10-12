@@ -105,7 +105,7 @@ deployment modes (Standalone vs SomaStackClusterMode), see
 | `SPICEDB_API_KEY` | SpiceDB API key | Yes | - |
 | `OPA_URL` | OPA policy server URL | Yes | `http://opa:20181` |
 
-### 2.4 AAAS Integration Variables
+### 2.4 Soma Platform Integration Variables
 
 | Variable | Description | Required | Default |
 | :--- | :--- | :--- | :--- |
@@ -147,7 +147,7 @@ docker build -t somaagent:latest -f Dockerfile .
 ```
 
 ### Run (Docker Compose)
-Use `infra/standalone/docker-compose.yml` for standalone or `infra/aaas/docker-compose.yml` for SaaS mode.
+Use `infra/standalone/docker-compose.yml` for standalone or `infra/platform/docker-compose.yml` for SaaS mode.
 ```bash
 docker compose -f infra/standalone/docker-compose.yml up -d
 ```
@@ -356,7 +356,7 @@ SA01_ENABLE_AGENTIQ_GOVERNOR=true  # Default: false
 
 ## 4. Deployment Checklist
 
-### Step 1: Verify AAAS Stack Running
+### Step 1: Verify Soma Platform Stack Running
 ```bash
 docker ps --filter name=somastack --format "{{.Names}}: {{.Status}}"
 # Required: postgres, redis, milvus, kafka, minio - all healthy
@@ -373,7 +373,7 @@ vault kv put secret/soma/openrouter api_key="sk-or-..."
 
 ### Step 3: Update GlobalDefaults (LLM Models)
 ```python
-# admin/aaas/models/profiles.py - GlobalDefault.defaults["models"]
+# admin/platform/models/profiles.py - GlobalDefault.defaults["models"]
 # Already configured with openrouter/minimax-01
 ```
 
@@ -438,7 +438,7 @@ cd webui && npm install && npm run dev
 
 ## Executive Summary
 
-The SOMA Collective has completed a comprehensive audit of somaAgent01. This roadmap addresses the user's mandate: **ALL settings/env MUST be centralized by deployment mode** with completely isolated `infra/standalone/` and `infra/aaas/` folders.
+The SOMA Collective has completed a comprehensive audit of somaAgent01. This roadmap addresses the user's mandate: **ALL settings/env MUST be centralized by deployment mode** with completely isolated `infra/standalone/` and `infra/platform/` folders.
 
 ---
 
@@ -450,10 +450,10 @@ The SOMA Collective has completed a comprehensive audit of somaAgent01. This roa
 ┌─────────────────────────────────────────────────────────────────┐
 │                    DEPLOYMENT MODE SELECTOR                     │
 ├────────────────────┬────────────────────────────────────────────┤
-│ SA01_DEPLOYMENT_MODE=STANDALONE │ SA01_DEPLOYMENT_MODE=AAAS    │
+│ SA01_DEPLOYMENT_MODE=STANDALONE │ SA01_DEPLOYMENT_MODE=Soma Platform    │
 ├────────────────────┼────────────────────────────────────────────┤
-│ infra/standalone/  │ infra/aaas/                               │
-│ └── infra/standalone/docker-compose.yml │ └── infra/aaas/docker-compose.yml │
+│ infra/standalone/  │ infra/platform/                               │
+│ └── infra/standalone/docker-compose.yml │ └── infra/platform/docker-compose.yml │
 │ └── .env.example   │ └── .env.example                         │
 │ └── Dockerfile     │ └── Dockerfile                           │
 │ └── start.sh       │ └── start_aaas.sh                        │
@@ -474,7 +474,7 @@ class SettingsRegistry:
     def load() -> Settings:
         mode = os.environ.get("SA01_DEPLOYMENT_MODE", "STANDALONE").upper()
         
-        if mode == "AAAS":
+        if mode == "Soma Platform":
             return AAASSettings.from_vault()
         elif mode == "STANDALONE":
             return StandaloneSettings.from_vault()
@@ -495,7 +495,7 @@ class SettingsRegistry:
 | `Dockerfile` | Single-service container |
 | `start.sh` | Entrypoint script |
 
-### 1.2 Verify `infra/aaas/` Isolation
+### 1.2 Verify `infra/platform/` Isolation
 
 - ✅ Already exists with Unified Monolith architecture
 - ✅ Uses port 63xxx namespace
@@ -519,7 +519,7 @@ config/
 ├── __init__.py
 ├── settings_registry.py    # Mode dispatcher
 ├── standalone_settings.py  # Standalone config class
-├── aaas_settings.py        # AAAS config class (merge with aaas/config.py)
+├── aaas_settings.py        # Soma Platform config class (merge with platform/config.py)
 └── vault_loader.py         # Vault integration (Rule 100)
 ```
 
@@ -527,7 +527,7 @@ config/
 
 | Source (DELETE) | Target |
 |-----------------|--------|
-| `aaas/config.py` | `config/aaas_settings.py` |
+| `platform/config.py` | `config/aaas_settings.py` |
 | `services/gateway/settings.py` (env vars) | `config/settings_registry.py` |
 | `admin/core/config/` | MERGE into `config/` |
 
@@ -559,10 +559,10 @@ SettingsRegistry.get().redis_host  # Fails-fast if missing
 
 | File | Secret | Action |
 |------|--------|--------|
-| `aaas/memory.py` | `dev-token-*` | ✅ FIXED |
+| `platform/memory.py` | `dev-token-*` | ✅ FIXED |
 | `services/gateway/settings.py` | `django-insecure-*` | Move to Vault |
-| `infra/aaas/docker-compose.yml` | `POSTGRES_PASSWORD: soma` | Vault ref |
-| `infra/aaas/docker-compose.yml` | `soma_dev_token` | Vault ref |
+| `infra/platform/docker-compose.yml` | `POSTGRES_PASSWORD: soma` | Vault ref |
+| `infra/platform/docker-compose.yml` | `soma_dev_token` | Vault ref |
 
 ---
 
@@ -579,7 +579,7 @@ SettingsRegistry.get().redis_host  # Fails-fast if missing
 | DELETE | Keep |
 |--------|------|
 | `services/common/secret_manager.py` | `vault_secrets.py` |
-| `aaas/config.py` | `config/aaas_settings.py` |
+| `platform/config.py` | `config/aaas_settings.py` |
 | Multiple settings parsers | `config/settings_registry.py` |
 
 ### 4.3 Purge 47 TODOs
@@ -599,14 +599,14 @@ curl http://localhost:20020/api/v1/health
 # Expected: {"status": "healthy", "mode": "STANDALONE"}
 ```
 
-### 5.2 AAAS Mode Tests
+### 5.2 Soma Platform Mode Tests
 
 ```bash
-cd infra/aaas
+cd infra/platform
 ./build_aaas.sh
 docker compose up -d
 curl http://localhost:63900/api/v1/health
-# Expected: {"status": "healthy", "mode": "AAAS"}
+# Expected: {"status": "healthy", "mode": "Soma Platform"}
 ```
 
 ### 5.3 10-Cycle Resiliency (Rule 122)
@@ -651,7 +651,7 @@ grep -rn "TODO\|FIXME" --include="*.py" . | wc -l
 | `infra/standalone/` | NEW isolated folder |
 | `config/settings_registry.py` | Centralized mode dispatcher |
 | `config/standalone_settings.py` | Standalone config |
-| `config/aaas_settings.py` | AAAS config (from aaas/config.py) |
+| `config/aaas_settings.py` | Soma Platform config (from platform/config.py) |
 
 ## Summary: Files to DELETE
 
@@ -660,7 +660,7 @@ grep -rn "TODO\|FIXME" --include="*.py" . | wc -l
 | `services/common/secret_manager.py` | Legacy Redis/Fernet |
 | `infra/tilt/.env` | Scattered config |
 | Multiple `.env` files | Consolidate to `.env.example` |
-| `aaas/config.py` | Move to config/ |
+| `platform/config.py` | Move to config/ |
 
 ---
 

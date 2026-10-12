@@ -1,4 +1,4 @@
-"""Infrastructure module for AAAS administration."""
+"""Infrastructure module for Soma Platform administration."""
 
 from admin.core.infrastructure.health_checker import (
     health_checker,

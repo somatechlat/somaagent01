@@ -302,12 +302,12 @@ export class SomaPersonalProfile extends LitElement {
                     language?: string;
                     timezone?: string;
                     notifications?: UserProfile['notifications'];
-                }>('/aaas/admin/preferences'),
+                }>('/platform/admin/preferences'),
                 apiClient.get<{
                     mfa_enabled?: boolean;
                     active_sessions?: number;
                     avatar_url?: string | null;
-                }>('/aaas/admin/profile'),
+                }>('/platform/admin/profile'),
             ]);
 
             this.profile = {
@@ -341,7 +341,7 @@ export class SomaPersonalProfile extends LitElement {
         try {
             // Appearance and notifications live on UserPreferences. Identity
             // (email) is owned by the IdP and is not written here.
-            await apiClient.put('/aaas/admin/preferences', {
+            await apiClient.put('/platform/admin/preferences', {
                 display_name: this.profile.displayName,
                 theme: this.profile.theme,
                 language: this.profile.language,

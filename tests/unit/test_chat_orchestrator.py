@@ -80,7 +80,7 @@ def _create_test_tenant() -> Any:
     No tier. Subscription tiers left with billing: an organisation is a
     partition, not a plan.
     """
-    from admin.aaas.models import Tenant
+    from admin.platform.models import Tenant
 
     return Tenant.objects.create(
         name="Test Tenant",
@@ -112,7 +112,7 @@ def _create_test_member(tenant: Any, role: str = "member") -> str:
     subject with no row has no roles, and no roles is denial — so the denied
     paths below simply use no row, and the allowed paths create one.
     """
-    from admin.aaas.models import TenantUser
+    from admin.platform.models import TenantUser
 
     user_id = uuid.uuid4()
     TenantUser.objects.create(

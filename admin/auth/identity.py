@@ -4,10 +4,10 @@ There is one question authentication answers and it must be answered by
 exactly one authority:
 
 * **Standalone** (``SA01_DEPLOYMENT_MODE=STANDALONE``) — the agent holds the
-  credential. ``admin.aaas.models.identity.LocalIdentity`` is the record: an
+  credential. ``admin.platform.models.identity.LocalIdentity`` is the record: an
   argon2id verifier under a pepper held in Vault. No identity provider is
   involved and none may be consulted.
-* **Enterprise / AAAS** — the credential belongs to a federated identity
+* **Enterprise / Soma Platform** — the credential belongs to a federated identity
   provider. Keycloak answers the password grant and this process never sees
   the password beyond the POST that hands it over.
 
@@ -77,7 +77,7 @@ def resolve_identity_provider() -> str:
         )
     if mode in {"STANDALONE", "DEV"}:
         return "local"
-    if mode in {"AAAS", "AAASMODE", "PROD"}:
+    if mode in {"Soma Platform", "AAASMODE", "PROD"}:
         return "federated"
     raise RuntimeError(
         f"SA01_DEPLOYMENT_MODE={mode!r} is not a recognised mode; "
@@ -125,7 +125,7 @@ async def authenticate_local(email: str, password: str) -> IdentityResult:
     """Standalone: verify against LocalIdentity. The agent holds the credential."""
     from asgiref.sync import sync_to_async
 
-    from admin.aaas.models.identity import LocalIdentity
+    from admin.platform.models.identity import LocalIdentity
 
     @sync_to_async
     def _verify() -> IdentityResult:

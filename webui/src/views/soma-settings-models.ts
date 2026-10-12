@@ -171,9 +171,9 @@ export class SomaSettingsModels extends LitElement {
         :host {
             display: block;
             min-height: 100%;
-            background: var(--aaas-bg-page, #f5f5f5);
-            color: var(--aaas-text-primary, #1a1a1a);
-            font-family: var(--aaas-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+            background: var(--platform-bg-page, #f5f5f5);
+            color: var(--platform-text-primary, #1a1a1a);
+            font-family: var(--platform-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
         }
         * { box-sizing: border-box; }
         .wrap { max-width: 1120px; margin: 0 auto; padding: 24px 20px 48px; }
@@ -182,43 +182,43 @@ export class SomaSettingsModels extends LitElement {
         }
         .head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
         h1 { font-size: 1.35rem; font-weight: 650; margin: 0; flex: 1; letter-spacing: -0.02em; }
-        .sub { color: var(--aaas-text-secondary, #666666); font-size: 0.9rem; margin-bottom: 20px; }
+        .sub { color: var(--platform-text-secondary, #666666); font-size: 0.9rem; margin-bottom: 20px; }
         .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
         input, select, textarea {
-            background: var(--aaas-bg-card, #ffffff);
-            border: 1px solid var(--aaas-border-light, #e0e0e0);
-            color: var(--aaas-text-primary, #1a1a1a);
-            border-radius: var(--aaas-radius-md, 8px);
+            background: var(--platform-bg-card, #ffffff);
+            border: 1px solid var(--platform-border-light, #e0e0e0);
+            color: var(--platform-text-primary, #1a1a1a);
+            border-radius: var(--platform-radius-md, 8px);
             padding: 9px 12px;
             font-size: 0.9rem;
         }
         input:focus, select:focus, textarea:focus {
-            outline: 2px solid var(--aaas-info, #3b82f6);
+            outline: 2px solid var(--platform-info, #3b82f6);
             outline-offset: 1px;
         }
         .btn {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            border: 1px solid var(--aaas-border-light, #e0e0e0);
-            background: var(--aaas-bg-card, #ffffff);
-            color: var(--aaas-text-primary, #1a1a1a);
-            border-radius: var(--aaas-radius-md, 8px);
+            border: 1px solid var(--platform-border-light, #e0e0e0);
+            background: var(--platform-bg-card, #ffffff);
+            color: var(--platform-text-primary, #1a1a1a);
+            border-radius: var(--platform-radius-md, 8px);
             padding: 8px 14px;
             font-size: 0.88rem;
             font-weight: 550;
             cursor: pointer;
         }
-        .btn:hover { border-color: var(--aaas-accent, #1a1a1a); }
+        .btn:hover { border-color: var(--platform-accent, #1a1a1a); }
         .btn.primary {
-            background: var(--aaas-accent, #1a1a1a);
-            border-color: var(--aaas-accent, #1a1a1a);
-            color: var(--aaas-text-inverse, #ffffff);
+            background: var(--platform-accent, #1a1a1a);
+            border-color: var(--platform-accent, #1a1a1a);
+            color: var(--platform-text-inverse, #ffffff);
         }
         .btn.ghost { background: transparent; }
         .btn.danger {
-            border-color: var(--aaas-danger, #ef4444);
-            color: var(--aaas-danger, #ef4444);
+            border-color: var(--platform-danger, #ef4444);
+            color: var(--platform-danger, #ef4444);
         }
         .btn:disabled { opacity: 0.45; cursor: not-allowed; }
         .grid {
@@ -227,9 +227,9 @@ export class SomaSettingsModels extends LitElement {
             gap: 14px;
         }
         .card {
-            background: var(--aaas-bg-card, #ffffff);
-            border: 1px solid var(--aaas-border-light, #e0e0e0);
-            border-radius: var(--aaas-radius-lg, 12px);
+            background: var(--platform-bg-card, #ffffff);
+            border: 1px solid var(--platform-border-light, #e0e0e0);
+            border-radius: var(--platform-radius-lg, 12px);
             padding: 16px;
             display: flex;
             flex-direction: column;
@@ -238,12 +238,12 @@ export class SomaSettingsModels extends LitElement {
             cursor: pointer;
         }
         .card:hover {
-            border-color: var(--aaas-border-medium, #cccccc);
-            box-shadow: var(--aaas-shadow-md);
+            border-color: var(--platform-border-medium, #cccccc);
+            box-shadow: var(--platform-shadow-md);
         }
         .card.live {
-            border-color: var(--aaas-info, #3b82f6);
-            box-shadow: 0 0 0 1px var(--aaas-info, #3b82f6);
+            border-color: var(--platform-info, #3b82f6);
+            box-shadow: 0 0 0 1px var(--platform-info, #3b82f6);
         }
         .card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .chip {
@@ -251,45 +251,45 @@ export class SomaSettingsModels extends LitElement {
             font-weight: 650;
             letter-spacing: 0.02em;
             padding: 2px 8px;
-            border-radius: var(--aaas-radius-full, 9999px);
-            background: var(--aaas-bg-active, #f0f0f0);
-            color: var(--aaas-text-secondary, #666666);
+            border-radius: var(--platform-radius-full, 9999px);
+            background: var(--platform-bg-active, #f0f0f0);
+            color: var(--platform-text-secondary, #666666);
         }
         .chip.live {
-            background: var(--aaas-status-success, #22c55e);
-            color: var(--aaas-text-inverse, #ffffff);
+            background: var(--platform-status-success, #22c55e);
+            color: var(--platform-text-inverse, #ffffff);
         }
         .chip.type {
-            background: var(--aaas-bg-hover, #fafafa);
-            color: var(--aaas-text-primary, #1a1a1a);
-            border: 1px solid var(--aaas-border-light, #e0e0e0);
+            background: var(--platform-bg-hover, #fafafa);
+            color: var(--platform-text-primary, #1a1a1a);
+            border: 1px solid var(--platform-border-light, #e0e0e0);
         }
         .chip.warn {
-            background: var(--aaas-status-warning, #eab308);
-            color: var(--aaas-text-inverse, #1a1a1a);
+            background: var(--platform-status-warning, #eab308);
+            color: var(--platform-text-inverse, #1a1a1a);
         }
         .chip.err {
-            background: var(--aaas-status-danger, #ef4444);
-            color: var(--aaas-text-inverse, #ffffff);
+            background: var(--platform-status-danger, #ef4444);
+            color: var(--platform-text-inverse, #ffffff);
         }
         .model-id { font-weight: 650; font-size: 1rem; letter-spacing: -0.01em; }
-        .meta { color: var(--aaas-text-secondary, #666666); font-size: 0.8rem; line-height: 1.45; }
+        .meta { color: var(--platform-text-secondary, #666666); font-size: 0.8rem; line-height: 1.45; }
         .facts {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 4px 10px;
             font-size: 0.75rem;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
         }
-        .facts b { color: var(--aaas-text-primary, #1a1a1a); font-weight: 550; }
+        .facts b { color: var(--platform-text-primary, #1a1a1a); font-weight: 550; }
         .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
         .actions .btn { padding: 6px 10px; font-size: 0.78rem; }
         .empty {
-            border: 1px dashed var(--aaas-border-light, #e0e0e0);
-            border-radius: var(--aaas-radius-lg, 12px);
+            border: 1px dashed var(--platform-border-light, #e0e0e0);
+            border-radius: var(--platform-radius-lg, 12px);
             padding: 36px 20px;
             text-align: center;
-            color: var(--aaas-text-secondary, #666666);
+            color: var(--platform-text-secondary, #666666);
         }
         /* Full-screen model editor (not a modal). Modal is confirm-only. */
         .editor {
@@ -308,20 +308,20 @@ export class SomaSettingsModels extends LitElement {
             display: flex;
             gap: 6px;
             margin: 14px 0 16px;
-            border-bottom: 1px solid var(--aaas-border-light, #e0e0e0);
+            border-bottom: 1px solid var(--platform-border-light, #e0e0e0);
         }
         .tab {
             background: transparent;
             border: none;
-            color: var(--aaas-text-secondary, #666666);
+            color: var(--platform-text-secondary, #666666);
             padding: 10px 14px;
             font-weight: 600;
             cursor: pointer;
             border-bottom: 2px solid transparent;
         }
         .tab.on {
-            color: var(--aaas-text-primary, #1a1a1a);
-            border-bottom-color: var(--aaas-info, #3b82f6);
+            color: var(--platform-text-primary, #1a1a1a);
+            border-bottom-color: var(--platform-info, #3b82f6);
         }
         .field {
             display: grid;
@@ -332,13 +332,13 @@ export class SomaSettingsModels extends LitElement {
         }
         .field label {
             font-size: 0.82rem;
-            color: var(--aaas-text-secondary, #666666);
+            color: var(--platform-text-secondary, #666666);
             padding-top: 9px;
         }
         .field .hint {
             grid-column: 2;
             font-size: 0.72rem;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             margin-top: -6px;
             margin-bottom: 6px;
         }
@@ -351,11 +351,11 @@ export class SomaSettingsModels extends LitElement {
             gap: 8px;
             margin-top: 18px;
             padding-top: 14px;
-            border-top: 1px solid var(--aaas-border-light, #e0e0e0);
+            border-top: 1px solid var(--platform-border-light, #e0e0e0);
         }
         .model-list {
-            border: 1px solid var(--aaas-border-light, #e0e0e0);
-            border-radius: var(--aaas-radius-md, 8px);
+            border: 1px solid var(--platform-border-light, #e0e0e0);
+            border-radius: var(--platform-radius-md, 8px);
             max-height: 180px;
             overflow: auto;
             margin: 6px 0 2px;
@@ -366,39 +366,39 @@ export class SomaSettingsModels extends LitElement {
             text-align: left;
             background: transparent;
             border: none;
-            border-bottom: 1px solid var(--aaas-border-light, #e0e0e0);
+            border-bottom: 1px solid var(--platform-border-light, #e0e0e0);
             color: inherit;
             padding: 8px 12px;
             cursor: pointer;
             font-size: 0.85rem;
         }
         .model-list button:hover, .model-list button.sel {
-            background: var(--aaas-bg-hover, #fafafa);
+            background: var(--platform-bg-hover, #fafafa);
         }
         .status { font-size: 0.85rem; min-height: 1.2em; margin: 8px 0; }
-        .status.err { color: var(--aaas-danger, #ef4444); }
-        .status.ok { color: var(--aaas-success, #22c55e); }
+        .status.err { color: var(--platform-danger, #ef4444); }
+        .status.ok { color: var(--platform-success, #22c55e); }
         /* Confirm dialog only (delete). Glassmorphism from system tokens. */
         .confirm-backdrop {
             position: fixed;
             inset: 0;
             background: rgba(0, 0, 0, 0.35);
-            backdrop-filter: blur(var(--aaas-glass-blur, 16px));
-            -webkit-backdrop-filter: blur(var(--aaas-glass-blur, 16px));
+            backdrop-filter: blur(var(--platform-glass-blur, 16px));
+            -webkit-backdrop-filter: blur(var(--platform-glass-blur, 16px));
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: var(--aaas-z-modal, 200);
+            z-index: var(--platform-z-modal, 200);
             padding: 16px;
         }
         .confirm {
             width: min(420px, 100%);
-            background: var(--aaas-glass-bg, rgba(255, 255, 255, 0.85));
-            border: 1px solid var(--aaas-glass-border, rgba(0, 0, 0, 0.08));
-            border-radius: var(--aaas-radius-lg, 12px);
-            box-shadow: var(--aaas-shadow-glass, 0 8px 32px rgba(0, 0, 0, 0.08));
+            background: var(--platform-glass-bg, rgba(255, 255, 255, 0.85));
+            border: 1px solid var(--platform-glass-border, rgba(0, 0, 0, 0.08));
+            border-radius: var(--platform-radius-lg, 12px);
+            box-shadow: var(--platform-shadow-glass, 0 8px 32px rgba(0, 0, 0, 0.08));
             padding: 20px 22px;
-            color: var(--aaas-text-primary, #1a1a1a);
+            color: var(--platform-text-primary, #1a1a1a);
         }
         .confirm h3 { margin: 0 0 8px; font-size: 1.05rem; }
         .confirm .editor-foot { border-top: none; padding-top: 0; }

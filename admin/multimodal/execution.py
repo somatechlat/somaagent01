@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # =============================================================================
 
-from admin.aaas.models.profiles import PlatformConfig
+from admin.platform.models.profiles import PlatformConfig
 from admin.llm.models import LLMModelConfig
 from services.common.unified_secret_manager import get_secret_manager
 

@@ -243,9 +243,9 @@ Backend: `admin/llm/api.py` (`ModelIn` 117–135). UI: `soma-settings-models.ts`
 | `/platform/infrastructure` · ratelimits aliases | `soma-infrastructure-dashboard` | UI-S-39/40 |
 | `/platform/integrations` · `/soma/settings/integrations` | `soma-integrations-dashboard` | UI-S-41 |
 | `/platform/roles` · matrix/permissions aliases | `soma-admin-roles-list` | UI-S-23/24 |
-| `/platform/api-keys` | `soma-admin-api-keys` | UI-S-53 · `/aaas/settings/api-keys` |
+| `/platform/api-keys` | `soma-admin-api-keys` | UI-S-53 · `/platform/settings/api-keys` |
 | `/platform/metrics` · `/soma/metrics` | `platform-metrics-dashboard` | UI-S-38 |
-| `/platform/audit` · `/soma/audit` · `/audit` · `/admin/audit` | `soma-audit-dashboard` | UI-S-43/44 · `/aaas/audit/*` |
+| `/platform/audit` · `/soma/audit` · `/audit` · `/admin/audit` | `soma-audit-dashboard` | UI-S-43/44 · `/platform/audit/*` |
 | `/platform/settings/{entity}` | `settings-form` | UI-S-50 · `GET/PUT /config/{entity}` |
 | `/admin/users` | `soma-users-view` | UI-S-22 |
 | `/admin/users/{id}` | `soma-user-detail` | UI-S-22 detail |

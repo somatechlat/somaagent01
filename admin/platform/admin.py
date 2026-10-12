@@ -1,4 +1,4 @@
-"""AAAS Django Admin - Main entry point.
+"""Soma Platform Django Admin - Main entry point.
 
 Registers Django admin for this agent's own records: its agents, their
 assigned users, and the audit trail.
@@ -10,7 +10,7 @@ standalone agent and has no billing administration surface. See AGENT.md §1.1.
 
 try:
 
-    from admin.aaas.admin_agents import (
+    from admin.platform.admin_agents import (
         AgentAdmin,
         AgentInline,
         AgentUserAdmin,

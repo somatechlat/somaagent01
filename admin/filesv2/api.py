@@ -154,7 +154,7 @@ def create_upload_url(
     # The row must exist BEFORE either storage path is handed out:
     # POST /upload-local/{file_id} looks it up, and a file without a row can
     # never appear in GET /filesv2/. Creating it only after a successful
-    # presign left the local fallback 404-ing in AAAS-in-a-box.
+    # presign left the local fallback 404-ing in Soma Platform-in-a-box.
     from admin.filesv2.models import File
 
     try:
@@ -249,7 +249,7 @@ def get_file(request, file_id: str):
 
 @router.post("/upload-local/{file_id}", auth=AuthBearer())
 def upload_local(request, file_id: str, file: UploadedFile = File(...)):
-    """Handle local file upload (Dev/AAAS-in-a-box mode)."""
+    """Handle local file upload (Dev/Soma Platform-in-a-box mode)."""
     authorize_sync(request, action="resource:file_upload", resource="files")
 
     from django.core.files.base import ContentFile

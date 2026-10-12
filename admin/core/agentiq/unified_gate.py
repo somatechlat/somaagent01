@@ -286,7 +286,7 @@ class UnifiedGate:
 
             @sync_to_async
             def _load() -> List[str]:
-                from admin.aaas.models import TenantUser
+                from admin.platform.models import TenantUser
 
                 qs = TenantUser.objects.filter(user_id=user_id, is_active=True)
                 if tenant_id:

@@ -74,7 +74,7 @@ SomaAgent01 v2.0.0 is a major release focused on production readiness, security 
 | Fix | File | Description |
 |-----|------|-------------|
 | Permissions stub | `admin/core/authz.py` (permission check) | `/check` now calls real UnifiedGate |
-| BrainBridge URL | `aaas/brain.py:92` | Uses settings instead of hardcoded hostname |
+| BrainBridge URL | `platform/brain.py:92` | Uses settings instead of hardcoded hostname |
 | Rate limiter URL | `services/common/rate_limiter.py:67` | Checks SA01_REDIS_URL first |
 | RoleRequired | `admin/common/auth.py:278` | Returns 403 for insufficient roles |
 | TenantRequired | `admin/common/auth.py:314` | Returns 403 for missing tenant |
@@ -110,7 +110,7 @@ SomaAgent01 v2.0.0 is a major release focused on production readiness, security 
 ### From v1.1.0 to v2.0.0
 
 1. Update environment variables:
-   - Use `SA01_DEPLOYMENT_MODE=STANDALONE` (or `DEV`). `AAAS` is not a mode.
+   - Use `SA01_DEPLOYMENT_MODE=STANDALONE` (or `DEV`). `Soma Platform` is not a mode.
    - Ensure `SA01_REDIS_URL` is set (not just `REDIS_URL`)
 
 2. Run migrations:

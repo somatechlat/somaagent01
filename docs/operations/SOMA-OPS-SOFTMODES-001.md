@@ -28,7 +28,7 @@ SomaAgent01 supports two canonical deployment modes across all services:
 | Mode | Description | Use Case |
 |------|-------------|----------|
 | **Standalone** | Each service runs independently with local auth/storage. No required cross-service calls. | Local development, single-node deployments |
-| **SomaStackClusterMode (AAAS)** | All services run as one unified cluster. SomaBrain + SomaFractalMemory are inseparable and run as a paired runtime with shared tenant identity and auth. | Production, multi-node Kubernetes |
+| **SomaStackClusterMode (Soma Platform)** | All services run as one unified cluster. SomaBrain + SomaFractalMemory are inseparable and run as a paired runtime with shared tenant identity and auth. | Production, multi-node Kubernetes |
 
 ## Configuration
 
@@ -38,8 +38,8 @@ Deployment mode is controlled by the `SA01_DEPLOYMENT_MODE` environment variable
 # Standalone mode
 SA01_DEPLOYMENT_MODE=STANDALONE
 
-# AAAS / Cluster mode
-SA01_DEPLOYMENT_MODE=AAAS
+# Soma Platform / Cluster mode
+SA01_DEPLOYMENT_MODE=Soma Platform
 ```
 
 **Legacy variables** (`SOMA_DEPLOY_MODE`, `SOMA_AAAS_MODE`, `AAAS_ENABLED`) are deprecated and should not be used.
@@ -62,9 +62,9 @@ SA01_SOMA_BASE_URL=http://localhost:30101
 SA01_KEYCLOAK_URL=http://localhost:20880
 ```
 
-## AAAS Mode (SomaStackClusterMode)
+## Soma Platform Mode (SomaStackClusterMode)
 
-In AAAS mode:
+In Soma Platform mode:
 - All services run in the same process space or tightly coupled cluster
 - SomaBrain and SomaFractalMemory share tenant identity and authentication
 - Direct in-process memory access via `BrainBridge` is available
@@ -73,7 +73,7 @@ In AAAS mode:
 ### Required Environment Variables
 
 ```bash
-SA01_DEPLOYMENT_MODE=AAAS
+SA01_DEPLOYMENT_MODE=Soma Platform
 SA01_DB_DSN=postgresql://<user>:<password>@localhost:5432/somaagent
 SA01_REDIS_URL=redis://localhost:6379/0
 SA01_KAFKA_BOOTSTRAP_SERVERS=localhost:20092
@@ -84,11 +84,11 @@ SA01_OPA_URL=http://localhost:20181
 
 ## Migration Between Modes
 
-There is no automatic migration path between Standalone and AAAS modes. To migrate:
+There is no automatic migration path between Standalone and Soma Platform modes. To migrate:
 
 1. Export data from the standalone database
-2. Set up AAAS infrastructure (see SOMA-OPS-DEPLOY-001.md)
-3. Import data into the AAAS database
+2. Set up Soma Platform infrastructure (see SOMA-OPS-DEPLOY-001.md)
+3. Import data into the Soma Platform database
 4. Update environment variables
 5. Restart services
 

@@ -70,11 +70,11 @@ One primitives are for: **typed answers with probabilities in one forward pass.*
 | In scope | Out of scope |
 |---|---|
 | SA01 decision-path audit (12-layer agent stack) | Changing OpenJev model quality or training |
-| OpenJev Phase 0 capability truth-pass | Billing / AAAS commercial packaging |
+| OpenJev Phase 0 capability truth-pass | Billing / Soma Platform commercial packaging |
 | Seam binding (B/C/D/E per `SOMA-JEV-INTG-001`) | Replacing the chat LLM (Seam A — excluded) |
 | Typed decision inventory for SA01 | Implementation code (gated; see plan) |
 | Contracts: invocation, authz, memory, observability | Operations after hand-over |
-| Risk register and open questions | Multi-tenant AAAS pilot scope (open Q) |
+| Risk register and open questions | Multi-tenant Soma Platform pilot scope (open Q) |
 
 ---
 
@@ -602,7 +602,7 @@ Phase metrics: extend `record_turn_phase` with `JEV_DECIDE` — do not fork the 
 | # | Question | Recommendation |
 |---|---|---|
 | Q-1 | Shim now or wait for `openjev serve` | **Shim now** (integration-owned), swap later |
-| Q-2 | Single-tenant pilot vs AAAS day one | **Single-tenant pilot** first; `tenant_id` still mandatory |
+| Q-2 | Single-tenant pilot vs Soma Platform day one | **Single-tenant pilot** first; `tenant_id` still mandatory |
 | Q-3 | Vault path | `secret/agent/credentials/openjev_token` |
 | Q-4 | Latency budget | Guardrail p95 &lt; 350 ms CPU; triage may be 500 ms async-ish |
 | Q-5 | Pin strategy | Pin OpenJev git tag; quarterly contract review |

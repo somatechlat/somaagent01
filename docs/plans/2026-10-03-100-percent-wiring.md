@@ -60,7 +60,7 @@
 | B7 | health path `TypeError` — `map_cb_to_sleep` 1 arg vs 3 | `api/endpoints/health.py:145` | bug |
 | B8 | `prepare_bulk_items` `NameError` — `payload` before bind | `somabrain/memory/remember.py:272` | bug |
 | B9 | gRPC Brain service never started | `transport/serve.py:461` test-only | undeployed |
-| B10 | Temporal **workers never started**; workflow starters are live | `infra/aaas/aaas/supervisord.conf` | dead lane |
+| B10 | Temporal **workers never started**; workflow starters are live | `infra/platform/platform/supervisord.conf` | dead lane |
 | B11 | `OutboxMessage` is a **dead letter** — no publisher exists | `admin/core/signals.py:158-189` | dead lane |
 | B12 | conversation.inbound payload contract mismatch (`conversation_id`/`content` vs `session_id`/`message`) | `signals.py:179-184` vs `conversation_worker/main.py:175` | broken contract |
 | B13 | `ProcessMessageUseCase` bypasses the seam, **swallows errors** | `process_message.py:250,280,310` | data loss |
@@ -172,7 +172,7 @@ Hybrid search, decay, pruning, importance normalization, JWT, OPA, circuit break
 ## 4. Phase D — Temporal in the full cycle
 
 ### D1 — Start the workers (B10)
-`infra/aaas/aaas/supervisord.conf` starts `conversation_worker.main` (Kafka) but never `temporal_worker`. Add both temporal workers **or** stop starting workflows from `POST /message` / `POST /a2a/execute`. Prefer: start them.
+`infra/platform/platform/supervisord.conf` starts `conversation_worker.main` (Kafka) but never `temporal_worker`. Add both temporal workers **or** stop starting workflows from `POST /message` / `POST /a2a/execute`. Prefer: start them.
 **Commit:** `feat(temporal): the workers that service the workflows run`
 
 ### D2 — Drain or delete the dead outbox (B11, B12)

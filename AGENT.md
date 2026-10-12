@@ -22,7 +22,7 @@
 | 1.0.0 | 2025-12-30 | SomaTech Engineering | Initial release |
 | 1.1.0 | 2026-06-01 | SomaTech Engineering | Updated to reflect actual implementation status; corrected deployment port namespaces; documented known gaps |
 | 2.0.0 | 2026-06-15 | SomaTech Engineering | Code-verified deep analysis; corrected audit findings; added ISO documentation suite |
-| 2.1.0 | 2026-10-03 | SomaTech Engineering | Truth pass against the code. Replaced BrainBridge / MemoryPort / MemoryServiceProtocol / `sfm_adapter` with the real seam: `MemoryGateway` → `SomaBrainAdapter` (T-1: the agent never holds an SFM client). AAAS commerce models (`SubscriptionTier`, `AaasFeature`, `TierFeature`, `FeatureProvider`, `UsageRecord`) corrected — dropped or never present. Project structure and implementation status re-derived from the tree. Status set to Draft (meaning change). |
+| 2.1.0 | 2026-10-03 | SomaTech Engineering | Truth pass against the code. Replaced BrainBridge / MemoryPort / MemoryServiceProtocol / `sfm_adapter` with the real seam: `MemoryGateway` → `SomaBrainAdapter` (T-1: the agent never holds an SFM client). Soma Platform commerce models (`SubscriptionTier`, `AaasFeature`, `TierFeature`, `FeatureProvider`, `UsageRecord`) corrected — dropped or never present. Project structure and implementation status re-derived from the tree. Status set to Draft (meaning change). |
 
 ---
 
@@ -70,7 +70,7 @@ This document does not cover:
 
 | Term | Definition |
 |------|------------|
-| AAAS | Agent-As-A-Service |
+| Soma Platform | Agent-As-A-Service |
 | MemoryGateway | Protocol at `services/common/memory_contract.py:102`. The agent's only memory write/read seam. |
 | FanoutMemoryGateway | Implementation at `services/common/memory_gateway.py:74`. Historical name — there is no fan-out. Hot path is SomaBrain only. |
 | SomaBrainAdapter | HTTP adapter at `services/common/adapters/somabrain_adapter.py:97`. The only store dialect. Speaks SomaBrain's `/memory/remember\|recall\|forget`. |
@@ -91,11 +91,11 @@ This document does not cover:
 | API Framework | Django 5.1 + Django Ninja 1.3 | FastAPI prohibited |
 | ORM | Django ORM | SQLAlchemy prohibited; raw SQL allowed only in helper modules |
 | Frontend | Lit 3.x Web Components | React and Alpine.js prohibited |
-| Database | PostgreSQL 16 | Port 20432 (standalone) or 63932 (AAAS) |
-| Cache | Redis 7 | Port 20379 (standalone) or 63979 (AAAS) |
+| Database | PostgreSQL 16 | Port 20432 (standalone) or 63932 (Soma Platform) |
+| Cache | Redis 7 | Port 20379 (standalone) or 63979 (Soma Platform) |
 | Message Broker | Kafka 3.7 (KRaft) | Optional in Standalone mode |
 | Vector Database | Milvus 2.3 | Qdrant prohibited |
-| Identity | Keycloak 24 | Port 20880 (standalone) or 63980 (AAAS) |
+| Identity | Keycloak 24 | Port 20880 (standalone) or 63980 (Soma Platform) |
 | Authorization | SpiceDB 1.29 | Schema defined; `UnifiedGate` makes real gRPC calls; some RBAC API endpoints remain stubbed |
 | Policy Engine | OPA | Policy files exist; `UnifiedGate` and `PolicyClient` make real HTTP calls to OPA |
 | Observability | Prometheus + Grafana + OpenTelemetry | Partially wired |
@@ -112,7 +112,7 @@ This document does not cover:
 | Keycloak | 20880 |
 | Vault | 20882 |
 
-**AAAS Namespace (63xxx)**
+**Soma Platform Namespace (63xxx)**
 
 | Service | Port |
 |---------|------|
@@ -128,7 +128,7 @@ This document does not cover:
 | Mode | Environment Variable | Value | Description |
 |------|----------------------|-------|-------------|
 | Standalone | `SA01_DEPLOYMENT_MODE` | `STANDALONE` | Agent-only; no Brain or Memory |
-| AAAS | `SA01_DEPLOYMENT_MODE` | `AAAS` | Full stack with Brain and Memory |
+| Soma Platform | `SA01_DEPLOYMENT_MODE` | `Soma Platform` | Full stack with Brain and Memory |
 | Development | `SA01_DEPLOYMENT_MODE` | `DEV` | Development defaults |
 
 **Canonical source**: `config/settings_registry.py` dispatches to `StandaloneSettings` or `AAASSettings` based on `SA01_DEPLOYMENT_MODE`.
@@ -143,7 +143,7 @@ somaAgent01/
 │   ├── api.py               # Master Django Ninja API router (40+ routers)
 │   ├── auth/                # Authentication (Keycloak integration)
 │   ├── core/               # Core models, chat orchestrator, outbox pattern
-│   ├── aaas/               # Multi-tenant features (Tenant, Subscription, Agent)
+│   ├── platform/               # Multi-tenant features (Tenant, Subscription, Agent)
 │   ├── chat/               # Chat API endpoints
 │   ├── agents/             # Agent management
 │   ├── memory/             # Memory integration hooks
@@ -178,7 +178,7 @@ somaAgent01/
 ├── policy/                  # OPA Rego policies
 ├── infra/                   # Docker, Kubernetes, and deployment configs
 │   ├── standalone/          # Standalone mode (Agent-only)
-│   ├── aaas/                # AAAS mode (requires sibling repositories)
+│   ├── platform/                # Soma Platform mode (requires sibling repositories)
 │   └── k8s/                 # Kubernetes manifests
 ├── tests/                   # Test suite
 ├── docs/                    # Documentation
@@ -200,7 +200,7 @@ User -> Login Page -> Django API -> Keycloak -> JWT Validation -> PostgreSQL/Red
 ### 6.2 Components
 
 1. **Keycloak**
-   - Port: 20880 (standalone) or 63980 (AAAS)
+   - Port: 20880 (standalone) or 63980 (Soma Platform)
    - Protocol: OIDC
    - Realm: `somaagent`
    - Client: `eye-of-god` (public client)
@@ -257,7 +257,7 @@ The WebSocket and REST chat paths now use the **V3 12-phase orchestrator** as th
    - Implements AgentIQ derivation, UnifiedGate checks, context building, tool discovery, circuit breakers, memory storage, and Django signals
 
 2. **Conversation-worker use-case pipeline** — `admin/core/application/use_cases/conversation/process_message.py` + `generate_response.py`
-   - Used by `services/conversation_worker/main.py` (AAAS supervisord deployment)
+   - Used by `services/conversation_worker/main.py` (Soma Platform supervisord deployment)
    - Separate context-building and response-generation logic
    - Does not call `V3ChatOrchestrator`
 
@@ -333,7 +333,7 @@ IdempotencyRecord    # Exactly-once processing
 SensorOutbox         # Sensor event outbox
 ```
 
-### 8.2 AAAS Models (`admin/aaas/models/`)
+### 8.2 Soma Platform Models (`admin/platform/models/`)
 
 ```python
 Tenant               # Organization
@@ -354,7 +354,7 @@ ApiKey               # API key storage
 **Dropped or never present.** Earlier revisions of this file listed
 `SubscriptionTier`, `UsageRecord`, `AaasFeature`, `TierFeature` and
 `FeatureProvider`. `SubscriptionTier` and `UsageRecord` were dropped in
-`admin/aaas/migrations/0006_drop_commerce_tables.py`. `AaasFeature`,
+`admin/platform/migrations/0006_drop_commerce_tables.py`. `AaasFeature`,
 `TierFeature` and `FeatureProvider` never existed as models. The standalone
 agent has no billing and no feature-flag commerce.
 
@@ -373,7 +373,7 @@ All endpoints are mounted under `/api/v2/`:
 | `/chat` | `admin.chat.api` | Chat sessions |
 | `/conversations` | `admin.conversations.api` | Conversations |
 | `/sessions` | `admin.sessions.api` | User sessions |
-| `/aaas` | `admin.aaas.api` | AAAS administration |
+| `/platform` | `admin.platform.api` | Soma Platform administration |
 | `/memory` | `admin.memory.api` | Memory integration |
 | `/voice` | `admin.voice.api` | Voice services |
 | `/workflows` | `admin.workflows.api` | Temporal workflows |
@@ -422,7 +422,7 @@ pytest tests/unit/ -v
 
 | Marker | Meaning |
 |--------|---------|
-| `aaas` | Requires full AAAS stack |
+| `platform` | Requires full Soma Platform stack |
 | `standalone` | Standalone mode tests |
 | `slow` | Long-running tests |
 | `infra` | Requires infrastructure |
@@ -490,7 +490,7 @@ pytest tests/unit/ -v
 | Audit Publisher | `admin/core/models/` `OutboxMessage` | Outbox exists; not wired to all endpoints |
 | WebSocket Consumer | `services/gateway/consumers/chat.py` | Wired to V3 orchestrator. Frontend contract verified: `webui/src/views/saas-chat.ts` connects to `/ws/v2/chat/{agent_id}` and passes `agent_id` (via `capsule_id \|\| agent.id`), matching `services/gateway/routing.py`. Agent selector is present and auto-selects when only one agent exists. |
 
-**Deleted — do not resurrect.** `aaas/brain.py` (BrainBridge), `services/common/ports/memory_port.py` (MemoryPort), `services/common/adapters/sfm_adapter.py`, `services/common/protocols/` (MemoryServiceProtocol). See `docs/architecture/SOMA-ARCH-INVARIANTS-001.md` §0.
+**Deleted — do not resurrect.** `platform/brain.py` (BrainBridge), `services/common/ports/memory_port.py` (MemoryPort), `services/common/adapters/sfm_adapter.py`, `services/common/protocols/` (MemoryServiceProtocol). See `docs/architecture/SOMA-ARCH-INVARIANTS-001.md` §0.
 
 ### 12.3 Gaps
 
@@ -507,7 +507,7 @@ pytest tests/unit/ -v
 | GAP-009 | Chat UI WebSocket contract -- frontend omits `agent_id` | High | **Fixed** — `saas-chat.ts` sends `agent_id` on `/ws/v2/chat/{agent_id}`; route and consumer both accept it |
 | GAP-010 | Chat UI agent selector -- no selector when user has multiple agents | High | **Fixed** — selector renders when the user has >1 agent, auto-selects when exactly 1 |
 | GAP-011 | SomaBrain URL resolution -- default URL is empty/wrong | High | Open |
-| GAP-012 | API keys settings page -- `/aaas/settings/api-keys` is a real backend route with no UI screen | Medium | Open |
+| GAP-012 | API keys settings page -- `/platform/settings/api-keys` is a real backend route with no UI screen | Medium | Open |
 
 ---
 
@@ -515,7 +515,7 @@ pytest tests/unit/ -v
 
 ### 13.1 SomaBrain
 
-- Port: 63996 (AAAS) or 9696 (direct)
+- Port: 63996 (Soma Platform) or 9696 (direct)
 - API: `http://localhost:63996` or `http://localhost:9696`
 - Endpoints: `/api/v1/agents/{id}/sessions`, `/api/v1/agents/{id}/chat`
 - Streaming: Server-Sent Events
@@ -523,7 +523,7 @@ pytest tests/unit/ -v
 
 ### 13.2 SomaFractalMemory
 
-- Port: 63901 (AAAS) or 10101 (direct)
+- Port: 63901 (Soma Platform) or 10101 (direct)
 - API: `http://localhost:63901` or `http://localhost:10101`
 - Endpoints: `/memories`, `/memories/search`, `/graph/*`
 - Memory types: `episodic`, `semantic`
@@ -592,7 +592,7 @@ SA01_DEPLOYMENT_MODE=STANDALONE
 ## 15. Notes for Future Agents
 
 1. Always check existing code first. Many features are claimed in documentation but not implemented.
-2. Use the correct port namespace: somaAgent01 = 20xxx (standalone) or 63xxx (AAAS).
+2. Use the correct port namespace: somaAgent01 = 20xxx (standalone) or 63xxx (Soma Platform).
 3. Do not use mocks in tests. Use real Docker infrastructure when available.
 4. Use Django Ninja only. No FastAPI, no SQLAlchemy.
 5. Use Lit 3.x only. No React, no Alpine.js.

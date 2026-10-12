@@ -26,7 +26,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("aaas", "0004_local_session"),
+        ("platform", "0004_local_session"),
     ]
 
     operations = [

@@ -25,7 +25,7 @@ from services.tool_executor.default_tools import DEFAULT_AGENT_TOOLS
 @pytest.fixture
 def capsule(db):
     """A brand-new capsule through the real creation path (``save``)."""
-    from admin.aaas.models import Tenant
+    from admin.platform.models import Tenant
 
     tenant = Tenant.objects.create(
         name=f"Kit Seed Tenant {uuid.uuid4().hex[:8]}",
@@ -89,7 +89,7 @@ def test_seeding_is_a_union_and_never_rewrites_an_existing_row(capsule):
     edited.description = "operator-edited description"
     edited.save()
 
-    from admin.aaas.models import Tenant
+    from admin.platform.models import Tenant
 
     second = Capsule.objects.create(
         name="Kit Seed Capsule",

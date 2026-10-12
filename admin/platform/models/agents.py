@@ -8,8 +8,8 @@ import uuid
 
 from django.db import models
 
-from admin.aaas.models.choices import AgentRole, AgentStatus
-from admin.aaas.models.tenants import Tenant
+from admin.platform.models.choices import AgentRole, AgentStatus
+from admin.platform.models.tenants import Tenant
 
 
 class Agent(models.Model):

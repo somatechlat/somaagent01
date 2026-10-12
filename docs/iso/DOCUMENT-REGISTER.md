@@ -132,7 +132,7 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | UI-X-06-capsule | docs/design/mockups/UI-X-06-capsule.md | UI-X-06 — Capsule | — | — | — | — | Annex |
 | UI-X-07-brain | docs/design/mockups/UI-X-07-brain.md | UI-X-07 — Brain (the one Brain surface) | — | — | — | — | Annex |
 | UI-X-08-desktop | docs/design/mockups/UI-X-08-desktop.md | UI-X-08 — Desktop | — | — | — | — | Annex |
-| SOMA-01-AAAS-001 | docs/iso/SOMA-01-AAAS-001.md | Soma AAAS Deployment Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-01-Soma Platform-001 | docs/iso/SOMA-01-Soma Platform-001.md | Soma Soma Platform Deployment Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-01-ARCH-001 | docs/iso/SOMA-01-ARCH-001.md | SomaAgent01 System Architecture Document | 2.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-01-AUDIT-002 | docs/iso/SOMA-01-AUDIT-002.md | SomaAgent01 Code-Verified Deep Audit Report | 2.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-01-COMPAT-001 | docs/iso/SOMA-01-COMPAT-001.md | Soma Cognitive Triad Version Compatibility Matrix | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
@@ -162,9 +162,9 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-TRIAD-ARCH-001 | docs/iso/SOMA-TRIAD-ARCH-001.md | Soma Triad Architecture Description — Agent / Brain / Memory | 2.1.0 | Draft | — | 2027-01-03 | Compliant |
 | SOMA-MOD-ARCH-001 | docs/modules/SOMA-MOD-ARCH-001.md | Soma Agent Modular Architecture — Core vs Optional Modules | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-MOD-SPEC-001 | docs/modules/SOMA-MOD-SPEC-001.md | Soma Agent Module System Technical Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
-| SOMA-OPS-AAAS-001 | docs/operations/SOMA-OPS-AAAS-001.md | AAAS Standalone Deployment Guide | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-OPS-Soma Platform-001 | docs/operations/SOMA-OPS-Soma Platform-001.md | Soma Platform Standalone Deployment Guide | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-OPS-DEPLOY-001 | docs/operations/SOMA-OPS-DEPLOY-001.md | Deployment Guide | 1.0.1 | Draft | — | 2026-12-28 | Compliant |
-| SOMA-OPS-MODES-001 | docs/operations/SOMA-OPS-MODES-001.md | Deployment Modes - AAAS vs STANDALONE | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-OPS-MODES-001 | docs/operations/SOMA-OPS-MODES-001.md | Deployment Modes - Soma Platform vs STANDALONE | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-OPS-PLAN-001 | docs/operations/SOMA-OPS-PLAN-001.md | SomaAgent01 — Complete Deployment Plan | 1.0.1 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-OPS-READINESS-001 | docs/operations/SOMA-OPS-READINESS-001.md | SomaAgent01 Deployment Readiness Plan | 1.1.0 | Draft | — | 2027-01-03 | Compliant |
 | SOMA-OPS-SOFTMODES-001 | docs/operations/SOMA-OPS-SOFTMODES-001.md | Software Deployment Modes | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
@@ -212,7 +212,7 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-SRS-MULTITENANCY-001 | docs/requirements/SOMA-SRS-MULTITENANCY-001.md | SRS-SECURITY-MULTITENANCY — Security and Tenant Isolation | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-SRS-PERMISSIONS-001 | docs/requirements/SOMA-SRS-PERMISSIONS-001.md | SRS-PERMISSION-MATRIX — Permission Matrix and Role Administration | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-SRS-RLM-001 | docs/requirements/SOMA-SRS-RLM-001.md | SRS-RLM-ENGINE — Recursive Language Model Execution | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
-| SOMA-SRS-SAASINFRA-001 | docs/requirements/SOMA-SRS-SAASINFRA-001.md | SRS-SAAS-INFRASTRUCTURE — AAAS Deployment Architecture | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-SRS-SAASINFRA-001 | docs/requirements/SOMA-SRS-SAASINFRA-001.md | SRS-SAAS-INFRASTRUCTURE — Soma Platform Deployment Architecture | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-SRS-SOMABRAIN-001 | docs/requirements/SOMA-SRS-SOMABRAIN-001.md | SRS-SOMABRAIN-INTEGRATION — L3 Cognitive Engine | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-SRS-SOVEREIGNTY-001 | docs/requirements/SOMA-SRS-SOVEREIGNTY-001.md | SRS-650-LINE-SOVEREIGNTY — VIBE Rule 245 Enforcement | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-SRS-TESTBENCH-001 | docs/requirements/SOMA-SRS-TESTBENCH-001.md | SRS-TEST-WORKBENCH — Cross-Repository Test Audit | 1.0.0 | Draft | — | 2026-12-28 | Compliant |

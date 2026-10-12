@@ -67,7 +67,7 @@ async def get_rate_limits(request) -> dict:
     Security Auditor: View rate limiting rules.
     """
     await authorize(request, action="system:view", resource="ratelimit")
-    from admin.aaas.models.profiles import PlatformConfig
+    from admin.platform.models.profiles import PlatformConfig
 
     gd = await PlatformConfig.aget_instance()
     defaults = gd.defaults
@@ -133,7 +133,7 @@ async def create_rate_limit(
     Security Auditor: Admin only.
     """
     await authorize(request, action="system:ratelimit", resource="ratelimit")
-    from admin.aaas.models.profiles import PlatformConfig
+    from admin.platform.models.profiles import PlatformConfig
 
     gd = await PlatformConfig.aget_instance()
     defaults = gd.defaults
@@ -171,7 +171,7 @@ async def update_rate_limit(
 ) -> dict:
     """Update a rate limit rule."""
     await authorize(request, action="system:ratelimit", resource="ratelimit")
-    from admin.aaas.models.profiles import PlatformConfig
+    from admin.platform.models.profiles import PlatformConfig
 
     gd = await PlatformConfig.aget_instance()
     defaults = gd.defaults
@@ -206,7 +206,7 @@ async def update_rate_limit(
 async def delete_rate_limit(request, name: str) -> dict:
     """Delete a rate limit rule."""
     await authorize(request, action="system:ratelimit", resource="ratelimit")
-    from admin.aaas.models.profiles import PlatformConfig
+    from admin.platform.models.profiles import PlatformConfig
 
     gd = await PlatformConfig.aget_instance()
     defaults = gd.defaults

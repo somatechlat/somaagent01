@@ -40,14 +40,14 @@ export class SomaWelcomeDashboard extends LitElement {
         .welcome-title {
             font-size: 28px;
             font-weight: 700;
-            color: var(--aaas-text-primary, #ffffff);
+            color: var(--platform-text-primary, #ffffff);
             margin-bottom: 8px;
             letter-spacing: -0.5px;
         }
 
         .welcome-subtitle {
             font-size: 15px;
-            color: var(--aaas-text-secondary, #a1a1a1);
+            color: var(--platform-text-secondary, #a1a1a1);
         }
 
         .actions-grid {
@@ -64,19 +64,19 @@ export class SomaWelcomeDashboard extends LitElement {
             align-items: center;
             gap: 10px;
             padding: 24px 16px;
-            background: var(--aaas-bg-card, #1e1e1e);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            border-radius: var(--aaas-radius-xl, 16px);
+            background: var(--platform-bg-card, #1e1e1e);
+            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
+            border-radius: var(--platform-radius-xl, 16px);
             cursor: pointer;
             transition: all 200ms ease;
             text-align: center;
         }
 
         .action-card:hover {
-            border-color: var(--aaas-border-medium, rgba(255,255,255,0.1));
-            background: var(--aaas-bg-hover, #141414);
+            border-color: var(--platform-border-medium, rgba(255,255,255,0.1));
+            background: var(--platform-bg-hover, #141414);
             transform: translateY(-2px);
-            box-shadow: var(--aaas-shadow-md, 0 2px 8px rgba(0,0,0,0.5));
+            box-shadow: var(--platform-shadow-md, 0 2px 8px rgba(0,0,0,0.5));
         }
 
         .action-icon {
@@ -85,20 +85,20 @@ export class SomaWelcomeDashboard extends LitElement {
             display: flex;
             align-items: center;
             justify-content: center;
-            background: var(--aaas-bg-hover, #141414);
-            border-radius: var(--aaas-radius-lg, 12px);
+            background: var(--platform-bg-hover, #141414);
+            border-radius: var(--platform-radius-lg, 12px);
             font-size: 20px;
         }
 
         .action-label {
             font-size: 14px;
             font-weight: 600;
-            color: var(--aaas-text-primary, #ffffff);
+            color: var(--platform-text-primary, #ffffff);
         }
 
         .action-desc {
             font-size: 12px;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
         }
 
         .health-section {
@@ -110,7 +110,7 @@ export class SomaWelcomeDashboard extends LitElement {
         .section-title {
             font-size: 13px;
             font-weight: 600;
-            color: var(--aaas-text-secondary, #a1a1a1);
+            color: var(--platform-text-secondary, #a1a1a1);
             margin-bottom: 16px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -127,38 +127,38 @@ export class SomaWelcomeDashboard extends LitElement {
             align-items: center;
             gap: 12px;
             padding: 12px 16px;
-            background: var(--aaas-bg-card, #1e1e1e);
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
-            border-radius: var(--aaas-radius-lg, 12px);
+            background: var(--platform-bg-card, #1e1e1e);
+            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
+            border-radius: var(--platform-radius-lg, 12px);
         }
 
         .health-bar {
             flex: 1;
             height: 6px;
-            background: var(--aaas-bg-hover, #141414);
-            border-radius: var(--aaas-radius-full, 9999px);
+            background: var(--platform-bg-hover, #141414);
+            border-radius: var(--platform-radius-full, 9999px);
             overflow: hidden;
         }
 
         .health-fill {
             height: 100%;
-            border-radius: var(--aaas-radius-full, 9999px);
+            border-radius: var(--platform-radius-full, 9999px);
             transition: width 500ms ease;
         }
 
-        .health-fill.success { background: var(--aaas-success, #22c55e); }
-        .health-fill.warning { background: var(--aaas-warning, #f59e0b); }
-        .health-fill.danger { background: var(--aaas-danger, #ef4444); }
+        .health-fill.success { background: var(--platform-success, #22c55e); }
+        .health-fill.warning { background: var(--platform-warning, #f59e0b); }
+        .health-fill.danger { background: var(--platform-danger, #ef4444); }
 
         .health-label {
             font-size: 13px;
-            color: var(--aaas-text-secondary, #a1a1a1);
+            color: var(--platform-text-secondary, #a1a1a1);
             min-width: 140px;
         }
 
         .health-value {
             font-size: 12px;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             min-width: 80px;
             text-align: right;
         }

@@ -50,11 +50,11 @@ created at.
 | Agent seam constant | `DEFAULT_MEM_EMBED_DIM = 768` | `services/common/soma-memory-contract/soma_memory_contract/__init__.py:23` |
 | Agent env default | `MEM_EMBED_DIM = int(os.environ.get("MEM_EMBED_DIM", "768"))` | `config/settings.py:116` |
 | Gateway settings | same, default `"768"` | `services/gateway/settings.py:254` |
-| Unified settings | `SOMA_VECTOR_DIM = int(os.environ.get("SOMA_VECTOR_DIM", "768"))` | `infra/aaas/unified_settings.py:315` |
+| Unified settings | `SOMA_VECTOR_DIM = int(os.environ.get("SOMA_VECTOR_DIM", "768"))` | `infra/platform/unified_settings.py:315` |
 | SFM TUNABLES | `SOMA_VECTOR_DIM`: `Tunable("int", 768, ...)` | `somafractalmemory/settings/model.py:121-126` |
 | SFM refuses to guess | raises if `SOMA_VECTOR_DIM` is not configured | `somafractalmemory/admin/core/services.py:131-133` |
 | Compose | `MEM_EMBED_DIM=${MEM_EMBED_DIM:-768}` | `infra/standalone/docker-compose.yml:105` |
-| AAAS example | `SFM_VECTOR_DIM=768` | `infra/aaas/aaas/.env.example:60` |
+| Soma Platform example | `SFM_VECTOR_DIM=768` | `infra/platform/platform/.env.example:60` |
 | Enforcement test | `tests/unit/test_embed_dim_seam_768.py` pins 768 and bans 1536 | that file, assertions at 19-76 |
 
 No file in either repository uses 256 as an embedding dimension. Literal `256`

@@ -3,7 +3,7 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 # Agent-Only deployment without SomaBrain or FractalMemory dependencies.
 # - Naming: somaagent_*
-# - Ports: 20xxx (somaagent cluster; AAAS/somastack 63xxx stack is deleted)
+# - Ports: 20xxx (somaagent cluster; Soma Platform/somastack 63xxx stack is deleted)
 #
 # SECRET CONTRACT (VIBE Rule 164) — read this before editing:
 #

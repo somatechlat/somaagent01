@@ -46,7 +46,7 @@ def _create_test_tenant() -> Any:
     No tier. Subscription tiers left with billing: an organisation is a
     partition, not a plan.
     """
-    from admin.aaas.models import Tenant
+    from admin.platform.models import Tenant
 
     return Tenant.objects.create(
         name="Test Tenant",

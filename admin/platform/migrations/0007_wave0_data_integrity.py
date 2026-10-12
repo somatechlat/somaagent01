@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("aaas", "0006_drop_commerce_tables"),
+        ("platform", "0006_drop_commerce_tables"),
     ]
 
     operations = [

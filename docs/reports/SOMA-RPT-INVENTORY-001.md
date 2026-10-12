@@ -20,7 +20,7 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under ISO document control. |
-| 1.1.0 | 2026-10-03 | SomaTech Engineering | Re-derived from the tree. Removed `admin.features` (never existed as a package; `admin/core/features/` was deleted in `b98bbb2d`) and ChromaDB (zero code or infra presence). `admin.aaas` no longer does billing — commerce tables dropped in migration `0006`. Vector store is Milvus only, reached via SomaBrain (T-1), not managed by `admin.memory`. Service list expanded to every `services/*/` directory. |
+| 1.1.0 | 2026-10-03 | SomaTech Engineering | Re-derived from the tree. Removed `admin.features` (never existed as a package; `admin/core/features/` was deleted in `b98bbb2d`) and ChromaDB (zero code or infra presence). `admin.platform` no longer does billing — commerce tables dropped in migration `0006`. Vector store is Milvus only, reached via SomaBrain (T-1), not managed by `admin.memory`. Service list expanded to every `services/*/` directory. |
 
 
 **Architecture Version**: 2.0 (Django Migration Complete)
@@ -32,7 +32,7 @@ Directories under `admin/` at time of re-derivation. One line each, from the
 module's own responsibility. `admin/api.py` is the master Django Ninja router
 (a file, not a package).
 
-1.  **`admin.aaas`**: Multi-tenancy, identity, sessions, profiles. No billing — commerce tables (`SubscriptionTier`, `UsageRecord`) were dropped in `admin/aaas/migrations/0006_drop_commerce_tables.py`.
+1.  **`admin.platform`**: Multi-tenancy, identity, sessions, profiles. No billing — commerce tables (`SubscriptionTier`, `UsageRecord`) were dropped in `admin/platform/migrations/0006_drop_commerce_tables.py`.
 2.  **`admin.agents`**: Agent lifecycle & configuration.
 3.  **`admin.assets`**: Asset records.
 4.  **`admin.auth`**: Authentication (login, token, OAuth, SSO).

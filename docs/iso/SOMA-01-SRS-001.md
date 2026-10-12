@@ -40,7 +40,7 @@
 This document specifies the software requirements for SomaAgent01, the gateway component of the Soma Cognitive Triad. It consolidates requirements from 22 domain-specific SRS documents into a single traceable specification.
 
 ### 1.2 Scope
-SomaAgent01 is an enterprise multi-agent cognitive platform providing agent orchestration, multi-tenant management, real-time chat, and cognitive memory integration. It operates in Standalone mode (agent-only) and AAAS mode (integrated with SomaBrain and SomaFractalMemory).
+SomaAgent01 is an enterprise multi-agent cognitive platform providing agent orchestration, multi-tenant management, real-time chat, and cognitive memory integration. It operates in Standalone mode (agent-only) and Soma Platform mode (integrated with SomaBrain and SomaFractalMemory).
 
 ### 1.3 Definitions
 
@@ -92,7 +92,7 @@ SomaAgent01 is an enterprise multi-agent cognitive platform providing agent orch
 | REQ-CHAT-004 | Chat SHALL stream LLM responses token-by-token via WebSocket deltas | Must | SRS-CHAT-FLOW-MASTER | E2E test |
 | REQ-CHAT-005 | Chat SHALL support tool execution when LLM requests tools | Should | SRS-TOOL-SYSTEM | Integration test |
 | REQ-CHAT-006 | Chat SHALL store messages in PostgreSQL (always, zero data loss) | Must | SRS-CHAT-FLOW-MASTER | Integration test |
-| REQ-CHAT-007 | Chat SHALL store memories in SomaBrain (AAAS mode) with SFM fallback | Should | SRS-SOMABRAIN-INTEGRATION | Integration test |
+| REQ-CHAT-007 | Chat SHALL store memories in SomaBrain (Soma Platform mode) with SFM fallback | Should | SRS-SOMABRAIN-INTEGRATION | Integration test |
 | REQ-CHAT-008 | Chat SHALL implement circuit breakers on external service calls | Must | SRS-CHAT-FLOW-MASTER | Unit test |
 | REQ-CHAT-009 | Chat SHALL use tiktoken for accurate token counting | Must | SRS-CONTEXT-BUILDING | Unit test |
 | REQ-CHAT-010 | WebSocket SHALL authenticate via JWT from subprotocol, query string, header, or cookie | Must | SRS-CHAT-FLOW-MASTER | Integration test |
@@ -113,8 +113,8 @@ SomaAgent01 is an enterprise multi-agent cognitive platform providing agent orch
 
 | ID | Requirement | Priority | Source | Verification |
 |----|-------------|----------|--------|-------------|
-| REQ-MEM-001 | System SHALL integrate with SomaBrain for cognitive memory (AAAS mode) | Must | SRS-SOMABRAIN-INTEGRATION | Integration test |
-| REQ-MEM-002 | System SHALL integrate with SomaFractalMemory for vector storage (AAAS mode) | Must | SRS-SOMABRAIN-INTEGRATION | Integration test |
+| REQ-MEM-001 | System SHALL integrate with SomaBrain for cognitive memory (Soma Platform mode) | Must | SRS-SOMABRAIN-INTEGRATION | Integration test |
+| REQ-MEM-002 | System SHALL integrate with SomaFractalMemory for vector storage (Soma Platform mode) | Must | SRS-SOMABRAIN-INTEGRATION | Integration test |
 | REQ-MEM-003 | Memory recall SHALL use SomaBrain as primary, SFM as fallback | Must | SRS-SOMABRAIN-INTEGRATION | Integration test |
 | REQ-MEM-004 | System SHALL leave failed memory writes pending on the memory.wal outbox for replay | Must | SRS-SOMABRAIN-INTEGRATION | Unit test |
 | REQ-MEM-005 | System SHALL work without SomaBrain/SFM in Standalone mode | Must | SRS-SAAS-INFRASTRUCTURE | Integration test |
@@ -159,7 +159,7 @@ SomaAgent01 is an enterprise multi-agent cognitive platform providing agent orch
 | ID | Requirement | Priority | Source | Verification |
 |----|-------------|----------|--------|-------------|
 | REQ-DEP-001 | System SHALL support Standalone deployment mode | Must | SOMA-01-ARCH-001 | Docker test |
-| REQ-DEP-002 | System SHALL support AAAS deployment mode | Must | SOMA-01-ARCH-001 | Docker test |
+| REQ-DEP-002 | System SHALL support Soma Platform deployment mode | Must | SOMA-01-ARCH-001 | Docker test |
 | REQ-DEP-003 | System SHALL expose health check endpoint returning service status | Must | SRS-SAAS-INFRASTRUCTURE | Smoke test |
 | REQ-DEP-004 | System SHALL run as non-root container user | Must | SOMA-01-SEC-001 | Docker test |
 | REQ-DEP-005 | System SHALL support Kubernetes deployment with probes and limits | Should | SOMA-01-PROD-001 | K8s test |

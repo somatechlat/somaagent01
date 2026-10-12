@@ -12,7 +12,7 @@ enough.
 
 LIVE INFRA ONLY. Hosts are the Docker service names of the real standalone
 cluster (``infra/standalone/docker-compose.yml``). There is no ``localhost``,
-no AAAS/``somastack`` stack, and no parallel test topology.
+no Soma Platform/``somastack`` stack, and no parallel test topology.
 
 Topology only. Two Vault variables, neither of which is a credential:
 

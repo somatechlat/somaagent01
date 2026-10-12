@@ -568,7 +568,7 @@ async def send_message(
     agent_id = str(conv.agent_id)
 
     # Load capsule via Agent → primary_capsule (Agent ID ≠ Capsule ID)
-    from admin.aaas.models import Agent
+    from admin.platform.models import Agent
     from admin.core.models import Capsule
 
     @sync_to_async

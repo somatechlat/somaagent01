@@ -37,11 +37,11 @@ This document provides an ISO/IEC/IEEE 42010-compliant architecture description 
 
 This document covers:
 - System overview and technology stack
-- Dual-mode deployment architecture (Standalone and AAAS)
+- Dual-mode deployment architecture (Standalone and Soma Platform)
 - Logical, process, and physical architecture views
 - Service component inventory
 - Integration architecture with external systems
-- Core and AAAS data models
+- Core and Soma Platform data models
 - Security architecture
 - Known architectural debt
 
@@ -73,7 +73,7 @@ This document does not cover:
 
 ### 2.1 System Description
 
-SomaAgent01 is an enterprise multi-agent cognitive platform that provides AI agent orchestration, multi-tenant management, real-time chat, and cognitive memory integration. The system operates in two deployment modes: **Standalone** (agent-only) and **AAAS** (Agent As A Service) with full cognitive triad integration.
+SomaAgent01 is an enterprise multi-agent cognitive platform that provides AI agent orchestration, multi-tenant management, real-time chat, and cognitive memory integration. The system operates in two deployment modes: **Standalone** (agent-only) and **Soma Platform** (Agent As A Service) with full cognitive triad integration.
 
 ### 2.2 Technology Stack
 
@@ -90,8 +90,8 @@ SomaAgent01 is an enterprise multi-agent cognitive platform that provides AI age
 | Authorization | SpiceDB 1.29 | Zanzibar-style; `UnifiedGate` makes real gRPC calls |
 | Policy Engine | OPA | `PolicyClient` makes real HTTP calls |
 | Observability | Prometheus + Grafana + OpenTelemetry | Partially wired |
-| Cognitive Runtime | SomaBrain | AAAS mode only (port 63996) |
-| Memory Storage | SomaFractalMemory | AAAS mode only (port 63901) |
+| Cognitive Runtime | SomaBrain | Soma Platform mode only (port 63996) |
+| Memory Storage | SomaFractalMemory | Soma Platform mode only (port 63901) |
 
 ### 2.3 System Maturity
 
@@ -127,7 +127,7 @@ Agent-only deployment without SomaBrain or SomaFractalMemory dependencies. Suita
 
 **Required Services:** PostgreSQL 16, Redis 7, Keycloak 24
 
-### 3.2 AAAS Mode (Agent As A Service)
+### 3.2 Soma Platform Mode (Agent As A Service)
 
 Full cognitive triad deployment: Agent + SomaBrain + SomaFractalMemory. Requires sibling repositories (`../somabrain`, `../somafractalmemory`).
 
@@ -144,7 +144,7 @@ Full cognitive triad deployment: Agent + SomaBrain + SomaFractalMemory. Requires
 
 | Variable | Value | Description |
 |----------|-------|-------------|
-| `SA01_DEPLOYMENT_MODE` | `AAAS` | Mode selector |
+| `SA01_DEPLOYMENT_MODE` | `Soma Platform` | Mode selector |
 | *(removed)* | — | `SOMA_AAAS_MODE` deleted |
 | `SA01_DB_DSN` | `postgresql://...` | Database connection |
 | `SA01_REDIS_URL` | `redis://...` | Redis connection |
@@ -156,7 +156,7 @@ Full cognitive triad deployment: Agent + SomaBrain + SomaFractalMemory. Requires
 
 ### 3.3 Mode Comparison
 
-| Feature | Standalone | AAAS |
+| Feature | Standalone | Soma Platform |
 |---------|-----------|------|
 | Port Namespace | 20xxx | 63xxx |
 | SomaBrain | Not available | Port 63996 |
@@ -190,7 +190,7 @@ The system follows a three-tier layered architecture:
 │               Infrastructure Layer               │
 │  PostgreSQL, Redis, Kafka, Milvus                │
 │  Keycloak, SpiceDB, OPA, Vault                   │
-│  SomaBrain, SomaFractalMemory (AAAS only)        │
+│  SomaBrain, SomaFractalMemory (Soma Platform only)        │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -200,7 +200,7 @@ The system follows a three-tier layered architecture:
 |--------|------|-------------|
 | Core | `admin/core/` | Chat orchestrator, outbox pattern, models, AgentIQ |
 | Auth | `admin/auth/` | Authentication router, OAuth, MFA, PKCE |
-| AAAS | `admin/aaas/` | Multi-tenant models, subscription tiers |
+| Soma Platform | `admin/platform/` | Multi-tenant models, subscription tiers |
 | Chat | `admin/chat/` | Chat API endpoints, conversation CRUD |
 | Agents | `admin/agents/` | Agent management and configuration |
 | Permissions | `admin/core/authz.py` + `admin/core/permission_matrix.py` | RBAC catalog and checks |
@@ -235,11 +235,11 @@ The V3 chat orchestrator (`admin/core/chat_orchestrator.py`) is the production p
 | 4 | UnifiedGate authorization check (OPA + SpiceDB) |
 | 5 | Context building (conversation history, system prompts) |
 | 6 | Tool discovery and registration |
-| 7 | Memory recall (SomaBrain in AAAS mode) |
+| 7 | Memory recall (SomaBrain in Soma Platform mode) |
 | 8 | Circuit breaker check (SomaBrain + LLM) |
 | 9 | LLM invocation (via LiteLLM) |
 | 10 | Tool call extraction and execution |
-| 11 | Memory storage (SomaBrain + SomaFractalMemory in AAAS mode) |
+| 11 | Memory storage (SomaBrain + SomaFractalMemory in Soma Platform mode) |
 | 12 | Response delivery and Django signals |
 
 **Tiktoken** is used for accurate token counting (line 52–59). Circuit breakers protect both SomaBrain and LLM calls (line 149–152).
@@ -277,7 +277,7 @@ A separate pipeline exists in `services/conversation_worker/` for Kafka/Temporal
 │  │  :20880  │  │  :20882  │  │   (optional) │       │
 │  └──────────┘  └──────────┘  └──────────────┘       │
 │                                                      │
-│  AAAS additions:                                     │
+│  Soma Platform additions:                                     │
 │  ┌──────────┐  ┌──────────────────────────────┐      │
 │  │SomaBrain│  │  SomaFractalMemory           │      │
 │  │  :63996  │  │    :63901                    │      │
@@ -287,7 +287,7 @@ A separate pipeline exists in `services/conversation_worker/` for Kafka/Temporal
 
 Docker Compose configurations:
 - Standalone: `infra/standalone/docker-compose.yml`
-- AAAS: `infra/aaas/` (requires sibling repos)
+- Soma Platform: `infra/platform/` (requires sibling repos)
 - Root: `docker-compose.yml`
 
 #### 4.3.2 Kubernetes Deployment
@@ -357,14 +357,14 @@ Two integration paths exist for the SomaBrain cognitive runtime:
 
 | Path | File | Mode | Mechanism |
 |------|------|------|-----------|
-| Direct (in-process) | `aaas/brain.py` | AAAS only | `BrainBridge` class; imports `somabrain` Python package |
+| Direct (in-process) | `platform/brain.py` | Soma Platform only | `BrainBridge` class; imports `somabrain` Python package |
 | HTTP | `admin/core/somabrain_client.py` | Both modes | `SomaBrainClient` class; HTTP REST calls |
 
-**BrainBridge** (`aaas/brain.py`):
+**BrainBridge** (`platform/brain.py`):
 - Lines 132–161: `recall()` implemented for both direct and HTTP modes
 - Direct mode: imports and calls `somabrain` package in-process
 - HTTP mode: falls back to REST API at configured URL
-- Port: 63996 (AAAS), or 9696 (direct development)
+- Port: 63996 (Soma Platform), or 9696 (direct development)
 
 ### 6.2 SomaFractalMemory Integration
 
@@ -375,7 +375,7 @@ SomaFractalMemory is accessed via HTTP adapters:
 | `services/common/adapters/` | HTTP REST | `episodic` and `semantic` memory storage/retrieval |
 | `services/common/ports/memory_port.py` | Protocol definition | `MemoryPort` interface (not yet adopted by production adapters) |
 
-- Port: 63901 (AAAS), or 10101 (direct development)
+- Port: 63901 (Soma Platform), or 10101 (direct development)
 - Endpoints: `/api/v1/recall`, `/api/v1/store`
 
 ### 6.3 Keycloak Integration
@@ -383,7 +383,7 @@ SomaFractalMemory is accessed via HTTP adapters:
 | Aspect | Detail |
 |--------|--------|
 | Protocol | OIDC |
-| Port | 20880 (Standalone) / 63980 (AAAS) |
+| Port | 20880 (Standalone) / 63980 (Soma Platform) |
 | Realm | `somaagent` |
 | Client | `eye-of-god` (public client) |
 | Flows | Password grant, OAuth (Google, GitHub), SAML, LDAP |
@@ -426,7 +426,7 @@ SomaFractalMemory is accessed via HTTP adapters:
               │            │            │
        ┌──────▼──┐  ┌──────▼──┐  ┌─────▼───────┐
        │SomaBrain│  │Fractal  │  │  PostgreSQL  │
-       │ (AAAS)  │  │ Memory  │  │  Redis       │
+       │ (Soma Platform)  │  │ Memory  │  │  Redis       │
        └─────────┘  └─────────┘  └─────────────┘
 ```
 
@@ -463,7 +463,7 @@ SomaFractalMemory is accessed via HTTP adapters:
 | `OutboxMessage` (`memory.wal`) | Memory replay queue (the one authority) |
 | `SensorOutbox` | Sensor event outbox |
 
-### 7.2 AAAS Models (`admin/aaas/models/`)
+### 7.2 Soma Platform Models (`admin/platform/models/`)
 
 | Model | Purpose |
 |-------|---------|
@@ -542,7 +542,7 @@ The gate is **fail-closed**: any policy engine unavailability denies the request
 | DEBT-001 | Conversation-worker bypasses V3 orchestrator; uses separate use-case pipeline | Inconsistent chat behavior between WebSocket/REST and Kafka paths | Open |
 | DEBT-002 | 9+ memory entry points being consolidated via `MemoryPort` protocol | Fragmented memory access; `MemoryPort` defined but not adopted by production adapters | In Progress |
 | DEBT-003 | `permissions/api.py` line 336 returns `allowed:true` unconditionally | Authorization bypass in RBAC API | **P0 — Open** |
-| DEBT-004 | Django migrations out of sync for `admin/aaas` and `admin/core` | Schema drift; deployment failures | **P0 — Open** |
+| DEBT-004 | Django migrations out of sync for `admin/platform` and `admin/core` | Schema drift; deployment failures | **P0 — Open** |
 | DEBT-005 | WebSocket routing requires `agent_id` but frontend omits it | Chat flow broken | **P0 — Open** |
 | DEBT-006 | `pyproject.toml` line 21 references `somabrain` as `../somabrain` path dependency | Non-portable; CI/CD cannot install | **P1 — Open** |
 | DEBT-007 | Zero CI/CD pipelines (no `.github/workflows/`) | No automated testing or deployment | **P1 — Open** |
@@ -555,7 +555,7 @@ The gate is **fail-closed**: any policy engine unavailability denies the request
 
 ## Appendix A: Port Namespace Reference
 
-| Service | Standalone (20xxx) | AAAS (63xxx) |
+| Service | Standalone (20xxx) | Soma Platform (63xxx) |
 |---------|-------------------|--------------|
 | SomaAgent API | 20020 | 63900 |
 | PostgreSQL | 20432 | 63932 |
@@ -571,7 +571,7 @@ The gate is **fail-closed**: any policy engine unavailability denies the request
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `SA01_DEPLOYMENT_MODE` | Yes | `STANDALONE` | Deployment mode: `STANDALONE`, `AAAS`, or `DEV` |
+| `SA01_DEPLOYMENT_MODE` | Yes | `STANDALONE` | Deployment mode: `STANDALONE`, `Soma Platform`, or `DEV` |
 | *(removed)* | — | — | `SOMA_AAAS_MODE` deleted |
 | `SA01_DB_DSN` | Yes | — | PostgreSQL connection string |
 | `SA01_REDIS_URL` | Yes | — | Redis connection string |
@@ -583,8 +583,8 @@ The gate is **fail-closed**: any policy engine unavailability denies the request
 | `KEYCLOAK_ADMIN_PASSWORD` | Yes | — | Keycloak admin password |
 | `KEYCLOAK_REALM` | Yes | `somaagent` | Keycloak realm name |
 | `JWT_ISSUER_STRICT` | No | `true` | Enable strict JWT audience verification |
-| `SOMABRAIN_URL` | AAAS | — | SomaBrain service URL |
-| `SOMAFRACTALMEMORY_URL` | AAAS | — | SomaFractalMemory service URL |
+| `SOMABRAIN_URL` | Soma Platform | — | SomaBrain service URL |
+| `SOMAFRACTALMEMORY_URL` | Soma Platform | — | SomaFractalMemory service URL |
 | `VAULT_DEV_ROOT_TOKEN_ID` | No | — | Vault dev mode root token |
 | `SECRET_KEY` | Yes | Generated | Django secret key (auto-generated if not set) |
 | `DEBUG` | No | `false` | Django debug mode |

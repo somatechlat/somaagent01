@@ -1,6 +1,6 @@
 /**
- * AAAS Sys Admin CSS Tokens (Design System)
- * Enterprise AAAS Platform Design Tokens
+ * Soma Platform Sys Admin CSS Tokens (Design System)
+ * Enterprise Soma Platform Platform Design Tokens
  *
  * VIBE COMPLIANT:
  * - Real CSS custom properties
@@ -12,105 +12,105 @@
     /* ==========================================================================
        COLORS - Background (LIGHT default — never dark-first)
        ========================================================================== */
-    --aaas-bg-void: #f5f5f5;
-    --aaas-bg-base: #ffffff;
-    --aaas-surface: rgba(255, 255, 255, 0.9);
-    --aaas-surface-hover: rgba(250, 250, 250, 0.95);
+    --platform-bg-void: #f5f5f5;
+    --platform-bg-base: #ffffff;
+    --platform-surface: rgba(255, 255, 255, 0.9);
+    --platform-surface-hover: rgba(250, 250, 250, 0.95);
 
     /* ==========================================================================
        COLORS - Text
        ========================================================================== */
-    --aaas-text-main: #1a1a1a;
-    --aaas-text-dim: #666666;
-    --aaas-text-bright: #111111;
+    --platform-text-main: #1a1a1a;
+    --platform-text-dim: #666666;
+    --platform-text-bright: #111111;
 
     /* ==========================================================================
        COLORS - Accent
        ========================================================================== */
-    --aaas-accent: #1a1a1a;
-    --aaas-accent-hover: #333333;
+    --platform-accent: #1a1a1a;
+    --platform-accent-hover: #333333;
 
     /* ==========================================================================
        COLORS - Semantic
        ========================================================================== */
-    --aaas-success: #22c55e;
-    --aaas-warning: #eab308;
-    --aaas-danger: #ef4444;
-    --aaas-info: #3b82f6;
+    --platform-success: #22c55e;
+    --platform-warning: #eab308;
+    --platform-danger: #ef4444;
+    --platform-info: #3b82f6;
 
     /* ==========================================================================
        COLORS - Borders
        ========================================================================== */
-    --aaas-border-color: rgba(0, 0, 0, 0.08);
-    --aaas-border-hover: rgba(0, 0, 0, 0.14);
-    --aaas-glass-border: rgba(0, 0, 0, 0.08);
+    --platform-border-color: rgba(0, 0, 0, 0.08);
+    --platform-border-hover: rgba(0, 0, 0, 0.14);
+    --platform-glass-border: rgba(0, 0, 0, 0.08);
 
     /* ==========================================================================
        TYPOGRAPHY
        ========================================================================== */
-    --aaas-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --aaas-font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    --platform-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --platform-font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 
-    --aaas-text-xs: 11px;
-    --aaas-text-sm: 13px;
-    --aaas-text-base: 14px;
-    --aaas-text-lg: 16px;
-    --aaas-text-xl: 18px;
-    --aaas-text-2xl: 24px;
+    --platform-text-xs: 11px;
+    --platform-text-sm: 13px;
+    --platform-text-base: 14px;
+    --platform-text-lg: 16px;
+    --platform-text-xl: 18px;
+    --platform-text-2xl: 24px;
 
-    --aaas-leading-tight: 1.25;
-    --aaas-leading-normal: 1.5;
-    --aaas-leading-relaxed: 1.75;
+    --platform-leading-tight: 1.25;
+    --platform-leading-normal: 1.5;
+    --platform-leading-relaxed: 1.75;
 
     /* ==========================================================================
        SPACING
        ========================================================================== */
-    --aaas-spacing-xs: 4px;
-    --aaas-spacing-sm: 8px;
-    --aaas-spacing-md: 16px;
-    --aaas-spacing-lg: 24px;
-    --aaas-spacing-xl: 32px;
-    --aaas-spacing-2xl: 48px;
+    --platform-spacing-xs: 4px;
+    --platform-spacing-sm: 8px;
+    --platform-spacing-md: 16px;
+    --platform-spacing-lg: 24px;
+    --platform-spacing-xl: 32px;
+    --platform-spacing-2xl: 48px;
 
     /* ==========================================================================
        BORDERS & RADIUS
        ========================================================================== */
-    --aaas-radius-sm: 4px;
-    --aaas-radius-md: 8px;
-    --aaas-radius-lg: 12px;
-    --aaas-radius-xl: 16px;
-    --aaas-radius-full: 9999px;
+    --platform-radius-sm: 4px;
+    --platform-radius-md: 8px;
+    --platform-radius-lg: 12px;
+    --platform-radius-xl: 16px;
+    --platform-radius-full: 9999px;
 
     /* ==========================================================================
        SHADOWS
        ========================================================================== */
-    --aaas-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
-    --aaas-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
-    --aaas-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
-    --aaas-shadow-glow: 0 0 20px rgba(148, 163, 184, 0.15);
+    --platform-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+    --platform-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+    --platform-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+    --platform-shadow-glow: 0 0 20px rgba(148, 163, 184, 0.15);
 
     /* ==========================================================================
        TRANSITIONS
        ========================================================================== */
-    --aaas-transition-fast: 0.1s ease;
-    --aaas-transition-normal: 0.2s ease;
-    --aaas-transition-slow: 0.3s ease;
+    --platform-transition-fast: 0.1s ease;
+    --platform-transition-normal: 0.2s ease;
+    --platform-transition-slow: 0.3s ease;
 
     /* ==========================================================================
        Z-INDEX
        ========================================================================== */
-    --aaas-z-dropdown: 100;
-    --aaas-z-modal: 200;
-    --aaas-z-overlay: 300;
-    --aaas-z-toast: 400;
-    --aaas-z-tooltip: 500;
+    --platform-z-dropdown: 100;
+    --platform-z-modal: 200;
+    --platform-z-overlay: 300;
+    --platform-z-toast: 400;
+    --platform-z-tooltip: 500;
 
     /* ==========================================================================
        LAYOUT
        ========================================================================== */
-    --aaas-sidebar-width: 280px;
-    --aaas-header-height: 56px;
-    --aaas-footer-height: 48px;
+    --platform-sidebar-width: 280px;
+    --platform-header-height: 56px;
+    --platform-footer-height: 48px;
 }
 
 /* ==========================================================================
@@ -133,11 +133,11 @@ html {
 }
 
 body {
-    font-family: var(--aaas-font-sans);
-    font-size: var(--aaas-text-base);
-    line-height: var(--aaas-leading-normal);
-    color: var(--aaas-text-main);
-    background: var(--aaas-bg-void);
+    font-family: var(--platform-font-sans);
+    font-size: var(--platform-text-base);
+    line-height: var(--platform-leading-normal);
+    color: var(--platform-text-main);
+    background: var(--platform-bg-void);
 }
 
 img,
@@ -183,98 +183,98 @@ h6 {
 }
 
 .glass {
-    background: var(--aaas-surface);
-    border: 1px solid var(--aaas-glass-border);
+    background: var(--platform-surface);
+    border: 1px solid var(--platform-glass-border);
     backdrop-filter: blur(12px);
 }
 
 /* ==========================================================================
-   AAAS THEME TOKENS — Light Mode Default
+   Soma Platform THEME TOKENS — Light Mode Default
    Minimal, clean, professional design (Crisply-style)
    ========================================================================== */
 
 :root {
     /* Backgrounds - Light Theme */
-    --aaas-bg-page: #f5f5f5;
-    --aaas-bg-card: #ffffff;
-    --aaas-bg-sidebar: #ffffff;
-    --aaas-bg-hover: #fafafa;
-    --aaas-bg-active: #f0f0f0;
+    --platform-bg-page: #f5f5f5;
+    --platform-bg-card: #ffffff;
+    --platform-bg-sidebar: #ffffff;
+    --platform-bg-hover: #fafafa;
+    --platform-bg-active: #f0f0f0;
 
     /* Text - Light Theme */
-    --aaas-text-primary: #1a1a1a;
-    --aaas-text-secondary: #666666;
-    --aaas-text-muted: #999999;
-    --aaas-text-inverse: #ffffff;
+    --platform-text-primary: #1a1a1a;
+    --platform-text-secondary: #666666;
+    --platform-text-muted: #999999;
+    --platform-text-inverse: #ffffff;
 
     /* Borders - Light Theme */
-    --aaas-border-light: #e0e0e0;
-    --aaas-border-medium: #cccccc;
-    --aaas-border-dark: #1a1a1a;
+    --platform-border-light: #e0e0e0;
+    --platform-border-medium: #cccccc;
+    --platform-border-dark: #1a1a1a;
 
     /* Status Colors */
-    --aaas-status-success: #22c55e;
-    --aaas-status-warning: #f59e0b;
-    --aaas-status-danger: #ef4444;
-    --aaas-status-info: #3b82f6;
+    --platform-status-success: #22c55e;
+    --platform-status-warning: #f59e0b;
+    --platform-status-danger: #ef4444;
+    --platform-status-info: #3b82f6;
 
     /* Accent - Primary Action */
-    --aaas-accent: #1a1a1a;
-    --aaas-accent-hover: #333333;
+    --platform-accent: #1a1a1a;
+    --platform-accent-hover: #333333;
 
     /* Glassmorphism - Light */
-    --aaas-glass-bg: rgba(255, 255, 255, 0.85);
-    --aaas-glass-border: rgba(0, 0, 0, 0.08);
-    --aaas-glass-blur: 16px;
-    --aaas-glass-backdrop: blur(var(--aaas-glass-blur));
+    --platform-glass-bg: rgba(255, 255, 255, 0.85);
+    --platform-glass-border: rgba(0, 0, 0, 0.08);
+    --platform-glass-blur: 16px;
+    --platform-glass-backdrop: blur(var(--platform-glass-blur));
 
     /* Shadows - Light */
-    --aaas-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --aaas-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
-    --aaas-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
-    --aaas-shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.08);
+    --platform-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --platform-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --platform-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
+    --platform-shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.08);
 
     /* Typography */
-    --aaas-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    --aaas-font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, monospace;
+    --platform-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --platform-font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Monaco, monospace;
 
-    --aaas-text-xs: 11px;
-    --aaas-text-sm: 13px;
-    --aaas-text-base: 14px;
-    --aaas-text-md: 16px;
-    --aaas-text-lg: 18px;
-    --aaas-text-xl: 22px;
-    --aaas-text-2xl: 28px;
+    --platform-text-xs: 11px;
+    --platform-text-sm: 13px;
+    --platform-text-base: 14px;
+    --platform-text-md: 16px;
+    --platform-text-lg: 18px;
+    --platform-text-xl: 22px;
+    --platform-text-2xl: 28px;
 
-    --aaas-font-normal: 400;
-    --aaas-font-medium: 500;
-    --aaas-font-semibold: 600;
-    --aaas-font-bold: 700;
+    --platform-font-normal: 400;
+    --platform-font-medium: 500;
+    --platform-font-semibold: 600;
+    --platform-font-bold: 700;
 
     /* Spacing */
-    --aaas-space-xs: 4px;
-    --aaas-space-sm: 8px;
-    --aaas-space-md: 16px;
-    --aaas-space-lg: 24px;
-    --aaas-space-xl: 32px;
-    --aaas-space-2xl: 48px;
+    --platform-space-xs: 4px;
+    --platform-space-sm: 8px;
+    --platform-space-md: 16px;
+    --platform-space-lg: 24px;
+    --platform-space-xl: 32px;
+    --platform-space-2xl: 48px;
 
     /* Border Radius */
-    --aaas-radius-sm: 4px;
-    --aaas-radius-md: 8px;
-    --aaas-radius-lg: 12px;
-    --aaas-radius-xl: 16px;
-    --aaas-radius-full: 9999px;
+    --platform-radius-sm: 4px;
+    --platform-radius-md: 8px;
+    --platform-radius-lg: 12px;
+    --platform-radius-xl: 16px;
+    --platform-radius-full: 9999px;
 
     /* Layout */
-    --aaas-sidebar-width: 240px;
-    --aaas-sidebar-collapsed: 64px;
-    --aaas-header-height: 56px;
+    --platform-sidebar-width: 240px;
+    --platform-sidebar-collapsed: 64px;
+    --platform-header-height: 56px;
 
     /* Transitions */
-    --aaas-transition-fast: 150ms ease;
-    --aaas-transition-normal: 200ms ease;
-    --aaas-transition-slow: 300ms ease;
+    --platform-transition-fast: 150ms ease;
+    --platform-transition-normal: 200ms ease;
+    --platform-transition-slow: 300ms ease;
 }
 
 /* ==========================================================================
@@ -285,165 +285,165 @@ h6 {
 [data-theme="dark"],
 .dark-theme {
     /* Backgrounds — Deep void palette */
-    --aaas-bg-void: #0a0a0a;
-    --aaas-bg-page: #0a0a0a;
-    --aaas-bg-card: #1e1e1e;
-    --aaas-bg-sidebar: #0a0a0a;
-    --aaas-bg-hover: #141414;
-    --aaas-bg-active: #1a1a1a;
-    --aaas-surface: #141414;
-    --aaas-surface-hover: #1a1a1a;
+    --platform-bg-void: #0a0a0a;
+    --platform-bg-page: #0a0a0a;
+    --platform-bg-card: #1e1e1e;
+    --platform-bg-sidebar: #0a0a0a;
+    --platform-bg-hover: #141414;
+    --platform-bg-active: #1a1a1a;
+    --platform-surface: #141414;
+    --platform-surface-hover: #1a1a1a;
 
     /* Text — Crisp hierarchy (muted meets WCAG AA on #0a0a0a for small text) */
-    --aaas-text-primary: #ffffff;
-    --aaas-text-secondary: #a1a1a1;
-    --aaas-text-muted: #8b8b8b;
-    --aaas-text-inverse: #0a0a0a;
-    --aaas-text-main: #ffffff;
-    --aaas-text-dim: #6b6b6b;
-    --aaas-text-bright: #ffffff;
+    --platform-text-primary: #ffffff;
+    --platform-text-secondary: #a1a1a1;
+    --platform-text-muted: #8b8b8b;
+    --platform-text-inverse: #0a0a0a;
+    --platform-text-main: #ffffff;
+    --platform-text-dim: #6b6b6b;
+    --platform-text-bright: #ffffff;
 
     /* Borders — Whisper thin */
-    --aaas-border-light: rgba(255, 255, 255, 0.06);
-    --aaas-border-medium: rgba(255, 255, 255, 0.1);
-    --aaas-border-dark: rgba(255, 255, 255, 0.16);
-    --aaas-border-color: rgba(255, 255, 255, 0.06);
-    --aaas-border-hover: rgba(255, 255, 255, 0.12);
-    --aaas-glass-border: rgba(255, 255, 255, 0.08);
+    --platform-border-light: rgba(255, 255, 255, 0.06);
+    --platform-border-medium: rgba(255, 255, 255, 0.1);
+    --platform-border-dark: rgba(255, 255, 255, 0.16);
+    --platform-border-color: rgba(255, 255, 255, 0.06);
+    --platform-border-hover: rgba(255, 255, 255, 0.12);
+    --platform-glass-border: rgba(255, 255, 255, 0.08);
 
     /* Accent — Warm off-white / bone */
-    --aaas-accent: #e8e4dc;
-    --aaas-accent-hover: #ffffff;
-    --aaas-accent-glow: rgba(232, 228, 220, 0.15);
+    --platform-accent: #e8e4dc;
+    --platform-accent-hover: #ffffff;
+    --platform-accent-glow: rgba(232, 228, 220, 0.15);
 
     /* Semantic — IQ gradient support */
-    --aaas-success: #22c55e;
-    --aaas-warning: #f59e0b;
-    --aaas-danger: #ef4444;
-    --aaas-info: #3b82f6;
-    --aaas-iq-low: #22c55e;
-    --aaas-iq-med: #eab308;
-    --aaas-iq-high: #ef4444;
-    --aaas-brain-glow: rgba(59, 130, 246, 0.2);
+    --platform-success: #22c55e;
+    --platform-warning: #f59e0b;
+    --platform-danger: #ef4444;
+    --platform-info: #3b82f6;
+    --platform-iq-low: #22c55e;
+    --platform-iq-med: #eab308;
+    --platform-iq-high: #ef4444;
+    --platform-brain-glow: rgba(59, 130, 246, 0.2);
 
     /* Glassmorphism — Dark */
-    --aaas-glass-bg: rgba(20, 20, 20, 0.9);
-    --aaas-glass-blur: 16px;
-    --aaas-glass-backdrop: blur(var(--aaas-glass-blur));
+    --platform-glass-bg: rgba(20, 20, 20, 0.9);
+    --platform-glass-blur: 16px;
+    --platform-glass-backdrop: blur(var(--platform-glass-blur));
 
     /* Shadows — Deep, subtle */
-    --aaas-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --aaas-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.5);
-    --aaas-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
-    --aaas-shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.5);
-    --aaas-shadow-glow: 0 0 20px rgba(232, 228, 220, 0.1);
+    --platform-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --platform-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.5);
+    --platform-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+    --platform-shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --platform-shadow-glow: 0 0 20px rgba(232, 228, 220, 0.1);
 
     /* Typography */
-    --aaas-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --aaas-font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    --platform-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --platform-font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
 
     /* Spacing */
-    --aaas-space-xs: 4px;
-    --aaas-space-sm: 8px;
-    --aaas-space-md: 16px;
-    --aaas-space-lg: 24px;
-    --aaas-space-xl: 32px;
-    --aaas-space-2xl: 48px;
-    --aaas-spacing-xs: 4px;
-    --aaas-spacing-sm: 8px;
-    --aaas-spacing-md: 16px;
-    --aaas-spacing-lg: 24px;
-    --aaas-spacing-xl: 32px;
-    --aaas-spacing-2xl: 48px;
+    --platform-space-xs: 4px;
+    --platform-space-sm: 8px;
+    --platform-space-md: 16px;
+    --platform-space-lg: 24px;
+    --platform-space-xl: 32px;
+    --platform-space-2xl: 48px;
+    --platform-spacing-xs: 4px;
+    --platform-spacing-sm: 8px;
+    --platform-spacing-md: 16px;
+    --platform-spacing-lg: 24px;
+    --platform-spacing-xl: 32px;
+    --platform-spacing-2xl: 48px;
 
     /* Border Radius */
-    --aaas-radius-sm: 4px;
-    --aaas-radius-md: 8px;
-    --aaas-radius-lg: 12px;
-    --aaas-radius-xl: 16px;
-    --aaas-radius-full: 9999px;
+    --platform-radius-sm: 4px;
+    --platform-radius-md: 8px;
+    --platform-radius-lg: 12px;
+    --platform-radius-xl: 16px;
+    --platform-radius-full: 9999px;
 
     /* Layout */
-    --aaas-sidebar-width: 260px;
-    --aaas-sidebar-collapsed: 64px;
-    --aaas-header-height: 56px;
-    --aaas-footer-height: 48px;
+    --platform-sidebar-width: 260px;
+    --platform-sidebar-collapsed: 64px;
+    --platform-header-height: 56px;
+    --platform-footer-height: 48px;
 
     /* Transitions */
-    --aaas-transition-fast: 150ms ease;
-    --aaas-transition-normal: 200ms ease;
-    --aaas-transition-slow: 300ms ease;
+    --platform-transition-fast: 150ms ease;
+    --platform-transition-normal: 200ms ease;
+    --platform-transition-slow: 300ms ease;
 
     /* Z-Index */
-    --aaas-z-dropdown: 100;
-    --aaas-z-modal: 200;
-    --aaas-z-overlay: 300;
-    --aaas-z-toast: 400;
-    --aaas-z-tooltip: 500;
+    --platform-z-dropdown: 100;
+    --platform-z-modal: 200;
+    --platform-z-overlay: 300;
+    --platform-z-toast: 400;
+    --platform-z-tooltip: 500;
 }
 
 /* ==========================================================================
-   AAAS UTILITY CLASSES
+   Soma Platform UTILITY CLASSES
    ========================================================================== */
 
-.aaas-glass {
-    background: var(--aaas-glass-bg);
-    border: 1px solid var(--aaas-glass-border);
-    backdrop-filter: var(--aaas-glass-backdrop);
-    -webkit-backdrop-filter: var(--aaas-glass-backdrop);
-    border-radius: var(--aaas-radius-lg);
-    box-shadow: var(--aaas-shadow-glass);
+.platform-glass {
+    background: var(--platform-glass-bg);
+    border: 1px solid var(--platform-glass-border);
+    backdrop-filter: var(--platform-glass-backdrop);
+    -webkit-backdrop-filter: var(--platform-glass-backdrop);
+    border-radius: var(--platform-radius-lg);
+    box-shadow: var(--platform-shadow-glass);
 }
 
-.aaas-card {
-    background: var(--aaas-bg-card);
-    border: 1px solid var(--aaas-border-light);
-    border-radius: var(--aaas-radius-lg);
-    box-shadow: var(--aaas-shadow-md);
+.platform-card {
+    background: var(--platform-bg-card);
+    border: 1px solid var(--platform-border-light);
+    border-radius: var(--platform-radius-lg);
+    box-shadow: var(--platform-shadow-md);
 }
 
 /* Status Badge Colors */
-.aaas-status-success {
+.platform-status-success {
     background: rgba(34, 197, 94, 0.15);
     color: #16a34a;
     border: 1px solid rgba(34, 197, 94, 0.2);
 }
 
-.aaas-status-warning {
+.platform-status-warning {
     background: rgba(245, 158, 11, 0.15);
     color: #d97706;
     border: 1px solid rgba(245, 158, 11, 0.2);
 }
 
-.aaas-status-danger {
+.platform-status-danger {
     background: rgba(239, 68, 68, 0.15);
     color: #dc2626;
     border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-.aaas-status-info {
+.platform-status-info {
     background: rgba(59, 130, 246, 0.15);
     color: #2563eb;
     border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
 /* Dark mode status colors */
-[data-theme="dark"] .aaas-status-success {
+[data-theme="dark"] .platform-status-success {
     background: rgba(34, 197, 94, 0.2);
     color: #4ade80;
 }
 
-[data-theme="dark"] .aaas-status-warning {
+[data-theme="dark"] .platform-status-warning {
     background: rgba(245, 158, 11, 0.2);
     color: #fbbf24;
 }
 
-[data-theme="dark"] .aaas-status-danger {
+[data-theme="dark"] .platform-status-danger {
     background: rgba(239, 68, 68, 0.2);
     color: #f87171;
 }
 
-[data-theme="dark"] .aaas-status-info {
+[data-theme="dark"] .platform-status-info {
     background: rgba(59, 130, 246, 0.2);
     color: #60a5fa;
 }

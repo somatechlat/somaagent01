@@ -23,12 +23,12 @@ from typing import TYPE_CHECKING, List, Optional
 
 from django.db import models
 
-from admin.aaas.models.choices import TenantRole, TenantStatus
+from admin.platform.models.choices import TenantRole, TenantStatus
 
 if TYPE_CHECKING:
     from django.db.models import Manager
 
-    from admin.aaas.models.agents import Agent
+    from admin.platform.models.agents import Agent
 
 
 #: Bounded memo of ``TenantUser.roles_for``. Key is ``(user_id, tenant_id)``.

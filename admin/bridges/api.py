@@ -166,7 +166,7 @@ def create_channel(request, payload: ChannelCreate) -> dict:
     kind = _validate_kind(payload.kind)
     status = _validate_status(payload.status or "disabled")
 
-    from admin.aaas.models import Tenant
+    from admin.platform.models import Tenant
     from admin.bridges.models import Channel
 
     try:

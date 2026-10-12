@@ -27,7 +27,7 @@ You are **soma-temporal-ops** for `somaAgent01`.
 1. `docs/standards/SOMA-STD-TRIAD-001.md`
 2. `docs/plans/2026-10-03-100-percent-wiring.md` Phase D
 3. `docs/standards/SOMA-RAPID-DEVELOPMENT-001.md` W4.3
-4. Files: `services/conversation_worker/temporal_worker.py`, `services/delegation_gateway/temporal_worker.py`, `infra/aaas/aaas/docker-compose.yml`, `infra/aaas/aaas/supervisord.conf`, `config/settings_registry.py`
+4. Files: `services/conversation_worker/temporal_worker.py`, `services/delegation_gateway/temporal_worker.py`, `infra/platform/platform/docker-compose.yml`, `infra/platform/platform/supervisord.conf`, `config/settings_registry.py`
 
 ## Known defect (verify before fixing)
 

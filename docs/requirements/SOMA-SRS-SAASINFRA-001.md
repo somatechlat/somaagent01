@@ -1,10 +1,10 @@
-# SRS-SAAS-INFRASTRUCTURE — AAAS Deployment Architecture
+# SRS-SAAS-INFRASTRUCTURE — Soma Platform Deployment Architecture
 
 ## Document Control
 
 | Field | Value |
 |---|---|
-| Document Title | SRS-SAAS-INFRASTRUCTURE — AAAS Deployment Architecture |
+| Document Title | SRS-SAAS-INFRASTRUCTURE — Soma Platform Deployment Architecture |
 | Document Identifier | SOMA-SRS-SAASINFRA-001 |
 | Version | 1.0.0 |
 | Date | 2026-09-28 |
@@ -61,7 +61,7 @@
 
 ### 1.1 Purpose
 
-This document specifies the architecture and operational requirements for the SOMA AAAS (Autonomous Adaptive Agent Stack) Infrastructure. The AAAS infrastructure is a standalone deployment artifact that orchestrates the SOMA Triad (Agent, Brain, Memory) in a zero-dependency container environment.
+This document specifies the architecture and operational requirements for the SOMA Soma Platform (Autonomous Adaptive Agent Stack) Infrastructure. The Soma Platform infrastructure is a standalone deployment artifact that orchestrates the SOMA Triad (Agent, Brain, Memory) in a zero-dependency container environment.
 
 ### 1.2 Scope
 
@@ -81,7 +81,7 @@ This document specifies the architecture and operational requirements for the SO
 
 | Term | Definition |
 |------|------------|
-| **AAAS** | Autonomous Adaptive Agent Stack — the containerized deployment unit |
+| **Soma Platform** | Autonomous Adaptive Agent Stack — the containerized deployment unit |
 | **SOMA Triad** | The three-layer architecture: SomaFractalMemory (Layer 2), SomaBrain (Layer 3), SomaAgent01 (Layer 4) |
 | **Brain-First Strategy** | Schema migration order: SomaBrain first, then FractalMemory, then Agent01 |
 | **HITL** | Human-in-the-Loop |
@@ -92,8 +92,8 @@ This document specifies the architecture and operational requirements for the SO
 |----|----------|---------|----------|
 | REF-001 | SRS-AGENTIQ | 6.0 | `docs/requirements/SOMA-SRS-AGENTIQ-001.md` |
 | REF-002 | SRS-SOMABRAIN-INTEGRATION | 1.0 | `docs/requirements/SOMA-SRS-SOMABRAIN-001.md` |
-| REF-003 | Docker Compose Specification | 3.8 | `infra/aaas/docker-compose.yml` |
-| REF-004 | Supervisor Configuration | 1.0 | `infra/aaas/aaas/supervisord.conf` |
+| REF-003 | Docker Compose Specification | 3.8 | `infra/platform/docker-compose.yml` |
+| REF-004 | Supervisor Configuration | 1.0 | `infra/platform/platform/supervisord.conf` |
 
 ---
 
@@ -101,7 +101,7 @@ This document specifies the architecture and operational requirements for the SO
 
 ### 2.1 Product Perspective
 
-The AAAS infrastructure provides the runtime environment, network topology, and backing services required to execute the SOMA Stack. It is designed as a completely independent deployment artifact that does not contain application code. Application code is injected at runtime via Docker volumes (development) or COPY directives (production). The infrastructure is defined in `infra/aaas/docker-compose.yml` and orchestrated by `infra/aaas/start_aaas.sh`.
+The Soma Platform infrastructure provides the runtime environment, network topology, and backing services required to execute the SOMA Stack. It is designed as a completely independent deployment artifact that does not contain application code. Application code is injected at runtime via Docker volumes (development) or COPY directives (production). The infrastructure is defined in `infra/platform/docker-compose.yml` and orchestrated by `infra/platform/start_aaas.sh`.
 
 ### 2.2 Product Functions
 
@@ -250,22 +250,22 @@ No hardware interfaces are required. GPU detection is performed via software (Py
 
 | REQ ID | Description | Source | Design | Implementation | Test |
 |--------|-------------|--------|--------|----------------|------|
-| REQ-001 | CUDA hardware detection | VIBE-91 | `infra/aaas/start_aaas.sh` | `infra/aaas/start_aaas.sh` | `tests/unit/` |
-| REQ-002 | Infrastructure wait-loop | VIBE-91 | `infra/aaas/start_aaas.sh` | `infra/aaas/start_aaas.sh` | `tests/integration/` |
-| REQ-003 | Sequential migrations | Brain-First Strategy | `infra/aaas/start_aaas.sh` | `infra/aaas/start_aaas.sh` | `tests/integration/` |
-| REQ-004 | supervisord PID 1 | Container Best Practice | `infra/aaas/aaas/supervisord.conf` | `infra/aaas/aaas/supervisord.conf` | `tests/integration/` |
-| REQ-005 | Internal bridge network | Docker Compose | `infra/aaas/docker-compose.yml` | `infra/aaas/docker-compose.yml` | `tests/integration/` |
-| REQ-006 | 639xx port range | Architecture Decision | `infra/aaas/docker-compose.yml` | `infra/aaas/docker-compose.yml` | `tests/integration/` |
-| REQ-007 | Inter-service isolation | Security | `infra/aaas/docker-compose.yml` | `infra/aaas/docker-compose.yml` | `tests/integration/` |
-| REQ-008 | Agent port 63900 | Port Allocation Table | `infra/aaas/docker-compose.yml` | `infra/aaas/docker-compose.yml` | `tests/integration/` |
-| REQ-009 | Brain port 63996 | Port Allocation Table | `infra/aaas/docker-compose.yml` | `infra/aaas/docker-compose.yml` | `tests/integration/` |
-| REQ-010 | Memory port 63901 | Port Allocation Table | `infra/aaas/docker-compose.yml` | `infra/aaas/docker-compose.yml` | `tests/integration/` |
-| REQ-011 | Postgres port 63932 | Port Allocation Table | `infra/aaas/docker-compose.yml` | `infra/aaas/docker-compose.yml` | `tests/integration/` |
-| REQ-012 | Redis port 63979 | Port Allocation Table | `infra/aaas/docker-compose.yml` | `infra/aaas/docker-compose.yml` | `tests/integration/` |
-| REQ-013 | Milvus port 63953 | Port Allocation Table | `infra/aaas/docker-compose.yml` | `infra/aaas/docker-compose.yml` | `tests/integration/` |
-| REQ-014 | Kafka port 63992 | Port Allocation Table | `infra/aaas/docker-compose.yml` | `infra/aaas/docker-compose.yml` | `tests/integration/` |
-| REQ-015 | Keycloak port 63980 | Port Allocation Table | `infra/aaas/docker-compose.yml` | `infra/aaas/docker-compose.yml` | `tests/integration/` |
-| REQ-016 | Vault port 63982 | Port Allocation Table | `infra/aaas/docker-compose.yml` | `infra/aaas/docker-compose.yml` | `tests/integration/` |
+| REQ-001 | CUDA hardware detection | VIBE-91 | `infra/platform/start_aaas.sh` | `infra/platform/start_aaas.sh` | `tests/unit/` |
+| REQ-002 | Infrastructure wait-loop | VIBE-91 | `infra/platform/start_aaas.sh` | `infra/platform/start_aaas.sh` | `tests/integration/` |
+| REQ-003 | Sequential migrations | Brain-First Strategy | `infra/platform/start_aaas.sh` | `infra/platform/start_aaas.sh` | `tests/integration/` |
+| REQ-004 | supervisord PID 1 | Container Best Practice | `infra/platform/platform/supervisord.conf` | `infra/platform/platform/supervisord.conf` | `tests/integration/` |
+| REQ-005 | Internal bridge network | Docker Compose | `infra/platform/docker-compose.yml` | `infra/platform/docker-compose.yml` | `tests/integration/` |
+| REQ-006 | 639xx port range | Architecture Decision | `infra/platform/docker-compose.yml` | `infra/platform/docker-compose.yml` | `tests/integration/` |
+| REQ-007 | Inter-service isolation | Security | `infra/platform/docker-compose.yml` | `infra/platform/docker-compose.yml` | `tests/integration/` |
+| REQ-008 | Agent port 63900 | Port Allocation Table | `infra/platform/docker-compose.yml` | `infra/platform/docker-compose.yml` | `tests/integration/` |
+| REQ-009 | Brain port 63996 | Port Allocation Table | `infra/platform/docker-compose.yml` | `infra/platform/docker-compose.yml` | `tests/integration/` |
+| REQ-010 | Memory port 63901 | Port Allocation Table | `infra/platform/docker-compose.yml` | `infra/platform/docker-compose.yml` | `tests/integration/` |
+| REQ-011 | Postgres port 63932 | Port Allocation Table | `infra/platform/docker-compose.yml` | `infra/platform/docker-compose.yml` | `tests/integration/` |
+| REQ-012 | Redis port 63979 | Port Allocation Table | `infra/platform/docker-compose.yml` | `infra/platform/docker-compose.yml` | `tests/integration/` |
+| REQ-013 | Milvus port 63953 | Port Allocation Table | `infra/platform/docker-compose.yml` | `infra/platform/docker-compose.yml` | `tests/integration/` |
+| REQ-014 | Kafka port 63992 | Port Allocation Table | `infra/platform/docker-compose.yml` | `infra/platform/docker-compose.yml` | `tests/integration/` |
+| REQ-015 | Keycloak port 63980 | Port Allocation Table | `infra/platform/docker-compose.yml` | `infra/platform/docker-compose.yml` | `tests/integration/` |
+| REQ-016 | Vault port 63982 | Port Allocation Table | `infra/platform/docker-compose.yml` | `infra/platform/docker-compose.yml` | `tests/integration/` |
 
 ### 4.2 Requirement to Test Case Mapping
 

@@ -75,10 +75,10 @@ export class SomaCapsuleEditor extends LitElement {
         .header {
             font-size: 14px;
             font-weight: 600;
-            color: var(--aaas-text-primary, #ffffff);
+            color: var(--platform-text-primary, #ffffff);
             margin-bottom: 16px;
             padding-bottom: 12px;
-            border-bottom: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            border-bottom: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -86,7 +86,7 @@ export class SomaCapsuleEditor extends LitElement {
 
         .capsule-name {
             font-size: 13px;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             font-weight: 400;
         }
 
@@ -94,14 +94,14 @@ export class SomaCapsuleEditor extends LitElement {
             display: flex;
             gap: 4px;
             margin-bottom: 16px;
-            border-bottom: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            border-bottom: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
             padding-bottom: 8px;
         }
 
         .tab-btn {
             background: none;
             border: none;
-            color: var(--aaas-text-muted, #999);
+            color: var(--platform-text-muted, #999);
             font-size: 12px;
             padding: 6px 12px;
             cursor: pointer;
@@ -109,8 +109,8 @@ export class SomaCapsuleEditor extends LitElement {
         }
 
         .tab-btn.active {
-            background: var(--aaas-bg-surface, rgba(255,255,255,0.06));
-            color: var(--aaas-text-primary, #fff);
+            background: var(--platform-bg-surface, rgba(255,255,255,0.06));
+            color: var(--platform-text-primary, #fff);
         }
 
         .section {
@@ -122,17 +122,17 @@ export class SomaCapsuleEditor extends LitElement {
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            color: var(--aaas-text-muted, #999);
+            color: var(--platform-text-muted, #999);
             margin-bottom: 10px;
         }
 
         textarea {
             width: 100%;
             min-height: 120px;
-            background: var(--aaas-bg-surface, rgba(255,255,255,0.04));
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.08));
+            background: var(--platform-bg-surface, rgba(255,255,255,0.04));
+            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.08));
             border-radius: 8px;
-            color: var(--aaas-text-primary, #fff);
+            color: var(--platform-text-primary, #fff);
             font-size: 13px;
             padding: 10px;
             resize: vertical;
@@ -141,7 +141,7 @@ export class SomaCapsuleEditor extends LitElement {
 
         textarea:focus {
             outline: none;
-            border-color: var(--aaas-accent, #3b82f6);
+            border-color: var(--platform-accent, #3b82f6);
         }
 
         .slider-row {
@@ -154,21 +154,21 @@ export class SomaCapsuleEditor extends LitElement {
         .slider-label {
             width: 120px;
             font-size: 12px;
-            color: var(--aaas-text-muted, #999);
+            color: var(--platform-text-muted, #999);
             text-transform: capitalize;
         }
 
         .slider-track {
             flex: 1;
             height: 4px;
-            background: var(--aaas-border-light, rgba(255,255,255,0.08));
+            background: var(--platform-border-light, rgba(255,255,255,0.08));
             border-radius: 2px;
             overflow: hidden;
         }
 
         .slider-fill {
             height: 100%;
-            background: var(--aaas-accent, #3b82f6);
+            background: var(--platform-accent, #3b82f6);
             border-radius: 2px;
         }
 
@@ -176,7 +176,7 @@ export class SomaCapsuleEditor extends LitElement {
             width: 36px;
             text-align: right;
             font-size: 12px;
-            color: var(--aaas-text-primary, #fff);
+            color: var(--platform-text-primary, #fff);
             font-variant-numeric: tabular-nums;
         }
 
@@ -187,14 +187,14 @@ export class SomaCapsuleEditor extends LitElement {
         }
 
         .neuro-card {
-            background: var(--aaas-bg-surface, rgba(255,255,255,0.04));
+            background: var(--platform-bg-surface, rgba(255,255,255,0.04));
             border-radius: 8px;
             padding: 12px;
         }
 
         .neuro-name {
             font-size: 11px;
-            color: var(--aaas-text-muted, #999);
+            color: var(--platform-text-muted, #999);
             margin-bottom: 4px;
             text-transform: capitalize;
         }
@@ -202,14 +202,14 @@ export class SomaCapsuleEditor extends LitElement {
         .neuro-value {
             font-size: 18px;
             font-weight: 600;
-            color: var(--aaas-text-primary, #fff);
+            color: var(--platform-text-primary, #fff);
             margin-bottom: 6px;
             font-variant-numeric: tabular-nums;
         }
 
         .neuro-bar {
             height: 3px;
-            background: var(--aaas-border-light, rgba(255,255,255,0.08));
+            background: var(--platform-border-light, rgba(255,255,255,0.08));
             border-radius: 2px;
             overflow: hidden;
         }
@@ -224,7 +224,7 @@ export class SomaCapsuleEditor extends LitElement {
             gap: 8px;
             margin-top: 20px;
             padding-top: 16px;
-            border-top: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            border-top: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
         }
 
         .btn {
@@ -235,9 +235,9 @@ export class SomaCapsuleEditor extends LitElement {
             border-radius: 8px;
             font-size: 12px;
             cursor: pointer;
-            border: 1px solid var(--aaas-border-light, rgba(255,255,255,0.12));
+            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.12));
             background: transparent;
-            color: var(--aaas-text-primary, #fff);
+            color: var(--platform-text-primary, #fff);
         }
 
         .btn:disabled {
@@ -246,8 +246,8 @@ export class SomaCapsuleEditor extends LitElement {
         }
 
         .btn-primary {
-            background: var(--aaas-accent, #3b82f6);
-            border-color: var(--aaas-accent, #3b82f6);
+            background: var(--platform-accent, #3b82f6);
+            border-color: var(--platform-accent, #3b82f6);
             color: #fff;
         }
 
@@ -259,7 +259,7 @@ export class SomaCapsuleEditor extends LitElement {
         .empty {
             padding: 24px 0;
             font-size: 13px;
-            color: var(--aaas-text-muted, #999);
+            color: var(--platform-text-muted, #999);
         }
 
         .learning-row {
@@ -267,16 +267,16 @@ export class SomaCapsuleEditor extends LitElement {
             justify-content: space-between;
             gap: 12px;
             padding: 8px 0;
-            border-bottom: 1px solid var(--aaas-border-light, rgba(255,255,255,0.06));
+            border-bottom: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
             font-size: 12px;
         }
 
         .learning-key {
-            color: var(--aaas-text-muted, #999);
+            color: var(--platform-text-muted, #999);
         }
 
         .learning-val {
-            color: var(--aaas-text-primary, #fff);
+            color: var(--platform-text-primary, #fff);
             font-variant-numeric: tabular-nums;
             word-break: break-all;
             text-align: right;
@@ -516,10 +516,10 @@ export class SomaCapsuleEditor extends LitElement {
                                                       0,
                                                       Math.min(100, value * 100)
                                                   )}%; background: ${value > 0.7
-                                                      ? 'var(--aaas-success, #22c55e)'
+                                                      ? 'var(--platform-success, #22c55e)'
                                                       : value > 0.4
-                                                        ? 'var(--aaas-warning, #f59e0b)'
-                                                        : 'var(--aaas-info, #3b82f6)'}"
+                                                        ? 'var(--platform-warning, #f59e0b)'
+                                                        : 'var(--platform-info, #3b82f6)'}"
                                               ></div>
                                           </div>
                                       </div>

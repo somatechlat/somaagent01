@@ -4,7 +4,7 @@
  *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation
- * - Uses /api/v2/aaas/integrations endpoints
+ * - Uses /api/v2/platform/integrations endpoints
  * - Permission-aware (platform:view_settings, platform:manage_settings)
  * - Per SRS-SOMA-INTEGRATIONS.md
  */
@@ -247,7 +247,7 @@ export class SomaIntegrationsDashboard extends LitElement {
         this.loading = true;
         this.error = null;
         try {
-            const res = await fetch('/api/v2/aaas/integrations', { credentials: 'include' });
+            const res = await fetch('/api/v2/platform/integrations', { credentials: 'include' });
             if (res.ok) {
                 this.integrations = await res.json();
             } else {
@@ -265,7 +265,7 @@ export class SomaIntegrationsDashboard extends LitElement {
     private async testConnection(provider: string) {
         this.testing = provider;
         try {
-            const res = await fetch(`/api/v2/aaas/integrations/${provider}/test`, {
+            const res = await fetch(`/api/v2/platform/integrations/${provider}/test`, {
                 method: 'POST',
                 credentials: 'include',
             });
@@ -301,7 +301,7 @@ export class SomaIntegrationsDashboard extends LitElement {
         this.configLoading = true;
         this.draft = { endpoint: '', apiKey: '', apiKeyMasked: null };
         try {
-            const res = await fetch(`/api/v2/aaas/integrations/${provider}`, {
+            const res = await fetch(`/api/v2/platform/integrations/${provider}`, {
                 credentials: 'include',
             });
             if (!res.ok) {
@@ -339,7 +339,7 @@ export class SomaIntegrationsDashboard extends LitElement {
             if (this.draft.apiKey) {
                 body.api_key = this.draft.apiKey;
             }
-            const res = await fetch(`/api/v2/aaas/integrations/${provider}`, {
+            const res = await fetch(`/api/v2/platform/integrations/${provider}`, {
                 method: 'PUT',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },

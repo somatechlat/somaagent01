@@ -14,7 +14,7 @@
 | Classification | Internal |
 | ISO Reference | ISO/IEC 27001:2022 — Information security management systems; ISO/IEC 42001:2023 — Artificial intelligence management systems |
 | Next Review | 2026-12-29 |
-| Related | `SOMA-01-DOCS-001.md`, `SOMA-01-QMS-001.md`, `SOMA-01-SEC-001.md`, `SOMA-01-RISK-001.md`, `SOMA-01-AAAS-001.md`, `SOMA-01-ARCH-001.md`, `SOMA-01-SRS-001.md`, `SOMA-SETTINGS-MODEL-001.md` |
+| Related | `SOMA-01-DOCS-001.md`, `SOMA-01-QMS-001.md`, `SOMA-01-SEC-001.md`, `SOMA-01-RISK-001.md`, `SOMA-01-Soma Platform-001.md`, `SOMA-01-ARCH-001.md`, `SOMA-01-SRS-001.md`, `SOMA-SETTINGS-MODEL-001.md` |
 | Source of truth | This document for the two deployment models, their identity sources, and the role and profile model of SomaAgent01. |
 | Audience | Deployment engineers, security and compliance reviewers, administrators, and any agent acting on somaAgent01 |
 | Scope | The Standalone and Enterprise deployment models of SomaAgent01; identity and authentication per model; the role and profile model; boot requirements and refusals; the SomaAgent Hub seam at contract level. |
@@ -36,7 +36,7 @@
 | N-2 | `SOMA-01-QMS-001` | Quality Manual; §7 Document Reference Matrix is the suite registry |
 | N-3 | `SOMA-01-SEC-001` | Security Assessment Report; §2 ISO 27001 Annex A control mapping |
 | N-4 | `SOMA-01-RISK-001` | Risk Register |
-| N-5 | `SOMA-01-AAAS-001` | Soma AAAS Deployment Specification; §2 Deployment Models Overview |
+| N-5 | `SOMA-01-Soma Platform-001` | Soma Soma Platform Deployment Specification; §2 Deployment Models Overview |
 | N-6 | `SOMA-SETTINGS-MODEL-001` | Settings Model and Configuration Inventory |
 | N-7 | `docs/standards/SOMA-STD-CODING-001` | Vibe Coding Rules (seven numbered sections; no `Rule NNN` namespace) |
 | N-8 | ISO/IEC 27001:2022 | Information security management systems — requirements |
@@ -101,15 +101,15 @@ model; and any agent acting on somaAgent01.
 | **Standalone** | A deployment of SomaAgent01 on a single machine as a single all-in-one Docker unit, with local identity and no outbound connection to a management plane. |
 | **Enterprise** | A deployment of SomaAgent01 that federates identity and may attach an outbound link to SomaAgent Hub and other organization-wide services. |
 | **SomaAgent Hub** | A separate product that manages a fleet of agents. SomaAgent01 links out to it. Not implemented in this codebase. |
-| **Organization** | The unit of isolation. One Enterprise deployment serves one or more organizations. Represented by the `Tenant` model, whose docstring is "Organization/company entity" (`admin/aaas/models/tenants.py:21`). |
+| **Organization** | The unit of isolation. One Enterprise deployment serves one or more organizations. Represented by the `Tenant` model, whose docstring is "Organization/company entity" (`admin/platform/models/tenants.py:21`). |
 | **Identity source** | The system that authenticates a person and issues their identity. Local credentials in Standalone; a federated identity provider in Enterprise. |
 | **Role** | A named set of authorities granted to a subject within a scope. |
 | **Profile** | A persistent configuration record: system defaults, organization settings, or an individual's personal and session state. |
 | **Permission** | A single named authority, expressed in the vocabulary of §5.5. |
 | **Fail-closed** | Where an authorization decision cannot be made, access is denied. |
 
-**Terminology caution.** `SOMA-01-AAAS-001` §2 and `docs/operations/SOMA-OPS-MODES-001.md` use a
-different pair — `STANDALONE` versus `AAAS` — to describe process and infrastructure topology, and
+**Terminology caution.** `SOMA-01-Soma Platform-001` §2 and `docs/operations/SOMA-OPS-MODES-001.md` use a
+different pair — `STANDALONE` versus `Soma Platform` — to describe process and infrastructure topology, and
 in that material "control plane" means *this application*, not a remote hub. Those are topology
 modes (§3.5). This document's Standalone/Enterprise pair is a **deployment model**, orthogonal to
 topology. The two vocabularies shall not be conflated.
@@ -173,7 +173,7 @@ session and of the identity source.
 
 Topology is selected by exactly one input, `SA01_DEPLOYMENT_MODE`, read once in
 `config/settings_registry.py:62` (`MODE_ENV_VAR`) and resolved at `:432`. Its accepted values are
-`STANDALONE`, `AAAS`, `AAASMODE` and `DEV` (`config/settings_registry.py:64`). The default is
+`STANDALONE`, `Soma Platform`, `AAASMODE` and `DEV` (`config/settings_registry.py:64`). The default is
 `STANDALONE`.
 
 The value selects a topology, not an environment:
@@ -181,14 +181,14 @@ The value selects a topology, not an environment:
 | Value | Topology loaded | Where |
 |---|---|---|
 | `STANDALONE` | `_STANDALONE_TOPOLOGY` | `config/settings_registry.py:218`, loaded at `:353` |
-| `AAAS`, `AAASMODE` | `_AAAS_TOPOLOGY` | `config/settings_registry.py:255`, loaded at `:387` |
+| `Soma Platform`, `AAASMODE` | `_AAAS_TOPOLOGY` | `config/settings_registry.py:255`, loaded at `:387` |
 | `DEV` | `_STANDALONE_TOPOLOGY`, with a log line saying so | `config/settings_registry.py:441-443` |
 | `PROD` | **refuses to boot** | `config/settings_registry.py:444-452` |
 
 `PROD` is refused deliberately and the refusal states why: *"PROD is an environment, not a
 topology."* An environment must not double as a topology selector, because then the same word
 means two things and the second one is guessed. `SOMA_AAAS_MODE` used to arbitrate here and is no
-longer a configuration input — being in AAAS mode is established by `SA01_DEPLOYMENT_MODE=AAAS`
+longer a configuration input — being in Soma Platform mode is established by `SA01_DEPLOYMENT_MODE=Soma Platform`
 and nothing else (`config/settings_registry.py:382-383`).
 
 An unknown value raises `VIBE Rule 91 VIOLATION` and does not fall back to a default.
@@ -219,8 +219,8 @@ access events to the Hub.
 
 Session lifetime, multi-factor policy and lockout are organization-level settings
 (`TenantSettings.mfa_policy`, `TenantSettings.sso_enabled`, `TenantSettings.session_timeout` at
-`admin/aaas/models/profiles.py:192-195`), applied identically in both models. Session state is
-recorded per subject (`UserSession`, `admin/aaas/models/profiles.py:328`).
+`admin/platform/models/profiles.py:192-195`), applied identically in both models. Session state is
+recorded per subject (`UserSession`, `admin/platform/models/profiles.py:328`).
 
 ### 4.4 Gap — no local credential path exists today
 
@@ -314,12 +314,12 @@ state is never conflated with security state.
 
 | Profile | Purpose | Governing role | Location |
 |---|---|---|---|
-| `PlatformConfig` | Singleton of system-wide defaults; organization settings merge over it | `sysadmin` | `admin/aaas/models/profiles.py:23` |
-| `TenantSettings` | Per-organization policy: MFA, SSO, session timeout, compliance, feature overrides | `org_admin` | `admin/aaas/models/profiles.py:167` |
-| `AdminProfile` | Per-operator personal settings and session context: session timeout, notification preferences, last login and IP | Self, audited | `admin/aaas/models/profiles.py:107` |
-| `UserPreferences` | Per-person cosmetic state: theme, locale, date format. Never security-relevant | Self | `admin/aaas/models/profiles.py:265` |
-| `UserSession` | Session lifecycle and last-login/IP — the record of who was in | System | `admin/aaas/models/profiles.py:328` |
-| `ApiKey` | Credential lifecycle: prefix, hash, expiry, last use, revocation | `org_admin` | `admin/aaas/models/profiles.py:367` |
+| `PlatformConfig` | Singleton of system-wide defaults; organization settings merge over it | `sysadmin` | `admin/platform/models/profiles.py:23` |
+| `TenantSettings` | Per-organization policy: MFA, SSO, session timeout, compliance, feature overrides | `org_admin` | `admin/platform/models/profiles.py:167` |
+| `AdminProfile` | Per-operator personal settings and session context: session timeout, notification preferences, last login and IP | Self, audited | `admin/platform/models/profiles.py:107` |
+| `UserPreferences` | Per-person cosmetic state: theme, locale, date format. Never security-relevant | Self | `admin/platform/models/profiles.py:265` |
+| `UserSession` | Session lifecycle and last-login/IP — the record of who was in | System | `admin/platform/models/profiles.py:328` |
+| `ApiKey` | Credential lifecycle: prefix, hash, expiry, last use, revocation | `org_admin` | `admin/platform/models/profiles.py:367` |
 
 ### 5.5 Permission vocabulary
 
@@ -346,7 +346,7 @@ Two properties are enforced by construction and pinned by
 - **No wildcards.** A role that grants `"*"` cannot produce a permission trace, so it cannot be
   audited. `admin/core/authz.py:369` asserts that no role grants one. The literal
   `{"id": "admin", "permissions": ["*"]}` that previously sat in the bootstrap role list is gone
-  (`admin/aaas/models/profiles.py:86`); bootstrap roles are now derived from
+  (`admin/platform/models/profiles.py:86`); bootstrap roles are now derived from
   `ROLE_PERMISSIONS`, so what the platform advertises is what the catalog grants.
 - **Level 0 is `SYSTEM`.** `admin/core/authz.py:56` defines `PermissionLevel` as
   `system | org | agent | resource`. It was previously labelled "God Mode"
@@ -363,7 +363,7 @@ API keys are issued with a mandatory, non-empty scope list that is validated aga
 and may not exceed the issuer (`validate_scopes`, `admin/core/authz.py:532`). Issuance is identical
 at both call sites — `sk_` + `secrets.token_urlsafe(32)` (256 bits of CSPRNG), 8-character
 `key_prefix` for display, SHA-256 `key_hash` as verifier, plaintext returned exactly once
-(`admin/aaas/api/settings.py:89-91`, `admin/gateway/api/gateway.py`). The verifier is not a
+(`admin/platform/api/settings.py:89-91`, `admin/gateway/api/gateway.py`). The verifier is not a
 credential.
 
 ### 5.6 Derivation from current code
@@ -375,8 +375,8 @@ disagreeing:
   `agent_owner`, `developer`, `trainer`, `user`, `viewer`
 - `admin/core/permissions.py:101` `ROLE_PERMISSIONS`: `aaas_super_admin`, `tenant_admin`,
   `agent_owner`, `agent_operator`, `user`, `viewer`, `security_auditor`, `infra_admin`
-- `admin/aaas/models/choices.py:23` `TenantRole`: OWNER, ADMIN, MEMBER, VIEWER
-- `admin/aaas/models/choices.py:32` `AgentRole`: MANAGER, OPERATOR, VIEWER
+- `admin/platform/models/choices.py:23` `TenantRole`: OWNER, ADMIN, MEMBER, VIEWER
+- `admin/platform/models/choices.py:32` `AgentRole`: MANAGER, OPERATOR, VIEWER
 
 Mapping to the eight:
 
@@ -402,7 +402,7 @@ on which table was consulted.
 `tests/unit/test_authz_fail_closed.py`.
 
 Stored values were moved onto the same vocabulary by a data migration,
-`admin/aaas/migrations/0002_canonical_role_values.py`, so resolution needs no translation table at
+`admin/platform/migrations/0002_canonical_role_values.py`, so resolution needs no translation table at
 read time — a translation table is exactly where four vocabularies drifted apart. One step in that
 migration moves authority and is recorded rather than silent: `viewer` → `member`. The eight roles
 have no strictly-read-only seat; that is `auditor`, and it holds authority
@@ -443,7 +443,7 @@ Authorization policy is fail-closed. Service availability degrades gracefully.
   and grants nothing; an attached engine that fails denies.
   `services/common/policy_client.py` sets `fail_open_default = False`.
 - Service health: each checker reports `healthy`, `degraded` or `down`, rolled up per deployment
-  (`admin/aaas/api/health.py`). Critical services — cognition, database, model access — put the
+  (`admin/platform/api/health.py`). Critical services — cognition, database, model access — put the
   deployment into degraded mode (`services/common/health_monitor.py`).
 - Resilience: circuit breakers on the cognition and model paths
   (`services/common/circuit_breaker.py`); memory writes are queued and replayed when cognition is
@@ -453,7 +453,7 @@ Authorization policy is fail-closed. Service availability degrades gracefully.
 
 `config/settings_registry.py` is the source of truth for topology. It holds one mode selector
 (`SA01_DEPLOYMENT_MODE`, `MODE_ENV_VAR` at `:62`), one accepted value set
-(`_VALID_MODES = ("STANDALONE", "AAAS", "AAASMODE", "DEV", "PROD")` at `:64`), one default
+(`_VALID_MODES = ("STANDALONE", "Soma Platform", "AAASMODE", "DEV", "PROD")` at `:64`), one default
 (`STANDALONE`, `:432`) and two topology tables (`_STANDALONE_TOPOLOGY` at `:218`,
 `_AAAS_TOPOLOGY` at `:255`). `SOMA_AAAS_MODE` is no longer a configuration input.
 
@@ -466,9 +466,9 @@ not a topology."* An unknown value raises rather than falling back (VIBE Rule 91
 >
 > | Source | Accepted values | Default |
 > |---|---|---|
-> | `config/settings_registry.py:64` | **authority** — STANDALONE, AAAS, AAASMODE, DEV, PROD | STANDALONE |
-> | `services/common/deployment_mode.py:21` | AAAS, STANDALONE, DEV | DEV |
-> | `admin/core/config/models.py` | DEV, STAGING, PROD, LOCAL, TEST, AAAS — no `STANDALONE` | — |
+> | `config/settings_registry.py:64` | **authority** — STANDALONE, Soma Platform, AAASMODE, DEV, PROD | STANDALONE |
+> | `services/common/deployment_mode.py:21` | Soma Platform, STANDALONE, DEV | DEV |
+> | `admin/core/config/models.py` | DEV, STAGING, PROD, LOCAL, TEST, Soma Platform — no `STANDALONE` | — |
 >
 > These are naming stragglers, not a second decision path: nothing consults them to choose a
 > topology. Removing the last of them is the remainder of G-3.
@@ -493,8 +493,8 @@ and the property is pinned by a test.
 | ID | Was | Closed by | Evidence |
 |---|---|---|---|
 | G-4 | Three competing permission and role vocabularies; same subject got different answers by call site | Collapsed into `admin/core/authz.py`; every enforcement site resolves through `resolve_action`, which denies on an unknown name | `admin/core/authz.py:518`; `tests/unit/test_authz_fail_closed.py` |
-| G-5 | Wildcard role `["*"]`, including `{"id": "admin", "permissions": ["*"]}` in the bootstrap roles and three `includes('*')` shortcuts in the webui | No role grants a wildcard; bootstrap roles derived from `ROLE_PERMISSIONS`; webui matches exactly | `admin/core/authz.py:369`, `admin/aaas/models/profiles.py:86`, `tests/unit/test_authz_fail_closed.py::test_no_role_grants_a_wildcard` |
-| G-6 | `ApiKey.scopes` never populated — every key was all-or-nothing, and keys were issued but never verified | Mandatory non-empty scopes validated against the catalog and capped at the issuer; `ApiKey.verify` + `decode_token` routing; a key holds scopes and never its issuer's roles | `admin/core/authz.py:532`, `:437`; `admin/aaas/models/profiles.py`; `tests/unit/test_authz_fail_closed.py` |
+| G-5 | Wildcard role `["*"]`, including `{"id": "admin", "permissions": ["*"]}` in the bootstrap roles and three `includes('*')` shortcuts in the webui | No role grants a wildcard; bootstrap roles derived from `ROLE_PERMISSIONS`; webui matches exactly | `admin/core/authz.py:369`, `admin/platform/models/profiles.py:86`, `tests/unit/test_authz_fail_closed.py::test_no_role_grants_a_wildcard` |
+| G-6 | `ApiKey.scopes` never populated — every key was all-or-nothing, and keys were issued but never verified | Mandatory non-empty scopes validated against the catalog and capped at the issuer; `ApiKey.verify` + `decode_token` routing; a key holds scopes and never its issuer's roles | `admin/core/authz.py:532`, `:437`; `admin/platform/models/profiles.py`; `tests/unit/test_authz_fail_closed.py` |
 | G-7 | Level 0 labelled "God Mode" | Renamed `SYSTEM`; `PermissionLevel` is `system \| org \| agent \| resource` | `admin/core/authz.py:56`; `admin/core/permission_matrix.py:74` |
 | G-10 | The restricted surface — Vault provider credentials, API-key issuance and revocation, memory migration, constitution writes, A2A dispatch, impersonation — was reachable with identity alone or with no check at all | Each now carries a catalog `authorize()` gate naming a real permission; the route register (`tests/unit/test_route_authorization_coverage.py`) treats this surface as never-debt and fails if any entry is ungated | `admin/secrets/api.py`, `admin/gateway/api/gateway.py`, `admin/core/api/migrate.py`, `admin/auth/api.py::impersonate_tenant` |
 | G-11 | Impersonation was gated on Keycloak realm roles named `super_admin` / `aaas_admin` — a role namespace outside the catalog, so the RBAC did not decide | Gate is `system:impersonate`, granted to `sysadmin` and nobody else | `admin/auth/api.py`, `admin/core/authz.py:118`, `:292` |
@@ -504,8 +504,8 @@ and the property is pinned by a test.
 | G-15 | `UnifiedGate` had no RBAC floor and allowed every non-tool action by default | `_check_role_floor` runs first and denies without roles; `_check_scope` is a tool-only capability filter, not an authority source | `admin/core/agentiq/unified_gate.py:119`, `:235`, `:438` |
 | G-16 | An unconfigured OPA / SpiceDB denied everyone (Standalone could not authorize at all) | An absent engine has no opinion and never narrows; the role floor decides. An engine that is attached may only narrow further | `admin/core/agentiq/unified_gate.py:293`, `:333`, `:414`; `services/common/authorization.py` |
 | G-17 | Vision-check error, skip and encode-failure paths returned "passed" | Every path returns `passed=False` with score `0.0` | `services/common/asset_critic.py:344`, `:353`, `:422`, `:429` |
-| G-18 | Retired role names (`admin`, `aaas_admin`, `owner`, `viewer`, `user`, `manager`, `operator`) at enforcement sites and in the webui role select | Unrecognized names grant nothing; a data migration moved stored values onto the catalog vocabulary; the role select offers assignable roles only | `admin/aaas/migrations/0002_canonical_role_values.py`, `admin/core/authz.py:428`, `webui/src/views/saas-user-detail.ts` |
-| G-19 | API-key prefix and length disagreed between the two issuance sites (one wrote 12 characters into `CharField(max_length=8)` and omitted `sk_`) | One shape at both sites: `sk_` + `secrets.token_urlsafe(32)`, 8-character prefix | `admin/aaas/api/settings.py`, `admin/gateway/api/gateway.py`, `admin/common/auth.py:187` |
+| G-18 | Retired role names (`admin`, `aaas_admin`, `owner`, `viewer`, `user`, `manager`, `operator`) at enforcement sites and in the webui role select | Unrecognized names grant nothing; a data migration moved stored values onto the catalog vocabulary; the role select offers assignable roles only | `admin/platform/migrations/0002_canonical_role_values.py`, `admin/core/authz.py:428`, `webui/src/views/saas-user-detail.ts` |
+| G-19 | API-key prefix and length disagreed between the two issuance sites (one wrote 12 characters into `CharField(max_length=8)` and omitted `sk_`) | One shape at both sites: `sk_` + `secrets.token_urlsafe(32)`, 8-character prefix | `admin/platform/api/settings.py`, `admin/gateway/api/gateway.py`, `admin/common/auth.py:187` |
 
 ---
 
@@ -552,7 +552,7 @@ Requirements:
 2. **Every authorization check carries the organization identity.** Authority granted inside one
    organization does not extend to another. This is the property that makes multi-organization
    operation safe, and it must be visible on the check itself, not inferred.
-3. **The audit record is append-only.** `admin/aaas/models/audit.py` records actor, action,
+3. **The audit record is append-only.** `admin/platform/models/audit.py` records actor, action,
    resource and tenant; indexes support actor and tenant reconstruction.
 4. **The auditor role is independent.** `auditor` reads the record and writes nothing.
 5. **Break-glass is explicit and recorded.** Where `sysadmin` must reach organization content, the

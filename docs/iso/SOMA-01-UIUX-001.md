@@ -1116,7 +1116,7 @@ right rail = Debug surface (UI-X-05).
 | Facet | Platform |
 | Primary actor | Tenant admin |
 | Stores | `activity-store` |
-| APIs | REST `/api/v2/aaas/dashboard/` (measured in `webui/src/`) |
+| APIs | REST `/api/v2/platform/dashboard/` (measured in `webui/src/`) |
 | Related | UI-C-052, UI-A-047, UI-A-048, UI-F-026 |
 
 **Purpose.** Show one tenant's operational dashboard.
@@ -1753,7 +1753,7 @@ right rail = Debug surface (UI-X-05).
 | Facet | Ops |
 | Primary actor | Platform admin |
 | Stores | `activity-store` |
-| APIs | REST `/api/v2/aaas/admin` (measured in `webui/src/`) |
+| APIs | REST `/api/v2/platform/admin` (measured in `webui/src/`) |
 | Related | UI-C-081, UI-A-079, UI-A-080, UI-F-042 |
 
 **Purpose.** Show platform-wide operational health and activity.
@@ -1992,7 +1992,7 @@ right rail = Debug surface (UI-X-05).
 | Facet | Ops |
 | Primary actor | Auditor / platform admin |
 | Stores | `activity-store` |
-| APIs | REST `/api/v2/aaas/audit` (measured in `webui/src/`) |
+| APIs | REST `/api/v2/platform/audit` (measured in `webui/src/`) |
 | Related | UI-C-092, UI-A-091, UI-A-092, UI-F-048 |
 
 **Purpose.** Summarise audit activity and link into the audit log.
@@ -2031,7 +2031,7 @@ right rail = Debug surface (UI-X-05).
 | Facet | Ops |
 | Primary actor | Auditor / platform admin |
 | Stores | `activity-store` |
-| APIs | REST `/api/v2/aaas/audit`, `/api/v2/aaas/audit/export` (measured in `webui/src/`) |
+| APIs | REST `/api/v2/platform/audit`, `/api/v2/platform/audit/export` (measured in `webui/src/`) |
 | Related | UI-C-093, UI-A-093, UI-A-094, UI-F-049 |
 
 **Purpose.** List, filter and export individual audit events.
@@ -2049,7 +2049,7 @@ right rail = Debug surface (UI-X-05).
 | UI-A-* | action | trigger | effect | confirmation | undo |
 |---|---|---|---|---|---|
 | UI-A-093 | Filter events | Apply button | re-query events | none | clear filters |
-| UI-A-094 | Export log | Export button | download export via `/api/v2/aaas/audit/export` | none | none — file written |
+| UI-A-094 | Export log | Export button | download export via `/api/v2/platform/audit/export` | none | none — file written |
 
 **States.** loading — "Loading audit events…"; empty — "No events match this filter."; error — "Audit log could not be loaded."; permission-denied — "You need `audit:read` to view the audit log."; offline — "Offline — log may be stale."
 

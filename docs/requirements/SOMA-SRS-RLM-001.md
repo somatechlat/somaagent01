@@ -278,7 +278,7 @@ Not applicable.
 | Interface | Protocol | Format | Authentication |
 |-----------|----------|--------|----------------|
 | Temporal Server | gRPC | Protobuf | mTLS / API key |
-| SomaBrain | Direct import (AAAS) or HTTP (STANDALONE) | Python objects / JSON | Internal |
+| SomaBrain | Direct import (Soma Platform) or HTTP (STANDALONE) | Python objects / JSON | Internal |
 | LLM Providers | HTTP / REST | JSON | API Key (via LiteLLM) |
 | Kafka | TCP | Binary | SASL / SSL |
 
@@ -292,7 +292,7 @@ Not applicable.
 
 | ID | Constraint | Source |
 |----|------------|--------|
-| DC-001 | In AAAS mode, RLM and SomaBrain calls shall use direct imports with zero HTTP latency. | Architecture decision |
+| DC-001 | In Soma Platform mode, RLM and SomaBrain calls shall use direct imports with zero HTTP latency. | Architecture decision |
 | DC-002 | RLM shall read from Capsule and never use hardcoded values. | Design standard |
 | DC-003 | Temporal queue name shall be `conversation` and host shall be `temporal:7233` by default. | Infrastructure config |
 
@@ -348,7 +348,7 @@ Not applicable.
 |---------|------|--------|---------|
 | 1.0 | 2026-01-10 | Engineering | Initial version |
 | 2.0–4.0 | 2026-01-12 to 2026-01-14 | Engineering | Temporal integration, SAGA, DLQ |
-| 5.0 | 2026-01-16 | Engineering | AAAS direct calls enforced |
+| 5.0 | 2026-01-16 | Engineering | Soma Platform direct calls enforced |
 | 5.1 | 2026-05-21 | Engineering | Refactored to ISO/IEC/IEEE 29148 template |
 
 ---

@@ -2,7 +2,7 @@
 
 REAL INFRA ONLY. One cluster: ``somaagent_*`` (infra/standalone).
 
-There is no parallel test stack, no AAAS/``somastack`` topology, and no
+There is no parallel test stack, no Soma Platform/``somastack`` topology, and no
 ``localhost`` host. Hosts are the Docker service names of the live standalone
 compose project, the same names the application uses inside the container.
 

@@ -5,7 +5,7 @@ login: local credentials in Standalone and DEV. That makes the resolver part
 of the authentication seam, and a resolver that silently reinterprets an
 unrecognised value is a fail-open.
 
-Modes: STANDALONE | DEV. There is no AAAS mode and no second flag
+Modes: STANDALONE | DEV. There is no Soma Platform mode and no second flag
 (``SOMA_AAAS_MODE`` is deleted). An unset variable resolves to ``DEV``. A
 value that is not one of the two declared modes is refused and names itself
 (Rule 91).
@@ -80,8 +80,8 @@ def test_the_removed_aaas_flag_is_not_a_second_source(monkeypatch):
 
 
 def test_an_unknown_mode_is_refused_and_names_itself(monkeypatch):
-    """``PROD`` and the removed ``AAAS`` must refuse and name themselves."""
-    for value in ("PROD", "AAAS"):
+    """``PROD`` and the removed ``Soma Platform`` must refuse and name themselves."""
+    for value in ("PROD", "Soma Platform"):
         monkeypatch.setenv("SA01_DEPLOYMENT_MODE", value)
         monkeypatch.setattr(DeploymentMode, "_mode", None)
         monkeypatch.setattr(DeploymentMode, "_resolved", False)

@@ -137,7 +137,7 @@ class Capsule(models.Model):
 
     # Tenant FK for proper referential integrity
     tenant = models.ForeignKey(
-        "aaas.Tenant",
+        "platform.Tenant",
         on_delete=models.CASCADE,
         related_name="capsules",
         db_index=True,
@@ -759,9 +759,9 @@ class FeatureFlag(models.Model):
 
 
 # =============================================================================
-# AUDIT MODELS - MOVED TO admin/aaas/models/audit.py
+# AUDIT MODELS - MOVED TO admin/platform/models/audit.py
 # =============================================================================
-# NOTE: AuditLog is now in admin.aaas.models.AuditLog (canonical location)
+# NOTE: AuditLog is now in admin.platform.models.AuditLog (canonical location)
 # The duplicate here was removed to prevent confusion.
 # Table: audit_logs (not agent_audit_logs)
 

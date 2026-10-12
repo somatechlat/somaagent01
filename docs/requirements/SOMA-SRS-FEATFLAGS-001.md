@@ -101,7 +101,7 @@ This document specifies the Feature Toggle system for SomaAgent01. It provides a
 
 ### 2.1 Product Perspective
 
-The Feature Toggle system is a cross-cutting capability within SomaAgent01. It is evaluated at request time to determine whether a tenant may access a given feature. It depends on the tenant's plan tier (from `admin/aaas/models/tiers.py`), credential availability (from Vault), and explicit toggle state (from cache).
+The Feature Toggle system is a cross-cutting capability within SomaAgent01. It is evaluated at request time to determine whether a tenant may access a given feature. It depends on the tenant's plan tier (from `admin/platform/models/tiers.py`), credential availability (from Vault), and explicit toggle state (from cache).
 
 ### 2.2 Product Functions
 

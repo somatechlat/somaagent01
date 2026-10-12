@@ -71,7 +71,7 @@
 | ID | Test Case | Steps | Expected Result | Pass/Fail |
 |----|-----------|-------|-----------------|-----------|
 | UAT-040 | Standalone mode | 1. Deploy with SA01_DEPLOYMENT_MODE=STANDALONE 2. Test chat | Chat works without Brain/SFM | |
-| UAT-041 | AAAS mode | 1. Deploy full triad 2. Test chat | Chat works with Brain + SFM memory | |
+| UAT-041 | Soma Platform mode | 1. Deploy full triad 2. Test chat | Chat works with Brain + SFM memory | |
 | UAT-042 | Degraded mode | 1. Stop SomaBrain 2. Send chat message | Chat works with SFM fallback | |
 
 ## 6. PERFORMANCE

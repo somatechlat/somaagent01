@@ -69,7 +69,7 @@ This document specifies the requirements for integrating SomaBrain, the Layer 3 
 - Integration of SomaBrain recall, memorize, and learn operations into the chat flow
 - Capsule-based memory configuration (no hardcoded parameters)
 - SomaFractalMemory fallback when SomaBrain is unavailable
-- Deployment mode abstraction (AAAS direct import vs. standalone HTTP client)
+- Deployment mode abstraction (Soma Platform direct import vs. standalone HTTP client)
 - OpenTelemetry tracing for all cognitive operations
 
 **Out of Scope:**
@@ -84,7 +84,7 @@ This document specifies the requirements for integrating SomaBrain, the Layer 3 
 | SomaBrain | Layer 3 Cognitive Engine providing memory and learning services |
 | SomaFractalMemory | Independent memory fallback service, operable without SomaBrain |
 | Capsule | The portable agent configuration unit containing persona, memory, and learned preferences |
-| AAAS Mode | Deployment mode using direct Python imports for zero-latency cognitive calls |
+| Soma Platform Mode | Deployment mode using direct Python imports for zero-latency cognitive calls |
 | Standalone Mode | Deployment mode using HTTP clients to external cognitive services |
 | AgentIQ | Cost and capability derivation system for model selection |
 
@@ -94,7 +94,7 @@ This document specifies the requirements for integrating SomaBrain, the Layer 3 
 |----|----------|---------|----------|
 | REF-001 | SOMA-SRS-CHATFLOW-001.md | 3.0 | docs/requirements/SOMA-SRS-CHATFLOW-001.md |
 | REF-002 | SOMA-SRS-CAPSULEPORT-001.md | 3.0 | docs/requirements/SOMA-SRS-CAPSULEPORT-001.md |
-| REF-003 | SomaBrain Service API | 1.0 | `aaas/brain.py` (BrainBridge), `admin/core/somabrain_client.py` (HTTP client) |
+| REF-003 | SomaBrain Service API | 1.0 | `platform/brain.py` (BrainBridge), `admin/core/somabrain_client.py` (HTTP client) |
 | REF-004 | Django Models | Current | admin/core/models/core.py |
 
 ---
@@ -117,7 +117,7 @@ SomaBrain integrates into Phase 4 (Recall), Phase 9 (Memorize), and Phase 10 (Le
 | FUNC-002 | Memory Memorize | Store interaction content into memory using capsule-defined memorize settings |
 | FUNC-003 | Adaptive Learning | Update capsule learned preferences (lane, tool, model, neuromodulator) based on feedback |
 | FUNC-004 | Sub-LM Query | Answer RLM uncertainty queries via the ask() operation using recalled memories |
-| FUNC-005 | Deployment Abstraction | Switch between AAAS direct import and standalone HTTP client modes |
+| FUNC-005 | Deployment Abstraction | Switch between Soma Platform direct import and standalone HTTP client modes |
 
 ### 2.3 User Characteristics
 
@@ -196,11 +196,11 @@ SomaBrain integrates into Phase 4 (Recall), Phase 9 (Memorize), and Phase 10 (Le
 
 | ID | Requirement | Priority | Verification | Status |
 |----|-------------|----------|--------------|--------|
-| REQ-SBI-012 | The system shall support AAAS mode, using direct Python imports from somabrain.cognitive.CognitiveCore with zero network latency. | Must | Test | Approved |
+| REQ-SBI-012 | The system shall support Soma Platform mode, using direct Python imports from somabrain.cognitive.CognitiveCore with zero network latency. | Must | Test | Approved |
 | REQ-SBI-013 | The system shall support standalone mode, using HTTP clients to SomaBrain (port 30101) and SomaFractalMemory (port 10101). | Must | Test | Approved |
 | REQ-SBI-014 | The system shall select deployment mode based on the SA01_DEPLOYMENT_MODE environment setting. | Must | Inspection | Approved |
 
-**Rationale:** Deployment mode abstraction enables the same codebase to run in integrated (AAAS) and distributed (standalone) topologies.
+**Rationale:** Deployment mode abstraction enables the same codebase to run in integrated (Soma Platform) and distributed (standalone) topologies.
 
 ---
 
@@ -210,7 +210,7 @@ SomaBrain integrates into Phase 4 (Recall), Phase 9 (Memorize), and Phase 10 (Le
 
 | ID | Requirement | Target | Verification |
 |----|-------------|--------|--------------|
-| NFR-PERF-001 | AAAS mode recall latency shall not exceed 50ms for top-10 results. | 50 ms | Load Test |
+| NFR-PERF-001 | Soma Platform mode recall latency shall not exceed 50ms for top-10 results. | 50 ms | Load Test |
 | NFR-PERF-002 | Standalone mode recall latency shall not exceed 100ms for top-10 results. | 100 ms | Load Test |
 
 #### 3.2.2 Reliability
@@ -251,7 +251,7 @@ None.
 |----|------------|--------|
 | DC-001 | Memory configuration must be stored in capsule.body.persona.memory, not in code constants. | SRS-CAPSULE-PORTABILITY |
 | DC-002 | OTEL tracing must use @tracer.start_as_current_span decorator pattern. | Platform Observability Standard |
-| DC-003 | AAAS mode must use the existing Django database connection; no separate connection pool. | AAAS Architecture |
+| DC-003 | Soma Platform mode must use the existing Django database connection; no separate connection pool. | Soma Platform Architecture |
 
 ---
 
@@ -261,18 +261,18 @@ None.
 
 | REQ ID | Description | Source | Design | Implementation | Test |
 |--------|-------------|--------|--------|----------------|------|
-| REQ-SBI-001 | recall() operation | Chat Flow Phase 4 | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_recall.py |
-| REQ-SBI-002 | recall() reads capsule config | Capsule Schema | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_capsule_memory.py |
-| REQ-SBI-003 | memorize() operation | Chat Flow Phase 9 | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_memorize.py |
-| REQ-SBI-004 | memorize() reads capsule config | Capsule Schema | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_capsule_memory.py |
-| REQ-SBI-005 | learn() operation | Chat Flow Phase 10 | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_learn.py |
-| REQ-SBI-006 | Lane preference update | Adaptive Learning | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_learn.py |
-| REQ-SBI-007 | Tool preference update | Adaptive Learning | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_learn.py |
-| REQ-SBI-008 | Neuromodulator update | Adaptive Learning | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_learn.py |
-| REQ-SBI-009 | Persist learned state | Capsule Persistence | admin/core/models/core.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_capsule_save.py |
-| REQ-SBI-010 | ask() Sub-LM operation | RLM Integration | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_ask.py |
-| REQ-SBI-011 | ask() memory augmentation | RLM Integration | admin/core/chat_orchestrator.py | aaas/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_ask.py |
-| REQ-SBI-012 | AAAS direct import mode | Deployment Modes | config/settings_registry.py | aaas/brain.py | tests/integration/test_aaas_mode.py |
+| REQ-SBI-001 | recall() operation | Chat Flow Phase 4 | admin/core/chat_orchestrator.py | platform/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_recall.py |
+| REQ-SBI-002 | recall() reads capsule config | Capsule Schema | admin/core/chat_orchestrator.py | platform/brain.py, admin/core/somabrain_client.py | tests/unit/test_capsule_memory.py |
+| REQ-SBI-003 | memorize() operation | Chat Flow Phase 9 | admin/core/chat_orchestrator.py | platform/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_memorize.py |
+| REQ-SBI-004 | memorize() reads capsule config | Capsule Schema | admin/core/chat_orchestrator.py | platform/brain.py, admin/core/somabrain_client.py | tests/unit/test_capsule_memory.py |
+| REQ-SBI-005 | learn() operation | Chat Flow Phase 10 | admin/core/chat_orchestrator.py | platform/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_learn.py |
+| REQ-SBI-006 | Lane preference update | Adaptive Learning | admin/core/chat_orchestrator.py | platform/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_learn.py |
+| REQ-SBI-007 | Tool preference update | Adaptive Learning | admin/core/chat_orchestrator.py | platform/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_learn.py |
+| REQ-SBI-008 | Neuromodulator update | Adaptive Learning | admin/core/chat_orchestrator.py | platform/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_learn.py |
+| REQ-SBI-009 | Persist learned state | Capsule Persistence | admin/core/models/core.py | platform/brain.py, admin/core/somabrain_client.py | tests/unit/test_capsule_save.py |
+| REQ-SBI-010 | ask() Sub-LM operation | RLM Integration | admin/core/chat_orchestrator.py | platform/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_ask.py |
+| REQ-SBI-011 | ask() memory augmentation | RLM Integration | admin/core/chat_orchestrator.py | platform/brain.py, admin/core/somabrain_client.py | tests/unit/test_brain_ask.py |
+| REQ-SBI-012 | Soma Platform direct import mode | Deployment Modes | config/settings_registry.py | platform/brain.py | tests/integration/test_aaas_mode.py |
 | REQ-SBI-013 | Standalone HTTP client mode | Deployment Modes | config/settings_registry.py | admin/core/somabrain_client.py | tests/integration/test_standalone_mode.py |
 | REQ-SBI-014 | Deployment mode selection | Deployment Modes | config/settings_registry.py | config/settings_registry.py | tests/unit/test_settings.py |
 
@@ -284,7 +284,7 @@ None.
 | REQ-SBI-002 | TC-SBI-002 | Unit Test | recall_limit matches capsule value, not default |
 | REQ-SBI-005 | TC-SBI-003 | Unit Test | learn() modifies capsule.body.learned |
 | REQ-SBI-009 | TC-SBI-004 | Unit Test | asave() called with update_fields=["body"] |
-| REQ-SBI-012 | TC-SBI-005 | Integration Test | AAAS mode completes recall in <50ms |
+| REQ-SBI-012 | TC-SBI-005 | Integration Test | Soma Platform mode completes recall in <50ms |
 | REQ-SBI-013 | TC-SBI-006 | Integration Test | Standalone mode routes to SOMABRAIN_URL |
 | NFR-OBS-001 | TC-SBI-007 | Inspection | OTEL span attributes contain capsule_id |
 

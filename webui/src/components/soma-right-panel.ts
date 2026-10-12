@@ -301,7 +301,7 @@ export class SomaRightPanel extends LitElement {
         :host {
             display: flex;
             height: 100%;
-            background: var(--aaas-bg-card, #1e1e1e);
+            background: var(--platform-bg-card, #1e1e1e);
         }
 
         .panel {
@@ -318,8 +318,8 @@ export class SomaRightPanel extends LitElement {
             align-items: center;
             padding: 8px 0;
             gap: 4px;
-            border-right: 1px solid var(--aaas-border-light, rgba(255, 255, 255, 0.06));
-            background: var(--aaas-bg-sidebar, #ffffff);
+            border-right: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.06));
+            background: var(--platform-bg-sidebar, #ffffff);
             overflow-y: auto;
             overflow-x: hidden;
         }
@@ -330,25 +330,25 @@ export class SomaRightPanel extends LitElement {
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: var(--aaas-radius-md, 8px);
+            border-radius: var(--platform-radius-md, 8px);
             cursor: pointer;
             font-size: 16px;
             background: transparent;
             border: none;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             transition: all 150ms ease;
             position: relative;
             flex-shrink: 0;
         }
 
         .tab-btn:hover {
-            background: var(--aaas-bg-hover, #141414);
-            color: var(--aaas-text-secondary, #a1a1a1);
+            background: var(--platform-bg-hover, #141414);
+            color: var(--platform-text-secondary, #a1a1a1);
         }
 
         .tab-btn.active {
-            background: var(--aaas-bg-active, #1a1a1a);
-            color: var(--aaas-accent, #e8e4dc);
+            background: var(--platform-bg-active, #1a1a1a);
+            color: var(--platform-accent, #e8e4dc);
         }
 
         .tab-btn.active::before {
@@ -359,7 +359,7 @@ export class SomaRightPanel extends LitElement {
             transform: translateY(-50%);
             width: 3px;
             height: 20px;
-            background: var(--aaas-accent, #e8e4dc);
+            background: var(--platform-accent, #e8e4dc);
             border-radius: 0 2px 2px 0;
         }
 
@@ -373,16 +373,16 @@ export class SomaRightPanel extends LitElement {
             left: 44px;
             top: 50%;
             transform: translateY(-50%);
-            background: var(--aaas-bg-hover, #141414);
-            color: var(--aaas-text-secondary, #a1a1a1);
+            background: var(--platform-bg-hover, #141414);
+            color: var(--platform-text-secondary, #a1a1a1);
             padding: 4px 10px;
-            border-radius: var(--aaas-radius-sm, 4px);
+            border-radius: var(--platform-radius-sm, 4px);
             font-size: 12px;
             white-space: nowrap;
             pointer-events: none;
             opacity: 0;
             transition: opacity 150ms ease;
-            border: 1px solid var(--aaas-border-light, rgba(255, 255, 255, 0.06));
+            border: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.06));
             z-index: 100;
             max-width: 240px;
         }
@@ -402,10 +402,10 @@ export class SomaRightPanel extends LitElement {
         .surface-header {
             font-size: 14px;
             font-weight: 600;
-            color: var(--aaas-text-primary, #ffffff);
+            color: var(--platform-text-primary, #ffffff);
             margin-bottom: 16px;
             padding-bottom: 12px;
-            border-bottom: 1px solid var(--aaas-border-light, rgba(255, 255, 255, 0.06));
+            border-bottom: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.06));
             display: flex;
             align-items: center;
             gap: 8px;
@@ -414,7 +414,7 @@ export class SomaRightPanel extends LitElement {
         .surface-id {
             font-size: 11px;
             font-weight: 500;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             letter-spacing: 0.04em;
         }
 
@@ -426,7 +426,7 @@ export class SomaRightPanel extends LitElement {
             align-items: center;
             justify-content: center;
             min-height: 160px;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             font-size: 13px;
             text-align: center;
             gap: 8px;
@@ -434,30 +434,30 @@ export class SomaRightPanel extends LitElement {
         }
 
         .error {
-            color: var(--aaas-danger, #f87171);
+            color: var(--platform-danger, #f87171);
         }
 
         .disabled-frame {
-            border: 1px dashed var(--aaas-border-light, rgba(255, 255, 255, 0.12));
-            border-radius: var(--aaas-radius-md, 8px);
+            border: 1px dashed var(--platform-border-light, rgba(255, 255, 255, 0.12));
+            border-radius: var(--platform-radius-md, 8px);
             padding: 24px 16px;
             display: flex;
             flex-direction: column;
             align-items: flex-start;
             gap: 12px;
-            color: var(--aaas-text-secondary, #a1a1a1);
+            color: var(--platform-text-secondary, #a1a1a1);
             font-size: 13px;
             line-height: 1.5;
         }
 
         .disabled-reason {
-            color: var(--aaas-text-primary, #ffffff);
+            color: var(--platform-text-primary, #ffffff);
             font-weight: 600;
             font-size: 13px;
         }
 
         .disabled-note {
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             font-size: 12px;
         }
 
@@ -472,16 +472,16 @@ export class SomaRightPanel extends LitElement {
             align-items: center;
             gap: 8px;
             padding: 8px 10px;
-            border-radius: var(--aaas-radius-sm, 4px);
+            border-radius: var(--platform-radius-sm, 4px);
             cursor: pointer;
-            color: var(--aaas-text-secondary, #a1a1a1);
+            color: var(--platform-text-secondary, #a1a1a1);
             font-size: 12px;
             border: 1px solid transparent;
         }
 
         .row:hover {
-            background: var(--aaas-bg-hover, #141414);
-            color: var(--aaas-text-primary, #ffffff);
+            background: var(--platform-bg-hover, #141414);
+            color: var(--platform-text-primary, #ffffff);
         }
 
         .row-main {
@@ -500,7 +500,7 @@ export class SomaRightPanel extends LitElement {
         }
 
         .row-sub {
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             font-size: 11px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -508,7 +508,7 @@ export class SomaRightPanel extends LitElement {
         }
 
         .row-meta {
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             font-size: 11px;
             flex-shrink: 0;
             font-variant-numeric: tabular-nums;
@@ -520,9 +520,9 @@ export class SomaRightPanel extends LitElement {
             padding: 1px 8px;
             border-radius: 999px;
             font-size: 11px;
-            border: 1px solid var(--aaas-border-light, rgba(255, 255, 255, 0.12));
-            color: var(--aaas-text-secondary, #a1a1a1);
-            background: var(--aaas-bg-hover, #141414);
+            border: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.12));
+            color: var(--platform-text-secondary, #a1a1a1);
+            background: var(--platform-bg-hover, #141414);
             flex-shrink: 0;
         }
 
@@ -531,7 +531,7 @@ export class SomaRightPanel extends LitElement {
             font-weight: 600;
             letter-spacing: 0.06em;
             text-transform: uppercase;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             margin: 16px 0 8px;
         }
 
@@ -545,30 +545,30 @@ export class SomaRightPanel extends LitElement {
         .toolbar input {
             flex: 1;
             min-width: 0;
-            background: var(--aaas-bg-hover, #141414);
-            border: 1px solid var(--aaas-border-light, rgba(255, 255, 255, 0.12));
-            border-radius: var(--aaas-radius-sm, 4px);
-            color: var(--aaas-text-primary, #ffffff);
+            background: var(--platform-bg-hover, #141414);
+            border: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.12));
+            border-radius: var(--platform-radius-sm, 4px);
+            color: var(--platform-text-primary, #ffffff);
             font-size: 12px;
             padding: 6px 10px;
         }
 
         .toolbar input:focus {
-            outline: 1px solid var(--aaas-accent, #e8e4dc);
+            outline: 1px solid var(--platform-accent, #e8e4dc);
         }
 
         .btn {
-            background: var(--aaas-bg-hover, #141414);
-            border: 1px solid var(--aaas-border-light, rgba(255, 255, 255, 0.12));
-            border-radius: var(--aaas-radius-sm, 4px);
-            color: var(--aaas-text-secondary, #a1a1a1);
+            background: var(--platform-bg-hover, #141414);
+            border: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.12));
+            border-radius: var(--platform-radius-sm, 4px);
+            color: var(--platform-text-secondary, #a1a1a1);
             font-size: 12px;
             padding: 6px 10px;
             cursor: pointer;
         }
 
         .btn:hover {
-            color: var(--aaas-text-primary, #ffffff);
+            color: var(--platform-text-primary, #ffffff);
         }
 
         .btn:disabled {
@@ -579,12 +579,12 @@ export class SomaRightPanel extends LitElement {
         .schema {
             margin-top: 6px;
             padding: 8px;
-            border-radius: var(--aaas-radius-sm, 4px);
-            background: var(--aaas-bg-hover, #141414);
-            border: 1px solid var(--aaas-border-light, rgba(255, 255, 255, 0.08));
+            border-radius: var(--platform-radius-sm, 4px);
+            background: var(--platform-bg-hover, #141414);
+            border: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.08));
             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
             font-size: 11px;
-            color: var(--aaas-text-secondary, #a1a1a1);
+            color: var(--platform-text-secondary, #a1a1a1);
             white-space: pre-wrap;
             word-break: break-word;
             max-height: 180px;
@@ -602,7 +602,7 @@ export class SomaRightPanel extends LitElement {
         .editor-name {
             font-size: 13px;
             font-weight: 600;
-            color: var(--aaas-text-primary, #ffffff);
+            color: var(--platform-text-primary, #ffffff);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -611,7 +611,7 @@ export class SomaRightPanel extends LitElement {
 
         .readonly-note {
             font-size: 12px;
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             line-height: 1.5;
             margin-bottom: 12px;
         }
@@ -624,13 +624,13 @@ export class SomaRightPanel extends LitElement {
         .code-block {
             margin: 0;
             padding: 12px;
-            border-radius: var(--aaas-radius-sm, 4px);
-            background: var(--aaas-bg-hover, #141414);
-            border: 1px solid var(--aaas-border-light, rgba(255, 255, 255, 0.08));
+            border-radius: var(--platform-radius-sm, 4px);
+            background: var(--platform-bg-hover, #141414);
+            border: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.08));
             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
             font-size: 12px;
             line-height: 1.5;
-            color: var(--aaas-text-secondary, #a1a1a1);
+            color: var(--platform-text-secondary, #a1a1a1);
             white-space: pre-wrap;
             word-break: break-word;
             overflow-x: auto;
@@ -641,24 +641,24 @@ export class SomaRightPanel extends LitElement {
             grid-template-columns: 64px 28px 120px 1fr;
             gap: 8px;
             padding: 6px 8px;
-            border-radius: var(--aaas-radius-sm, 4px);
+            border-radius: var(--platform-radius-sm, 4px);
             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
             font-size: 11px;
-            color: var(--aaas-text-secondary, #a1a1a1);
-            border-bottom: 1px solid var(--aaas-border-light, rgba(255, 255, 255, 0.04));
+            color: var(--platform-text-secondary, #a1a1a1);
+            border-bottom: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.04));
             align-items: start;
         }
 
         .frame-row:hover {
-            background: var(--aaas-bg-hover, #141414);
+            background: var(--platform-bg-hover, #141414);
         }
 
         .frame-dir {
-            color: var(--aaas-accent, #e8e4dc);
+            color: var(--platform-accent, #e8e4dc);
         }
 
         .frame-type {
-            color: var(--aaas-text-primary, #ffffff);
+            color: var(--platform-text-primary, #ffffff);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -672,7 +672,7 @@ export class SomaRightPanel extends LitElement {
         }
 
         .frame-ts {
-            color: var(--aaas-text-muted, #999999);
+            color: var(--platform-text-muted, #999999);
             font-variant-numeric: tabular-nums;
         }
     `;

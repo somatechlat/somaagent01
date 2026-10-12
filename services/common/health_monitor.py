@@ -243,7 +243,7 @@ class HealthMonitor:
         """Check health of a single service.
 
         HEALTH-002: Deployment mode-aware error handling:
-        - AAAS mode: Log HTTP connectivity issues
+        - Soma Platform mode: Log HTTP connectivity issues
         - STANDALONE mode: Log embedded module import failures
         """
         start = time.monotonic()

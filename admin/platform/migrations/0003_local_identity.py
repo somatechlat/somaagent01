@@ -27,7 +27,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("aaas", "0002_canonical_role_values"),
+        ("platform", "0002_canonical_role_values"),
     ]
 
     operations = [

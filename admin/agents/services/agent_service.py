@@ -10,8 +10,8 @@ from django.db import IntegrityError, transaction
 from django.utils.text import slugify
 from ninja.errors import HttpError
 
-from admin.aaas.models.agents import Agent as AgentModel
-from admin.aaas.models.tenants import Tenant
+from admin.platform.models.agents import Agent as AgentModel
+from admin.platform.models.tenants import Tenant
 from admin.agents.api.schemas import (
     Agent,
     AgentUpdatePayload,

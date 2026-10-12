@@ -38,7 +38,7 @@ Scanned: top-level layout, docs, infra compose files, core service modules, auth
 High-signal files reviewed include:
 - `AGENT.md`
 - `docs/README.md`, `docs/operations/SOMA-OPS-DEPLOY-001.md`, `docs/operations/SOMA-OPS-MODES-001.md`, `docs/standards/SOMA-STD-TOKEN-001.md`, `docs/reports/SOMA-RPT-INVENTORY-001.md`
-- `infra/standalone/docker-compose.yml`, `infra/aaas/docker-compose.yml`
+- `infra/standalone/docker-compose.yml`, `infra/platform/docker-compose.yml`
 - `admin/api.py`, `admin/auth/api.py`, `admin/common/auth.py`, `admin/common/session_manager.py`
 - `admin/chat/api/chat.py`, `admin/conversations/api.py`, `admin/core/chat_orchestrator.py`
 - `admin/core/chat_orchestrator.py` and `services/common/chat/*`
@@ -64,17 +64,17 @@ These are concrete mismatches that will mislead implementation, deployment, or o
 1) Missing/incorrect referenced docs and files
 - `AGENT.md` references `docs/standards/SOMA-STD-CODING-001.md`, but that file does not exist.
 - Root `README.md` is empty, while `docs/README.md` is the actual entry point.
-- `docs/README.md` and `docs/operations/SOMA-OPS-DEPLOY-001.md` reference `infra/standalone/docker-compose.yml` or `infra/aaas/docker-compose.yml`.
+- `docs/README.md` and `docs/operations/SOMA-OPS-DEPLOY-001.md` reference `infra/standalone/docker-compose.yml` or `infra/platform/docker-compose.yml`.
 
 2) Port namespace mismatches
 - `docs/operations/SOMA-OPS-DEPLOY-001.md` mixes 20xxx and default ports (e.g. Postgres 5432, Redis 6379, Milvus 19530).
 - `infra/standalone/docker-compose.yml` uses 20xxx ports (e.g. Postgres 20432, Redis 20379).
-- `infra/aaas/docker-compose.yml` uses 63xxx ports (e.g. Postgres 63932, Redis 63979, Milvus 63953).
-This is a major source of confusion for local vs AAAS deployments.
+- `infra/platform/docker-compose.yml` uses 63xxx ports (e.g. Postgres 63932, Redis 63979, Milvus 63953).
+This is a major source of confusion for local vs Soma Platform deployments.
 
 3) Deployment mode taxonomy conflicts
-- `docs/operations/SOMA-OPS-MODES-001.md` uses `SA01_DEPLOYMENT_MODE="AAAS"` or `"STANDALONE"`.
-- `config/settings_registry.py` also supports `STANDALONE` and `AAAS`.
+- `docs/operations/SOMA-OPS-MODES-001.md` uses `SA01_DEPLOYMENT_MODE="Soma Platform"` or `"STANDALONE"`.
+- `config/settings_registry.py` also supports `STANDALONE` and `Soma Platform`.
 - `admin/core/management/commands/preflight.py` enforces only `DEV` or `PROD`.
 This is a direct contradiction between docs and runtime validation.
 
@@ -168,7 +168,7 @@ Pick one canonical chat pipeline: `admin/core/chat_orchestrator.py` (V3 pipeline
 Merge `admin/core/model_router.py` and `services/common/model_router.py`. Do the same for context building. Create one public interface and one implementation, then route all call sites through it.
 
 3) Unify deployment modes and env vars
-Define the authoritative taxonomy for `SA01_DEPLOYMENT_MODE` (AAAS/STANDALONE vs DEV/PROD) and enforce it consistently in:
+Define the authoritative taxonomy for `SA01_DEPLOYMENT_MODE` (Soma Platform/STANDALONE vs DEV/PROD) and enforce it consistently in:
 - `config/settings_registry.py`
 - `services/gateway/settings.py`
 - `admin/core/management/commands/preflight.py`

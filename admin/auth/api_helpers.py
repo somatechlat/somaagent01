@@ -83,7 +83,7 @@ def get_permissions_for_roles(roles: list[str]) -> list[str]:
 
 async def update_last_login(payload: "TokenPayload") -> None:
     """Update user's last login timestamp if they exist in our database."""
-    from admin.aaas.models import TenantUser
+    from admin.platform.models import TenantUser
 
     try:
 

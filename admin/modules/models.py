@@ -81,7 +81,7 @@ class Module(models.Model):
     )
 
     tenant = models.ForeignKey(
-        "aaas.Tenant",
+        "platform.Tenant",
         on_delete=models.CASCADE,
         null=True,
         blank=True,

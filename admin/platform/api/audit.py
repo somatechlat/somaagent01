@@ -16,7 +16,7 @@ from django.utils import timezone
 from ninja import Query, Router
 from pydantic import BaseModel
 
-from admin.aaas.models import AuditLog
+from admin.platform.models import AuditLog
 from admin.common.auth import AuthBearer
 from admin.common.responses import paginated_response
 from services.common.authorization import authorize_sync

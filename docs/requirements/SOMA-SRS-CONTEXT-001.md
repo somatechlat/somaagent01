@@ -101,7 +101,7 @@ This document specifies the ContextBuilding subsystem of SomaAgent01, which asse
 
 ### 2.1 Product Perspective
 
-ContextBuilding is Phase 5 of the 12-phase chat flow. It receives a loaded capsule, the user message, and conversation history, and produces a `BuiltContext` object that the LLM layer consumes. In AAAS mode, all calls are direct Python imports with zero HTTP latency.
+ContextBuilding is Phase 5 of the 12-phase chat flow. It receives a loaded capsule, the user message, and conversation history, and produces a `BuiltContext` object that the LLM layer consumes. In Soma Platform mode, all calls are direct Python imports with zero HTTP latency.
 
 ### 2.2 Product Functions
 
@@ -243,7 +243,7 @@ Not applicable.
 
 | Interface | Protocol | Format | Authentication |
 |-----------|----------|--------|----------------|
-| SomaBrain | Direct import (AAAS) or HTTP (STANDALONE) | Python objects / JSON | Internal |
+| SomaBrain | Direct import (Soma Platform) or HTTP (STANDALONE) | Python objects / JSON | Internal |
 | Capsule Store | Django ORM | Python objects | Django auth |
 
 #### 3.3.3 Hardware Interfaces
@@ -256,7 +256,7 @@ Not applicable.
 
 | ID | Constraint | Source |
 |----|------------|--------|
-| DC-001 | In AAAS mode, ContextBuilder and memory recall shall use direct imports with zero HTTP latency. | Architecture decision |
+| DC-001 | In Soma Platform mode, ContextBuilder and memory recall shall use direct imports with zero HTTP latency. | Architecture decision |
 | DC-002 | No hardcoded prompts or lane defaults shall exist outside the capsule configuration or derivation logic. | Design standard |
 
 ---
@@ -300,7 +300,7 @@ Not applicable.
 |---------|------|--------|---------|
 | 1.0 | 2026-01-10 | Engineering | Initial version |
 | 2.0–4.0 | 2026-01-12 to 2026-01-14 | Engineering | Lane allocation refinements |
-| 5.0 | 2026-01-16 | Engineering | AAAS direct calls enforced |
+| 5.0 | 2026-01-16 | Engineering | Soma Platform direct calls enforced |
 | 5.1 | 2026-05-21 | Engineering | Refactored to ISO/IEC/IEEE 29148 template |
 
 ---

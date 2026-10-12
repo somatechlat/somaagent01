@@ -1,4 +1,4 @@
-"""Infrastructure ORM Models for AAAS Administration.
+"""Infrastructure ORM Models for Soma Platform Administration.
 
 
 Per

@@ -1,7 +1,7 @@
 # SomaAgent01 Standalone Deployment
 
 > **Mode**: `SA01_DEPLOYMENT_MODE=STANDALONE`
-> **Port Namespace**: 20xxx (strict isolation from AAAS 63xxx)
+> **Port Namespace**: 20xxx (strict isolation from Soma Platform 63xxx)
 > **Triad**: Agent + SomaBrain + SomaFractalMemory (full memory lane)
 
 Local Docker deployment shaped like production. The secret contract, the

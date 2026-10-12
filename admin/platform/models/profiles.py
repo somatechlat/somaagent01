@@ -1,7 +1,7 @@
 """
-Profile (Settings) Models for AAAS Admin
+Profile (Settings) Models for Soma Platform Admin
 
-Implementation of the "Deep Settings Architecture" defined in SRS-AAAS-MASTER-SETTINGS-INDEX.md.
+Implementation of the "Deep Settings Architecture" defined in SRS-Soma Platform-MASTER-SETTINGS-INDEX.md.
 Provides persistent storage for:
 1.  Global Defaults (Singleton) - The "Blueprint" for new tenants.
 2.  Tenant Settings (OneToOne) - Secure, JSONB-backed configuration for each tenant.
@@ -19,7 +19,7 @@ from django.db import models
 from admin.core.authz import ROLE_PERMISSIONS, ROLE_PRIORITY
 
 # We avoid importing Tenant here directly if it causes circular imports,
-# but models.OneToOneField('aaas.Tenant') handles it via string reference.
+# but models.OneToOneField('platform.Tenant') handles it via string reference.
 
 
 class PlatformConfig(models.Model):
@@ -186,7 +186,7 @@ class TenantSettings(models.Model):
     ]
 
     tenant = models.OneToOneField(
-        "aaas.Tenant", on_delete=models.CASCADE, related_name="settings", primary_key=True
+        "platform.Tenant", on_delete=models.CASCADE, related_name="settings", primary_key=True
     )
 
     # Branding

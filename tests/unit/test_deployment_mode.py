@@ -1,7 +1,7 @@
 """Unit tests for DeploymentMode singleton.
 
 Single source: SA01_DEPLOYMENT_MODE. Modes: STANDALONE | DEV.
-There is no AAAS mode and no second flag.
+There is no Soma Platform mode and no second flag.
 """
 
 import pytest
@@ -48,8 +48,8 @@ class TestDeploymentMode:
         assert DeploymentMode.is_standalone() is True
 
     def test_aaas_is_not_a_mode(self, monkeypatch):
-        """AAAS was removed. Setting it must refuse, not silently map."""
-        monkeypatch.setenv("SA01_DEPLOYMENT_MODE", "AAAS")
+        """Soma Platform was removed. Setting it must refuse, not silently map."""
+        monkeypatch.setenv("SA01_DEPLOYMENT_MODE", "Soma Platform")
 
         from services.common.deployment_mode import DeploymentMode
 
@@ -58,7 +58,7 @@ class TestDeploymentMode:
 
         with pytest.raises(ValueError) as excinfo:
             DeploymentMode.get()
-        assert "AAAS" in str(excinfo.value)
+        assert "Soma Platform" in str(excinfo.value)
 
     def test_invalid_mode_is_refused(self, monkeypatch):
         """An unrecognised mode raises and names itself.

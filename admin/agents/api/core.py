@@ -17,7 +17,7 @@ from asgiref.sync import sync_to_async
 from ninja import Router
 from ninja.errors import HttpError
 
-from admin.aaas.models.choices import AgentStatus
+from admin.platform.models.choices import AgentStatus
 from admin.agents.api.schemas import (
     Agent,
     AgentStats,
@@ -449,7 +449,7 @@ async def clone_agent(
 
     from django.utils.text import slugify
 
-    from admin.aaas.models import Agent as AgentModel, Tenant as TenantModel
+    from admin.platform.models import Agent as AgentModel, Tenant as TenantModel
 
     tenant_id = _resolve_tenant_id(request, None)
     source = await _get_agent_by_id(agent_id, tenant_id)
@@ -504,7 +504,7 @@ async def get_multimodal_config(request, agent_id: str) -> dict:
     """
     await authorize(request, action="agent:read", resource="agents")
 
-    from admin.aaas.models.profiles import PlatformConfig
+    from admin.platform.models.profiles import PlatformConfig
 
     gd = await PlatformConfig.aget_instance()
     defaults = gd.defaults
@@ -534,7 +534,7 @@ async def update_multimodal_config(request, agent_id: str, config: MultimodalCon
     """
     await authorize(request, action="agent:update", resource="agents")
 
-    from admin.aaas.models.profiles import PlatformConfig
+    from admin.platform.models.profiles import PlatformConfig
 
     gd = await PlatformConfig.aget_instance()
     gd.defaults["multimodal_policy"] = config.dict()

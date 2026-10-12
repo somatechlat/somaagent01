@@ -92,7 +92,7 @@ class ServiceConfig(BaseModel):
     @classmethod
     def validate_deployment_mode(cls, v: str) -> str:
         """Validate deployment mode."""
-        valid_modes = {"DEV", "STAGING", "PROD", "LOCAL", "TEST", "AAAS"}
+        valid_modes = {"DEV", "STAGING", "PROD", "LOCAL", "TEST", "Soma Platform"}
         if v.upper() not in valid_modes:
             raise ValueError(f"Deployment mode must be one of: {valid_modes}")
         return v.upper()

@@ -25,7 +25,7 @@
 | 2.1.0 | 2026-09-27 | SomaTech Engineering | §7 registers SOMA-01-DOCS-001 and SOMA-01-DOCS-002 |
 | 2.1.1 | 2026-09-27 | SomaTech Engineering | §7 registers SOMA-01-UIUX-005 (Settings Parity Matrix) |
 | 2.2.0 | 2026-09-28 | SomaTech Engineering | §7 extended to register the full UI/UX suite: SOMA-01-UIUX-001…004 and the three design controls SOMA-UI-MOCKUPS-001, SOMA-UI-IDREG-001, SOMA-UI-TEMPLATE-001. |
-| 2.2.1 | 2026-09-28 | SomaTech Engineering | §7 extended to register the seven ISO-series documents that were in `docs/iso/` but absent from the matrix: SOMA-01-SRS-001, SOMA-01-SDP-001, SOMA-01-VV-001, SOMA-01-OPS-001, SOMA-01-RELEASE-001, SOMA-01-AAAS-001, SOMA-01-COMPAT-001. Closes check rule C-10. |
+| 2.2.1 | 2026-09-28 | SomaTech Engineering | §7 extended to register the seven ISO-series documents that were in `docs/iso/` but absent from the matrix: SOMA-01-SRS-001, SOMA-01-SDP-001, SOMA-01-VV-001, SOMA-01-OPS-001, SOMA-01-RELEASE-001, SOMA-01-Soma Platform-001, SOMA-01-COMPAT-001. Closes check rule C-10. |
 | 2.2.2 | 2026-10-03 | SomaTech Engineering | §7 registers SOMA-UI-SKINS-001 (Capsule Skins — Theming Framework Specification). |
 | 2.2.3 | 2026-10-03 | SomaTech Engineering | §7 registers SOMA-STD-CONFIG-001 (Configuration, Endpoints and Secret Resolution). |
 | 2.2.4 | 2026-10-03 | SomaTech Engineering | §7 registers SOMA-ARCH-ADR-001 (Architecture Decision: Shared Embedding Dimension is 768). |
@@ -246,7 +246,7 @@ All development on SomaAgent01 shall adhere to the VIBE (Verification, Integrati
 | Verification and Validation Plan | SOMA-01-VV-001 | ISO 9001:2015 | V&V strategy, acceptance criteria and evidence |
 | Operations Runbook | SOMA-01-OPS-001 | ISO 9001:2015 | Operational procedures and incident handling |
 | Release Notes | SOMA-01-RELEASE-001 | ISO 9001:2015 | Released content, known issues and upgrade notes |
-| AAAS Deployment Specification | SOMA-01-AAAS-001 | ISO 9001:2015 | Agent-as-a-Service deployment topology and contract |
+| Soma Platform Deployment Specification | SOMA-01-Soma Platform-001 | ISO 9001:2015 | Agent-as-a-Service deployment topology and contract |
 | Deployment Model Specification | SOMA-01-DEPLOY-001 | ISO/IEC 27001:2022; ISO/IEC 42001:2023 | Standalone and Enterprise deployment models, identity sources, RBAC |
 | Cognitive Triad Compatibility Matrix | SOMA-01-COMPAT-001 | ISO 9001:2015 | Supported version combinations across the triad |
 | Standards Register — Normative and Applied External Standards | SOMA-01-STD-001 | ISO 9001:2015 clause 7.5; ISO/IEC 27001:2022; ISO/IEC 42001:2023 | Single register of every external standard cited or implemented, organised by standards body |

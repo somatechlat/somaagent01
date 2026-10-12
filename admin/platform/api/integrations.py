@@ -6,7 +6,7 @@ Manage external service connections: Keycloak, SMTP, LLM, Storage.
 - Django Ninja router
 - Real connection tests (no mocks)
 - Secret masking
-- Per SRS-AAAS-INTEGRATIONS.md
+- Per SRS-Soma Platform-INTEGRATIONS.md
 
 - 🏗️ Django Architect: CRUD for integrations
 - 🔒 Security Auditor: Secret masking, encrypted storage
@@ -90,7 +90,7 @@ class ConnectionTestResult(BaseModel):
 # =============================================================================
 
 
-from admin.aaas.models.profiles import PlatformConfig
+from admin.platform.models.profiles import PlatformConfig
 from admin.llm.models import LLMModelConfig
 
 # =============================================================================
@@ -110,7 +110,7 @@ async def _get_integration_config(provider: str) -> dict:
     # (TenantSettings) are intentionally NOT merged here until a dedicated Integration
     # model replaces the JSONB blob pattern. TenantSettings.merge_defaults() is the
     # future hook point. Architectural decision: keep this simple until Integration
-    # model exists (see SRS-AAAS-INTEGRATIONS.md).
+    # model exists (see SRS-Soma Platform-INTEGRATIONS.md).
 
     # 1. LLM Provider Special Case
     if provider == "openai":

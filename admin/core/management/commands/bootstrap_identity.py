@@ -111,7 +111,7 @@ class Command(BaseCommand):
         # This command is synchronous, so the ORM runs directly. Wrapping it in
         # sync_to_async here would return a coroutine nobody awaits and the
         # write would be silently lost.
-        from admin.aaas.models import LocalIdentity
+        from admin.platform.models import LocalIdentity
 
         _row, created = LocalIdentity.objects.update_or_create(
             email=email,

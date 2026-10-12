@@ -428,7 +428,7 @@ async def get_tenant_usage(request, month: Optional[str] = None) -> TenantUsageR
     from django.conf import settings
     from django.db.models import Sum
 
-    from admin.aaas.models.agents import Agent
+    from admin.platform.models.agents import Agent
     from admin.voice.models import VoiceSession
 
     tenant_id = getattr(request, "tenant_id", None) or getattr(

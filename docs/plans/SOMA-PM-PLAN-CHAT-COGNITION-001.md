@@ -163,7 +163,7 @@ Every claim below was read from source. Where docs disagree with code, **code wi
 
 **D3 · `TenantRole` gains `agent_owner` / `agent_operator`** or the vocabulary is declared identical to `ROLE_PERMISSIONS` and enforced at import.
 
-**D4 · Delete the decoy.** `PlatformConfig.defaults["roles"]` and `PATCH /aaas/settings/roles/{id}` write a map the gate never reads. Delete them, or make them the real store.
+**D4 · Delete the decoy.** `PlatformConfig.defaults["roles"]` and `PATCH /platform/settings/roles/{id}` write a map the gate never reads. Delete them, or make them the real store.
 
 **D5 · A real permissions UI.** The screens call a deleted `/permissions` API. Either restore a real catalog API that writes the authority, or make the screens read-only views of `admin.core.authz` with system roles locked and a **real** reason string (`org:assign_roles` — not the invented `role:manage`).
 

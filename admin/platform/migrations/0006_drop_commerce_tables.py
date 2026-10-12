@@ -2,7 +2,7 @@
 
 The models ``SubscriptionTier`` and ``UsageRecord``, and the Tenant columns
 ``tier``, ``billing_email`` and ``trial_ends_at``, were deleted from
-``admin/aaas/models/`` when billing was removed from the product. The migration
+``admin/platform/models/`` when billing was removed from the product. The migration
 state was not updated with them, which left the schema claiming the opposite of
 the code:
 
@@ -24,7 +24,7 @@ tier before turning ``Capsule.tenant`` into a foreign key. It is applied
 history: it must run against the schema as it was, so it has to be applied
 before this drop tears that schema down. Without this dependency the two are
 unrelated in the graph and a fresh database can apply the drop first, at which
-point ``apps.get_model("aaas", "SubscriptionTier")`` raises LookupError.
+point ``apps.get_model("platform", "SubscriptionTier")`` raises LookupError.
 
 Generated from the model state by Django's autodetector; the dependency on
 ``core.0008`` is added by hand because the autodetector cannot see a data
@@ -37,7 +37,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("aaas", "0005_audit_actor_nullable"),
+        ("platform", "0005_audit_actor_nullable"),
         ("core", "0008_asset_delegationtask_executionrecord_modelprofile_and_more"),
     ]
 

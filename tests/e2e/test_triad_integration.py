@@ -341,7 +341,7 @@ async def _run_story(stack: SeamStack) -> SeamStory:
     """Run turn 1 → probe both stores → run turn 2. Gathers evidence only."""
 
     import admin.core.chat_orchestrator as orchestrator_module
-    from admin.aaas.models import Tenant
+    from admin.platform.models import Tenant
     from admin.chat.models import Conversation
     from admin.core.chat_orchestrator import ChatTurn, V3ChatOrchestrator
     from admin.core.models import Capsule
@@ -355,7 +355,7 @@ async def _run_story(stack: SeamStack) -> SeamStory:
 
     @sync_to_async
     def _seed_rows():
-        from admin.aaas.models import TenantUser
+        from admin.platform.models import TenantUser
 
         tenant = Tenant.objects.create(
             name="Seam Tenant", slug=f"seam-tenant-{uuid.uuid4().hex[:8]}"

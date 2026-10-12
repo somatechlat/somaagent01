@@ -265,7 +265,7 @@ function createIsolatedTenant() {
     'import django, os, uuid',
     'os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")',
     'django.setup()',
-    'from admin.aaas.models import Tenant',
+    'from admin.platform.models import Tenant',
     't = Tenant.objects.create(',
     '    name="Seam Tenant",',
     '    slug=f"seam-tenant-{uuid.uuid4().hex[:8]}",',

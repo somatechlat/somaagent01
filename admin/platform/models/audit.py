@@ -8,11 +8,11 @@ import uuid
 
 from django.db import models
 
-from admin.aaas.models.tenants import Tenant
+from admin.platform.models.tenants import Tenant
 
 
 class AuditLog(models.Model):
-    """Immutable audit trail for AAAS admin actions.
+    """Immutable audit trail for Soma Platform admin actions.
 
     Records all significant actions for compliance and debugging.
     This table is append-only - no updates or deletes.

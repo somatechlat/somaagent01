@@ -59,11 +59,11 @@
 admin/agents/services/
 └── mind_body.py        # Mind-Body loop (if implemented)
 
-aaas/brain.py           # BrainBridge — current SomaBrain access layer
+platform/brain.py           # BrainBridge — current SomaBrain access layer
 admin/core/somabrain_client.py  # HTTP SomaBrain client
 ```
 
-**Note:** `brain_bridge.py` was removed during consolidation. Current Brain access is via `BrainBridge` in `aaas/brain.py` or `SomaBrainClient` in `admin/core/somabrain_client.py`.
+**Note:** `brain_bridge.py` was removed during consolidation. Current Brain access is via `BrainBridge` in `platform/brain.py` or `SomaBrainClient` in `admin/core/somabrain_client.py`.
 
 ---
 

@@ -25,7 +25,7 @@
 
 **Date**: 2026-05-26  
 **Status**: Standalone Cluster LIVE | All Ports Compliant | Build Clean  
-**Environments**: Standalone (20xxx) → AAAS Unified (63xxx) → Production (EKS/Fargate)
+**Environments**: Standalone (20xxx) → Soma Platform Unified (63xxx) → Production (EKS/Fargate)
 
 ---
 
@@ -135,10 +135,10 @@ docker compose ps
 # Expected: 5 containers, all healthy
 ```
 
-### Phase 2: AAAS Unified Monolith
+### Phase 2: Soma Platform Unified Monolith
 **Target**: Integrated Agent + Brain + Memory in single process  
 **Port Namespace**: `63xxx`  
-**File**: `infra/aaas/docker-compose.yml`
+**File**: `infra/platform/docker-compose.yml`
 
 **Additional Services**:
 | Service | Port | Purpose |
@@ -158,7 +158,7 @@ SA01_DEPLOYMENT_MODE=PROD python manage.py migrate --database=somabrain
 SA01_DEPLOYMENT_MODE=PROD python manage.py migrate --database=somaagent
 
 # 2. Start services
-cd infra/aaas && docker compose up -d
+cd infra/platform && docker compose up -d
 
 # 3. Health verification
 for port in 63900 30101 10101 20051 20181; do

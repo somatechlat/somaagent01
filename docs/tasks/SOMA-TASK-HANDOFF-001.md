@@ -1,6 +1,6 @@
 > **OBSOLETE — HISTORICAL SNAPSHOT 2025-01-26. DO NOT USE AS CURRENT TRUTH.**
 >
-> This handoff is a record of a past session. It is retained for traceability only. It describes `BrainBridge` (`aaas/brain.py`) as the memory access path; **that class and file were deleted** in commit `6395bd78`. The current memory seam is `MemoryGateway` → `SomaBrainAdapter` (`services/common/memory_contract.py`, `services/common/memory_gateway.py`, `services/common/adapters/somabrain_adapter.py`), and T-1 holds: the agent never holds an SFM client. The old `ChatService`/`ConversationService`/`MessageService` hierarchy under `services/common/chat/` was deleted and replaced by the V3 orchestrator in `admin/core/chat_orchestrator.py`; `SOMA_AAAS_MODE` is no longer the canonical deployment-mode switch (use `SA01_DEPLOYMENT_MODE`). For current architecture, see `AGENT.md` and `docs/iso/SOMA-TRIAD-ARCH-001.md`.
+> This handoff is a record of a past session. It is retained for traceability only. It describes `BrainBridge` (`platform/brain.py`) as the memory access path; **that class and file were deleted** in commit `6395bd78`. The current memory seam is `MemoryGateway` → `SomaBrainAdapter` (`services/common/memory_contract.py`, `services/common/memory_gateway.py`, `services/common/adapters/somabrain_adapter.py`), and T-1 holds: the agent never holds an SFM client. The old `ChatService`/`ConversationService`/`MessageService` hierarchy under `services/common/chat/` was deleted and replaced by the V3 orchestrator in `admin/core/chat_orchestrator.py`; `SOMA_AAAS_MODE` is no longer the canonical deployment-mode switch (use `SA01_DEPLOYMENT_MODE`). For current architecture, see `AGENT.md` and `docs/iso/SOMA-TRIAD-ARCH-001.md`.
 
 # Agent Handoff — SomaAgent01 Repository
 
@@ -24,11 +24,11 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under ISO document control. |
-| 1.1.0 | 2026-10-03 | SomaTech Engineering | Re-stamped **Obsolete**. This is a 2025-01-26 session snapshot. Its BrainBridge / `aaas/brain.py` architecture is deleted code (`6395bd78`). Retained for traceability; superseded by `AGENT.md` v2.1.0 and `SOMA-TRIAD-ARCH-001`. |
+| 1.1.0 | 2026-10-03 | SomaTech Engineering | Re-stamped **Obsolete**. This is a 2025-01-26 session snapshot. Its BrainBridge / `platform/brain.py` architecture is deleted code (`6395bd78`). Retained for traceability; superseded by `AGENT.md` v2.1.0 and `SOMA-TRIAD-ARCH-001`. |
 
 
 **Date**: 2025-01-26  
-**Session Focus**: Architecture Review, Terminology Clarification, SAAS→AAAS Migration  
+**Session Focus**: Architecture Review, Terminology Clarification, SAAS→Soma Platform Migration  
 **Status**: ✅ COMPLETED
 
 ---
@@ -38,8 +38,8 @@
 This session focused on:
 1. **Comprehensive code review** of entire somaagent01 repository
 2. **Architecture verification** of SomaBrain and SomaFractalMemory integration
-3. **Terminology correction** - "SAAS" → "AAAS"
-4. **Understanding of SomaStack** vs **AAAS** deployment modes
+3. **Terminology correction** - "SAAS" → "Soma Platform"
+4. **Understanding of SomaStack** vs **Soma Platform** deployment modes
 
 ---
 
@@ -64,7 +64,7 @@ User → Django API → SomaBrain → LLM
 
 ### 2. BrainBridge Dual-Mode Architecture ✅
 
-**Location**: `aaas/brain.py`
+**Location**: `platform/brain.py`
 
 **Two Modes:**
 
@@ -132,19 +132,19 @@ services/conversation_worker/main.py — separate Kafka/Temporal pipeline (NOT V
 
 ### 1. Terminology Corrections ✅
 
-**SAAS → AAAS Migration:**
+**SAAS → Soma Platform Migration:**
 
 | Old Term | New Term | Files Changed |
 |-----------|-----------|---------------|
-| `saas/` directory | `aaas/` directory | `infra/aaas/saas/` → `infra/aaas/aaas/` |
-| `SaaS` | `AAAS` | `infra/aaas/aaas/supervisord.conf` |
+| `saas/` directory | `platform/` directory | `infra/platform/saas/` → `infra/platform/platform/` |
+| `SaaS` | `Soma Platform` | `infra/platform/platform/supervisord.conf` |
 | `GUIDE_SAAS_DIRECT.md` | `GUIDE_AAAS_DIRECT.md` | File renamed |
 | `start_saas.sh` | `start_aaas.sh` | Script renamed |
 | `build_saas.sh` | `build_aaas.sh` | Script renamed |
 
 **Key Clarification:**
 - **SomaStack** = Complete infrastructure (ALL modules, repos, services) - **KEEP AS-IS**
-- **AAAS** = A **DEPLOYMENT MODE** within SomaStack
+- **Soma Platform** = A **DEPLOYMENT MODE** within SomaStack
   - Deploy **ALL THREE REPOS** together: somaagent01 + somabrain + somafractalmemory
   - Direct in-process calls between repos (BrainBridge)
   - Single unified deployment
@@ -156,13 +156,13 @@ services/conversation_worker/main.py — separate Kafka/Temporal pipeline (NOT V
 
 ```bash
 # Directory renamed
-infra/aaas/saas/ → infra/aaas/aaas/
+infra/platform/saas/ → infra/platform/platform/
 
 # File renamed
-infra/aaas/aaas/GUIDE_SAAS_DIRECT.md → GUIDE_AAAS_DIRECT.md
+infra/platform/platform/GUIDE_SAAS_DIRECT.md → GUIDE_AAAS_DIRECT.md
 
 # Script references updated
-All scripts now reference aaas/ instead of saas/
+All scripts now reference platform/ instead of saas/
 ```
 
 ---
@@ -174,9 +174,9 @@ All scripts now reference aaas/ instead of saas/
 | Mode | `SOMASTACK_SOFTWARE_MODE` | Behavior |
 |------|---------------------------|----------|
 | **StandAlone** | `StandAlone` | Each service runs independently with local auth/storage |
-| **SomaStackClusterMode** | `SomaStackClusterMode` | All three services as unified AAAS with shared tenant identity |
+| **SomaStackClusterMode** | `SomaStackClusterMode` | All three services as unified Soma Platform with shared tenant identity |
 
-### AAAS Service Coupling
+### Soma Platform Service Coupling
 
 | Mode | *deleted flag* | Behavior |
 |------|-------------------|----------|
@@ -186,7 +186,7 @@ All scripts now reference aaas/ instead of saas/
 ### Environment Configuration
 
 ```bash
-# Example AAAS Mode (Unified Deployment)
+# Example Soma Platform Mode (Unified Deployment)
 SOMASTACK_SOFTWARE_MODE=SomaStackClusterMode
 # DELETED: SOMA_AAAS_MODE=true
 SA01_DEPLOYMENT_MODE=PROD
@@ -213,9 +213,9 @@ somaagent01/
 │   │   ├── core_brain.py    # Act, personality, memory config
 │   │   └── event_bridge.py   # Kafka event publisher
 │   ├── auth/                 # Authentication
-│   ├── aaas/                 # Multi-tenant AAAS features
+│   ├── platform/                 # Multi-tenant Soma Platform features
 │   └── core/                 # Core models, somabrain_client.py
-├── aaas/                     # BrainBridge (direct SomaBrain access)
+├── platform/                     # BrainBridge (direct SomaBrain access)
 │   └── brain.py             # Direct mode optimization
 ├── services/                 # Service layer
 │   ├── common/              # Shared services
@@ -226,8 +226,8 @@ somaagent01/
 │   │   └── degradation_monitor.py  # Health monitoring
 │   └── gateway/             # API gateway
 ├── infra/                    # Infrastructure configs
-│   └── aaas/               # AAAS deployment
-│       └── aaas/           # Unified AAAS container config
+│   └── platform/               # Soma Platform deployment
+│       └── platform/           # Unified Soma Platform container config
 │           ├── supervisord.conf
 │           ├── start_aaas.sh
 │           ├── build_aaas.sh
@@ -256,7 +256,7 @@ somaagent01/
 - **ONLY** Lit 3.x (NO React, NO Alpine.js)
 
 ### ✅ Port Namespace
-- **somaagent01**: 20xxx (e.g., 63900 for AAAS)
+- **somaagent01**: 20xxx (e.g., 63900 for Soma Platform)
 - **somabrain**: 30xxx (e.g., 63996)
 - **somafractalmemory**: 9xxx (e.g., 63901)
 
@@ -303,8 +303,8 @@ somaagent01/
 3. Add permission checks to chat, agents, conversations
 
 ### Priority 4: Documentation
-1. Update AGENT.md with new terminology (SAAS→AAAS)
-2. Update all docs to reflect AAAS deployment mode
+1. Update AGENT.md with new terminology (SAAS→Soma Platform)
+2. Update all docs to reflect Soma Platform deployment mode
 3. Create architecture diagrams for dual-mode (Direct vs HTTP)
 
 ---
@@ -330,7 +330,7 @@ somaagent01/
 ### For Next Agent
 
 **Critical Architecture Files:**
-1. `aaas/brain.py` - BrainBridge dual-mode implementation
+1. `platform/brain.py` - BrainBridge dual-mode implementation
 4. `services/common/simple_governor.py` - Token budget allocation
 5. `admin/core/context/builder.py` - Context assembly
 6. `admin/core/somabrain_client.py` - HTTP client for SomaBrain
@@ -338,9 +338,9 @@ somaagent01/
 8. `admin/somabrain/event_bridge.py` - Kafka event publisher
 
 **Configuration:**
-1. `infra/aaas/aaas/supervisord.conf` - AAAS process manager
-2. `infra/aaas/aaas/start_aaas.sh` - AAAS startup script
-3. `infra/aaas/aaas/GUIDE_AAAS_DIRECT.md` - Direct mode guide
+1. `infra/platform/platform/supervisord.conf` - Soma Platform process manager
+2. `infra/platform/platform/start_aaas.sh` - Soma Platform startup script
+3. `infra/platform/platform/GUIDE_AAAS_DIRECT.md` - Direct mode guide
 
 **Documentation:**
 1. `AGENT.md` - Agent knowledge base
@@ -357,9 +357,9 @@ somaagent01/
 - [x] Understood BrainBridge dual-mode (Direct vs HTTP)
 - [x] Understood Chat service hierarchy
 - [x] Understood SimpleGovernor and SimpleContextBuilder
-- [x] Clarified SomaStack vs AAAS terminology
-- [x] Migrated all SAAS references to AAAS
-- [x] Renamed `infra/aaas/saas/` to `infra/aaas/aaas/`
+- [x] Clarified SomaStack vs Soma Platform terminology
+- [x] Migrated all SAAS references to Soma Platform
+- [x] Renamed `infra/platform/saas/` to `infra/platform/platform/`
 - [x] Updated all script references
 - [x] Documented identified gaps for future work
 - [x] Created comprehensive handoff document
@@ -371,7 +371,7 @@ somaagent01/
 **Repository**: somaagent01  
 **Branch**: main  
 **Latest Commit**: `12da239fd` - feat: implement GMD Theorem 3 Wiener-optimal unbinding and fix tenant registry async issues  
-**Deployment Focus**: AAAS Mode (Unified SomaStack deployment)
+**Deployment Focus**: Soma Platform Mode (Unified SomaStack deployment)
 
 **Ready For**: Next phase of development or testing
 

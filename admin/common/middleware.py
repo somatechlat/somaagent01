@@ -134,7 +134,7 @@ class SessionMiddleware:
 
                 from asgiref.sync import sync_to_async
 
-                from admin.aaas.models import AuditLog
+                from admin.platform.models import AuditLog
 
                 await sync_to_async(AuditLog.objects.create, thread_sensitive=False)(
                     # No actor: the token failed validation, so the caller
@@ -174,7 +174,7 @@ class SessionMiddleware:
 
                     from asgiref.sync import sync_to_async
 
-                    from admin.aaas.models import AuditLog
+                    from admin.platform.models import AuditLog
 
                     await sync_to_async(AuditLog.objects.create, thread_sensitive=False)(
                         actor_id=as_uuid(getattr(claims, "sub", None)),

@@ -203,13 +203,13 @@ def test_every_settings_route_declares_an_auth_callback():
     the route declares an auth callback. This walks both settings routers so
     the defect cannot reappear on a route nobody happened to click.
     """
-    from admin.aaas.api.settings import router as aaas_router
+    from admin.platform.api.settings import router as aaas_router
     from admin.core.api.settings_v2 import router as core_router
 
     missing: list[str] = []
     for name, router in (
         ("admin/core/api/settings_v2.py", core_router),
-        ("admin/aaas/api/settings.py", aaas_router),
+        ("admin/platform/api/settings.py", aaas_router),
     ):
         for path, view in router.path_operations.items():
             for op in view.operations:
@@ -219,13 +219,13 @@ def test_every_settings_route_declares_an_auth_callback():
 
 
 # ---------------------------------------------------------------------------
-# The second settings surface: admin/aaas/api/settings.py
+# The second settings surface: admin/platform/api/settings.py
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture
 def aaas_client(monkeypatch):
-    """The real aaas settings router, mounted and driven over HTTP.
+    """The real platform settings router, mounted and driven over HTTP.
 
     ``PlatformConfig`` is a collaborator, not the gate: its instance is
     stubbed so the sysadmin's *allow* path can be observed without a
@@ -237,7 +237,7 @@ def aaas_client(monkeypatch):
 
     import admin.common.auth as auth_mod
     import services.common.authorization as authz
-    from admin.aaas.models import profiles
+    from admin.platform.models import profiles
     from admin.common.auth import TokenPayload
     from admin.common.exceptions import UnauthorizedError
     from admin.common.handlers import register_exception_handlers
@@ -267,9 +267,9 @@ def aaas_client(monkeypatch):
         profiles.PlatformConfig, "get_instance", classmethod(lambda cls: _Defaults())
     )
 
-    api = NinjaAPI(title="aaas-settings-route-test")
+    api = NinjaAPI(title="platform-settings-route-test")
     register_exception_handlers(api)
-    from admin.aaas.api.settings import router as settings_router
+    from admin.platform.api.settings import router as settings_router
 
     api.add_router("/settings", settings_router)
     return TestClient(api)
