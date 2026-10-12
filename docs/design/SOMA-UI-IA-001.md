@@ -6,11 +6,25 @@
 |---|---|
 | Document Title | Agent Soma — IA audit & single-home rules |
 | Document Identifier | SOMA-UI-IA-001 |
-| Version | 1.0.0 |
+| Version | 1.1.0 |
 | Date | 2026-10-08 |
-| Status | **Authoritative for all mocks** |
+| Status | Draft |
+| Classification | Internal |
+| Author | SomaTech Engineering |
+| Approver | — |
+| ISO Reference | ISO 9241-210:2019 |
+| Next Review | 2027-01-08 |
+| Related | `docs/design/SOMA-UI-MOCKUPS-001.md`, `docs/design/SOMA-UI-IDREG-001.md` |
 | Reference | Agent Zero `webui/components/welcome/welcome-screen.html`, `sidebar/left-sidebar.html` (structure only) |
 | Rule | **No triplicated homes.** Settings never in the chat left rail. |
+| Note | Body content remains the authority for mockup IA until this document is promoted to `Approved`. |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-10-08 | SomaTech Engineering | IA audit issued. |
+| 1.1.0 | 2026-10-08 | SomaTech Engineering | Status closed-set fix: was free-text `Authoritative for all mocks`; now `Draft` with authority retained in body until formal approval. Missing ISO fields added. |
 
 ---
 

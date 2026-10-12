@@ -1,0 +1,16 @@
+# Keycloak + Channel-ENV bootstrap (SOMA-STD-BOOTSTRAP-001 §2.5).
+# RHEL9 base has no package manager. CPython from bullseye (glibc 2.31).
+FROM python:3.11-slim-bullseye AS pysrc
+
+FROM quay.io/keycloak/keycloak:24.0
+USER root
+COPY --from=pysrc /usr/local/bin/python3.11 /usr/local/bin/python3.11
+COPY --from=pysrc /usr/local/lib/libpython3.11.so.1.0 /usr/local/lib/
+COPY --from=pysrc /usr/local/lib/python3.11 /usr/local/lib/python3.11
+RUN ln -sf /usr/local/bin/python3.11 /usr/local/bin/python3
+ENV LD_LIBRARY_PATH=/usr/local/lib
+COPY vault_unseal.py init_vault.py vault_scoped_tokens.py vault_inject.py \
+     bootstrap_exec.py bootstrap_exec.sh entrypoint-keycloak.sh /work/
+COPY vault-policies /work/vault-policies
+RUN chmod +x /work/bootstrap_exec.sh /work/entrypoint-keycloak.sh
+USER 1000

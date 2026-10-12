@@ -78,7 +78,6 @@ class AuditLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "audit_logs"
         ordering = ["-created_at"]

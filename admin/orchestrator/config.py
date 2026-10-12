@@ -12,7 +12,6 @@ All code should import directly from ``src.core.config``.
 
 from __future__ import annotations
 
-# Import the canonical configuration objects.
 from admin.core.config import cfg as _cfg, Config as _Config, load_config as _load_config
 
 
@@ -25,7 +24,6 @@ class CentralizedConfig(_Config):
     """
 
     def __new__(cls, *args, **kwargs):  # pragma: no cover – simple delegation
-        # Return the already‑instantiated configuration singleton.
         """Execute new  ."""
 
         return _cfg
@@ -40,6 +38,5 @@ def load_config() -> _Config:
     return _load_config()
 
 
-# Export the public symbols.
 cfg = _cfg  # Re-export the singleton
 __all__ = ["CentralizedConfig", "load_config", "cfg"]

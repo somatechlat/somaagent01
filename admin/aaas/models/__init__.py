@@ -7,7 +7,6 @@ Usage:
     from admin.aaas.models import Tenant, Agent
 """
 
-# Import all choices first (no dependencies)
 from admin.aaas.models.agents import Agent, AgentUser
 from admin.aaas.models.audit import AuditLog
 from admin.aaas.models.choices import (
@@ -29,7 +28,6 @@ from admin.aaas.models.profiles import (
 )
 from admin.aaas.models.tenants import Tenant, TenantUser
 
-# Import models in dependency order
 
 # Django model discovery - all models must be listed here
 __all__ = [

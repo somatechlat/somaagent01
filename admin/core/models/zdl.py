@@ -207,26 +207,38 @@ class IdempotencyRecord(models.Model):
         """
         expires_at = timezone.now() + timedelta(seconds=ttl_seconds)
 
-        record, created = cls.objects.get_or_create(
-            idempotency_key=key,
-            defaults={
-                "operation_type": operation_type,
-                "expires_at": expires_at,
-            },
-        )
+        # Atomic read-modify-write: a second worker must see either no row
+        # (and lose the INSERT race via UNIQUE) or a locked live row. The
+        # previous get_or_create + unguarded expiry rewrite let two callers
+        # both observe "expired" and both return is_new=True (DB-CRIT-5).
+        from django.db import IntegrityError, transaction
 
-        if not created:
-            # Check if expired
+        with transaction.atomic():
+            record = (
+                cls.objects.select_for_update()
+                .filter(idempotency_key=key)
+                .first()
+            )
+            if record is None:
+                try:
+                    with transaction.atomic():
+                        return True, cls.objects.create(
+                            idempotency_key=key,
+                            operation_type=operation_type,
+                            expires_at=expires_at,
+                        )
+                except IntegrityError:
+                    record = cls.objects.select_for_update().get(idempotency_key=key)
+
             if record.expires_at < timezone.now():
-                # Expired - update and treat as new
-                record.expires_at = expires_at
-                record.result = None
-                record.save()
+                cls.objects.filter(pk=record.pk).update(
+                    expires_at=expires_at,
+                    result=None,
+                )
+                record.refresh_from_db()
                 return True, record
-            # Not expired - duplicate
-            return False, record
 
-        return True, record
+            return False, record
 
     @classmethod
     def cleanup_expired(cls) -> int:

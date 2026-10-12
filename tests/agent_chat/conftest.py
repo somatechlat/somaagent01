@@ -7,7 +7,7 @@ VIBE COMPLIANT:
 
 Requirements:
 - SA01_INFRA_AVAILABLE=1 environment variable
-- Running: docker-compose -f infra/aaas/docker-compose.yml up -d
+- Live standalone stack: infra/standalone/docker-compose.yml (somaagent_*)
 """
 
 from __future__ import annotations
@@ -51,9 +51,9 @@ def real_infrastructure():
     import socket
 
     services = [
-        ("localhost", 63932, "PostgreSQL"),  # somastack_postgres
-        ("localhost", 63979, "Redis"),  # somastack_redis
-        ("localhost", 63900, "Agent API"),  # somastack_aaas:9000
+        ("somaagent_postgres", 5432, "PostgreSQL"),
+        ("somaagent_redis", 6379, "Redis"),
+        ("somaagent_standalone", 9000, "Agent API"),
     ]
 
     for host, port, name in services:
@@ -71,7 +71,7 @@ def real_infrastructure():
 def django_db_setup():
     """Configure Django for testing.
 
-    VIBE COMPLIANT: Uses real infrastructure (PostgreSQL on port 63932)
+    VIBE COMPLIANT: Uses live standalone PostgreSQL (somaagent_postgres:5432)
 
     VIBE Rule 7: Uses real Docker Compose PostgreSQL - NO mocks!
 
@@ -88,11 +88,11 @@ def django_db_setup():
             DATABASES={
                 "default": {
                     "ENGINE": "django.db.backends.postgresql",
-                    "HOST": "localhost",  # Force localhost (Docker exposed port)
-                    "PORT": 63932,  # Force AAAS docker-compose port
-                    "NAME": "somaagent",  # AAAS docker-compose database
-                    "USER": "soma",  # AAAS docker-compose user
-                    "PASSWORD": os.environ.get("TEST_DB_PASSWORD", ""),  # From env/Vault
+                    "HOST": "somaagent_postgres",
+                    "PORT": 5432,
+                    "NAME": "somaagent",
+                    "USER": "somaagent",
+                    "PASSWORD": os.environ.get("TEST_DB_PASSWORD", ""),  # From Vault, never a literal
                     "CONN_MAX_AGE": 60,  # Connection pooling
                     "OPTIONS": {
                         "connect_timeout": 5,
@@ -140,25 +140,21 @@ def django_db_setup():
 
 @pytest.fixture
 def test_tenant_id() -> str:
-    """Get or create test tenant ID."""
     return os.environ.get("TEST_TENANT_ID", str(uuid4()))
 
 
 @pytest.fixture
 def test_user_id() -> str:
-    """Get or create test user ID."""
     return os.environ.get("TEST_USER_ID", str(uuid4()))
 
 
 @pytest.fixture
 def test_agent_id() -> str:
-    """Get or create test agent ID."""
     return os.environ.get("TEST_AGENT_ID", str(uuid4()))
 
 
 @pytest.fixture
 def auth_token() -> str:
-    """Get authentication token for testing."""
     # In production tests, this would authenticate against Keycloak
     # For integration tests, use test token from environment
     return os.environ.get("TEST_AUTH_TOKEN", "test_integration_token")
@@ -181,14 +177,13 @@ def chat_service() -> "ChatService":
     # ChatService only accepts somabrain_url and timeout parameters
     # Memory operations use SomaBrainClient internally
     return ChatService(
-        somabrain_url=os.environ.get("SA01_SOMA_BASE_URL", "http://localhost:63996"),
+        somabrain_url=os.environ.get("SA01_SOMA_BASE_URL", "http://somabrain-somabrain_standalone_app-1:30101"),
         timeout=30.0,
     )
 
 
 @pytest.fixture
 async def governor(real_infrastructure):
-    """Get configured Simple Governor."""
     from services.common.simple_governor import get_governor, SimpleGovernor
 
     # SimpleGovernor doesn't require complex dependencies
@@ -235,8 +230,7 @@ async def conversation_id(chat_service, test_agent_id, test_user_id, test_tenant
 
 @pytest.fixture
 def websocket_url(auth_token) -> str:
-    """Get WebSocket URL for testing."""
-    base = os.environ.get("SA01_WS_URL", "ws://localhost:63900")
+    base = os.environ.get("SA01_WS_URL", "ws://somaagent_standalone:9000")
     return f"{base}/ws/v2/chat/?token={auth_token}"
 
 

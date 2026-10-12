@@ -39,7 +39,6 @@ class DeadLetterQueue:
         bus: Optional[KafkaEventBus] = None,
         publisher: Optional[DurablePublisher] = None,
     ) -> None:
-        """Initialize the instance."""
 
         self.source_topic = source_topic
         self.dlq_topic = f"{source_topic}.dlq"

@@ -94,7 +94,6 @@ async def _emit_auth_audit(
 
 @router.post("/token")
 async def get_token(request, payload: TokenRequest):
-    """Get access token via password grant or OAuth code exchange."""
     config = get_keycloak_config()
     token_url = f"{config.server_url}/realms/{config.realm}/protocol/openid-connect/token"
 
@@ -268,7 +267,6 @@ async def refresh_token(request, payload: RefreshRequest):
 
 @router.get("/me", response=UserResponse, auth=AuthBearer())
 async def get_current_user(request):
-    """Get current authenticated user info."""
     # Self-service: acts on the caller's own principal. Identity, not elevated authority.
     await authorize(request, action="identity:self", resource="identity")
     # Check Authorization header first, then httpOnly cookie fallback
@@ -355,7 +353,6 @@ async def logout(request):
     except httpx.HTTPError:
         pass
 
-    # Clear auth cookies
     from django.http import JsonResponse
 
     response = JsonResponse({"success": True})
@@ -719,7 +716,6 @@ async def register_user(request, payload: RegisterRequest):
     config = get_keycloak_config()
     logger.info("User registration: %s", payload.email)
 
-    # Get admin token from Keycloak
     admin_token_url = f"{config.server_url}/realms/master/protocol/openid-connect/token"
     users_url = f"{config.server_url}/admin/realms/{config.realm}/users"
 
@@ -742,7 +738,6 @@ async def register_user(request, payload: RegisterRequest):
             )
 
         async with httpx.AsyncClient(timeout=httpx_timeout()) as client:
-            # Get admin access token
             admin_resp = await client.post(
                 admin_token_url,
                 data={
@@ -758,7 +753,6 @@ async def register_user(request, payload: RegisterRequest):
 
             admin_token = admin_resp.json()["access_token"]
 
-            # Create user in Keycloak
             create_resp = await client.post(
                 users_url,
                 json={

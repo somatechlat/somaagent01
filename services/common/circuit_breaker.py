@@ -118,12 +118,10 @@ class CircuitBreaker:
 
     @property
     def failure_count(self) -> int:
-        """Get current failure count."""
         return self._failure_count
 
     @property
     def success_count(self) -> int:
-        """Get current success count."""
         return self._success_count
 
     async def call(
@@ -316,9 +314,6 @@ def get_all_circuit_breaker_states() -> dict[str, str]:
     return {name: breaker.state.value for name, breaker in _circuit_breakers.items()}
 
 
-# Re-export for backward compatibility during migration
-AsyncCircuitBreaker = CircuitBreaker  # Alias for migration from resilience.py
-
 # Legacy aliases for tool_executor compatibility
 CircuitOpenError = CircuitBreakerError
 
@@ -361,7 +356,6 @@ __all__ = [
     "get_circuit_breaker",
     "reset_all_circuit_breakers",
     "get_all_circuit_breaker_states",
-    "AsyncCircuitBreaker",  # Alias for migration from resilience.py
     "CircuitOpenError",  # Alias for tool_executor compatibility
     "circuit_breaker",  # Decorator factory for tool_executor compatibility
 ]

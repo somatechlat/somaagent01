@@ -328,5 +328,4 @@ def create_api() -> NinjaAPI:
     return api
 
 
-# Create the singleton API instance
 api = create_api()

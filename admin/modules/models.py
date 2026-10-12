@@ -93,7 +93,6 @@ class Module(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "capsule_modules"
         ordering = ["name"]

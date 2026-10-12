@@ -114,7 +114,6 @@ async def _get_integration_config(provider: str) -> dict:
 
     # 1. LLM Provider Special Case
     if provider == "openai":
-        # Find primary model
         model = await LLMModelConfig.objects.filter(provider="openai", is_active=True).afirst()
         if model:
             return {
@@ -209,7 +208,6 @@ async def get_integration(request, provider: str) -> IntegrationConfig:
 
     config = await _get_integration_config(provider)
 
-    # Filter out internal keys
     extra = {
         k: v
         for k, v in config.items()

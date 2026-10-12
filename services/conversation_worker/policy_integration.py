@@ -1,4 +1,3 @@
-"""Module policy_integration."""
 
 from __future__ import annotations
 
@@ -11,7 +10,6 @@ class ConversationPolicyEnforcer:
     """Centralizes policy checks required by the conversation worker."""
 
     def __init__(self, policy_client: PolicyClient | None = None) -> None:
-        """Initialize the instance."""
 
         self.policy = policy_client or PolicyClient()
 

@@ -103,7 +103,6 @@ class Channel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "bridge_channels"
         ordering = ["-created_at"]
@@ -177,7 +176,6 @@ class BridgeSession(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "bridge_sessions"
         ordering = ["-updated_at"]
@@ -244,7 +242,6 @@ class InboundMessage(models.Model):
     )
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "bridge_inbound_messages"
         ordering = ["-received_at"]
@@ -315,7 +312,6 @@ class OutboundMessage(models.Model):
     sent_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "bridge_outbound_messages"
         ordering = ["-created_at"]

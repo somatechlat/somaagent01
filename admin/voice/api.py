@@ -212,7 +212,6 @@ def create_persona_endpoint(request, payload: VoicePersonaCreate):
     auth=AuthBearer(),
 )
 def get_persona_endpoint(request, persona_id: UUID):
-    """Get a specific voice persona by ID."""
     authorize_sync(request, action="agent:read", resource="voice")
     return get_persona(tenant_id=_tenant_id(request), persona_id=persona_id)
 
@@ -289,7 +288,6 @@ def list_sessions_endpoint(
     auth=AuthBearer(),
 )
 def get_session_stats_endpoint(request):
-    """Get aggregated session statistics."""
     authorize_sync(request, action="system:read_metrics", resource="voice")
     return get_session_stats(tenant_id=_tenant_id(request))
 

@@ -138,7 +138,6 @@ export class SomaPermissionGuard extends LitElement {
     private async _checkPermissions() {
         this.loading = true;
         try {
-            // Check cache first
             const cached = sessionStorage.getItem('user_permissions');
             if (cached) {
                 this.userPermissions = new Set(JSON.parse(cached));

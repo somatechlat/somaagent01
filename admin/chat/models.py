@@ -54,7 +54,6 @@ class Conversation(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "conversations"
         ordering = ["-updated_at"]
@@ -134,7 +133,6 @@ class Message(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "messages"
         ordering = ["created_at"]
@@ -171,7 +169,6 @@ class ConversationParticipant(models.Model):
     left_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "conversation_participants"
         unique_together = [["conversation_id", "user_id"]]

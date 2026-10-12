@@ -356,7 +356,6 @@ async def execute_dag(request, payload: DAGRequest) -> DAGResponse:
     start = time.time()
     dag_id = str(uuid4())
 
-    # Build dependency graph
     node_map = {node.node_id: node for node in payload.nodes}
     results: dict[str, DAGNodeResult] = {}
 
@@ -365,7 +364,6 @@ async def execute_dag(request, payload: DAGRequest) -> DAGResponse:
         node_start = time.time()
 
         try:
-            # Wait for dependencies
             if node.depends_on:
                 for dep_id in node.depends_on:
                     if dep_id in results and results[dep_id].status == "failed":
@@ -434,7 +432,6 @@ async def execute_dag(request, payload: DAGRequest) -> DAGResponse:
     auth=AuthBearer(),
 )
 async def get_dag_status(request, dag_id: str) -> dict:
-    """Get status of a DAG execution."""
     await authorize(request, action="system:view", resource="multimodal")
 
     raise HttpError(501, "DAG status is not implemented: no DAG execution store is wired.")

@@ -55,8 +55,8 @@ your Vault runs elsewhere. NetworkPolicy egress already allows port 8200.
 | Env var | Source |
 |---|---|
 | `VAULT_ADDR` | deployment.yaml literal (in-cluster Vault) |
-| `AAAS_DEFAULT_CHAT_MODEL` | deployment.yaml literal — model *pointer*, not a credential |
-| `AAAS_DEFAULT_TENANT_ID` | deployment.yaml literal |
+| `SA01_DEFAULT_CHAT_MODEL` | deployment.yaml literal — model *pointer*, not a credential |
+| `SA01_DEFAULT_TENANT_ID` | deployment.yaml literal |
 
 There is deliberately **no** `GROQ_API_KEY` row. See
 `k8s/somaagent/secret.example.yaml` for the runbook.
@@ -66,14 +66,14 @@ There is deliberately **no** `GROQ_API_KEY` row. See
 ```bash
 cd standalone
 cp .env.example .env
-# edit .env: VAULT_DEV_ROOT_TOKEN_ID, POSTGRES_PASSWORD, AAAS_DEFAULT_TENANT_ID
+# edit .env: VAULT_DEV_ROOT_TOKEN_ID, POSTGRES_PASSWORD, SA01_DEFAULT_TENANT_ID
 #            — never a model API key
 vault kv put secret/agent/api_keys groq_api_key='<real key>'
 docker compose up --build -d
 ```
 
-`docker-compose.yml` passes `AAAS_DEFAULT_CHAT_MODEL` and
-`AAAS_DEFAULT_TENANT_ID`. Model keys are **not** read from `.env` — seed them
+`docker-compose.yml` passes `SA01_DEFAULT_CHAT_MODEL` and
+`SA01_DEFAULT_TENANT_ID`. Model keys are **not** read from `.env` — seed them
 into Vault (`http://somaagent_vault:8200`, `VAULT_TOKEN` derived from
 `VAULT_DEV_ROOT_TOKEN_ID`).
 

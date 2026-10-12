@@ -69,23 +69,19 @@ class KeycloakConfig(BaseModel):
 
     @property
     def issuer(self) -> str:
-        """Get the token issuer URL."""
         return f"{self.server_url}/realms/{self.realm}"
 
     @property
     def jwks_url(self) -> str:
-        """Get the JWKS URL for public keys."""
         return f"{self.issuer}/protocol/openid-connect/certs"
 
     @property
     def userinfo_url(self) -> str:
-        """Get the userinfo endpoint URL."""
         return f"{self.issuer}/protocol/openid-connect/userinfo"
 
 
 @lru_cache(maxsize=1)
 def get_keycloak_config() -> KeycloakConfig:
-    """Get cached Keycloak configuration from Django settings."""
     from django.conf import settings
 
     return KeycloakConfig(
@@ -161,7 +157,7 @@ class TokenPayload(BaseModel):
         if self.tenant:
             # If tenant is "default", return the settings default UUID
             if self.tenant == "default":
-                return getattr(settings, "AAAS_DEFAULT_TENANT_ID", None)
+                return getattr(settings, "SA01_DEFAULT_TENANT_ID", None)
             # Otherwise use the tenant value directly (might be a UUID)
             return self.tenant
 
@@ -169,7 +165,6 @@ class TokenPayload(BaseModel):
 
     @property
     def roles(self) -> list[str]:
-        """Get all realm roles."""
         if self.realm_access:
             return self.realm_access.get("roles", [])
         return []
@@ -179,7 +174,6 @@ class TokenPayload(BaseModel):
         return role in self.roles
 
     def get_client_roles(self, client_id: str) -> list[str]:
-        """Get roles for a specific client."""
         if self.resource_access:
             client_access = self.resource_access.get(client_id, {})
             return client_access.get("roles", [])
@@ -190,7 +184,6 @@ class JWKSCache:
     """Cache for JWKS public keys."""
 
     def __init__(self, ttl_seconds: int = 3600):
-        """Initialize the instance."""
 
         self._cache: dict[str, Any] = {}
         self._expires_at: float = 0
@@ -260,10 +253,8 @@ async def decode_token(token: str) -> TokenPayload:
     config = get_keycloak_config()
 
     try:
-        # Get JWKS for signature verification
         jwks = await _jwks_cache.get_keys(config.jwks_url)
 
-        # Get the signing key
         unverified_header = jwt.get_unverified_header(token)
         kid = unverified_header.get("kid")
 
@@ -276,7 +267,6 @@ async def decode_token(token: str) -> TokenPayload:
         if not rsa_key:
             raise UnauthorizedError("Unable to find signing key")
 
-        # Check if strict issuer validation is enabled
         strict_issuer = getattr(django_settings, "JWT_ISSUER_STRICT", True)
         expected_issuer = config.issuer if strict_issuer else None
 
@@ -352,7 +342,7 @@ def _deployment_tenant() -> str:
 
     value = (
         os.environ.get("SA01_TENANT_ID")
-        or os.environ.get("AAAS_DEFAULT_TENANT_ID")
+        or os.environ.get("SA01_DEFAULT_TENANT_ID")
         or ""
     ).strip()
     return value or None

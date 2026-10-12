@@ -12,7 +12,6 @@ import logging
 from typing import Optional
 
 from ninja import Router
-from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from admin.common.auth import AuthBearer
@@ -82,34 +81,14 @@ async def setup_mfa(request) -> MFASetupResponse:
     """
     # Self-service: acts on the caller's own principal. Identity, not elevated authority.
     await authorize(request, action="identity:self", resource="identity")
-    import secrets
 
-    import pyotp  # type: ignore[import]
-
-    # Get user from auth context
-    user_email = getattr(request.auth, "email", None)
-    if not user_email:
+    if not getattr(request.auth, "email", None):
         raise UnauthorizedError("Email not found in auth context")
 
-    # Generate TOTP secret
-    secret = pyotp.random_base32()
-
-    # Create provisioning URI
-    totp = pyotp.TOTP(secret)
-    provisioning_uri = totp.provisioning_uri(
-        name=user_email,
-        issuer_name="SomaAgent",
-    )
-
-    # Generate QR code
-    qr_code_base64 = _generate_qr_code(provisioning_uri)
-
-    # Generate backup codes
-    backup_codes = [secrets.token_hex(4).upper() for _ in range(10)]
-
-    # NOTE: Real persistence not yet wired. The generated secret MUST be stored
-    # encrypted in a MFASetup or UserProfile table before this endpoint is usable.
-    # When wired, this should be: MFASetup.objects.create(user_id=user.id, encrypted_secret=encrypt(secret))
+    # Persistence for MFA secrets is not wired (no MFASetup/UserProfile store).
+    # Refuse BEFORE any TOTP secret, QR code, or backup-code material is
+    # generated — computing secrets on a path that always fails is dead work
+    # and hands callers nothing (SIMP-02 / R-1 no stubs).
     raise ServiceUnavailableError(
         "mfa",
         "MFA secret persistence (database storage) is not yet implemented. Cannot proceed with MFA setup.",
@@ -153,7 +132,6 @@ async def validate_mfa_login(request, payload: MFAVerifyRequest) -> dict:
 
     Called after password verification when MFA is required.
     """
-    import pyotp  # type: ignore[import]  # noqa: F401
 
     # Fail-closed: MFA login validation requires loading the user's stored secret
     # from the database/session. Hardcoding is a critical security violation.
@@ -169,10 +147,11 @@ async def validate_mfa_login(request, payload: MFAVerifyRequest) -> dict:
     auth=AuthBearer(),
 )
 async def get_mfa_status(request) -> MFAStatusResponse:
-    """Get current MFA status for the user."""
     # Self-service: acts on the caller's own principal. Identity, not elevated authority.
     await authorize(request, action="identity:self", resource="identity")
-    raise HttpError(501, "MFA status is not implemented: user record store is not wired.")
+    raise ServiceUnavailableError(
+        "mfa",
+         "MFA status is not implemented: user record store is not wired.")
 
 
 @router.post(
@@ -184,7 +163,6 @@ async def disable_mfa(request, payload: MFAVerifyRequest) -> dict:
     """Disable MFA (requires current TOTP code)."""
     # Self-service: acts on the caller's own principal. Identity, not elevated authority.
     await authorize(request, action="identity:self", resource="identity")
-    import pyotp  # type: ignore[import]  # noqa: F401
 
     # Fail-closed: disabling MFA must verify against the user's real stored secret
     raise ServiceUnavailableError("mfa", "MFA disable: secret storage not yet implemented.")
@@ -210,34 +188,3 @@ async def use_backup_code(request, code: str) -> dict:
 # =============================================================================
 
 
-def _generate_qr_code(data: str) -> str:
-    """Generate QR code as base64 PNG using the qrcode library.
-
-    Raises:
-        ServiceUnavailableError: If the qrcode library is not installed.
-    """
-    try:
-        import qrcode  # type: ignore[import]
-
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.ERROR_CORRECT_L,
-            box_size=10,
-            border=4,
-        )
-        qr.add_data(data)
-        qr.make(fit=True)
-
-        img = qr.make_image(fill_color="black", back_color="white")
-
-        buffer = io.BytesIO()
-        img.save(buffer, kind="PNG")
-        buffer.seek(0)
-
-        return base64.b64encode(buffer.getvalue()).decode()
-
-    except ImportError:
-        # Fail-closed: QR generation is required for MFA setup
-        raise ServiceUnavailableError(
-            "mfa", "qrcode library not installed; install qrcode to enable MFA QR generation"
-        )

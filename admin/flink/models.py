@@ -41,7 +41,6 @@ class FlinkConversationMetrics(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "flink_conversation_metrics"
         unique_together = [["tenant_id", "window_start"]]
@@ -86,7 +85,6 @@ class FlinkUsageAggregate(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "flink_usage_aggregates"
         unique_together = [["tenant_id", "resource_type", "window_start"]]
@@ -145,7 +143,6 @@ class FlinkAnomalyAlert(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "flink_anomaly_alerts"
         indexes = [
@@ -190,7 +187,6 @@ class FlinkAgentMetrics(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "flink_agent_metrics"
         unique_together = [["agent_id", "window_start"]]
@@ -237,7 +233,6 @@ class FlinkSystemMetrics(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "flink_system_metrics"
         indexes = [
@@ -293,7 +288,6 @@ class FlinkLLMTokenMetrics(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "flink_llm_token_metrics"
         unique_together = [["tenant_id", "model_name", "window_start"]]
@@ -346,7 +340,6 @@ class FlinkLLMModelUsage(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "flink_llm_model_usage"
         unique_together = [["tenant_id", "agent_id", "model_name", "date"]]

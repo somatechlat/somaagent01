@@ -133,7 +133,6 @@ class DelegationRequest(BaseModel):
 
 
 class DelegationCallback(BaseModel):
-    """Delegationcallback class implementation."""
 
     status: str
     result: dict[str, Any] | None = None
@@ -143,7 +142,6 @@ class DelegationGateway:
     """Minimal delegation handler used by Temporal A2A worker."""
 
     def __init__(self) -> None:
-        """Initialize the instance."""
 
         self._publisher = get_publisher()
         self._topic = os.environ.get("A2A_OUT_TOPIC", "a2a.out")
@@ -225,7 +223,11 @@ async def create_delegation_task(request, body: DelegationRequest) -> dict:
         "callback_url": body.callback_url,
         "metadata": body.metadata or {},
     }
-    topic = os.environ.get("DELEGATION_TOPIC", "somastack.delegation")
+    topic = os.environ.get("DELEGATION_TOPIC")
+    if not topic:
+        raise RuntimeError(
+            "DELEGATION_TOPIC is required. There is no default topic name."
+        )
     await publisher.publish(
         topic,
         event,

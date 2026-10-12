@@ -22,8 +22,8 @@ from admin.core.models import Capsule
 
 def _postgres_available() -> bool:
     """Check if PostgreSQL is available."""
-    host = os.environ.get("SA01_DB_HOST", "localhost")
-    port = int(os.environ.get("SA01_DB_PORT", "63932"))
+    host = os.environ.get("SA01_DB_HOST", "somaagent_postgres")
+    port = int(os.environ.get("SA01_DB_PORT", "5432"))
     try:
         with socket.create_connection((host, port), timeout=2):
             return True
@@ -34,7 +34,7 @@ def _postgres_available() -> bool:
 def _somabrain_available() -> bool:
     """Check if SomaBrain API is available."""
     try:
-        with socket.create_connection(("localhost", 63996), timeout=2):
+        with socket.create_connection(("somabrain-somabrain_standalone_app-1", 30101), timeout=2):
             return True
     except (socket.error, socket.timeout):
         return False

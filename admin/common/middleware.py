@@ -82,7 +82,6 @@ class SessionMiddleware:
         self._session_manager: Optional[SessionManager] = None
 
     async def _get_session_manager(self) -> SessionManager:
-        """Get or create SessionManager instance."""
         if self._session_manager is None:
             self._session_manager = await get_session_manager()
         return self._session_manager
@@ -93,7 +92,6 @@ class SessionMiddleware:
         For sync views, we skip session validation.
         Use async views for full session support.
         """
-        # Skip excluded paths
         if _is_excluded_path(request.path):
             return self.get_response(request)
 
@@ -106,7 +104,6 @@ class SessionMiddleware:
 
         Full session validation for async views.
         """
-        # Skip excluded paths
         if _is_excluded_path(request.path):
             return await self.get_response(request)
 
@@ -126,7 +123,6 @@ class SessionMiddleware:
                 status=401,
             )
 
-        # Validate JWT and get claims
         try:
             from admin.common.auth import decode_token
 
@@ -163,7 +159,6 @@ class SessionMiddleware:
                 status=401,
             )
 
-        # Get session from Redis
         session_manager = await self._get_session_manager()
 
         # Session ID from JWT claims or httpOnly cookie
@@ -202,7 +197,6 @@ class SessionMiddleware:
                     status=401,
                 )
 
-            # Update activity (extends TTL)
             await session_manager.update_activity(claims.sub, session_id)
 
             # Attach session to request

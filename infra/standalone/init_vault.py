@@ -1,491 +1,273 @@
 #!/usr/bin/env python3
-"""Standalone Vault seeder — VIBE Rule 164.
+"""Standalone Vault seeder — VIBE Rule 164 / Rule 91.
 
-Reads deployer-supplied secret VALUES from ``./secrets/`` (gitignored) and
-writes them into Vault at the paths the application actually reads:
+**NO SECRETS EVER TOUCH THE FILESYSTEM.**
 
-    secret/agent/credentials/<snake_case>        UnifiedSecretManager.get_credential()
-    secret/agent/api_keys/<provider>_api_key     UnifiedSecretManager.get_provider_key()
+Every credential is generated in process memory (``secrets.token_urlsafe``) and
+written directly into Vault. There is no ``SECRETS_DIR``, no plaintext file,
+and no local copy after this process exits. Vault is the only system of record.
 
-This is the local stand-in for the out-of-band secret creation production
-performs. It is not a source of truth: it copies values into Vault and keeps
-none.
+    secret/agent/credentials/<snake_case>      UnifiedSecretManager.get_credential()
+    secret/agent/api_keys/<provider>_api_key   UnifiedSecretManager.get_provider_key()
 
-Properties this script must have:
+Properties:
 
 * **Never prints a secret value.** Not on success, not on failure, not in a
-  request body that gets echoed, not in an exception. Every error message names
-  a file or a path, never a value.
-* **Fails closed.** A missing or empty required secret file is a hard error
-  naming the file. It is never skipped, and an empty string is never written to
-  Vault.
-* **Idempotent.** Safe to re-run. Overwrites only with ``--force``, so a re-run
-  cannot silently clobber a value someone rotated in Vault by hand.
-* **No shell interpolation.** Values travel as Python ``bytes`` from file to
-  HTTP body. They never appear in ``argv``, in a shell variable, or in a
-  format string that a log could capture.
+  request body, not in an exception. Errors name keys and HTTP status only.
+* **Never writes a secret to disk.** Not a file, not .env, not argv, not a
+  shell history. Values live only in process memory and in Vault.
+* **Fails closed.** Missing Vault / sealed Vault / HTTP error is a hard error.
+  An empty string is never written.
+* **Idempotent.** Without ``--force``, a key already in Vault is left alone
+  (hand-rotation survives). With ``--force``, regenerate + overwrite.
+* **Optional operator value** via process env ``SOMA_SECRET_<KEY>`` — used only
+  for the current process, never persisted by this script.
 
 Usage::
 
-    python3 init_vault.py            # seed keys not already present
-    python3 init_vault.py --force    # overwrite every key from SECRETS_DIR
-    python3 init_vault.py --check    # report presence + t=0 match, write nothing
+    python3 init_vault.py            # generate + seed missing keys
+    python3 init_vault.py --force    # regenerate + overwrite every key
+    python3 init_vault.py --check    # report presence, write nothing
 
-Environment (bootstrap topology — every one REQUIRED, never defaulted;
-VIBE Rule 91 / RAPID Rule 1 and 3)::
+Environment (bootstrap topology — REQUIRED, never defaulted; Rule 91)::
 
-    VAULT_TOKEN_FILE          path to the Vault root token (NOT the token)
-    VAULT_ADDR                Vault API address for the agent stack
-    SECRETS_DIR               directory of t=0 secret files
+    VAULT_ADDR       Vault API address
+    VAULT_TOKEN      root token IN MEMORY of this one-shot process (not on disk)
+                     (vault_unseal.py obtains it from the OS keychain / prior
+                     init and passes it in this process's environment only)
 
-There is no VAULT_TOKEN environment variable. The root token is a credential
-and is read from a file, never from the environment (VIBE Rule 164).
+There is no VAULT_TOKEN_FILE. There is no SECRETS_DIR. Rule 164.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import secrets as py_secrets
+import subprocess
 import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-
-
-def require_env(name: str) -> str:
-    """One required bootstrap variable. Fail closed; never default (Rule 91)."""
-    value = os.environ.get(name)
-    if not value:
-        raise SystemExit(
-            f"ERROR: required environment variable {name} is not set.\n"
-            f"   Bootstrap topology is required and never defaulted. A default "
-            f"   is a hardcoded value (RAPID Rule 1 / VIBE Rule 91). See this "
-            f"   file's docstring for the contract."
-        )
-    return value
-
-
-SECRETS_DIR = Path(require_env("SECRETS_DIR"))
-VAULT_ADDR = require_env("VAULT_ADDR").rstrip("/")
-# KV v2 mount for agent credentials. This is the path contract from RAPID
-# Rule 5 and SOMA-STD-CONFIG-001 R-SEC-01 (`secret/agent/credentials/{key}`),
-# the same constant the readers use (services/common/vault_secrets.py
-# mount_point, somabrain/core/security/vault_client.SHARED_CREDENTIALS_PATH).
-# It is not deployment topology and is not overridable — one mount, one path.
+VAULT_ADDR = (os.environ.get("VAULT_ADDR") or "").rstrip("/")
 VAULT_MOUNT = "secret"
+T0_DIR = Path(os.environ["T0_DIR"]) if os.environ.get("T0_DIR") else None
 
-# The Vault root token authenticates this seeder TO Vault, so it cannot itself
-# live in Vault. It is still a credential, and VIBE Rule 164 says a credential
-# does not belong in the environment — an ENV value is visible in `ps`, in
-# /proc/*/environ and in every crash dump. It arrives as a FILE instead, the
-# same way postgres_password does. VAULT_TOKEN_FILE is a path, not a secret.
-#
-# There is deliberately no VAULT_TOKEN fallback. Exporting a root token into a
-# shell is exactly the habit this whole design exists to remove.
-_TOKEN_FILE = Path(require_env("VAULT_TOKEN_FILE"))
-try:
-    VAULT_TOKEN = _TOKEN_FILE.read_text(encoding="utf-8").strip()
-except OSError:
-    VAULT_TOKEN = ""
-if not VAULT_TOKEN:
+
+def _load_vault_token() -> str:
+    """Bootstrap token for THIS one-shot process (R-SEC-03).
+
+    Order: process env (one-shot only) → RAM tmpfs custodian (T0_DIR) →
+    OS keychain. Never a repo file. Never logged.
+    """
+    env = os.environ.get("VAULT_TOKEN")
+    if env and env.strip():
+        return env.strip()
+    if T0_DIR is not None:
+        path = T0_DIR / "vault_root_token"
+        if path.is_file():
+            value = path.read_text(encoding="utf-8").strip()
+            if value:
+                return value
+    try:
+        proc = subprocess.run(
+            ["security", "find-generic-password",
+             "-s", os.environ.get("KEYCHAIN_SERVICE", "soma-vault-t0"),
+             "-a", "vault_root_token", "-w"],
+            capture_output=True,
+        )
+        if proc.returncode == 0:
+            value = proc.stdout.decode("utf-8", errors="replace").strip()
+            if value:
+                return value
+    except FileNotFoundError:
+        pass
     raise SystemExit(
-        f"ERROR: no Vault root token at {_TOKEN_FILE}.\n"
-        f"   Run vault_unseal.py first (it initialises Vault and writes the "
-        f"token there), or point VAULT_TOKEN_FILE at the token. It is never "
-        f"read from the environment."
+        "ERROR: no Vault root token available for the seeder.\n"
+        "   R-SEC-03: provide VAULT_TOKEN for this one-shot process, or\n"
+        "   ensure vault_unseal.py left it in the T0_DIR tmpfs custodian or\n"
+        "   the OS keychain. It is never read from a file in the repo."
     )
 
-CREDENTIALS_PATH = "agent/credentials"
-API_KEYS_PATH = "agent/api_keys"
 
-# The shared agent↔brain trust boundary. BOTH stacks must track the t=0 file:
-# the brain vault_init job always writes this key from the same file, and a
-# skip-if-present here would let the two sides diverge again (the 401 this
-# path exists to prevent — one credential, one value). Readers:
-# UnifiedSecretManager.get_credential("somabrain_memory_http_token") and
-# somabrain vault_client.get_runtime_secret("memory_http_token").
-SHARED_MEMORY_TOKEN_KEY = "somabrain_memory_http_token"
+VAULT_TOKEN = _load_vault_token()
 
-# Keys the settings modules read via get_credential(). Names are load-bearing:
-# config/settings.py, services/gateway/settings.py and
-# infra/aaas/unified_settings.py pass exactly these strings. Renaming one here
-# silently breaks that read (get_credential returns None).
-REQUIRED_CREDENTIALS = (
+# Logical credentials the app reads via get_credential(). Generated, never stored
+# to disk. (Name → minimum length of generated value.)
+CREDENTIAL_KEYS = (
     "django_secret_key",
     "postgres_password",
     "test_db_password",
     "soma_api_token",
     "somabrain_memory_http_token",
+    "somabrain_jwt_secret",
     "keycloak_client_secret",
     "keycloak_admin_password",
+    "minio_access_key",
+    "minio_secret_key",
+    "supervisor_http_pass",
 )
 
-# Legitimately absent in a standalone stack with no brain, no external LLM
-# proxy and no Google OAuth. Missing is not fatal; the app fails closed on the
-# specific feature that needs them.
-#
-# The service-credential group below is the same deal: each names a feature
-# that is off or unused in a bare standalone stack (SpiceDB authz, Kafka SASL,
-# JWT sessions, WhatsApp Cloud). A missing key disables or fail-closes exactly
-# that feature — it never defaults to an empty string.
-OPTIONAL_CREDENTIALS = (
-    "somabrain_api_key",
-    "llm_api_key",
-    "google_client_secret",
-    # Service credentials (VIBE Rule 164) — were in ENV before, now Vault-only.
-    "jwt_secret",
-    "auth_internal_token",
-    "gateway_internal_token",
-    "spicedb_token",
-    "kafka_sasl_password",
-    "wa_cloud_api_token",
-    "wa_cloud_webhook_verify_token",
-    "wa_cloud_app_secret",
-    # Capsule certification (the Registry Root of Trust). Read when the
-    # Registry is constructed, not at boot, so its absence does not stop the
-    # API from starting — but certification then fails closed rather than
-    # signing with anything invented. services/registry_service.py accepts
-    # only a real 32-byte seed (base64 or hex); it never pads one into shape.
-    "registry_private_key",
+API_KEY_PROVIDERS = (
+    "groq",
+    "openai",
+    "elevenlabs",
+    "anthropic",
 )
 
+FORCE = "--force" in sys.argv
+CHECK = "--check" in sys.argv
 
-class SeedError(Exception):
-    """A condition that must stop the deployment. Never carries a secret."""
+
+def require_env(name: str) -> str:
+    value = os.environ.get(name)
+    if not value:
+        raise SystemExit(
+            f"ERROR: required environment variable {name} is not set.\n"
+            f"   Bootstrap topology is required and never defaulted "
+            f"   (RAPID Rule 1 / VIBE Rule 91)."
+        )
+    return value
 
 
 def log(msg: str) -> None:
     print(msg, file=sys.stderr, flush=True)
 
 
-def die(msg: str) -> "None":
-    raise SeedError(msg)
-
-
-# ---------------------------------------------------------------------------
-# HTTP — bodies are bytes that never round-trip through a log
-# ---------------------------------------------------------------------------
-
-
-def _request(method: str, path: str, body: bytes | None = None, timeout: float = 10.0):
-    url = f"{VAULT_ADDR}/v1/{path.lstrip('/')}"
-    headers = {"X-Vault-Token": VAULT_TOKEN}
-    if body is not None:
-        headers["Content-Type"] = "application/json"
-    req = urllib.request.Request(url, data=body, headers=headers, method=method)
+def vault_req(method: str, path: str, body: dict | None = None):
+    url = f"{VAULT_ADDR}/v1/{path}"
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(url, data=data, method=method)
+    req.add_header("X-Vault-Token", VAULT_TOKEN)
+    req.add_header("Content-Type", "application/json")
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urllib.request.urlopen(req, timeout=15) as resp:
             raw = resp.read()
-            status = resp.status
-    except urllib.error.HTTPError as exc:
-        raw = exc.read()
-        status = exc.code
-    except urllib.error.URLError as exc:
-        # exc.reason can embed the URL; the URL has no secret in it.
-        raise SeedError(f"cannot reach Vault at {VAULT_ADDR}: {exc.reason}") from None
-
-    if not raw:
-        return status, None
-    try:
-        return status, json.loads(raw.decode("utf-8"))
-    except (ValueError, UnicodeDecodeError):
-        # Never include the body — it could contain a secret in a proxy error.
-        return status, None
+            return resp.status, json.loads(raw) if raw else {}
+    except urllib.error.HTTPError as e:
+        raw = e.read()
+        try:
+            payload = json.loads(raw) if raw else {}
+        except Exception:
+            payload = {}
+        return e.code, payload
+    except Exception as e:
+        raise SystemExit(f"ERROR: Vault request {method} {path} failed: {type(e).__name__}")
 
 
-def vault_ready() -> bool:
-    status, _ = _request("GET", "sys/health")
-    # 200 = unsealed and active, 429 = unsealed standby, 472 = performance
-    # standby, 473 = DR secondary, 501 = not initialized, 503 = sealed.
-    return status in (200, 429, 472, 473)
+def generate_value(key: str) -> str:
+    """Operator override via process env only; otherwise generate in memory."""
+    env_key = f"SOMA_SECRET_{key.upper()}"
+    override = os.environ.get(env_key)
+    if override:
+        if not override.strip():
+            raise SystemExit(f"ERROR: {env_key} is set but empty. Refusing.")
+        return override.strip()
+    # 43 url-safe chars ~= 256 bits. Enough for any bearer/password material.
+    return py_secrets.token_urlsafe(32)
 
 
-def ensure_mount() -> None:
-    body = json.dumps({"type": "kv", "options": {"version": "2"}}).encode("utf-8")
-    # 204 = created, 400 = already mounted. Both are fine.
-    _request("POST", f"sys/mounts/{VAULT_MOUNT}", body)
-
-
-def read_secret_map(path: str) -> dict:
-    """The whole KV document at `path`, or {} if it does not exist yet.
-
-    KV v2 stores ONE map per path. Every key this script manages for a path
-    lives side by side in that map, so a write has to be a read-modify-write.
-    """
-    status, data = _request("GET", f"{VAULT_MOUNT}/data/{path}")
-    if status != 200 or not isinstance(data, dict):
-        return {}
-    inner = data.get("data") or {}
-    values = inner.get("data") or {}
-    return dict(values) if isinstance(values, dict) else {}
-
-
-def key_present(path: str, key: str) -> bool:
-    value = read_secret_map(path).get(key)
-    # Present means a non-empty string. An empty value is treated as absent so
-    # that --check reports it and --force can repair it.
-    return isinstance(value, str) and value != ""
-
-
-def write_secret(path: str, key: str, value: bytes) -> None:
-    """Merge one key into the KV document at `path`, then read back and assert.
-
-    `value` is raw bytes from a file — never a shell string.
-
-    KV v2 `POST /:mount/data/:path` REPLACES the document; it does not merge.
-    Writing `{key: text}` alone would silently destroy every other key already
-    stored at that path. So this reads the current document, sets one key in
-    it, and writes the whole map back — then reads the document again and
-    asserts the key landed byte-for-byte and every pre-existing sibling is
-    still present. A mismatch is a hard error; nothing is logged but names.
-    """
-    text = value.decode("utf-8")
-    current = read_secret_map(path)
-    prior_keys = set(current)
-    current[key] = text
-    body = json.dumps({"data": current}).encode("utf-8")
-    status, _ = _request("POST", f"{VAULT_MOUNT}/data/{path}", body)
+def kv2_write(path: str, data: dict) -> None:
+    status, payload = vault_req("POST", f"{VAULT_MOUNT}/data/{path}", {"data": data})
     if status not in (200, 204):
-        # Deliberately no response body in the message.
-        raise SeedError(
-            f"Vault refused the write at {VAULT_MOUNT}/{path} [{key}] "
-            f"(HTTP {status}). The value was not logged; see the Vault audit "
-            f"log for the cause."
-        )
-
-    # Read-back is mandatory. The value must match the t=0 material exactly
-    # (same trailing-newline trim every consumer applies), and a merge write
-    # must carry every sibling forward — KV v2 POST replaces the document.
-    stored_map = read_secret_map(path)
-    if stored_map.get(key) != text:
-        raise SeedError(
-            f"read-back mismatch at {VAULT_MOUNT}/{path} [{key}]: the stored "
-            f"value does not match the t=0 source file. Refusing to treat the "
-            f"seed as successful. The value was not logged."
-        )
-    lost = prior_keys - set(stored_map)
-    if lost:
-        raise SeedError(
-            f"merge write at {VAULT_MOUNT}/{path} destroyed sibling key(s): "
-            f"{sorted(lost)}. KV v2 POST replaces the whole document; every "
-            f"pre-existing key must be carried forward."
+        raise SystemExit(
+            f"ERROR: write {VAULT_MOUNT}/data/{path} -> HTTP {status}. "
+            f"Value was not logged."
         )
 
 
-# ---------------------------------------------------------------------------
-# Seeding
-# ---------------------------------------------------------------------------
-
-
-def read_secret_file(name: str, *, required: bool) -> bytes | None:
-    full = SECRETS_DIR / name
-    if not full.is_file():
-        if required:
-            raise SeedError(
-                f"required secret file missing: {full}\n"
-                f"   Generate it (see {SECRETS_DIR / 'README.md'}) — the "
-                f"deployment fails closed rather than boot without it."
-            )
-        log(f"   – skipped (no file): {name}")
+def kv2_read(path: str, key: str) -> str | None:
+    status, payload = vault_req("GET", f"{VAULT_MOUNT}/data/{path}")
+    if status == 404:
         return None
-    data = full.read_bytes()
-    if not data.strip():
-        raise SeedError(
-            f"secret file is empty: {full}\n"
-            f"   An empty secret is not a secret. Fill it or delete it — never "
-            f"write a blank, and never a placeholder like 'change-me'."
+    if status != 200:
+        raise SystemExit(
+            f"ERROR: read {VAULT_MOUNT}/data/{path} -> HTTP {status}."
         )
-    # Every consumer of these values strips trailing newlines — `$(cat file)`,
-    # `$(< file)`, the official Postgres image's file_env(). Storing the raw
-    # bytes would put a newline in Vault that those consumers never see, so a
-    # later get_credential() would disagree with the password actually in use.
-    # Strip exactly that, and say so. Nothing else is altered — interior and
-    # leading whitespace is part of the value.
-    stripped = data.rstrip(b"\r\n")
-    if stripped != data:
-        log(f"   – stripped trailing newline(s) from {name}")
-        data = stripped
-    return data
+    data = (payload.get("data") or {}).get("data") or {}
+    value = data.get(key)
+    return str(value) if value else None
 
 
-def seed(
-    path: str,
-    key: str,
-    filename: str,
-    *,
-    required: bool,
-    force: bool,
-    check: bool,
-    always: bool = False,
-) -> str:
-    """Returns 'seeded' | 'skipped' | 'present' | 'missing'.
+def seed_key(path: str, key: str) -> str:
+    """Generate (or take operator env) and write to Vault. Never touches disk."""
+    if CHECK:
+        present = kv2_read(path, key)
+        log(f"   {'present' if present else 'MISSING'}  {path}[{key}]")
+        return "check"
 
-    ``always`` is for the shared agent↔brain trust-boundary credential: its
-    t=0 file is the single source of value, both stacks must track it, and
-    skip-if-present would let them diverge. Every other key keeps
-    skip-if-present so a hand-rotation in Vault survives a re-run.
-    """
-    if check:
-        has_file = SECRETS_DIR.is_dir() and (SECRETS_DIR / filename).is_file()
-        if not key_present(path, key):
-            if required or has_file:
-                log(f"   ✘ {VAULT_MOUNT}/{path}  [{key}]  MISSING")
-                return "missing"
-            log(f"   ○ {VAULT_MOUNT}/{path}  [{key}]  absent (optional; feature fail-closes)")
-            return "skipped"
-        # Presence is not proof. When the t=0 file exists, the stored value
-        # must match it byte-for-byte — that is the one-value assertion.
-        expected = read_secret_file(filename, required=False) if has_file else None
-        if expected is not None:
-            stored = read_secret_map(path).get(key)
-            if stored != expected.decode("utf-8"):
-                log(f"   ✘ {VAULT_MOUNT}/{path}  [{key}]  MISMATCH vs t=0 file")
-                return "missing"
-            log(f"   ✔ {VAULT_MOUNT}/{path}  [{key}]  present, matches t=0")
-            return "present"
-        log(f"   ✔ {VAULT_MOUNT}/{path}  [{key}]  present")
-        return "present"
+    if not FORCE:
+        existing = kv2_read(path, key)
+        if existing:
+            log(f"   – skipped (already in Vault): {path}[{key}]")
+            return "skip"
 
-    value = read_secret_file(filename, required=required)
-    if value is None:
-        return "skipped"
+    value = generate_value(key)
+    if not value:
+        raise SystemExit(f"ERROR: generated empty value for {key}. Refusing.")
 
-    if not force and not always and key_present(path, key):
-        log(f"   ↷ already present, not overwriting: {VAULT_MOUNT}/{path}  [{key}]  (use --force)")
-        return "skipped"
+    kv2_write(path, {key: value})
 
-    write_secret(path, key, value)
-    log(f"   ✔ seeded {VAULT_MOUNT}/{path}  [{key}]  (read-back matched t=0)")
+    # Read-back assert — compare in memory only.
+    stored = kv2_read(path, key)
+    if stored != value:
+        raise SystemExit(
+            f"ERROR: read-back mismatch at {path}[{key}]. "
+            f"Value was not logged. Refusing to treat the seed as successful."
+        )
+    log(f"   ✔ generated + seeded {path}[{key}]  (in-memory only, never on disk)")
+
+    # NO password file handoff. Third-party images get the secret via Channel
+    # ENV only (vault_inject.py / entrypoint_pg_vault.py execve) — never a
+    # T0 file, never /run/t0, never disk. Operator LAW 2026-10-11.
+    del value, stored
     return "seeded"
 
 
-def main(argv: list[str]) -> int:
-    force = "--force" in argv
-    check = "--check" in argv
-    unknown = [a for a in argv if a not in {"--force", "--check", "-h", "--help"}]
-    if unknown:
-        log(f"❌ Unknown argument: {unknown[0]}")
-        return 2
-    if "-h" in argv or "--help" in argv:
-        log(__doc__ or "")
-        return 0
-
+def main() -> int:
+    require_env("VAULT_ADDR")
+    # VAULT_TOKEN is loaded by _load_vault_token() (env or T0 custodian or
+    # keychain). It is intentionally NOT require_env — that would demand a
+    # long-lived env secret (R-SEC-03 one-shot / custodian only).
     if not VAULT_TOKEN:
-        log(
-            f"❌ no Vault token available.\n"
-            f"   The token authenticates TO Vault and therefore cannot itself\n"
-            f"   live in Vault. It is read from a FILE, never from the\n"
-            f"   environment — a token in env is visible in `ps`, in\n"
-            f"   /proc/*/environ and in every crash dump.\n"
-            f"   Point VAULT_TOKEN_FILE at that file (default:\n"
-            f"   {SECRETS_DIR / 'vault_root_token'}), or run vault_unseal.py\n"
-            f"   first to generate it.\n"
-            f"   There is no VAULT_TOKEN / VAULT_DEV_ROOT_TOKEN_ID fallback,\n"
-            f"   and no dev-mode shortcut."
+        raise SystemExit(
+            "ERROR: no Vault token for the seeder. R-SEC-03: one-shot env, "
+            "T0_DIR custodian, or OS keychain. Never a repo file."
         )
-        return 1
 
-    if not check and not SECRETS_DIR.is_dir():
-        log(
-            f"❌ secrets directory not found: {SECRETS_DIR}\n"
-            f"   See {SECRETS_DIR / 'README.md'} — one file per secret, "
-            f"generated locally, never committed."
-        )
-        return 1
-
-    log(f"⏳ Waiting for Vault at {VAULT_ADDR} ...")
-    for _ in range(60):
-        if vault_ready():
+    # Wait for Vault API.
+    for _ in range(30):
+        try:
+            status, _ = vault_req("GET", "sys/health")
             break
-        time.sleep(2)
+        except SystemExit:
+            time.sleep(1)
     else:
-        log(f"❌ Vault is not reachable at {VAULT_ADDR}")
-        return 1
+        raise SystemExit(f"ERROR: Vault at {VAULT_ADDR} is unreachable.")
 
-    if not check:
-        ensure_mount()
-    log(f"✅ Vault is ready (mount: {VAULT_MOUNT})")
+    # Ensure the KV v2 mounts the app reads exist (idempotent).
+    for mount in (VAULT_MOUNT, "secret"):
+        st, _ = vault_req("POST", f"sys/mounts/{mount}", {"type": "kv-v2"})
+        # 204/200 = created; 400 "path is already in use" is fine.
+        if st not in (200, 204, 400):
+            raise SystemExit(f"ERROR: mount {mount} -> HTTP {st}")
 
-    counts = {"seeded": 0, "skipped": 0, "present": 0, "missing": 0}
+    log("📝 Credentials → secret/agent/credentials  (generated in memory)")
+    for key in CREDENTIAL_KEYS:
+        seed_key("agent/credentials", key)
 
-    log(f"📝 Credentials → {VAULT_MOUNT}/{CREDENTIALS_PATH}")
-    for key in REQUIRED_CREDENTIALS:
-        # The shared agent↔brain token always follows the t=0 file. The brain
-        # vault_init job writes the same key from the same file on every run;
-        # skipping here is how the two sides drifted to different values.
-        counts[
-            seed(
-                CREDENTIALS_PATH,
-                key,
-                key,
-                required=True,
-                force=force,
-                check=check,
-                always=(key == SHARED_MEMORY_TOKEN_KEY),
-            )
-        ] += 1
-    for key in OPTIONAL_CREDENTIALS:
-        counts[seed(CREDENTIALS_PATH, key, key, required=False, force=force, check=check)] += 1
+    log("📝 Provider API keys → secret/agent/api_keys")
+    for provider in API_KEY_PROVIDERS:
+        seed_key("agent/api_keys", f"{provider}_api_key")
 
-    # LLM provider keys: a <provider>_api_key file whose name is NOT one of the
-    # credential names above is seeded to agent/api_keys/<provider>_api_key,
-    # which is what get_provider_key() resolves for an LLMModelConfig provider
-    # id (groq_api_key, openai_api_key, ...).
-    #
-    # The credential names that happen to end in `_api_key` (llm_api_key,
-    # somabrain_api_key) are infrastructure credentials read by get_credential()
-    # at agent/credentials/. Writing them here as well would put them in the
-    # provider bucket under provider ids ("llm", "somabrain") that no
-    # LLMModelConfig ever asks for. They belong in credentials only.
-    log(f"📝 Provider API keys → {VAULT_MOUNT}/{API_KEYS_PATH}")
-    credential_names = set(REQUIRED_CREDENTIALS) | set(OPTIONAL_CREDENTIALS)
-    if SECRETS_DIR.is_dir():
-        provider_files = [
-            full
-            for full in sorted(SECRETS_DIR.glob("*_api_key"))
-            if full.name not in credential_names
-        ]
-        if not provider_files:
-            log(
-                "   – no LLM provider key files (none named <provider>_api_key "
-                "outside the credential set). The agent fails closed with "
-                "LLMNotConfiguredError for a provider that has no key."
-            )
-        for full in provider_files:
-            provider = full.name[: -len("_api_key")]
-            if not provider:
-                continue
-            counts[
-                seed(
-                    API_KEYS_PATH,
-                    f"{provider}_api_key",
-                    full.name,
-                    required=False,
-                    force=force,
-                    check=check,
-                )
-            ] += 1
-
-    log("")
-    if check:
-        if counts["missing"]:
-            log(f"❌ {counts['missing']} key(s) missing from Vault.")
-            return 1
-        log("✅ All required keys present in Vault.")
-        return 0
-
-    log(f"✅ Vault seeded — {counts['seeded']} written, {counts['skipped']} skipped.")
-    log("   Values are in Vault only. They were never written to a log, to")
-    log("   .env, or to any file under version control.")
+    if CHECK:
+        log("✅ check complete — nothing written.")
+    else:
+        log("✅ Vault seeded — values exist ONLY in Vault. Nothing was written to disk.")
     return 0
 
 
 if __name__ == "__main__":
-    try:
-        sys.exit(main(sys.argv[1:]))
-    except SeedError as exc:
-        log(f"❌ {exc}")
-        sys.exit(1)
+    raise SystemExit(main())

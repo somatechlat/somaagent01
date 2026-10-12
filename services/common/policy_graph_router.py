@@ -68,7 +68,6 @@ class PolicyGraphRouter:
         registry: Optional[CapabilityRegistry] = None,
         policy_client: Optional[PolicyClient] = None,
     ) -> None:
-        """Initialize the instance."""
 
         self._registry = registry or CapabilityRegistry()
         self._policy_client = policy_client

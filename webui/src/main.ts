@@ -1,6 +1,6 @@
 /**
  * Soma Sys Admin - Main Entry Point
- * Enterprise Platform UI
+ * Soma Agent UI
  * 
  * VIBE COMPLIANT:
  * - Real routing

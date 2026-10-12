@@ -13,6 +13,7 @@ class ModelType(Enum):
 
     CHAT = "Chat"
     EMBEDDING = "Embedding"
+    DECISION = "Decision"
 
 
 class LLMModelConfig(models.Model):
@@ -20,11 +21,15 @@ class LLMModelConfig(models.Model):
 
     Production-grade model for storing LLM provider configurations.
     Supports capability-based routing for intelligent model selection.
+
+    ``model_type`` classes the runtime role — ``decision`` is System One
+    (Clef / typed Choice·Score·Noul), not a chat completion model.
     """
 
     MODEL_TYPE_CHOICES = [
         ("chat", "Chat"),
         ("embedding", "Embedding"),
+        ("decision", "Decision"),
     ]
 
     COST_TIER_CHOICES = [
@@ -84,7 +89,6 @@ class LLMModelConfig(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "llm_model_configs"
         verbose_name = "LLM Model Configuration"

@@ -171,8 +171,14 @@ async def select_model(
 
         from admin.llm.models import LLMModelConfig
 
-        # 1. Query active models
-        queryset = LLMModelConfig.objects.filter(is_active=True)
+        # 1. Query active **chat** models only. Decision (Clef) and embedding
+        # rows are admin-classified runtimes and must never be selected as the
+        # chat LLM (Seam A stays chat-only).
+        from django.db.models import Q
+
+        queryset = LLMModelConfig.objects.filter(is_active=True).filter(
+            Q(model_type="chat") | Q(model_type="") | Q(model_type__isnull=True)
+        )
 
         # 2. Filter by tenant if provided and field exists
         if tenant_id and hasattr(LLMModelConfig, "tenant_id"):
@@ -269,7 +275,6 @@ async def select_model(
 
 
 def _get_attr(model: Any, attr: str, default: Any = None) -> Any:
-    """Get attribute from ORM model or dict."""
     if hasattr(model, attr):
         return getattr(model, attr)
     if isinstance(model, dict):
@@ -278,15 +283,12 @@ def _get_attr(model: Any, attr: str, default: Any = None) -> Any:
 
 
 def _get_name(model: Any) -> str:
-    """Get model name."""
     return _get_attr(model, "name", "unknown")
 
 
 def _get_tier(model: Any) -> str:
-    """Get cost tier."""
     return _get_attr(model, "cost_tier", "standard")
 
 
 def _get_priority(model: Any) -> int:
-    """Get priority."""
     return _get_attr(model, "priority", 0)

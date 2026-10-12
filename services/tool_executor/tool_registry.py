@@ -30,7 +30,6 @@ class ToolRegistry:
     """In-memory registry that tracks available tool definitions."""
 
     def __init__(self) -> None:
-        """Initialize the instance."""
 
         self._tools: Dict[str, ToolDefinition] = {}
 

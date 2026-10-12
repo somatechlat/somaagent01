@@ -23,7 +23,7 @@
 | 1.0.0 | 2026-09-27 | SomaTech Engineering | Initial description. Memory lane verified live. |
 | 2.0.0 | 2026-09-27 | SomaTech Engineering | Rebuilt from full source read of all three repos. Target architecture (§4), remediation plan (§11), scale review (§10) added. Findings register re-opened with source citations. |
 | 2.0.0 | 2026-09-28 | SomaTech Engineering | Brought under ISO document control. Prior status value `Draft — findings open, remediation plan approved for execution` is outside the closed set `Draft \| In Review \| Approved \| Obsolete`; normalised to `Draft` — no approver has signed this document. Revision History table unbroken (it had a blank line between header and rows). |
-| 2.1.0 | 2026-10-03 | SomaTech Engineering | Truth pass against the code. §12 Verification Matrix refreshed: **T-1 is MET** (SomaBrain-only gateway; `sfm_adapter.py` deleted 2026-09-27). T-2 MET (one `_stable_coord` in `memory_contract.py:161`). T-5 MET on the agent side (recall raises `MemoryRecallUnavailable`; empty-list fail-open gone). T-6 MET (durable accept into `OutboxMessage` before the network hop, `memory_gateway.py:35-71,146`). "Two adapters" is now "one adapter". Embedding dim recorded as 768 with ADR `SOMA-ARCH-ADR-001`. |
+| 2.1.0 | 2026-10-03 | SomaTech Engineering | Truth pass against the code. §12 Verification Matrix refreshed: **T-1 is MET** (SomaBrain-only gateway; `sfm_adapter.py` deleted 2026-09-27). T-2 MET (one `_stable_coord` in `soma-memory-contract/soma_memory_contract/__init__.py:26`). T-5 MET on the agent side (recall raises `MemoryRecallUnavailable`; empty-list fail-open gone). T-6 MET (durable accept into `OutboxMessage` before the network hop, `memory_gateway.py:35-71,146`). "Two adapters" is now "one adapter". Embedding dim recorded as 768 with ADR `SOMA-ARCH-ADR-001`. |
 
 ---
 
@@ -436,7 +436,7 @@ Earlier text cited `somafractalmemory/admin/core/services.py:127` —
 code refuses to guess: `services.py:131-133` raises
 `RuntimeError("SOMA_VECTOR_DIM is not configured — refusing to guess a vector dim")`.
 `TUNABLES` declares the default as **768** (`settings/model.py:121-126`). The
-seam default is `DEFAULT_MEM_EMBED_DIM = 768` (`memory_contract.py:43`).
+seam default is `DEFAULT_MEM_EMBED_DIM = 768` (`soma-memory-contract/soma_memory_contract/__init__.py:23`).
 Recorded as ADR `SOMA-ARCH-ADR-001`.
 
 ### F-12 · MEDIUM · Agent containers degraded
@@ -607,7 +607,7 @@ Refreshed 2026-10-03 against the tree. Evidence is `file:line`.
 | Target | Evidence | Status |
 |---|---|---|
 | T-1 one writer | `FanoutMemoryGateway.remember` calls only `SomaBrainAdapter.remember` (`memory_gateway.py:97-109,169-171`). `sfm_adapter.py` deleted 2026-09-27 (`adapters/__init__.py:14-17`). No SFM client in the agent. | **MET** |
-| T-2 one coord authority | one `_stable_coord` in `memory_contract.py:161`; `make_coord` at `:186`. Math is mirrored in SomaBrain's `write.py:21` by design — same preimage, same output. | **MET** (cross-repo parity is documented, not accidental) |
+| T-2 one coord authority | one `_stable_coord` in `soma-memory-contract/soma_memory_contract/__init__.py:26`; `make_coord` at `:186`. Math is mirrored in SomaBrain's `write.py:21` by design — same preimage, same output. | **MET** (cross-repo parity is documented, not accidental) |
 | T-3 one embedding authority | computed once in the gateway via `embed_fn(text, get_mem_embed_dim())` (`memory_gateway.py:95`), sent precomputed. | **MET** |
 | T-4 one lane per op | recall is SomaBrain-only (`memory_gateway.py:185-192`); one coord per write. No duplicate-coord recall observed in the current path. | **MET** (agent side) |
 | T-5 fail-closed | recall raises `MemoryRecallUnavailable` (`memory_gateway.py:186-190`, `somabrain_adapter.py:236-238`) — the empty-list fail-open is gone. `can_access_namespace` empty allow-list grants nothing (`api/auth.py:75-78`). Vault `_credential` raises. | **MET** (agent side) |
@@ -619,7 +619,7 @@ Refreshed 2026-10-03 against the tree. Evidence is `file:line`.
 | No secrets in git | only `.env.example` tracked | MET |
 | Cross-tenant isolation by key | tenant in coord preimage (`memory_contract.py:150-186`) | MET |
 | Delete contract honoured | `SomaBrainAdapter.forget` → `POST /memory/forget` (`somabrain_adapter.py:247+`) | MET |
-| Embedding dim unity | `DEFAULT_MEM_EMBED_DIM = 768` (`memory_contract.py:43`), `MEM_EMBED_DIM` default `"768"` (`config/settings.py:116`), `SOMA_VECTOR_DIM` default 768 (SFM `settings/model.py:121-126`). Pinned by `tests/unit/test_embed_dim_seam_768.py`. | MET — ADR `SOMA-ARCH-ADR-001` |
+| Embedding dim unity | `DEFAULT_MEM_EMBED_DIM = 768` (`soma-memory-contract/soma_memory_contract/__init__.py:23`), `MEM_EMBED_DIM` default `"768"` (`config/settings.py:116`), `SOMA_VECTOR_DIM` default 768 (SFM `settings/model.py:121-126`). Pinned by `tests/unit/test_embed_dim_seam_768.py`. | MET — ADR `SOMA-ARCH-ADR-001` |
 
 ---
 

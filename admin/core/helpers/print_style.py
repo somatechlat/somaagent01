@@ -1,4 +1,3 @@
-"""Module print_style."""
 
 import html
 import os
@@ -11,7 +10,6 @@ from . import files
 
 
 class PrintStyle:
-    """Printstyle class implementation."""
 
     last_endline = True
     log_file_path = None
@@ -26,7 +24,6 @@ class PrintStyle:
         padding=False,
         log_only=False,
     ):
-        """Initialize the instance."""
 
         self.bold = bold
         self.italic = italic

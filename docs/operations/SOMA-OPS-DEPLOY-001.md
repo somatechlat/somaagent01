@@ -1,13 +1,13 @@
-# 🚀 Deployment Guide
+# Deployment Guide
 
 ## Document Control
 
 | Field | Value |
 |---|---|
-| Document Title | 🚀 Deployment Guide |
+| Document Title | Deployment Guide |
 | Document Identifier | SOMA-OPS-DEPLOY-001 |
-| Version | 1.0.0 |
-| Date | 2026-09-28 |
+| Version | 1.0.1 |
+| Date | 2026-10-08 |
 | Status | Draft |
 | Author | SomaTech Engineering |
 | Approver | — |
@@ -20,6 +20,7 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under ISO document control. |
+| 1.0.1 | 2026-10-08 | SomaTech Engineering | Title/Document Title emoji removed for enterprise register hygiene. |
 
 
 **Target Environment**: Docker / AWS ECS (Fargate) / EKS / EC2  
@@ -78,7 +79,7 @@ deployment modes (Standalone vs SomaStackClusterMode), see
 | :--- | :--- | :--- | :--- |
 | `SA01_DEPLOYMENT_MODE` | `PROD` or `DEV` | Yes | `DEV` |
 | `SA01_DEPLOYMENT_TARGET` | `LOCAL`, `FARGATE`, `EKS`, `ECS_EC2`, `EC2`, `APP_RUNNER` | No | `LOCAL` |
-| `SOMA_AAAS_MODE` | In-process coupling: `true` or `false` | No | `false` |
+| *(removed)* | `SOMA_AAAS_MODE` deleted | — | — |
 | `SOMASTACK_SOFTWARE_MODE` | `StandAlone` or `SomaStackClusterMode` | No | `StandAlone` |
 
 ### 2.2 Database Variables
@@ -108,7 +109,7 @@ deployment modes (Standalone vs SomaStackClusterMode), see
 
 | Variable | Description | Required | Default |
 | :--- | :--- | :--- | :--- |
-| `AAAS_DEFAULT_CHAT_MODEL` | Default LLM Model | Yes | `openai/gpt-4.1` |
+| `SA01_DEFAULT_CHAT_MODEL` | Default LLM Model | Yes | `openai/gpt-4.1` |
 | `SA01_CHAT_PROVIDER` | Chat model provider (openrouter/openai) | No | `openrouter` (code default) |
 | `OPENAI_API_KEY` | OpenAI API key | Yes | - |
 | `ANTHROPIC_API_KEY` | Anthropic API key | No | - |

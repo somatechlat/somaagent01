@@ -43,6 +43,68 @@ class AuditStore(BaseStore[Dict[str, Any]]):
             new_value=payload or {},
         )
 
+    async def log(
+        self,
+        *,
+        request_id: Optional[str] = None,
+        trace_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+        tenant: Optional[str] = None,
+        subject: Optional[str] = None,
+        action: str,
+        resource: str,
+        target_id: Optional[str] = None,
+        details: Optional[Dict[str, Any]] = None,
+        diff: Optional[Dict[str, Any]] = None,
+        ip: Optional[str] = None,
+        user_agent: Optional[str] = None,
+    ) -> None:
+        """Persist a rich audit event.
+
+        Mirrors the call shape used by tool-executor and the LLM invoke
+        path.  Non-UUID context (session id, tenant name, trace id, a
+        non-UUID subject or target) is kept in the ``new_value`` payload
+        because the matching columns are UUID / IP-typed and writing a
+        free-form string into them raises — the event would vanish.
+
+        Raises on persistence failure; callers decide whether that is
+        fatal.  Audit evidence is never silently dropped.
+        """
+        import uuid as _uuid
+
+        from admin.aaas.models import AuditLog
+
+        def _as_uuid(value: Optional[str]) -> Optional[_uuid.UUID]:
+            if not value:
+                return None
+            try:
+                return _uuid.UUID(str(value))
+            except (ValueError, AttributeError, TypeError):
+                return None
+
+        payload: Dict[str, Any] = dict(details or {})
+        for key, val in (
+            ("session_id", session_id),
+            ("trace_id", trace_id),
+            ("tenant", tenant),
+            ("subject", subject),
+            ("target_id", target_id),
+        ):
+            if val is not None:
+                payload.setdefault(key, val)
+
+        await AuditLog.objects.acreate(
+            action=action,
+            actor_id=_as_uuid(subject),
+            resource_type=resource or "",
+            resource_id=_as_uuid(target_id),
+            new_value=payload,
+            old_value=diff,
+            request_id=request_id or "",
+            ip_address=ip,
+            user_agent=user_agent or "",
+        )
+
     async def get(self, identifier: str) -> Optional[Dict[str, Any]]:
         """Retrieve a single audit event by ID."""
         from admin.aaas.models import AuditLog
@@ -50,15 +112,7 @@ class AuditStore(BaseStore[Dict[str, Any]]):
         event = await AuditLog.objects.filter(id=identifier).afirst()
         if not event:
             return None
-        return {
-            "id": str(event.id),
-            "event_type": event.action,
-            "actor": str(event.actor_id) if event.actor_id else None,
-            "resource": event.resource_type,
-            "action": event.action,
-            "payload": event.new_value,
-            "created_at": event.created_at.isoformat() if event.created_at else None,
-        }
+        return self._serialize(event)
 
     async def list(
         self,
@@ -75,18 +129,35 @@ class AuditStore(BaseStore[Dict[str, Any]]):
 
         results = []
         async for event in qs:
-            results.append(
-                {
-                    "id": str(event.id),
-                    "event_type": event.action,
-                    "actor": str(event.actor_id) if event.actor_id else None,
-                    "resource": event.resource_type,
-                    "action": event.action,
-                    "payload": event.new_value,
-                    "created_at": event.created_at.isoformat() if event.created_at else None,
-                }
-            )
+            results.append(self._serialize(event))
         return results
+
+    @staticmethod
+    def _serialize(event: Any) -> Dict[str, Any]:
+        """Map an AuditLog row to the dict shape API callers serialize.
+
+        Keeps both the store-generic keys (``event_type``, ``payload``)
+        and the richer keys the NDJSON export emits, so one row shape
+        serves every reader.
+        """
+        payload = event.new_value or {}
+        return {
+            "id": str(event.id),
+            "event_type": event.action,
+            "actor": str(event.actor_id) if event.actor_id else None,
+            "resource": event.resource_type,
+            "action": event.action,
+            "payload": payload,
+            "created_at": event.created_at.isoformat() if event.created_at else None,
+            "timestamp": event.created_at.isoformat() if event.created_at else None,
+            "session_id": payload.get("session_id"),
+            "tenant": payload.get("tenant"),
+            "details": payload,
+            "trace_id": payload.get("trace_id"),
+            "request_id": event.request_id or payload.get("request_id"),
+            "ip": event.ip_address or payload.get("ip"),
+            "user_agent": event.user_agent or payload.get("user_agent"),
+        }
 
     async def create(self, record: Dict[str, Any]) -> Dict[str, Any]:
         """Persist a new audit event."""

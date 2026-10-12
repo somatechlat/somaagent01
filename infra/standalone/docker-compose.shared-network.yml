@@ -22,7 +22,8 @@ services:
       # Store bearer tokens are NOT environment variables (Rule 164). The agent
       # reads somabrain_memory_http_token and soma_api_token from Vault at
       # secret/agent/credentials/ via UnifiedSecretManager.get_credential().
-      # They are seeded once by init_vault.py from ./secrets/ (t=0 material).
+      # They are seeded once by init_vault.py — generated in process memory
+      # and written to Vault only (R-SEC-01 / SOMA-STD-BOOTSTRAP-001).
       # Passing a token value through ENV is a secret in `ps`, in
       # /proc/*/environ and in every crash dump.
     extra_hosts: [] # shared network provides DNS

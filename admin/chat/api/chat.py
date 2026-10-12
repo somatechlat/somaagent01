@@ -146,7 +146,7 @@ async def list_conversations(
 
     user = get_current_user(request)
     user_id = user.sub
-    tenant_id = user.effective_tenant_id or settings.AAAS_DEFAULT_TENANT_ID
+    tenant_id = user.effective_tenant_id or settings.SA01_DEFAULT_TENANT_ID
 
     @sync_to_async
     def _get_conversations():
@@ -167,7 +167,6 @@ async def list_conversations(
         items = []
 
         for conv in qs[offset : offset + per_page]:
-            # Get last message
             last_msg = (
                 Message.objects.filter(conversation_id=conv.id).order_by("-created_at").first()
             )
@@ -221,7 +220,7 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
 
     user = get_current_user(request)
     user_id = user.sub
-    tenant_id = user.effective_tenant_id or settings.AAAS_DEFAULT_TENANT_ID
+    tenant_id = user.effective_tenant_id or settings.SA01_DEFAULT_TENANT_ID
     agent_id = payload.agent_id or str(uuid4())
 
     orchestrator = await get_chat_orchestrator()
@@ -248,7 +247,6 @@ async def create_conversation(request, payload: CreateConversationRequest) -> di
 
         title = payload.title or f"Conversation {conversation.id[:8]}"
 
-        # Update title if provided
         if payload.title:
 
             @sync_to_async
@@ -471,7 +469,7 @@ async def get_messages(
 
     user = get_current_user(request)
     user_id = user.sub
-    tenant_id = user.effective_tenant_id or settings.AAAS_DEFAULT_TENANT_ID
+    tenant_id = user.effective_tenant_id or settings.SA01_DEFAULT_TENANT_ID
 
     @sync_to_async
     def _get_messages():
@@ -547,7 +545,7 @@ async def send_message(
     - Returns response (sync mode) or initiates stream
 
 
-    - Real ChatService integration
+    - Real V3ChatOrchestrator integration
     - Degradation handling ready
     - ZDL via OutboxMessage
     """
@@ -559,7 +557,7 @@ async def send_message(
 
     user = get_current_user(request)
     user_id = user.sub
-    tenant_id = user.effective_tenant_id or settings.AAAS_DEFAULT_TENANT_ID
+    tenant_id = user.effective_tenant_id or settings.SA01_DEFAULT_TENANT_ID
 
     orchestrator = await get_chat_orchestrator()
 

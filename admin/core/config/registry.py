@@ -62,7 +62,6 @@ class ConfigRegistry:
             if self._initialized:
                 return
 
-            # Load initial configuration
             self._current_config = self._config_loader.load_config()
             self._initialized = True
 
@@ -91,13 +90,10 @@ class ConfigRegistry:
                 self.initialize()
                 return
 
-            # Get previous configuration
             old_config = self._current_config
 
-            # Load new configuration
             new_config = self._config_loader.load_config(force_reload=True)
 
-            # Update current configuration
             self._current_config = new_config
 
             # Notify subscribers if configuration changed

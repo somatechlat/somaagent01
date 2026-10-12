@@ -167,7 +167,6 @@ async def create_rate_limit(
 
     @sync_to_async
     def _create():
-        # Check if key already exists
         """Execute create."""
 
         if RateLimitPolicy.objects.filter(key=payload.key).exists():
@@ -221,7 +220,6 @@ async def update_rate_limit(
         except RateLimitPolicy.DoesNotExist:
             return None, get_message(ErrorCode.RATE_LIMIT_NOT_FOUND, key=key)
 
-        # Update fields if provided
         if payload.description is not None:
             policy.description = payload.description
         if payload.limit is not None:

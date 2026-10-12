@@ -1,7 +1,6 @@
 """
 Capsule Core Service
 --------------------
-Simple. Elegant. Perfect.
 
 The 4 core operations as defined in SRS Section 19:
 1. verify_capsule  - Check signature validity
@@ -99,7 +98,6 @@ def _get_registry() -> RegistryService:
 
 def verify_capsule(capsule: Capsule) -> bool:
     """
-    Simple. Elegant. Perfect.
     Returns True iff capsule is cryptographically valid.
 
     Invariant: verify(sign(H(x))) = true
@@ -117,7 +115,6 @@ def verify_capsule(capsule: Capsule) -> bool:
 
 def certify_capsule(capsule: Capsule) -> Capsule:
     """
-    Simple. Elegant. Perfect.
     Signs capsule and binds to active Constitution.
 
     Precondition: capsule.status == 'draft'
@@ -144,7 +141,6 @@ def certify_capsule(capsule: Capsule) -> Capsule:
             # Use registry to sign
             certified = registry.certify_capsule(capsule.id)
 
-            # Update status
             certified.status = Capsule.STATUS_ACTIVE
             certified.certified_at = timezone.now()
             certified.save()
@@ -162,7 +158,6 @@ def certify_capsule(capsule: Capsule) -> Capsule:
 
 def inject_capsule(capsule_id: UUID) -> InjectedCapsule:
     """
-    Simple. Elegant. Perfect.
     Loads and verifies capsule for runtime use.
 
     Invariant: inject(c) ⟹ verify(c) = true
@@ -183,14 +178,12 @@ def inject_capsule(capsule_id: UUID) -> InjectedCapsule:
 
 def edit_capsule(capsule: Capsule, updates: dict) -> Capsule:
     """
-    Simple. Elegant. Perfect.
     Active capsules spawn new version; drafts update in place.
 
     Invariant: edit(v1) → spawn(v2, parent=v1) if v1.status == 'active'
     """
     with transaction.atomic():
         if capsule.status == Capsule.STATUS_DRAFT:
-            # Update in place for drafts
             for key, value in updates.items():
                 if hasattr(capsule, key):
                     setattr(capsule, key, value)
@@ -228,7 +221,6 @@ def edit_capsule(capsule: Capsule, updates: dict) -> Capsule:
                 memory_pointer=updates.get("memory_pointer", capsule.memory_pointer),
                 resource_limits=updates.get("resource_limits", capsule.resource_limits),
             )
-            # Copy M2M capabilities
             for cap in capsule.capabilities.all():
                 new_capsule.capabilities.add(cap)
 

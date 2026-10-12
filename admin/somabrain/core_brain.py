@@ -117,7 +117,6 @@ class AdaptationResetRequest(BaseModel):
 
 
 async def get_somabrain_degradation_level() -> DegradationLevel:
-    """Get current SomaBrain degradation level from monitor."""
     try:
         from services.common.degradation_monitor import degradation_monitor
 

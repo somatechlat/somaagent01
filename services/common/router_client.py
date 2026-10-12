@@ -13,17 +13,14 @@ from services.common.http_timeouts import httpx_timeout
 
 @dataclass
 class RouteDecision:
-    """Routedecision class implementation."""
 
     model: str
     score: float
 
 
 class RouterClient:
-    """Routerclient class implementation."""
 
     def __init__(self, base_url: Optional[str] = None) -> None:
-        """Initialize the instance."""
 
         self.base_url = base_url or os.environ.get("ROUTER_URL")
         self._client = httpx.AsyncClient(timeout=httpx_timeout()) if self.base_url else None

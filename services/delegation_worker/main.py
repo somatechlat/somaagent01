@@ -33,12 +33,14 @@ setup_tracing("delegation-worker", endpoint=os.environ.get("OTLP_ENDPOINT", ""))
 
 
 class DelegationWorker:
-    """Delegationworker class implementation."""
 
     def __init__(self) -> None:
-        """Initialize the instance."""
 
-        self.topic = os.environ.get("DELEGATION_TOPIC", "somastack.delegation")
+        self.topic = os.environ.get("DELEGATION_TOPIC")
+        if not self.topic:
+            raise RuntimeError(
+                "DELEGATION_TOPIC is required. There is no default topic name."
+            )
         self.group = os.environ.get("DELEGATION_GROUP", "delegation-worker")
         from admin.core.helpers.service_urls import require_setting
 

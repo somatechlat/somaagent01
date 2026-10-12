@@ -119,6 +119,9 @@ class AssetEvaluation:
         return self.status == evaluation_status.PASSED
 
 
+CRITIC_TEMPERATURE = 0.1
+
+
 class AssetCritic:
     """Service for evaluating asset quality.
 
@@ -163,6 +166,8 @@ class AssetCritic:
         asset: AssetRecord,
         rubric: AssetRubric,
         context: Optional[Dict[str, Any]] = None,
+        *,
+        capsule: Optional[Any] = None,
     ) -> AssetEvaluation:
         """Evaluate an asset against a rubric.
 
@@ -170,6 +175,7 @@ class AssetCritic:
             asset: Asset to evaluate
             rubric: Validation criteria
             context: Execution context for LLM evaluation
+            capsule: Capsule that owns model sovereignty (Capsule.image_model)
 
         Returns:
             AssetEvaluation result
@@ -208,7 +214,7 @@ class AssetCritic:
         if not failed and self._llm_adapter and rubric.min_quality_score > 0:
             if asset.asset_type == AssetType.IMAGE:
                 llm_score, llm_feedback, llm_passed = await self._evaluate_image_llm(
-                    asset, rubric, context
+                    asset, rubric, context, capsule=capsule
                 )
                 if not llm_passed:
                     score = min(score, llm_score)
@@ -288,13 +294,9 @@ class AssetCritic:
             try:
                 import xml.etree.ElementTree as ET
 
-                # Check for XML bomb/XXE attack logic should be here in real prod,
-                # but stdlib ET is vulnerable.
-                # Since we generated these assets internally (trusted source), this is acceptable for now.
+                # Assets on this path are generated internally; stdlib ET does not harden XXE/XML bombs.
                 root = ET.fromstring(asset.content)
 
-                # Count meaningful elements
-                # Namespaces can be tricky in SVG, simpler to just iterate tags
                 element_count = 0
                 significant_tags = {
                     "path",
@@ -330,6 +332,8 @@ class AssetCritic:
         asset: AssetRecord,
         rubric: AssetRubric,
         context: Optional[Dict[str, Any]] = None,
+        *,
+        capsule: Optional[Any] = None,
     ) -> tuple[float, Optional[str], bool]:
         """Evaluate image using Vision LLM.
 
@@ -377,27 +381,29 @@ class AssetCritic:
                 ChatMessage(role="user", content=user_content),
             ]
 
-            import os
-
-            os.environ.setdefault("DJANGO_SETTINGS_MODULE", "services.gateway.settings")
-            import django
-
-            if not django.apps.apps.ready:  # type: ignore[attr-defined]
-                django.setup()
-            from django.conf import settings
-
-            vision_model = getattr(
-                settings, "AAAS_VISION_MODEL", os.environ.get("SA01_VISION_MODEL")
-            )
-            if not vision_model:
+            # Model sovereignty: Capsule.image_model is the only authority
+            # (core.py "BODY: MODEL SOVEREIGNTY" / Rule 91). Never scan the
+            # global catalogue — that would pick another tenant's model.
+            if capsule is None or getattr(capsule, "image_model", None) is None:
                 raise ValueError(
-                    "Vision model not configured - set AAAS_VISION_MODEL or SA01_VISION_MODEL"
+                    "Capsule.image_model is not set. Vision critique uses the "
+                    "capsule's image model; bind one in model settings."
                 )
+            cfg = capsule.image_model
+            if not cfg.is_active:
+                raise ValueError(
+                    f"Capsule.image_model {cfg.name!r} is not active."
+                )
+            if not (getattr(cfg, "vision", False) or cfg.has_capability("vision")):
+                raise ValueError(
+                    f"Capsule.image_model {cfg.name!r} has no vision capability."
+                )
+            vision_model = f"{cfg.provider}/{cfg.name}"
 
             response_text, _, _ = await self._llm_adapter.chat(
                 messages,
                 model=vision_model,
-                temperature=0.1,
+                temperature=CRITIC_TEMPERATURE,
                 response_format={"type": "json_object"},
             )
 

@@ -2,7 +2,7 @@
 Degradation Mode API for SomaAgent01.
 
 
-Per AAAS_ADMIN_SRS.md - Infrastructure Administration.
+Infrastructure Administration.
 
 Endpoints:
 - GET /status - Current degradation status
@@ -112,7 +112,6 @@ async def get_degradation_status(request) -> DegradationStatusSchema:
     - mitigation_actions: Automated actions that can be taken
     """
     await authorize(request, action="system:view", resource="system")
-    # Initialize if not already done
     if not degradation_monitor.components:
         await degradation_monitor.initialize()
 

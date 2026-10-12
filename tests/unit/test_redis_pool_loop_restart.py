@@ -33,7 +33,7 @@ def _redis_url() -> str:
     import os
 
     return os.getenv("SA01_REDIS_URL") or os.getenv(
-        "REDIS_URL", "redis://localhost:6379/0"
+        "REDIS_URL", "redis://somaagent_redis:6379/0"
     )
 
 

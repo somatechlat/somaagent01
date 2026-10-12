@@ -292,7 +292,7 @@ async def _ensure_schedules(client: Client, task_queue: str) -> None:
 
     sleep_iv, jobs_iv, outbox_iv = _schedule_specs()
     default_tenant = os.environ.get("SA01_SLEEP_TENANT_ID") or os.environ.get(
-        "AAAS_DEFAULT_TENANT_ID", ""
+        "SA01_DEFAULT_TENANT_ID", ""
     )
     wanted = {
         "soma-sleep-cycle": ScheduleActionStartWorkflow(

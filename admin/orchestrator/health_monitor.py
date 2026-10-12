@@ -25,7 +25,6 @@ class UnifiedHealthMonitor:
     """
 
     def __init__(self, services: List[BaseSomaService]) -> None:
-        """Initialize the instance."""
 
         self._services = services
 

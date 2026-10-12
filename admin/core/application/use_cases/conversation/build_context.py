@@ -75,7 +75,6 @@ class BuildContextUseCase:
         context_builder: ContextBuilderProtocol,
         session_repo: SessionRepositoryProtocol,
     ):
-        """Initialize the instance."""
 
         self._context_builder = context_builder
         self._session_repo = session_repo

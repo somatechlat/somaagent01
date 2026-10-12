@@ -239,7 +239,6 @@ class SimpleGovernor:
         return False
 
     def get_fallback_decision(self) -> GovernorDecision:
-        """Get rescue path decision for GovernorError."""
         logger.warning("Using rescue path due to governor error")
         return GovernorDecision.rescue_path()
 
@@ -249,7 +248,6 @@ _governor: SimpleGovernor | None = None
 
 
 def get_governor() -> SimpleGovernor:
-    """Get the governor singleton."""
     global _governor
     if _governor is None:
         _governor = SimpleGovernor()

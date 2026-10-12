@@ -44,14 +44,12 @@ def _policy_setting(name: str, default):
 
 
 class PolicyClient:
-    """Policyclient class implementation."""
 
     def __init__(
         self,
         base_url: Optional[str] = None,
         tenant_config: Optional[TenantConfig] = None,
     ) -> None:
-        """Initialize the instance."""
 
         default_base_url = (
             base_url or os.environ.get("SA01_POLICY_URL") or os.environ.get("SA01_OPA_URL")
@@ -72,7 +70,7 @@ class PolicyClient:
             self._disabled = True
             return
         self._disabled = False
-        # Robust URL handling: strip trailing /v1/data/soma or /v1/data/soma/allow
+        # Strip trailing /v1/data/soma or /v1/data/soma/allow
         # so we don't double-append the data path when env var includes it.
         _base = default_base_url.rstrip("/")
         if _base.endswith("/v1/data/soma/allow"):

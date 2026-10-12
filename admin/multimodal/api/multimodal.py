@@ -199,8 +199,12 @@ async def list_jobs(
     from admin.core.models import Job
 
     tenant_id = getattr(request, "tenant_id", None) or getattr(
-        settings, "AAAS_DEFAULT_TENANT_ID", "default"
+        settings, "SA01_DEFAULT_TENANT_ID", None
     )
+    if not tenant_id:
+        raise ValueError(
+            "SA01_DEFAULT_TENANT_ID is not configured and the request has no tenant_id."
+        )
 
     @sync_to_async
     def _fetch():
@@ -241,7 +245,6 @@ async def list_jobs(
     auth=AuthBearer(),
 )
 async def get_job_status(request: HttpRequest, plan_id: str) -> dict:
-    """Get the status of a multimodal job plan."""
     auth = await authorize(request, action="system:view", resource="multimodal")
 
     from services.common.job_planner import JobPlanner

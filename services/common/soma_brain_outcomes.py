@@ -84,7 +84,6 @@ class SomaBrainOutcomesStore(BaseStore[MultimodalOutcome]):
         )
 
     async def get(self, identifier: str) -> Optional[MultimodalOutcome]:
-        """Get an outcome by task_id."""
         from admin.core.models import MultimodalOutcome as OutcomeModel
 
         outcome = await OutcomeModel.objects.filter(task_id=identifier).afirst()

@@ -1,14 +1,29 @@
 # SOMA-PM-PLAN-TRIAD-COMPLETION-002 — Audit of Touched Code + Completion Plan
 
+## Document Control
+
 | Field | Value |
 |---|---|
-| Document ID | SOMA-PM-PLAN-TRIAD-COMPLETION-002 |
-| Revision | 0.1 |
-| Status | DRAFT — awaiting owner approval to execute |
+| Document Title | Audit of Touched Code + Completion Plan |
+| Document Identifier | SOMA-PM-PLAN-TRIAD-COMPLETION-002 |
+| Version | 0.1.0 |
 | Date | 2026-10-04 |
+| Status | Draft |
+| Classification | Internal |
+| Author | SomaTech Engineering |
+| Approver | — |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2027-01-04 |
+| Related | `docs/plans/SOMA-PM-PLAN-CHAT-COGNITION-001.md`, `docs/standards/SOMA-STD-CODING-001.md` |
 | Scope | somaAgent01 · somabrain · somafractalmemory |
 | Predecessor | `docs/plans/SOMA-PM-PLAN-CHAT-COGNITION-001.md`, `docs/plans/2026-10-03-triad-full-integration.md` |
 | Authority | `docs/standards/SOMA-STD-CODING-001.md` (VIBE) |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 0.1.0 | 2026-10-08 | SomaTech Engineering | Document Control normalized to house field names; Status from free-text to closed-set `Draft`. |
 
 **Design criteria applied to every decision below:** the rules · millions of transactions · security · speed · latency · thin.
 

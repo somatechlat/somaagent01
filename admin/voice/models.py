@@ -44,7 +44,6 @@ class TimestampedModel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         abstract = True
 
@@ -58,7 +57,6 @@ class TenantScopedModel(TimestampedModel):
     )
 
     class Meta:
-        """Meta class implementation."""
 
         abstract = True
 
@@ -131,7 +129,6 @@ class VoicePersona(TenantScopedModel):
     llm_config_id: int | None
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "voice_personas"
         unique_together = [["tenant_id", "name"]]
@@ -227,7 +224,6 @@ class VoiceSession(TenantScopedModel):
         self.terminated_at = value
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "voice_sessions"
         ordering = ["-created_at"]
@@ -312,7 +308,6 @@ class VoiceModel(models.Model):
         return False
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "voice_models"
         ordering = ["provider", "name"]

@@ -106,10 +106,10 @@ def delete_dir(relative_path: str):
                 for root, dirs, files in os.walk(abs_path, topdown=False):
                     for name in files:
                         file_path = os.path.join(root, name)
-                        os.chmod(file_path, 0o777)
+                        os.chmod(file_path, 0o600)
                     for name in dirs:
                         dir_path = os.path.join(root, name)
-                        os.chmod(dir_path, 0o777)
+                        os.chmod(dir_path, 0o700)
                 shutil.rmtree(abs_path, ignore_errors=True)
             except Exception:
                 pass
@@ -167,7 +167,6 @@ def exists(*relative_paths):
 
 
 def get_base_dir():
-    """Get the base directory."""
     base_dir = os.path.dirname(os.path.abspath(os.path.join(__file__, "../../")))
     return base_dir
 

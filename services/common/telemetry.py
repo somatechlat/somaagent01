@@ -16,7 +16,6 @@ from services.common.publisher import DurablePublisher
 
 
 class TelemetryPublisher:
-    """Telemetrypublisher class implementation."""
 
     def __init__(
         self,
@@ -24,7 +23,6 @@ class TelemetryPublisher:
         bus: Optional[KafkaEventBus] = None,
     ) -> None:
         # prefer provided durable publisher; else wrap provided bus; else create both
-        """Initialize the instance."""
 
         if publisher is not None:
             self.publisher = publisher

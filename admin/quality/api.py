@@ -219,7 +219,6 @@ async def execute_with_retry(
                     f"Attempt {attempts}: quality {score:.2f} < threshold {policy.quality_threshold}"
                 )
 
-                # Wait before retry
                 if attempts < policy.max_attempts:
                     delay = _calculate_backoff(
                         attempts,
@@ -309,7 +308,6 @@ async def get_thresholds(request) -> dict:
 
 
 def _get_default_criteria(asset_type: str) -> list[str]:
-    """Get default evaluation criteria by asset type."""
     criteria_map = {
         "text": ["clarity", "coherence", "relevance", "grammar"],
         "image": ["quality", "relevance", "composition", "style"],
@@ -367,7 +365,6 @@ Respond with ONLY a JSON object in this format:
 
                 result = response.json()
                 content_text = result.get("content", result.get("message", {}).get("content", ""))
-                # Parse JSON from response
                 try:
                     eval_result = json.loads(content_text.strip())
                 except json.JSONDecodeError:

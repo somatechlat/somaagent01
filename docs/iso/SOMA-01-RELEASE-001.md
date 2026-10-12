@@ -39,7 +39,7 @@ SomaAgent01 v2.0.0 is a major release focused on production readiness, security 
 - **Rate limiter fail-closed** — Rate limiter denies requests when Redis is unavailable (was fail-open)
 
 ### 2.2 Architecture Improvements
-- **Adapters use DeploymentMode singleton** — Memory adapters use canonical `DeploymentMode.is_aaas()` instead of raw `SOMA_AAAS_MODE` env var
+- **Adapters use DeploymentMode singleton** — `DeploymentMode` is STANDALONE\|DEV only; `SOMA_AAAS_MODE` and `is_aaas()` are deleted
 - **Tool call extraction** — Chat orchestrator tries native LLM `tool_calls` format first, with regex fallback
 - **BrainBridge URL** — Uses `settings.SOMABRAIN_URL` instead of hardcoded Docker hostname
 - **Rate limiter Redis URL** — Checks `SA01_REDIS_URL` first (canonical env var)
@@ -73,7 +73,7 @@ SomaAgent01 v2.0.0 is a major release focused on production readiness, security 
 
 | Fix | File | Description |
 |-----|------|-------------|
-| Permissions stub | `admin/permissions/api.py:332` | `/check` now calls real UnifiedGate |
+| Permissions stub | `admin/core/authz.py` (permission check) | `/check` now calls real UnifiedGate |
 | BrainBridge URL | `aaas/brain.py:92` | Uses settings instead of hardcoded hostname |
 | Rate limiter URL | `services/common/rate_limiter.py:67` | Checks SA01_REDIS_URL first |
 | RoleRequired | `admin/common/auth.py:278` | Returns 403 for insufficient roles |
@@ -87,7 +87,7 @@ SomaAgent01 v2.0.0 is a major release focused on production readiness, security 
 
 | Change | Impact | Migration |
 |--------|--------|-----------|
-| `SOMA_AAAS_MODE` env var deprecated in adapters | Use `SA01_DEPLOYMENT_MODE` instead | Update environment configuration |
+| `SOMA_AAAS_MODE` **deleted** | Use `SA01_DEPLOYMENT_MODE` (STANDALONE\|DEV) | — |
 | Rate limiter fail-closed | Requests denied when Redis down | Ensure Redis is highly available |
 | RoleRequired returns 403 | Clients expecting 401 for forbidden will get 403 | Update error handling |
 
@@ -110,7 +110,7 @@ SomaAgent01 v2.0.0 is a major release focused on production readiness, security 
 ### From v1.1.0 to v2.0.0
 
 1. Update environment variables:
-   - Replace `SOMA_AAAS_MODE` with `SA01_DEPLOYMENT_MODE=AAAS` or `STANDALONE`
+   - Use `SA01_DEPLOYMENT_MODE=STANDALONE` (or `DEV`). `AAAS` is not a mode.
    - Ensure `SA01_REDIS_URL` is set (not just `REDIS_URL`)
 
 2. Run migrations:

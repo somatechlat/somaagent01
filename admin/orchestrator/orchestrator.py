@@ -38,7 +38,6 @@ class ServiceRegistry:
     """
 
     def __init__(self) -> None:
-        """Initialize the instance."""
 
         self._services: List[BaseSomaService] = []
 
@@ -75,7 +74,6 @@ class SomaOrchestrator:
     """
 
     def __init__(self, app: Any) -> None:
-        """Initialize the instance."""
 
         self.app = app
         self.registry = ServiceRegistry()

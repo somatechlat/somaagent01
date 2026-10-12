@@ -50,7 +50,6 @@ class RequestHandler:
     """Handles tool execution requests."""
 
     def __init__(self, executor: "ToolExecutor") -> None:
-        """Initialize the instance."""
 
         self._executor = executor
 
@@ -99,7 +98,6 @@ class RequestHandler:
         if policy_result is not None:
             return
 
-        # Get tool
         tool = self._executor.tool_registry.get(tool_name)
         if not tool:
             await self._handle_unknown_tool(
@@ -244,7 +242,11 @@ class RequestHandler:
         try:
             subject, capsule, iq = await self._choke_inputs(tenant, persona_id, metadata)
             decision = await decide_and_authorize_tool(
-                subject, capsule, tool_name, dict(event.get("args") or {}), iq
+                subject,
+                capsule,
+                tool_name,
+                dict(event.get("args") or {}),
+                iq
             )
         except Exception:
             LOGGER.exception("Tool authorization choke failed", extra={"tool": tool_name})

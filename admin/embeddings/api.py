@@ -169,7 +169,6 @@ async def get_batch_status(
     request,
     batch_id: str,
 ) -> dict:
-    """Get batch embedding status."""
     await authorize(request, action="system:view", resource="embeddings")
 
     raise HttpError(
@@ -218,7 +217,6 @@ async def list_models(request) -> dict:
     auth=AuthBearer(),
 )
 async def get_model(request, model_id: str) -> ModelInfo:
-    """Get model details."""
     await authorize(request, action="system:view", resource="embeddings")
 
     info = EMBEDDING_MODELS.get(model_id, EMBEDDING_MODELS["text-embedding-ada-002"])

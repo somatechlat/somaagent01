@@ -328,14 +328,14 @@ The test suite interfaces with pytest for execution and the following real servi
 | REQ-017 | Phase 6 model selection | SRS-MODEL-ROUTING | `admin/core/model_router.py` | `admin/core/model_router.py` | `tests/aaas_direct/orchestrator/test_chat_orchestrator_aaas.py` |
 | REQ-018 | Phase 7 LLM inference | SRS-MODEL-ROUTING | `admin/core/model_router.py` | `admin/core/model_router.py` | `tests/aaas_direct/orchestrator/test_chat_orchestrator_aaas.py` |
 | REQ-019 | Phase 8 tool execution | SRS-TOOL-SYSTEM | `admin/core/tools/` | `admin/core/tools/` | `tests/aaas_direct/orchestrator/test_chat_orchestrator_aaas.py` |
-| REQ-020 | Phase 9 multimodal handling | SRS-MULTIMODAL | `admin/core/multimodal.py` | `admin/core/multimodal.py` | `tests/aaas_direct/orchestrator/test_chat_orchestrator_aaas.py` |
+| REQ-020 | Phase 9 multimodal handling | SRS-MULTIMODAL | `admin/multimodal/` | `admin/multimodal/` | `tests/aaas_direct/orchestrator/test_chat_orchestrator_aaas.py` |
 | REQ-021 | Phase 10 memory update | SRS-SOMABRAIN-INTEGRATION | `admin/core/somabrain_client.py` | `admin/core/somabrain_client.py` | `tests/aaas_direct/orchestrator/test_chat_orchestrator_aaas.py` |
 | REQ-022 | Phase 11 usage recording | SRS-BUDGET-SYSTEM | `admin/core/budget/limits.py` | `admin/core/budget/limits.py` | `tests/aaas_direct/orchestrator/test_chat_orchestrator_aaas.py` |
 | REQ-023 | Phase 12 response delivery | SRS-CHAT-FLOW-MASTER | `admin/core/chat_orchestrator.py` | `admin/core/chat_orchestrator.py` | `tests/aaas_direct/orchestrator/test_chat_orchestrator_aaas.py` |
 | REQ-024 | Budget starts at zero | SRS-BUDGET-SYSTEM | `admin/core/budget/` | `admin/core/budget/` | `tests/unit/test_budget_system.py` |
 | REQ-030 | Core features enabled | SRS-FEATURE-FLAGS | `admin/core/features/` | `admin/core/features/` | `tests/unit/test_features_system.py` |
 | REQ-035 | Complexity classification | SRS-MODEL-ROUTING | `admin/core/model_router.py` | `admin/core/model_router.py` | `tests/unit/test_model_router_unit.py` |
-| REQ-040 | Image generation budget check | SRS-MULTIMODAL | `admin/core/multimodal.py` | `admin/core/multimodal.py` | `tests/aaas_direct/multimodal/test_multimodal_aaas.py` |
+| REQ-040 | Image generation budget check | SRS-MULTIMODAL | `admin/multimodal/` | `admin/multimodal/` | `tests/aaas_direct/multimodal/test_multimodal_aaas.py` |
 | REQ-043 | Tool registry discovery | SRS-TOOL-SYSTEM | `admin/core/tools/` | `admin/core/tools/` | `tests/unit/test_tool_system_unit.py` |
 | REQ-048 | SomaBrain direct import | SRS-SOMABRAIN-INTEGRATION | `admin/core/somabrain_client.py` | `admin/core/somabrain_client.py` | `tests/aaas_direct/somabrain/test_somabrain_client_aaas.py` |
 | REQ-052 | Usage counter increment | SRS-BUDGET-SYSTEM | `admin/core/budget/limits.py` | `admin/core/budget/limits.py` | `tests/aaas_direct/budget/test_budget_aaas.py` |

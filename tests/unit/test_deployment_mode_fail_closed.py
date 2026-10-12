@@ -1,16 +1,14 @@
 """Deployment mode — the dispatch must not guess.
 
 ``SA01_DEPLOYMENT_MODE`` is what decides which identity source answers for a
-login: local credentials in Standalone and DEV, federation in AAAS. That
-makes the resolver part of the authentication seam, and a resolver that
-silently reinterprets an unrecognised value is a fail-open: ``PROD`` — a
-value other parts of this codebase accept — would quietly become ``DEV``
-and the agent would authenticate people against the wrong authority.
+login: local credentials in Standalone and DEV. That makes the resolver part
+of the authentication seam, and a resolver that silently reinterprets an
+unrecognised value is a fail-open.
 
-The documented chain is untouched: an unset variable still resolves to
-``DEV``. What must change is that a value which is *not* one of the three
-declared modes is refused and names itself, rather than being folded into
-one of them (Rule 91).
+Modes: STANDALONE | DEV. There is no AAAS mode and no second flag
+(``SOMA_AAAS_MODE`` is deleted). An unset variable resolves to ``DEV``. A
+value that is not one of the two declared modes is refused and names itself
+(Rule 91).
 
 Run:
     pytest tests/unit/test_deployment_mode_fail_closed.py -v
@@ -42,7 +40,6 @@ def _fresh_resolver(monkeypatch):
 def test_the_declared_modes_resolve(monkeypatch):
     for value, expected in (
         ("STANDALONE", DeploymentModeEnum.STANDALONE),
-        ("AAAS", DeploymentModeEnum.AAAS),
         ("DEV", DeploymentModeEnum.DEV),
     ):
         monkeypatch.setenv("SA01_DEPLOYMENT_MODE", value)
@@ -59,22 +56,22 @@ def test_the_value_is_case_insensitive_but_the_name_is_canonical(monkeypatch):
 
 
 def test_an_unset_mode_still_resolves_to_the_documented_default(monkeypatch):
-    """The chain is documented as "default → DEV". A declared default for a
-    mode is not the same as silently folding an unrecognised value into
-    one; only the latter hides an operator's mistake."""
+    """An unset variable resolves to DEV. A declared default for a mode is
+    not the same as silently folding an unrecognised value into one."""
     monkeypatch.delenv("SA01_DEPLOYMENT_MODE", raising=False)
-    monkeypatch.delenv("SOMA_AAAS_MODE", raising=False)
     monkeypatch.setattr(DeploymentMode, "_mode", None)
     monkeypatch.setattr(DeploymentMode, "_resolved", False)
     assert DeploymentMode.get() == "DEV"
 
 
-def test_the_legacy_flag_still_selects_aaas(monkeypatch):
+def test_the_removed_aaas_flag_is_not_a_second_source(monkeypatch):
+    """SOMA_AAAS_MODE is deleted. It must not select a mode."""
     monkeypatch.delenv("SA01_DEPLOYMENT_MODE", raising=False)
     monkeypatch.setenv("SOMA_AAAS_MODE", "true")
     monkeypatch.setattr(DeploymentMode, "_mode", None)
     monkeypatch.setattr(DeploymentMode, "_resolved", False)
-    assert DeploymentMode.is_aaas() is True
+    assert DeploymentMode.get() == "DEV"
+    assert DeploymentMode.is_standalone() is False
 
 
 # ---------------------------------------------------------------------------
@@ -83,19 +80,16 @@ def test_the_legacy_flag_still_selects_aaas(monkeypatch):
 
 
 def test_an_unknown_mode_is_refused_and_names_itself(monkeypatch):
-    """``PROD`` is the dangerous case: it is a real value elsewhere in this
-    codebase (``config/settings_registry``), so an operator can set it in
-    good faith. Silently running it as ``DEV`` would pick an identity source
-    nobody chose. The refusal must name the value so the operator can see
-    what was wrong."""
-    monkeypatch.setenv("SA01_DEPLOYMENT_MODE", "PROD")
-    monkeypatch.setattr(DeploymentMode, "_mode", None)
-    monkeypatch.setattr(DeploymentMode, "_resolved", False)
+    """``PROD`` and the removed ``AAAS`` must refuse and name themselves."""
+    for value in ("PROD", "AAAS"):
+        monkeypatch.setenv("SA01_DEPLOYMENT_MODE", value)
+        monkeypatch.setattr(DeploymentMode, "_mode", None)
+        monkeypatch.setattr(DeploymentMode, "_resolved", False)
 
-    with pytest.raises(ValueError) as excinfo:
-        DeploymentMode._resolve()
+        with pytest.raises(ValueError) as excinfo:
+            DeploymentMode._resolve()
 
-    assert "PROD" in str(excinfo.value)
+        assert value in str(excinfo.value)
 
 
 def test_a_typo_does_not_silently_select_an_identity_source(monkeypatch):
@@ -128,9 +122,8 @@ def test_the_refusal_is_not_cached_as_a_resolution(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_the_mode_vocabulary_is_exactly_the_declared_three():
+def test_the_mode_vocabulary_is_exactly_the_declared_two():
     assert {mode.value for mode in DeploymentModeEnum} == {
-        "AAAS",
         "STANDALONE",
         "DEV",
     }
@@ -139,12 +132,11 @@ def test_the_mode_vocabulary_is_exactly_the_declared_three():
 def test_the_predicates_partition_the_modes(monkeypatch):
     """Exactly one predicate holds for any mode the resolver accepts. If two
     could hold, a login dispatch would have two answers."""
-    for value in ("AAAS", "STANDALONE", "DEV"):
+    for value in ("STANDALONE", "DEV"):
         monkeypatch.setenv("SA01_DEPLOYMENT_MODE", value)
         monkeypatch.setattr(DeploymentMode, "_mode", None)
         monkeypatch.setattr(DeploymentMode, "_resolved", False)
         held = [
-            DeploymentMode.is_aaas(),
             DeploymentMode.is_standalone(),
             DeploymentMode.is_dev(),
         ]

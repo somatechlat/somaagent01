@@ -24,8 +24,8 @@ from prometheus_client import Counter, Gauge, Histogram, Info
 logger = logging.getLogger(__name__)
 
 # Deployment mode detection (consistent across all unified components)
-DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "dev").upper()
-AAAS_MODE = DEPLOYMENT_MODE == "AAAS"
+from django.conf import settings as _django_settings
+DEPLOYMENT_MODE = getattr(_django_settings, "SA01_DEPLOYMENT_MODE", "STANDALONE").upper()
 STANDALONE_MODE = DEPLOYMENT_MODE == "STANDALONE"
 
 logger.info(
@@ -264,13 +264,11 @@ class UnifiedMetrics:
         """Singleton pattern - ensure only one instance exists."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            # Initialize metrics on first instantiation
             cls._instance._initialize()
         return cls._instance
 
     @classmethod
     def get_instance(cls) -> UnifiedMetrics:
-        """Get singleton instance."""
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
@@ -355,7 +353,6 @@ class UnifiedMetrics:
         """Record health check result.
 
         METRICS-002: Enhanced with deployment mode context.
-        - AAAS mode: Track HTTP endpoint latency patterns
         - STANDALONE mode: Track embedded module execution patterns
 
         Args:
@@ -364,20 +361,7 @@ class UnifiedMetrics:
             latency_ms: Service ping latency in milliseconds
         """
         # Log deployment mode-specific health patterns
-        if AAAS_MODE:
-            if service_name == "somabrain" and latency_ms > 100:
-                # AAAS: SomaBrain HTTP endpoint latency warning
-                logger.warning(
-                    "AAAS mode: High latency for %s: %.2fms (inter-service HTTP call, expected <100ms)",
-                    service_name,
-                    latency_ms,
-                    extra={
-                        "service": service_name,
-                        "latency_ms": latency_ms,
-                        "deployment_mode": DEPLOYMENT_MODE,
-                    },
-                )
-        elif STANDALONE_MODE:
+        if STANDALONE_MODE:
             if service_name == "somabrain" and latency_ms > 50:
                 # STANDALONE: Embedded module execution latency warning
                 logger.debug(
@@ -399,7 +383,6 @@ class UnifiedMetrics:
         """Record memory retrieval metrics.
 
         METRICS-002: Enhanced with deployment mode context.
-        - AAAS mode: Track HTTP API call latency (expected 25-90ms)
         - STANDALONE mode: Track embedded module query latency (expected 8-35ms)
 
         Args:
@@ -409,19 +392,7 @@ class UnifiedMetrics:
         # Log deployment mode-specific retrieval patterns
         latency_ms = latency_seconds * 1000.0
 
-        if AAAS_MODE:
-            if latency_ms > 90:
-                logger.warning(
-                    "AAAS mode: Slow memory retrieval: %.2fms, %s snippets (expected 25-90ms, HTTP API call)",
-                    latency_ms,
-                    snippet_count,
-                    extra={
-                        "latency_ms": latency_ms,
-                        "snippet_count": snippet_count,
-                        "deployment_mode": DEPLOYMENT_MODE,
-                    },
-                )
-        elif STANDALONE_MODE:
+        if STANDALONE_MODE:
             if latency_ms > 35:
                 logger.debug(
                     "STANDALONE mode: Elevated memory retrieval latency: %.2fms, %s snippets (expected 8-35ms, embedded query)",
@@ -440,20 +411,13 @@ class UnifiedMetrics:
         """Record circuit breaker opening.
 
         METRICS-002: Enhanced with deployment mode context.
-        - AAAS mode: HTTP service circuit breaks
         - STANDALONE mode: Embedded module fallbacks
 
         Args:
             service_name: Name of service whose circuit opened
         """
         # Log deployment mode-specific circuit opens
-        if AAAS_MODE:
-            logger.warning(
-                "AAAS mode: Circuit opened for %s (HTTP service unavailable, fallback to degraded mode)",
-                service_name,
-                extra={"service": service_name, "deployment_mode": DEPLOYMENT_MODE},
-            )
-        elif STANDALONE_MODE:
+        if STANDALONE_MODE:
             logger.warning(
                 "STANDALONE mode: Circuit opened for %s (Embedded module error, fallback to degraded mode)",
                 service_name,
@@ -503,7 +467,6 @@ _metrics = UnifiedMetrics.get_instance()
 
 
 def get_metrics() -> UnifiedMetrics:
-    """Get the unified metrics singleton."""
     return _metrics
 
 

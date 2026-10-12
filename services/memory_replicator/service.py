@@ -23,8 +23,6 @@ class MemoryReplicatorService(BaseService):
     service_name: str = "memory-replicator"
 
     def __init__(self, config: CentralizedConfig | None = None) -> None:
-        # Initialize BaseService
-        """Initialize the instance."""
 
         super().__init__(config)
 
@@ -37,13 +35,10 @@ class MemoryReplicatorService(BaseService):
         LOGGER.info("Starting %s service", self.service_name)
 
         try:
-            # Import the MemoryReplicator from the original module
             from .main import MemoryReplicator
 
-            # Create the worker instance
             self.worker = MemoryReplicator()
 
-            # Start the worker as a background task
             self.worker_task = asyncio.create_task(self.worker.start())
 
             LOGGER.info("%s service startup completed", self.service_name)

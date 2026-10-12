@@ -30,7 +30,6 @@ class UnifiedSecretManager:
     """Vault-based secret storage."""
 
     def __init__(self) -> None:
-        """Initialize the instance."""
 
         self._vault_addr = os.environ.get("VAULT_ADDR")
 
@@ -86,7 +85,6 @@ class UnifiedSecretManager:
     # API Keys (LLM providers)
     # -------------------------------------------------------------------------
     def get_provider_key(self, provider: str) -> Optional[str]:
-        """Get API key for LLM provider from Vault."""
         if not self._is_available():
             return None
         return load_kv_secret(
@@ -134,7 +132,6 @@ class UnifiedSecretManager:
     # Credentials (auth passwords, tokens)
     # -------------------------------------------------------------------------
     def get_credential(self, key: str) -> Optional[str]:
-        """Get credential from Vault."""
         if not self._is_available():
             return None
         return load_kv_secret(
@@ -177,7 +174,6 @@ _manager: Optional[UnifiedSecretManager] = None
 
 
 def get_secret_manager() -> UnifiedSecretManager:
-    """Get singleton UnifiedSecretManager instance."""
     global _manager
     if _manager is None:
         _manager = UnifiedSecretManager()

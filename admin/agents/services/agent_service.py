@@ -30,7 +30,7 @@ def _resolve_tenant_id(request, tenant_id: Optional[str]) -> str:
         return auth_tenant
     if tenant_id:
         return tenant_id
-    default_tenant = getattr(settings, "AAAS_DEFAULT_TENANT_ID", None)
+    default_tenant = getattr(settings, "SA01_DEFAULT_TENANT_ID", None)
     if default_tenant:
         return str(default_tenant)
     raise HttpError(400, "tenant_id is required")

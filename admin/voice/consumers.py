@@ -88,7 +88,6 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
     """
 
     def __init__(self, *args, **kwargs):
-        """Initialize the instance."""
 
         super().__init__(*args, **kwargs)
         self.state: Optional[VoiceSessionState] = None
@@ -109,7 +108,6 @@ class VoiceConsumer(AsyncJsonWebsocketConsumer):
             params = dict(p.split("=") for p in query_string.split("&") if "=" in p)
             tenant_id = params.get("tenant_id", "default")
 
-            # Initialize session state
             self.state = VoiceSessionState(
                 session_id=str(uuid.uuid4()),
                 tenant_id=tenant_id,

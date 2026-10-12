@@ -432,7 +432,7 @@ async def get_tenant_usage(request, month: Optional[str] = None) -> TenantUsageR
     from admin.voice.models import VoiceSession
 
     tenant_id = getattr(request, "tenant_id", None) or getattr(
-        settings, "AAAS_DEFAULT_TENANT_ID", None
+        settings, "SA01_DEFAULT_TENANT_ID", None
     )
 
     if month is not None:

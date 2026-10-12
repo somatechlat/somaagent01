@@ -38,7 +38,7 @@ def _tenant(request) -> str:
     if tid.lower() in {"", "default", "standalone", "none", "null"}:
         from django.conf import settings
 
-        fallback = str(getattr(settings, "AAAS_DEFAULT_TENANT_ID", "") or "").strip()
+        fallback = str(getattr(settings, "SA01_DEFAULT_TENANT_ID", "") or "").strip()
         if (
             fallback
             and fallback.lower() not in {"default", "standalone", "none"}

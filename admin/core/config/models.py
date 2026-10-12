@@ -337,15 +337,12 @@ class Config(BaseModel):
         return self.external.opa_url or ""
 
     def get_postgres_dsn(self) -> str:
-        """Get PostgreSQL DSN."""
         return self.database.dsn
 
     def get_kafka_bootstrap_servers(self) -> str:
-        """Get Kafka bootstrap servers."""
         return self.kafka.bootstrap_servers
 
     def get_redis_url(self) -> str:
-        """Get Redis URL."""
         return self.redis.url
 
     def is_auth_required(self) -> bool:
@@ -353,15 +350,12 @@ class Config(BaseModel):
         return self.auth.auth_required
 
     def get_deployment_mode(self) -> str:
-        """Get deployment mode."""
         return self.service.deployment_mode
 
     def get_deployment_target(self) -> str:
-        """Get deployment target."""
         return self.service.deployment_target
 
     def get_environment(self) -> str:
-        """Get environment."""
         return self.service.environment
 
     @property

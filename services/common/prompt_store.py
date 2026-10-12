@@ -21,7 +21,6 @@ class PromptStore(BaseStore[Dict[str, Any]]):
         pass
 
     async def get(self, name: str) -> Optional[Dict[str, Any]]:
-        """Get a prompt template by name."""
         from admin.core.models import Prompt
 
         prompt = await Prompt.objects.filter(name=name).afirst()
@@ -35,7 +34,6 @@ class PromptStore(BaseStore[Dict[str, Any]]):
         }
 
     async def get_prompt(self, name: str) -> Optional[str]:
-        """Get prompt template content by name."""
         record = await self.get(name)
         return record.get("content") if record else None
 

@@ -9,9 +9,23 @@
 | Version | 1.0.0 |
 | Date | 2026-10-08 |
 | Status | Draft |
+| Classification | Internal |
+| Author | SomaTech Engineering |
+| Approver | — |
+| ISO Reference | ISO 9241-210:2019 |
+| Next Review | 2027-01-08 |
 | Source of truth | `somaAgent01/webui/src/main.ts` route table + live views |
 | Related | SOMA-UI-CHAT-WORKSPACE-001 · UI-S-* · UI-X-* |
 | Rule | **No invented routes.** One home per feature. Memory once. |
+
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-10-08 | SomaTech Engineering | Document Control fields completed; Revision History added for ISO compliance. |
+
+---
 
 ---
 

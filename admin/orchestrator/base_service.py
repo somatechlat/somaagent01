@@ -47,7 +47,6 @@ class BaseSomaService(ABC):
     config: Any = None
 
     def __init__(self, config: Any = None) -> None:
-        """Initialize the instance."""
 
         self.config = config
         self._running = asyncio.Event()

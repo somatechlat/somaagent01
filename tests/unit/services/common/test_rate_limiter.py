@@ -43,7 +43,7 @@ def clean_limiter_singleton():
 
 def _live_redis_url() -> str:
     return os.getenv("SA01_REDIS_URL") or os.getenv(
-        "REDIS_URL", "redis://localhost:6379/0"
+        "REDIS_URL", "redis://somaagent_redis:6379/0"
     )
 
 
@@ -73,7 +73,7 @@ def test_the_limiter_does_not_keep_a_second_opinion_about_the_redis_url():
     """The single-resolver rule.
 
     ``RedisRateLimiter`` used to rebuild the environment chain itself and
-    default to ``redis://localhost:6379/0``. Two resolvers had already
+    default to ``redis://somaagent_redis:6379/0``. Two resolvers had already
     disagreed in practice: one module reached the configured Redis while the
     limiter dialled a hardcoded host that nothing was listening on. The limiter
     must ask the one place that owns the answer.

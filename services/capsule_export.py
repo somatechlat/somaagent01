@@ -1,6 +1,5 @@
 """Capsule Export Service.
 
-Simple. Elegant. Complete.
 
 Exports Capsule bundles for backup, transfer, or disaster recovery.
 A complete Capsule export contains everything needed to recreate an agent:
@@ -10,7 +9,6 @@ A complete Capsule export contains everything needed to recreate an agent:
 - Related data (models, prompts, settings, feature flags)
 
 VIBE Compliance:
-- Rule 82: Professional comments, zero AI slop
 - Rule 84: No mocks - real Django ORM queries
 - Rule 164: An export describes an agent. It never carries its credentials.
 - Rule 216: Django 5+ Backend Sovereignty
@@ -211,7 +209,6 @@ def export_capsule(
         capsule.tenant,
     )
 
-    # Build export bundle
     bundle = CapsuleBundleExport(
         export_version="1.0.0",
         exported_at=datetime.now(timezone.utc).isoformat(),
@@ -473,7 +470,6 @@ def _export_related_data(capsule: Capsule) -> RelatedDataExport:
 
 def _export_sessions(capsule: Capsule) -> list:
     """Export Session and SessionEvent data."""
-    # Get session IDs from instances
     instance_session_ids = list(
         CapsuleInstance.objects.filter(capsule=capsule).values_list("session_id", flat=True)
     )

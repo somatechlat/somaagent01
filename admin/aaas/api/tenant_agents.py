@@ -51,7 +51,7 @@ class AgentCreateRequest(BaseModel):
 
     name: str
     slug: Optional[str] = None
-    chat_model: str | None = None  # Uses settings.AAAS_DEFAULT_CHAT_MODEL if not provided
+    chat_model: str | None = None  # Uses settings.SA01_DEFAULT_CHAT_MODEL if not provided
     memory_enabled: bool = True
     voice_enabled: bool = False
 
@@ -69,7 +69,7 @@ class AgentUpdateRequest(BaseModel):
 def _agent_to_schema(agent: Agent) -> AgentSchema:
     """Convert Agent model to schema."""
     config = agent.config or {}
-    chat_model = config.get("chat_model") or config.get("model") or settings.AAAS_DEFAULT_CHAT_MODEL
+    chat_model = config.get("chat_model") or config.get("model") or settings.SA01_DEFAULT_CHAT_MODEL
     return AgentSchema(
         id=str(agent.id),
         name=agent.name,
@@ -105,7 +105,7 @@ def list_agents(
 ) -> dict:
     """List all agents in the tenant."""
     authorize_sync(request, action="agent:read", resource="agents")
-    tenant_id = getattr(request.auth, "tenant_id", None) or settings.AAAS_DEFAULT_TENANT_ID
+    tenant_id = getattr(request.auth, "tenant_id", None) or settings.SA01_DEFAULT_TENANT_ID
 
     qs = Agent.objects.filter(tenant_id=tenant_id)
 
@@ -139,7 +139,7 @@ def create_agent(
 ) -> dict:
     """Create a new agent in the tenant."""
     authorize_sync(request, action="agent:create", resource="agents")
-    tenant_id = getattr(request.auth, "tenant_id", None) or settings.AAAS_DEFAULT_TENANT_ID
+    tenant_id = getattr(request.auth, "tenant_id", None) or settings.SA01_DEFAULT_TENANT_ID
 
     slug = payload.slug or payload.name.lower().replace(" ", "-").replace(".", "")
 
@@ -156,7 +156,7 @@ def create_agent(
         slug=slug,
         status=AgentStatus.ACTIVE,
         config={
-            "chat_model": payload.chat_model or settings.AAAS_DEFAULT_CHAT_MODEL,
+            "chat_model": payload.chat_model or settings.SA01_DEFAULT_CHAT_MODEL,
             "memory_enabled": payload.memory_enabled,
             "voice_enabled": payload.voice_enabled,
         },

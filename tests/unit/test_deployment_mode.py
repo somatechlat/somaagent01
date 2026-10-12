@@ -1,7 +1,7 @@
 """Unit tests for DeploymentMode singleton.
 
-Tests the canonical deployment mode resolution with priority chain:
-SA01_DEPLOYMENT_MODE > SOMA_AAAS_MODE > DEV default.
+Single source: SA01_DEPLOYMENT_MODE. Modes: STANDALONE | DEV.
+There is no AAAS mode and no second flag.
 """
 
 import pytest
@@ -11,11 +11,9 @@ class TestDeploymentMode:
     """Test DeploymentMode singleton behavior."""
 
     def test_default_is_dev(self, monkeypatch):
-        """Without env vars, mode defaults to DEV."""
+        """Without the env var, mode defaults to DEV."""
         monkeypatch.delenv("SA01_DEPLOYMENT_MODE", raising=False)
-        monkeypatch.delenv("SOMA_AAAS_MODE", raising=False)
 
-        # Reset singleton
         from services.common.deployment_mode import DeploymentMode
 
         DeploymentMode._resolved = False
@@ -23,20 +21,6 @@ class TestDeploymentMode:
 
         assert DeploymentMode.get() == "DEV"
         assert DeploymentMode.is_dev() is True
-        assert DeploymentMode.is_aaas() is False
-        assert DeploymentMode.is_standalone() is False
-
-    def test_aaas_mode(self, monkeypatch):
-        """SA01_DEPLOYMENT_MODE=AAAS sets AAAS mode."""
-        monkeypatch.setenv("SA01_DEPLOYMENT_MODE", "AAAS")
-
-        from services.common.deployment_mode import DeploymentMode
-
-        DeploymentMode._resolved = False
-        DeploymentMode._mode = None
-
-        assert DeploymentMode.get() == "AAAS"
-        assert DeploymentMode.is_aaas() is True
         assert DeploymentMode.is_standalone() is False
 
     def test_standalone_mode(self, monkeypatch):
@@ -50,25 +34,10 @@ class TestDeploymentMode:
 
         assert DeploymentMode.get() == "STANDALONE"
         assert DeploymentMode.is_standalone() is True
-        assert DeploymentMode.is_aaas() is False
 
-    def test_legacy_soma_aaas_mode(self, monkeypatch):
-        """SOMA_AAAS_MODE=true triggers AAAS when SA01_DEPLOYMENT_MODE is unset."""
-        monkeypatch.delenv("SA01_DEPLOYMENT_MODE", raising=False)
-        monkeypatch.setenv("SOMA_AAAS_MODE", "true")
-
-        from services.common.deployment_mode import DeploymentMode
-
-        DeploymentMode._resolved = False
-        DeploymentMode._mode = None
-
-        assert DeploymentMode.get() == "AAAS"
-        assert DeploymentMode.is_aaas() is True
-
-    def test_sa01_overrides_soma_aaas(self, monkeypatch):
-        """SA01_DEPLOYMENT_MODE takes priority over SOMA_AAAS_MODE."""
-        monkeypatch.setenv("SA01_DEPLOYMENT_MODE", "STANDALONE")
-        monkeypatch.setenv("SOMA_AAAS_MODE", "true")
+    def test_case_insensitive(self, monkeypatch):
+        """Mode resolution is case-insensitive."""
+        monkeypatch.setenv("SA01_DEPLOYMENT_MODE", "standalone")
 
         from services.common.deployment_mode import DeploymentMode
 
@@ -78,17 +47,18 @@ class TestDeploymentMode:
         assert DeploymentMode.get() == "STANDALONE"
         assert DeploymentMode.is_standalone() is True
 
-    def test_case_insensitive(self, monkeypatch):
-        """Mode resolution is case-insensitive."""
-        monkeypatch.setenv("SA01_DEPLOYMENT_MODE", "aaas")
+    def test_aaas_is_not_a_mode(self, monkeypatch):
+        """AAAS was removed. Setting it must refuse, not silently map."""
+        monkeypatch.setenv("SA01_DEPLOYMENT_MODE", "AAAS")
 
         from services.common.deployment_mode import DeploymentMode
 
         DeploymentMode._resolved = False
         DeploymentMode._mode = None
 
-        assert DeploymentMode.get() == "AAAS"
-        assert DeploymentMode.is_aaas() is True
+        with pytest.raises(ValueError) as excinfo:
+            DeploymentMode.get()
+        assert "AAAS" in str(excinfo.value)
 
     def test_invalid_mode_is_refused(self, monkeypatch):
         """An unrecognised mode raises and names itself.

@@ -1,4 +1,3 @@
-"""Module strings."""
 
 import re
 import sys

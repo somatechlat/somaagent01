@@ -141,7 +141,6 @@ def revoke_api_key(request, key_id: str):
 # =============================================================================
 @router.get("/models", response=list[ModelConfigOut], auth=AuthBearer())
 def list_models(request):
-    """Get all configured LLM models from Global Defaults."""
     authorize_sync(request, action="system:view", resource="settings")
     from admin.aaas.models.profiles import PlatformConfig
 
@@ -217,7 +216,6 @@ def update_model(request, model_id: str, payload: ModelConfigUpdate):
 # =============================================================================
 @router.get("/roles", response=list[RoleOut], auth=AuthBearer())
 def list_roles(request):
-    """Get all platform roles from Global Defaults."""
     authorize_sync(request, action="org:read", resource="settings")
     from admin.aaas.models.profiles import PlatformConfig
 

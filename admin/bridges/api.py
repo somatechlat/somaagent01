@@ -88,7 +88,7 @@ def _require_tenant_id(request) -> str:
     """Resolve the caller's tenant — fail-closed, no default tenant.
 
     Uses explicit JWT claims (``tenant_id`` or ``tenant``) only. The special
-    value ``default`` is rejected rather than mapped to AAAS_DEFAULT_TENANT_ID,
+    value ``default`` is rejected rather than mapped to SA01_DEFAULT_TENANT_ID,
     so bridge data can never attach to a silent default tenant.
     """
 

@@ -1,4 +1,3 @@
-"""Module features."""
 
 import os
 from dataclasses import dataclass, field
@@ -10,7 +9,6 @@ State = Literal["on", "degraded", "disabled"]
 
 @dataclass(frozen=True)
 class FeatureDescriptor:
-    """Featuredescriptor class implementation."""
 
     key: str
     description: str
@@ -26,10 +24,8 @@ class FeatureDescriptor:
 
 
 class FeatureRegistry:
-    """Featureregistry class implementation."""
 
     def __init__(self, descriptors: List[FeatureDescriptor], profile: Profile = "enhanced"):
-        """Initialize the instance."""
 
         self._descriptors: Dict[str, FeatureDescriptor] = {d.key: d for d in descriptors}
         self._profile: Profile = profile
@@ -316,6 +312,32 @@ def build_default_registry() -> FeatureRegistry:
             cost_impact="low",
             tags=["bridge", "email", "capsule"],
             enabled_env_var="SA01_BRIDGE_EMAIL",
+            stability="beta",
+        ),
+        FeatureDescriptor(
+            key="clef_decide",
+            description="Enable Cloudflare Clef System One decisions (mod_clef shared client)",
+            default_enabled=False,
+            profiles={"minimal": False, "standard": False, "enhanced": False, "max": False},
+            dependencies=[],
+            degrade_strategy="manual",
+            cost_impact="medium",
+            metrics_key="clef_decide",
+            tags=["clef", "decision", "capsule"],
+            enabled_env_var="SA01_ENABLE_CLEF_DECIDE",
+            stability="beta",
+        ),
+        FeatureDescriptor(
+            key="clef_guardrail",
+            description="Enable Clef tool-guardrail choke (noul p_safe + score risk)",
+            default_enabled=False,
+            profiles={"minimal": False, "standard": False, "enhanced": False, "max": False},
+            dependencies=["clef_decide"],
+            degrade_strategy="manual",
+            cost_impact="medium",
+            metrics_key="clef_guardrail",
+            tags=["clef", "guardrail", "capsule"],
+            enabled_env_var="SA01_ENABLE_CLEF_GUARDRAIL",
             stability="beta",
         ),
     ]

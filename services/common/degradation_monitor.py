@@ -101,7 +101,6 @@ SERVICE_DEPENDENCIES: dict[str, list[str]] = {
 
 
 def get_dependent_services(service: str) -> list[str]:
-    """Get services that depend on the given service."""
     return [s for s, deps in SERVICE_DEPENDENCIES.items() if service in deps]
 
 
@@ -172,7 +171,6 @@ class _ComponentsProxy:
         )
 
     def get(self, name: str) -> Optional[ComponentHealth]:
-        """Get component by name."""
         status = self._monitor.checks.get(name)
         if status is None:
             return None
@@ -247,7 +245,6 @@ class DegradationMonitor:
 
     @property
     def current_level(self) -> DegradationLevel:
-        """Get current degradation level mapped from binary health."""
         health = self._monitor.get_overall_health()
         if health.critical_failure:
             return DegradationLevel.CRITICAL
@@ -257,7 +254,6 @@ class DegradationMonitor:
             return DegradationLevel.NORMAL
 
     async def get_degradation_status(self) -> DegradationStatus:
-        """Get degradation status for API consumers."""
         health = self._monitor.get_overall_health()
         affected = []
         healthy_comps = []
@@ -305,7 +301,6 @@ class DegradationMonitor:
         )
 
     def get_health_report(self) -> dict:
-        """Get health report for API consumers."""
         health = self._monitor.get_overall_health()
         return {
             "overall": "healthy" if health.healthy else "degraded",
@@ -333,14 +328,12 @@ class DegradationMonitor:
         limit: int = 100,
         component_name: Optional[str] = None,
     ) -> list[dict[str, Any]]:
-        """Get degradation history from in-memory ring buffer."""
         items = list(reversed(_history))
         if component_name:
             items = [r for r in items if r["component_name"] == component_name]
         return items[:limit]
 
     def get_dependent_services(self, service: str) -> list[str]:
-        """Get services that depend on the given service."""
         return get_dependent_services(service)
 
 

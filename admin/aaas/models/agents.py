@@ -67,7 +67,6 @@ class Agent(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "agents"
         ordering = ["-created_at"]
@@ -118,7 +117,6 @@ class AgentUser(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "agent_users"
         ordering = ["-created_at"]

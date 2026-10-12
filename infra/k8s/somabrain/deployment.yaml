@@ -23,8 +23,6 @@ spec:
           ports:
             - containerPort: 9696
           env:
-            - name: SOMA_AAAS_MODE
-              value: "false"
             - name: SOMABRAIN_PORT
               value: "9696"
             - name: MILVUS_HOST

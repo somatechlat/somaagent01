@@ -1,14 +1,14 @@
 """Deployment Mode — Single Source of Truth.
 
 VIBE COMPLIANT:
-- ONE env var chain: SA01_DEPLOYMENT_MODE > SOMA_AAAS_MODE > default
+- ONE env var: SA01_DEPLOYMENT_MODE
 - NO other module reimplements mode detection
 - Replaces 4 inconsistent implementations across the codebase
 
 Usage:
     from services.common.deployment_mode import DeploymentMode
 
-    if DeploymentMode.is_aaas():
+    if DeploymentMode.is_standalone():
         ...
 """
 
@@ -21,7 +21,6 @@ from enum import Enum
 class DeploymentModeEnum(str, Enum):
     """Canonical deployment modes."""
 
-    AAAS = "AAAS"
     STANDALONE = "STANDALONE"
     DEV = "DEV"
 
@@ -29,10 +28,8 @@ class DeploymentModeEnum(str, Enum):
 class DeploymentMode:
     """Singleton deployment mode resolver.
 
-    Priority chain (highest to lowest):
-    1. SA01_DEPLOYMENT_MODE environment variable (canonical)
-    2. SOMA_AAAS_MODE=true → AAAS
-    3. Default → DEV
+    Single source: SA01_DEPLOYMENT_MODE. No second flag.
+    Unset resolves to DEV (documented default, not a fallback over a real value).
     """
 
     _mode: DeploymentModeEnum | None = None
@@ -62,9 +59,6 @@ class DeploymentMode:
 
         mode = os.environ.get("SA01_DEPLOYMENT_MODE", "").strip().upper()
         if not mode:
-            if os.environ.get("SOMA_AAAS_MODE", "").lower() == "true":
-                mode = "AAAS"
-        if not mode:
             mode = "DEV"
 
         try:
@@ -81,13 +75,7 @@ class DeploymentMode:
 
     @classmethod
     def get(cls) -> str:
-        """Get deployment mode string."""
         return cls._resolve().value
-
-    @classmethod
-    def is_aaas(cls) -> bool:
-        """Running in AAAS (cluster) mode."""
-        return cls._resolve() == DeploymentModeEnum.AAAS
 
     @classmethod
     def is_standalone(cls) -> bool:

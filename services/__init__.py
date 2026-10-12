@@ -21,11 +21,9 @@ __all__ = [  # type: ignore
     "inject_capsule",
     "edit_capsule",
     "archive_capsule",
-    # Export (from capsule_export)
     "export_capsule",
     "export_tenant_capsules",
     "verify_export_checksum",
-    # Import (from capsule_import)
     "import_capsule",
     "import_tenant_capsules",
     "ImportResult",
@@ -68,7 +66,6 @@ def __getattr__(name: str):  # noqa: F401
 
         return archive_capsule
 
-    # Export operations
     if name == "export_capsule":
         from services.capsule_export import export_capsule
 
@@ -82,7 +79,6 @@ def __getattr__(name: str):  # noqa: F401
 
         return verify_export_checksum
 
-    # Import operations
     if name == "import_capsule":
         from services.capsule_import import import_capsule
 

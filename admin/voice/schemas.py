@@ -127,7 +127,6 @@ class VoicePersonaOut(VoicePersonaBase):
     updated_at: datetime
 
     class Config:
-        """Config class implementation."""
 
         from_attributes = True
 
@@ -164,7 +163,6 @@ class VoiceSessionOut(BaseModel):
     ended_at: Optional[datetime] = None
 
     class Config:
-        """Config class implementation."""
 
         from_attributes = True
 
@@ -207,7 +205,6 @@ class LLMConfigOut(BaseModel):
     is_active: bool
 
     class Config:
-        """Config class implementation."""
 
         from_attributes = True
 
@@ -238,7 +235,6 @@ class VoiceModelOut(BaseModel):
     is_default: bool
 
     class Config:
-        """Config class implementation."""
 
         from_attributes = True
 

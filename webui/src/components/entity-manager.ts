@@ -328,7 +328,6 @@ export class EntityManager extends LitElement {
     private get effectiveColumns(): TableColumn[] {
         const cols = this.columns.length > 0 ? this.columns : this.config.defaultColumns;
 
-        // Add action column if user has any action permissions
         const anyActions = this.config.actions.some(action => this.hasPermission(action.permission));
         if (anyActions) {
             return [
@@ -391,7 +390,6 @@ export class EntityManager extends LitElement {
         this.error = null;
         try {
             const json = await apiClient.get<Record<string, unknown>[] | { items?: Record<string, unknown>[]; data?: Record<string, unknown>[] }>(this.apiPath(`${this.entity}s`));
-            // Handle both array and { items: [...] } responses
             this.data = Array.isArray(json) ? json : (json.items || json.data || []);
         } catch (err) {
             // Failure is not "no rows". Keep the previous rows and surface
@@ -406,7 +404,6 @@ export class EntityManager extends LitElement {
     private get filteredData(): Record<string, unknown>[] {
         let result = this.data;
 
-        // Search filter
         if (this.searchQuery) {
             const q = this.searchQuery.toLowerCase();
             result = result.filter(item =>

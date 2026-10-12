@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import logging
 import os
-from functools import lru_cache
+import threading
+import time
 from pathlib import Path
 from typing import Any, Optional
 
@@ -35,11 +36,95 @@ class VaultAuthError(RuntimeError):
     """
 
 
-# Token is a FILE, never an environment variable (VIBE Rule 164). A path is
-# topology; the credential it names is not. There is deliberately no
-# ``VAULT_TOKEN`` env read anywhere in this module — exporting a token into a
-# shell leaves it in ``ps``, in ``/proc/*/environ`` and in every crash dump.
+# Token is a FILE PATH into the RAM tmpfs custodian (T0_DIR), never an
+# environment variable (VIBE Rule 164). A path is topology; the credential it
+# names is not. There is deliberately no ``VAULT_TOKEN`` env read anywhere in
+# this module — exporting a token into a shell leaves it in ``ps``, in
+# ``/proc/*/environ`` and in every crash dump.
+#
+# The file is the SCOPED runtime token (``agent_runtime_token``), never the
+# root token. F-10: when this lease expires the caller must stop cleanly —
+# never widen policy, re-mint as root, or read a backup file.
 DEFAULT_TOKEN_FILE_ENV = "VAULT_TOKEN_FILE"
+SCOPED_TOKEN_ACCOUNT = "agent_runtime_token"
+_ROOT_ACCOUNT_NAMES = frozenset({"vault_root_token", "root_token", "vault_root"})
+
+# ---------------------------------------------------------------------------
+# F-22: TTL-bounded secret cache.
+#
+# ``functools.lru_cache`` never expires. A rotated secret would be served from
+# cache forever — the one failure mode a secret store must not have. This
+# cache is time-bounded (default 300 s), size-bounded, and thread-safe.
+# Set ``VAULT_CACHE_TTL_SECONDS=0`` to disable caching entirely (every read
+# hits Vault). An unparseable or negative value is fatal (Rule 91: refuse,
+# never guess a cache lifetime).
+# ---------------------------------------------------------------------------
+DEFAULT_CACHE_TTL_SECONDS = 300.0
+CACHE_MAXSIZE = 32
+
+_cache_lock = threading.Lock()
+_cache: dict[tuple[Any, ...], tuple[float, Optional[str]]] = {}
+
+
+def _cache_ttl_seconds() -> float:
+    """Return the configured cache TTL in seconds. Fail-closed on garbage."""
+    raw = os.environ.get("VAULT_CACHE_TTL_SECONDS", "").strip()
+    if not raw:
+        return DEFAULT_CACHE_TTL_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        raise VaultAuthError(
+            f"VAULT_CACHE_TTL_SECONDS must be a number of seconds, got {raw!r}. "
+            f"Refusing to guess a cache lifetime (VIBE Rule 91)."
+        ) from None
+    if value < 0:
+        raise VaultAuthError(
+            f"VAULT_CACHE_TTL_SECONDS must be >= 0, got {value}. A negative "
+            f"TTL is not a policy, it is a defect (VIBE Rule 91)."
+        )
+    return value
+
+
+def _cache_get(key: tuple[Any, ...]) -> tuple[bool, Optional[str]]:
+    """Return ``(hit, value)``. Expired entries are evicted on access."""
+    with _cache_lock:
+        entry = _cache.get(key)
+        if entry is None:
+            return False, None
+        expires_at, value = entry
+        if time.monotonic() >= expires_at:
+            del _cache[key]
+            return False, None
+        return True, value
+
+
+def _cache_set(key: tuple[Any, ...], value: Optional[str]) -> None:
+    """Store ``value`` with the configured TTL. Evicts oldest when full.
+
+    Never cache an absence (None): a pre-seed / pre-policy read must not pin
+    "missing" for the TTL after the key is written (security-reviewer F-cache).
+    """
+    if value is None:
+        return
+    ttl = _cache_ttl_seconds()
+    if ttl <= 0:
+        return
+    with _cache_lock:
+        if len(_cache) >= CACHE_MAXSIZE:
+            oldest = min(_cache, key=lambda k: _cache[k][0])
+            del _cache[oldest]
+        _cache[key] = (time.monotonic() + ttl, value)
+
+
+def refresh_cached_secrets() -> None:
+    """Clear every cached Vault read.
+
+    Called after a write/delete so a rotated secret is visible immediately,
+    and available as the production/ops refresh hook.
+    """
+    with _cache_lock:
+        _cache.clear()
 
 
 def _resolve_vault_token(*, token: Optional[str], token_file: Optional[str]) -> str:
@@ -47,48 +132,70 @@ def _resolve_vault_token(*, token: Optional[str], token_file: Optional[str]) -> 
 
     Resolution order:
 
-    1. ``token_file`` argument (explicit)
-    2. ``VAULT_TOKEN_FILE`` environment variable — a PATH, not a credential
-    3. ``token`` argument — only what a caller read from its own secret store
+    1. ``token`` argument — only what a caller read from its own secret store
+    2. ``token_file`` argument (explicit path)
+    3. ``T0_DIR`` RAM tmpfs custodian account ``agent_runtime_token``
+    4. ``VAULT_TOKEN_FILE`` environment variable — a PATH, not a credential
 
-    A missing, unreadable or empty token is fatal. It is never treated as
-    "no secrets available".
+    A root token is refused on every path (R-SEC-01 / F-10). A missing,
+    unreadable or empty token is fatal. It is never treated as "no secrets
+    available".
     """
+    if token:
+        return token
+
     candidates: list[tuple[str, Optional[str]]] = [
         ("token_file argument", token_file),
+        (
+            "T0_DIR custodian",
+            (
+                str(Path(os.environ["T0_DIR"]) / SCOPED_TOKEN_ACCOUNT)
+                if os.environ.get("T0_DIR")
+                else None
+            ),
+        ),
         (DEFAULT_TOKEN_FILE_ENV, os.environ.get(DEFAULT_TOKEN_FILE_ENV)),
     ]
     for source, path in candidates:
         if not path:
             continue
+        name = Path(path).name
+        if name in _ROOT_ACCOUNT_NAMES:
+            raise VaultAuthError(
+                f"R-SEC-01 / SOMA-STD-BOOTSTRAP-001 F-10: refusing to use "
+                f"{name!r} named by {source} at {path!r}. Long-running app and "
+                f"test processes hold only the scoped TTL token "
+                f"({SCOPED_TOKEN_ACCOUNT}) from the RAM tmpfs custodian. Root "
+                f"is for unseal and policy one-shots only — never mounted, "
+                f"never a backup file."
+            )
         try:
             resolved = Path(path).read_text(encoding="utf-8").strip()
         except OSError as exc:
             raise VaultAuthError(
-                f"VIBE Rule 164 VIOLATION: cannot read the Vault token file "
+                f"VIBE Rule 164: cannot read the scoped Vault token file "
                 f"named by {source} at {path!r}: {exc.strerror or exc}. The "
-                f"token is a credential and is delivered as a file — fix the "
-                f"path or the file's permissions (0600); it is never read from "
-                f"the environment."
+                f"token is delivered via the RAM tmpfs custodian (T0_DIR) — "
+                f"fix the path or the file's permissions (0600); it is never "
+                f"read from the environment and never from a repo file."
             ) from None
         if resolved:
             return resolved
         raise VaultAuthError(
-            f"VIBE Rule 164 VIOLATION: the Vault token file named by "
+            f"VIBE Rule 164: the Vault token file named by "
             f"{source} at {path!r} is empty. An empty token is not a valid "
             f"credential and must not be treated as 'no secrets'."
         )
 
-    if token:
-        return token
-
     raise VaultAuthError(
-        f"VIBE Rule 164 VIOLATION: no Vault token available. Point "
-        f"{DEFAULT_TOKEN_FILE_ENV} at a file containing the token (for local "
-        f"stacks that is infra/standalone/secrets/vault_root_token, or an "
-        f"app-scoped token file in production). The token is never taken from "
-        f"the environment and there is no fallback — without it Vault cannot "
-        f"be read at all, which is not the same as a secret being absent."
+        f"VIBE Rule 164: no scoped Vault token available. Point "
+        f"{DEFAULT_TOKEN_FILE_ENV} at the T0_DIR custodian account "
+        f"{SCOPED_TOKEN_ACCOUNT} (compose: /run/t0/agent_runtime_token, "
+        f"minted by vault_scoped_tokens.py). Never vault_root_token and never "
+        f"a file under the repo. The token is not taken from the environment "
+        f"and there is no fallback — without it Vault cannot be read at all, "
+        f"which is not the same as a secret being absent. On lease expiry "
+        f"(F-10) stop cleanly; do not re-mint as root or read a backup file."
     )
 
 
@@ -108,7 +215,6 @@ def _coerce_verify(verify: Optional[str | bool]) -> str | bool:
     return verify_str
 
 
-@lru_cache(maxsize=32)
 def load_kv_secret(
     *,
     path: str,
@@ -128,13 +234,29 @@ def load_kv_secret(
     authenticate to* Vault raises ``VaultAuthError`` instead, because "I could
     not look" must not be reported as "it is not there".
 
-    Results are cached per unique configuration to avoid repeated round-trips.
+    Results are cached with a TTL (F-22, default 300 s) per unique
+    configuration to avoid repeated round-trips while still honouring
+    rotation. Set ``VAULT_CACHE_TTL_SECONDS=0`` to force a live read.
     """
 
     log = logger or LOGGER
 
     if not path:
         return None
+
+    cache_key = (
+        path,
+        key,
+        mount_point,
+        url,
+        namespace,
+        token,
+        token_file,
+        verify,
+    )
+    hit, cached = _cache_get(cache_key)
+    if hit:
+        return cached
 
     hvac_mod = _ensure_hvac()
 
@@ -177,12 +299,27 @@ def load_kv_secret(
                 "Vault path absent",
                 extra={"path": path, "mount_point": mount_point},
             )
+            _cache_set(cache_key, None)
             return None
+        # F-11: a policy denial is NOT a missing secret. Vault answered 403;
+        # fail closed naming the path so the operator can fix the grant.
+        # Never omit the secret and start anyway.
+        status = getattr(exc, "status_code", None) or getattr(
+            getattr(exc, "response", None), "status_code", None
+        )
+        if exc_name in {"Forbidden", "InvalidToken", "Unauthorized"} or status in (401, 403):
+            raise VaultAuthError(
+                f"SOMA-STD-BOOTSTRAP-001 F-11: policy denied read of "
+                f"{mount_point}/{path} (key={key}) from Vault at {url} "
+                f"[{exc_name}]. The service token is expired or lacks this "
+                f"path. Stop cleanly (F-10) — do not widen policy, re-mint as "
+                f"root, omit the secret, or fall back to a backup file."
+            ) from None
         raise VaultAuthError(
             f"VIBE Rule 164 VIOLATION: cannot read {mount_point}/{path} from "
             f"Vault at {url}: {exc_name}. The secret's presence is unknown, so "
             f"this is not a missing key. Bring Vault up and unsealed, and check "
-            f"the token file — there is no local copy to fall back on."
+            f"the scoped token file — there is no local copy to fall back on."
         ) from None
 
     data = response.get("data", {}) if isinstance(response, dict) else {}
@@ -190,7 +327,9 @@ def load_kv_secret(
     if isinstance(nested, dict):
         value = nested.get(key)
         if value is not None:
-            return str(value)
+            result = str(value)
+            _cache_set(cache_key, result)
+            return result
     else:
         log.warning(
             "Unexpected Vault response payload",
@@ -200,12 +339,8 @@ def load_kv_secret(
         "Secret key missing in Vault response",
         extra={"path": path, "key": key, "mount_point": mount_point},
     )
+    _cache_set(cache_key, None)
     return None
-
-
-def refresh_cached_secrets() -> None:
-    """Clear cached Vault reads (used in tests)."""
-    load_kv_secret.cache_clear()
 
 
 def save_kv_secret(
@@ -276,8 +411,7 @@ def save_kv_secret(
             mount_point=mount_point,
         )
         log.debug("Vault secret saved", extra={"path": path, "key": key})
-        # Clear cache so next read gets fresh value
-        load_kv_secret.cache_clear()
+        refresh_cached_secrets()
         return True
     except Exception as exc:
         raise RuntimeError(
@@ -381,7 +515,7 @@ def delete_kv_secret(
                     "Vault key already absent",
                     extra={"path": path, "key": key},
                 )
-                load_kv_secret.cache_clear()
+                refresh_cached_secrets()
                 return True
 
             del document[key]
@@ -392,7 +526,7 @@ def delete_kv_secret(
             )
             log.debug("Vault secret key deleted", extra={"path": path, "key": key})
 
-        load_kv_secret.cache_clear()
+        refresh_cached_secrets()
         return True
     except Exception as exc:
         raise RuntimeError(

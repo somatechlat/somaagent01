@@ -10,7 +10,6 @@ standalone agent and has no billing administration surface. See AGENT.md §1.1.
 
 try:
 
-    # Import all admin classes to register with Django admin
     from admin.aaas.admin_agents import (
         AgentAdmin,
         AgentInline,

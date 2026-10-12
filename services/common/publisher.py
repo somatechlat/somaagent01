@@ -67,10 +67,8 @@ async def get_durable_publisher() -> Optional[DurablePublisher]:
 
 
 class DurablePublisher:
-    """Durablepublisher class implementation."""
 
     def __init__(self, *, bus: KafkaEventBus) -> None:
-        """Initialize the instance."""
 
         self.bus = bus
 

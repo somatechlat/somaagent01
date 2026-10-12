@@ -118,7 +118,7 @@ class TestLoginFlow:
             import redis
 
             r = redis.Redis(
-                host=os.environ.get("REDIS_HOST", "localhost"),
+                host=os.environ.get("REDIS_HOST", "somaagent_redis"),
                 port=int(os.environ.get("REDIS_PORT", 6379)),
             )
 
@@ -340,7 +340,7 @@ class TestOAuthPKCE:
             import redis
 
             r = redis.Redis(
-                host=os.environ.get("REDIS_HOST", "localhost"),
+                host=os.environ.get("REDIS_HOST", "somaagent_redis"),
                 port=int(os.environ.get("REDIS_PORT", 6379)),
             )
 

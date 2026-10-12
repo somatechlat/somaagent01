@@ -67,7 +67,7 @@ Revision History 1.1.0.
 | 5 | SRS-PERMISSION-MATRIX | 5 | `admin/core/permission_matrix.py` | 270 | ✅ DONE |
 | 7 | SRS-CONTEXT-BUILDING | 7 | `admin/core/context/` | 425 | ✅ DONE |
 | 8 | SRS-MODEL-ROUTING | 8 | `admin/core/model_router.py` | 220 | ✅ DONE |
-| 9 | SRS-MULTIMODAL | 8 | `admin/core/multimodal.py` | 230 | ✅ DONE |
+| 9 | SRS-MULTIMODAL | 8 | `admin/multimodal/` | 230 | ✅ DONE |
 | 11 | SRS-CHAT-FLOW-MASTER | 9 | `admin/core/chat_orchestrator.py` | 215 | ✅ DONE |
 | 12 | SRS-BUDGET-SYSTEM | 9 | `admin/core/budget/limits.py` | 220 | **REMOVED** — package deleted (`b98bbb2d`) |
 | 13 | SRS-SOMABRAIN-INTEGRATION | 3 | `admin/somabrain/` | 400+ | ✅ DONE |
@@ -242,7 +242,7 @@ Revision History 1.1.0.
 | `admin/core/model_router.py` | MODEL-ROUTING | 220 | ✅ |
 | `admin/core/permission_matrix.py` | PERMISSION | 270 | ✅ |
 | `admin/core/chat_orchestrator.py` | CHAT-FLOW | 215 | ✅ |
-| `admin/core/multimodal.py` | MULTIMODAL | 230 | ✅ |
+| `admin/multimodal/` | MULTIMODAL | 230 | ✅ |
 | `admin/core/budget/limits.py` | BUDGET | 220 | **REMOVED** (`b98bbb2d`) |
 
 ### REMOVED — budget and feature-flag surfaces (deleted `b98bbb2d`)

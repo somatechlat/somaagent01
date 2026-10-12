@@ -18,8 +18,8 @@ from admin.core.model_router import select_model
 
 
 def _postgres_available() -> bool:
-    host = os.environ.get("SA01_DB_HOST", "localhost")
-    port = int(os.environ.get("SA01_DB_PORT", "63932"))
+    host = os.environ.get("SA01_DB_HOST", "somaagent_postgres")
+    port = int(os.environ.get("SA01_DB_PORT", "5432"))
     try:
         with socket.create_connection((host, port), timeout=2):
             return True

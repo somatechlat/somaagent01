@@ -10,7 +10,6 @@ from services.common.redis_pool import get_async_redis_pool
 
 
 class RequeueStore:
-    """Requeuestore class implementation."""
 
     def __init__(
         self,

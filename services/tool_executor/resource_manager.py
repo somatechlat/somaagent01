@@ -10,7 +10,6 @@ from dataclasses import dataclass
 
 @dataclass
 class ExecutionLimits:
-    """Executionlimits class implementation."""
 
     cpu_seconds: float | None = None
     memory_mb: int | None = None
@@ -21,7 +20,6 @@ class ResourceManager:
     """Tracks concurrent executions to avoid exhausting the host."""
 
     def __init__(self, max_concurrent: int | None = None) -> None:
-        """Initialize the instance."""
 
         raw_limit = os.environ.get("TOOL_EXECUTOR_MAX_CONCURRENT", "4")
         try:

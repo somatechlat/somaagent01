@@ -77,8 +77,8 @@ down:
 # ============================================================================
 
 test:
-	@echo "Running tests..."
-	DJANGO_SETTINGS_MODULE=services.gateway.settings $(PYTHON) -m pytest tests/ -v
+	@echo "Running tests against LIVE standalone infra (somaagent_net)..."
+	cd infra/standalone && docker compose --profile test run --rm somaagent_tests
 
 check:
 	@echo "Running Django system check..."

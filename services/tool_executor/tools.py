@@ -35,7 +35,6 @@ class ToolExecutionError(Exception):
 
 
 class BaseTool:
-    """Basetool class implementation."""
 
     name: str
 
@@ -58,7 +57,6 @@ class BaseTool:
 
 
 class TimestampTool(BaseTool):
-    """Timestamptool class implementation."""
 
     name = "timestamp"
 
@@ -191,7 +189,6 @@ class CodeExecutionTool(BaseTool):
 
 
 class FileReadTool(BaseTool):
-    """Filereadtool class implementation."""
 
     name = "file_read"
 
@@ -234,7 +231,6 @@ class FileReadTool(BaseTool):
 
 
 class HttpFetchTool(BaseTool):
-    """Httpfetchtool class implementation."""
 
     name = "http_fetch"
 
@@ -276,7 +272,6 @@ class HttpFetchTool(BaseTool):
 
 
 class CanvasAppendTool(BaseTool):
-    """Canvasappendtool class implementation."""
 
     name = "canvas_append"
 
@@ -354,7 +349,6 @@ AVAILABLE_TOOLS = {
 
 
 class IngestDocumentTool(BaseTool):
-    """Ingestdocumenttool class implementation."""
 
     name = "document_ingest"
 

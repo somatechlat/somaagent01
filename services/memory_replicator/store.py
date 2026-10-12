@@ -39,7 +39,6 @@ class MemoryReplicaStore:
         )
 
     async def get_latest(self, tenant: str, namespace: str) -> Optional[Dict[str, Any]]:
-        """Get the latest replica for tenant/namespace."""
         from admin.core.models import MemoryReplica
 
         replica = (

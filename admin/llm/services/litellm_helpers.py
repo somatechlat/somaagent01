@@ -114,7 +114,6 @@ def turn_off_logging():
 
 
 def _env_flag(name: str, default: bool = True) -> bool:
-    """Get boolean flag from environment variable."""
     val = os.environ.get(name)
     if val is None:
         return default
@@ -122,7 +121,6 @@ def _env_flag(name: str, default: bool = True) -> bool:
 
 
 def _json_env(name: str):
-    """Get JSON-parsed value from environment variable."""
     import json
 
     raw = os.environ.get(name)
@@ -135,7 +133,6 @@ def _json_env(name: str):
 
 
 def _get_secret_manager():
-    """Get UnifiedSecretManager singleton."""
     global _secret_manager
     if _secret_manager is None:
         from services.common.unified_secret_manager import get_secret_manager
@@ -159,7 +156,6 @@ def get_api_key(service: str) -> str:
 def get_rate_limiter(
     provider: str, name: str, requests: int, input: int, output: int
 ) -> RateLimiter:
-    """Get or create rate limiter for provider/model combination."""
     key = f"{provider}\\{name}"
     rate_limiters[key] = limiter = rate_limiters.get(key, RateLimiter(seconds=60))
     limiter.limits["requests"] = requests or 0

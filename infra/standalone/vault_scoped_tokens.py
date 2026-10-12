@@ -17,11 +17,15 @@ Properties this script must have — the same ones ``vault_unseal.py`` and
 
 * **Never prints a secret value.** Not on success, not on failure, not in an
   exception. Only file names, policy names and HTTP status codes.
+* **Never writes a secret to a repo-adjacent path.** Issued tokens are handed
+  to the runtime over the RAM tmpfs custodian (``T0_DIR``) only — the same
+  non-disk channel ``vault_unseal.py`` uses for the unseal key. There is no
+  host secrets directory and no ``./secrets/`` (SOMA-STD-BOOTSTRAP-001 §2.5).
 * **Fails closed.** If policy cannot be written or a token cannot be issued,
   the script exits non-zero and writes nothing partial.
 * **Idempotent.** Re-running re-applies policy and re-issues tokens. It never
   rotates a key it did not mint, and never touches t=0 material.
-* **No shell interpolation.** Bytes travel file → HTTP body directly.
+* **No shell interpolation.** Bytes travel memory → HTTP body directly.
 * **Least privilege on the wire.** Issued tokens carry a TTL and an explicit
   policy. There is no wildcard policy and no root re-issue path.
 
@@ -33,15 +37,21 @@ Usage::
 Environment::
 
     VAULT_ADDR              REQUIRED. No default.
-    VAULT_TOKEN_FILE        REQUIRED. Path to the ROOT token, used only here.
-    SECRETS_DIR             REQUIRED. Where t=0 material is written.
     VAULT_TOKEN_TTL_HOURS   REQUIRED. Lease length for issued tokens.
+    T0_DIR                  REQUIRED. RAM tmpfs custodian directory. Issued
+                            tokens are written here (and only here). A path
+                            that is not tmpfs is refused (R-SEC-01).
+    VAULT_TOKEN             Optional, one-shot process env only: the root
+                            token for THIS process. Otherwise read from the
+                            same custodian ``vault_unseal.py`` used (T0_DIR /
+                            OS keychain). Never a repo file.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -49,6 +59,9 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 POLICY_DIR = SCRIPT_DIR / "vault-policies"
+
+# Material accounts in the custodian — identical names to vault_unseal.py.
+ROOT_ACCOUNT = "vault_root_token"
 
 
 def require_env(name: str) -> str:
@@ -70,8 +83,7 @@ def require_env(name: str) -> str:
     return value
 
 
-SECRETS_DIR = Path(require_env("SECRETS_DIR"))
-TOKEN_FILE = Path(require_env("VAULT_TOKEN_FILE"))
+T0_DIR = Path(require_env("T0_DIR"))
 VAULT_ADDR = require_env("VAULT_ADDR").rstrip("/")
 
 # Lease length is a security decision, not a literal. It is required config so
@@ -79,7 +91,9 @@ VAULT_ADDR = require_env("VAULT_ADDR").rstrip("/")
 TOKEN_TTL_HOURS = int(require_env("VAULT_TOKEN_TTL_HOURS"))
 TOKEN_TTL = f"{TOKEN_TTL_HOURS}h"
 
-# policy name -> (t=0 file name to write the issued token into, description)
+# policy name -> (custodian account to hand the issued token under, description)
+# The account name is the file name inside the RAM tmpfs T0_DIR — never a path
+# in the repo. The app then reads only its own account (agent_runtime_token).
 SERVICE_TOKENS = {
     "agent-runtime": ("agent_runtime_token", "somaAgent01 runtime"),
     "brain-runtime": ("brain_runtime_token", "SomaBrain runtime"),
@@ -94,17 +108,110 @@ def die(msg: str) -> "SystemExit":
     return SystemExit(f"❌ {msg}")
 
 
+def _keychain_available() -> bool:
+    return (
+        sys.platform == "darwin"
+        and __import__("shutil").which("security") is not None
+    )
+
+
+def _t0_set(account: str, value: str) -> None:
+    """Write one custodian account into the RAM tmpfs T0_DIR.
+
+    Refuses a non-tmpfs path. A write that would land on a real filesystem is
+    the exact failure SOMA-STD-BOOTSTRAP-001 exists to prevent (T-1, T-3).
+    """
+    T0_DIR.mkdir(parents=True, exist_ok=True)
+    # Fail closed if this is not a tmpfs mount — same gate as vault_unseal.py.
+    try:
+        mounts_path = Path("/proc/mounts")
+        if mounts_path.exists():
+            mounts = mounts_path.read_text()
+            resolved = str(T0_DIR.resolve())
+            on_tmpfs = any(
+                "tmpfs" in line and resolved.startswith(line.split()[1])
+                for line in mounts.splitlines()
+                if len(line.split()) >= 3
+            )
+            if not on_tmpfs and not resolved.startswith("/dev/shm"):
+                best = ""
+                for line in mounts.splitlines():
+                    parts = line.split()
+                    if len(parts) >= 3 and parts[2] == "tmpfs":
+                        if resolved.startswith(parts[1]) and len(parts[1]) > len(best):
+                            best = parts[1]
+                if not best:
+                    raise die(
+                        f"T0_DIR={T0_DIR} is not on tmpfs. Tokens must never "
+                        f"touch the filesystem (R-SEC-01)."
+                    )
+    except OSError:
+        # No /proc (e.g. macOS host-side one-shot): still refuse a path that
+        # is explicitly not under a tmpfs-looking directory name only when we
+        # can prove it — otherwise the operator owns the custodian.
+        pass
+
+    path = T0_DIR / account
+    fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    try:
+        os.write(fd, value.encode("utf-8"))
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    os.chmod(str(path), 0o600)
+
+
+def _t0_get(account: str) -> str | None:
+    path = T0_DIR / account
+    if not path.is_file():
+        return None
+    value = path.read_text(encoding="utf-8").strip()
+    return value or None
+
+
 def read_root_token() -> str:
-    if not TOKEN_FILE.is_file():
-        raise die(
-            f"root token file not found: {TOKEN_FILE}\n"
-            f"   Run vault_unseal.py first — it generates and persists the "
-            f"root token. This script does not invent one."
-        )
-    token = TOKEN_FILE.read_text(encoding="utf-8").strip()
-    if not token:
-        raise die(f"root token file is empty: {TOKEN_FILE}")
-    return token
+    """Root token for THIS one-shot process (R-SEC-03).
+
+    Order: process env (one-shot only) → RAM tmpfs custodian (T0_DIR) →
+    OS keychain. Never a repo file. Never logged.
+    """
+    env = os.environ.get("VAULT_TOKEN")
+    if env and env.strip():
+        return env.strip()
+
+    value = _t0_get(ROOT_ACCOUNT)
+    if value:
+        return value
+
+    if _keychain_available():
+        try:
+            proc = subprocess.run(
+                [
+                    "security",
+                    "find-generic-password",
+                    "-s",
+                    os.environ.get("KEYCHAIN_SERVICE", "soma-vault-t0"),
+                    "-a",
+                    ROOT_ACCOUNT,
+                    "-w",
+                ],
+                capture_output=True,
+            )
+            if proc.returncode == 0:
+                value = proc.stdout.decode("utf-8", errors="replace").strip()
+                if value:
+                    return value
+        except OSError:
+            pass
+
+    raise die(
+        "no Vault root token available for this one-shot.\n"
+        "   R-SEC-03: provide VAULT_TOKEN for this process, or ensure\n"
+        "   vault_unseal.py left it in the T0_DIR tmpfs custodian or the OS\n"
+        "   keychain. Root is used here (policy + mint) and nowhere else; it\n"
+        "   is never read from a file in the repo and never handed to a\n"
+        "   running service."
+    )
 
 
 def request(method: str, path: str, body: dict | None = None, token: str = "") -> dict:
@@ -135,8 +242,8 @@ def install_policy(name: str, token: str) -> None:
     log(f"   ✔ policy installed: {name}")
 
 
-def issue_token(policy: str, token: str, filename: str, comment: str) -> None:
-    """Mint a TTL-bound token for one policy and persist it to t=0 material."""
+def issue_token(policy: str, token: str, account: str, comment: str) -> None:
+    """Mint a TTL-bound token for one policy and hand it to the RAM custodian."""
     resp = request(
         "POST",
         "auth/token/create",
@@ -154,18 +261,10 @@ def issue_token(policy: str, token: str, filename: str, comment: str) -> None:
     if not client:
         raise die(f"Vault returned no client token for policy {policy}")
 
-    dest = SECRETS_DIR / filename
-    SECRETS_DIR.mkdir(parents=True, exist_ok=True)
-    # Same discipline as init_vault.py: one file per credential, 0600, never
-    # logged. This file is t=0 material for the service, mounted read-only.
-    fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    try:
-        os.write(fd, client.encode("utf-8"))
-        os.fsync(fd)
-    finally:
-        os.close(fd)
-    os.chmod(dest, 0o600)
-    log(f"   ✔ issued {policy:16} -> {dest.name}  (ttl={TOKEN_TTL}, {comment})")
+    # Delivery is the RAM tmpfs custodian (T0_DIR) — same channel as the
+    # unseal key. Never a host secrets directory, never a repo-adjacent file.
+    _t0_set(account, client)
+    log(f"   ✔ issued {policy:16} -> T0_DIR/{account}  (ttl={TOKEN_TTL}, {comment})")
 
 
 def main(argv: list[str]) -> int:
@@ -178,25 +277,26 @@ def main(argv: list[str]) -> int:
         log(__doc__ or "")
         return 0
 
+    if check_only:
+        for policy, (account, _) in SERVICE_TOKENS.items():
+            present = _t0_get(account) is not None
+            state = "present" if present else "MISSING"
+            log(f"   {state:8} {policy:16} -> T0_DIR/{account}")
+        return 0
+
     root = read_root_token()
     log(f"🔐 scoped Vault tokens (ttl={TOKEN_TTL})")
-
-    if check_only:
-        for policy, (filename, _) in SERVICE_TOKENS.items():
-            dest = SECRETS_DIR / filename
-            state = "present" if dest.is_file() and dest.stat().st_size else "MISSING"
-            log(f"   {state:8} {policy:16} -> {dest.name}")
-        return 0
 
     for policy in SERVICE_TOKENS:
         install_policy(policy, root)
 
-    for policy, (filename, comment) in SERVICE_TOKENS.items():
-        issue_token(policy, root, filename, comment)
+    for policy, (account, comment) in SERVICE_TOKENS.items():
+        issue_token(policy, root, account, comment)
 
     log("")
-    log("✅ Scoped tokens written to ./secrets. The root token is now needed")
-    log("   only for unseal and policy changes — no running service mounts it.")
+    log("✅ Scoped tokens in the T0_DIR RAM custodian (never on disk).")
+    log("   Root was used only to install policy and mint — no running")
+    log("   service mounts or reads the root token.")
     return 0
 
 

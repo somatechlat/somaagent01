@@ -96,7 +96,6 @@ class OutboxEntryManager:
         """
         from admin.core.models import OutboxMessage
 
-        # Save model if not already saved
         if not model_instance.pk:
             model_instance.save()
 
@@ -246,7 +245,6 @@ class OutboxQuerySet:
 
     @staticmethod
     def pending():
-        """Get pending messages ready for publishing."""
         from django.db.models import Q
         from django.utils import timezone
 
@@ -262,14 +260,12 @@ class OutboxQuerySet:
 
     @staticmethod
     def dead():
-        """Get dead letter messages."""
         from admin.core.models import OutboxMessage
 
         return OutboxMessage.objects.filter(status=OutboxMessage.Status.DEAD)
 
     @staticmethod
     def stats():
-        """Get outbox statistics."""
         from django.db.models import Count
 
         from admin.core.models import OutboxMessage

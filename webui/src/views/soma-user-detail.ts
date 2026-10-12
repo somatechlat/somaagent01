@@ -366,7 +366,6 @@ export class SomaUserDetail extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
-        // Get userId from URL
         const path = window.location.pathname;
         const match = path.match(/\/admin\/users\/([^/]+)/);
         if (match) {

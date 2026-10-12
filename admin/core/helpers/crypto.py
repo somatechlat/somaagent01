@@ -1,4 +1,3 @@
-"""Module crypto."""
 
 import hashlib
 import hmac

@@ -65,11 +65,11 @@ def get_default_model() -> str:
 
     Per
     """
-    model = getattr(settings, "AAAS_DEFAULT_CHAT_MODEL", None)
+    model = getattr(settings, "SA01_DEFAULT_CHAT_MODEL", None)
     if not model:
-        # Fallback to a safe string during migrations/setup if needed,
-        # but do NOT block module import.
-        return "unconfigured"
+        raise RuntimeError(
+            "SA01_DEFAULT_CHAT_MODEL is not configured. There is no default chat model."
+        )
     return model
 
 
@@ -96,7 +96,6 @@ def get_confidence_aggregation() -> str:
 
 
 def _multimodal_instructions() -> str:
-    """Get multimodal system prompt instructions."""
     return (
         "MULTIMODAL CAPABILITIES:\n"
         "If the user asks for images, diagrams, screenshots, or other visuals, "
@@ -129,7 +128,6 @@ def _multimodal_instructions() -> str:
 
 
 async def _get_llm_client():
-    """Get LLM client with Django caching for credentials."""
     from services.gateway.main import _gateway_llm_client, get_secret_manager
 
     return get_secret_manager(), _gateway_llm_client()
@@ -159,7 +157,6 @@ async def _invoke_llm(
     # Get provider from model
     provider = model.split("/")[0] if "/" in model else "openai"
 
-    # Check cache first
     api_key = _get_cached_api_key(provider)
     if not api_key:
         api_key = creds_store.get_provider_key(provider)
@@ -200,8 +197,8 @@ async def invoke(request: HttpRequest, req: LlmInvokeRequest) -> dict:
     base_url = overrides.get("base_url", getattr(settings, "LLM_DEFAULT_BASE_URL", None))
     temperature = overrides.get("temperature")
 
-    if model == "unconfigured":
-        raise ServiceError("llm_not_configured: AAAS_DEFAULT_CHAT_MODEL is missing.")
+    if not model:
+        raise ServiceError("llm_not_configured: SA01_DEFAULT_CHAT_MODEL is missing.")
 
     # Build messages
     messages = (
@@ -241,9 +238,9 @@ async def invoke(request: HttpRequest, req: LlmInvokeRequest) -> dict:
 
     # Also log via audit store
     try:
-        from integrations.repositories import get_audit_store  # type: ignore[import]
+        from services.common.audit_store import AuditStore
 
-        await get_audit_store().log(
+        await AuditStore().log(
             request_id=None,
             trace_id=None,
             session_id=req.session_id,

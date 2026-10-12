@@ -1,6 +1,5 @@
 """Capsule Import Service.
 
-Simple. Elegant. Complete.
 
 Imports Capsule bundles from backup or transfer, creating new Capsule
 records with proper validation and conflict resolution.
@@ -10,7 +9,6 @@ must be re-certified before activation. This ensures cryptographic
 integrity after any transfer or restore operation.
 
 VIBE Compliance:
-- Rule 82: Professional comments, zero AI slop
 - Rule 84: No mocks - real Django ORM operations
 - Rule 216: Django 5+ Backend Sovereignty
 - Rule 245: Under 650 lines
@@ -152,11 +150,9 @@ def import_capsule(
             # Generate new version to avoid conflicts
             new_version = capsule_data.get("version", "1.0.0") + version_suffix
 
-            # Check for existing capsule with same name/version/tenant
             if Capsule.objects.filter(
                 name=capsule_data.get("name"), version=new_version, tenant=tenant
             ).exists():
-                # Increment version suffix
                 new_version = f"{new_version}.{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
                 warnings.append(f"Version conflict resolved: using {new_version}")
 
@@ -169,7 +165,6 @@ def import_capsule(
             memory_pointer = capsule_data.get("memory_pointer", {})
             neuromodulator_state = capsule_data.get("neuromodulator_state", {})
 
-            # Create new capsule in DRAFT status
             new_capsule = Capsule.objects.create(
                 name=capsule_data.get("name"),
                 version=new_version,
@@ -277,7 +272,6 @@ def import_tenant_capsules(
 
     logger.info("Importing %d capsules for tenant: %s", len(capsules), tenant)
 
-    # Import each capsule
     for capsule_export in capsules:
         import_result = import_capsule(
             capsule_export,
@@ -356,7 +350,6 @@ def _import_related_data(related_data: dict, tenant: str, agent_id: str) -> list
     """
     warnings: list[str] = []
 
-    # Import capabilities (if they don't exist)
     for cap_data in related_data.get("capabilities", []):
         try:
             Capability.objects.get_or_create(
@@ -374,7 +367,6 @@ def _import_related_data(related_data: dict, tenant: str, agent_id: str) -> list
         except Exception as e:
             warnings.append(f"Failed to import capability {cap_data.get('name')}: {e}")
 
-    # Import agent settings
     for setting_data in related_data.get("agent_settings", []):
         try:
             AgentSetting.objects.update_or_create(
@@ -393,7 +385,6 @@ def _import_related_data(related_data: dict, tenant: str, agent_id: str) -> list
 
 def _import_tenant_related_data(related_data: dict, tenant: str) -> None:
     """Import related data at tenant level."""
-    # Import prompts
     for prompt_data in related_data.get("prompts", []):
         try:
             Prompt.objects.get_or_create(
@@ -410,7 +401,6 @@ def _import_tenant_related_data(related_data: dict, tenant: str) -> None:
         except Exception as e:
             logger.warning("Failed to import prompt %s: %s", prompt_data.get("name"), e)
 
-    # Import UI settings
     for setting_data in related_data.get("ui_settings", []):
         try:
             UISetting.objects.update_or_create(
@@ -422,7 +412,6 @@ def _import_tenant_related_data(related_data: dict, tenant: str) -> None:
         except Exception as e:
             logger.warning("Failed to import UI setting: %s", e)
 
-    # Import LLM model configs (global, not tenant-specific)
     for model_data in related_data.get("models", []):
         try:
             LLMModelConfig.objects.get_or_create(

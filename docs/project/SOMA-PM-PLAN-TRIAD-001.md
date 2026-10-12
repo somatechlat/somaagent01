@@ -149,7 +149,7 @@ that memory.
 | W2-2 | 2 | Groq key into Vault `secret/agent/api_keys.groq_api_key`; `POST /llm-providers` path verified; **no key in files** | **vault-keys** |
 | W2-3 | 5 | Make agent settings / `Capsule.chat_model` actually influence `select_model` (today they are ignored) — one config path | **model-routing** |
 | W2-4 | 3 | `reasoning_format:"hidden"` when tools/JSON; timeouts + retries in `_astream`; circuit breaker on LLM calls | **litellm-hardening** |
-| W2-5 | 2 | k8s/compose: `VAULT_ADDR`, `AAAS_DEFAULT_CHAT_MODEL`, model-seeding job; fail-closed `LLMNotConfiguredError` | **deploy-config** |
+| W2-5 | 2 | k8s/compose: `VAULT_ADDR`, `SA01_DEFAULT_CHAT_MODEL`, model-seeding job; fail-closed `LLMNotConfiguredError` | **deploy-config** |
 
 **Exit criteria:** chat streams from real Groq end-to-end; wrong model string fails
 closed with a clear error; no API key anywhere in the repo.

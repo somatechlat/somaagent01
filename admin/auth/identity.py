@@ -96,7 +96,7 @@ def _standalone_tenant() -> str:
 
     value = (
         os.environ.get("SA01_TENANT_ID")
-        or os.environ.get("AAAS_DEFAULT_TENANT_ID")
+        or os.environ.get("SA01_DEFAULT_TENANT_ID")
         or ""
     ).strip()
     if not value:

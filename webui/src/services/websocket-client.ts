@@ -191,7 +191,6 @@ export class WebSocketClient {
 
         this.eventHandlers.get(event)!.add(handler);
 
-        // Return unsubscribe function
         return () => {
             this.eventHandlers.get(event)?.delete(handler);
         };

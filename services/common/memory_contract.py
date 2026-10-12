@@ -12,11 +12,10 @@ Coordinate scheme (one scheme only):
     (models.py:78-80 joins ``str(c)`` over the parsed float tuple; the same
     string is what SomaBrain sends as the ``coord`` field of its
     ``/memories`` body — somabrain/memory/client/write.py:260).
-    The hash input mirrors SomaBrain's live key→coord derivation
-    ``_stable_coord(f"{universe}::{key}")`` (BLAKE2b, [-1,1]^3 —
-    somabrain/memory/client/serialization.py:9), so a caller that also keeps
-    the key material (see ``coord_key_material``) can make SomaBrain place the
-    record at this very same point.
+    The hash is the cross-repo shared ``soma_memory_contract`` module (T-2,
+    one definition). A caller that also keeps the key material (see
+    ``coord_key_material``) can make SomaBrain place the record at this very
+    same point.
 """
 
 from __future__ import annotations
@@ -24,25 +23,24 @@ from __future__ import annotations
 import hashlib
 import os
 import re
-from datetime import datetime, UTC
+from datetime import datetime
 from enum import StrEnum
 from django.core.exceptions import ImproperlyConfigured
 from typing import Any, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel
 
-# Universe scope used by SomaBrain's key→coord derivation when the caller does
-# not set one (somabrain/memory/client/serialization.py:186 → "real").
-COORD_UNIVERSE = "real"
-
-# Default embedding dimension for the shared vector space (PLAN §1 rule 2).
-#
-# 768 is the shared default and the SFM Milvus collection's existing dim.
-# embed_text() is a SHA-256 bag-of-words hash embedder, so more dimensions
-# means strictly fewer hash collisions — 768 is not a compromise, it is the
-# better setting. Both stores must agree: MEM_EMBED_DIM (agent) ==
-# SOMA_VECTOR_DIM (SFM). A mismatch is a hard failure, never a soft one.
-DEFAULT_MEM_EMBED_DIM = 768
+# T-2: ONE coordinate hash, the cross-repo shared module (W3). Re-exported
+# under this contract's historical names so every seam caller keeps working.
+from soma_memory_contract import (
+    COORD_UNIVERSE,
+    DEFAULT_MEM_EMBED_DIM,
+    _stable_coord,
+    coord_from_key_material,
+    coord_key_material,
+    coord_to_str,
+    make_coord,
+)
 
 MemoryStoreName = Literal["somabrain", "somafractalmemory"]
 
@@ -73,6 +71,14 @@ class MemoryRecallUnavailable(RuntimeError):
     Fail-closed (R-05 / F-10, T-5): never report an outage as an empty recall.
     The orchestrator must surface "memory unavailable" instead of answering as
     if the user has no history.
+    """
+
+
+class MemoryWriteError(RuntimeError):
+    """Write/forget transport or backend failure. Distinct from "not found".
+
+    Fail-closed (T-5 honesty): a transport outage must never be collapsed
+    into the boolean "not found" answer.
     """
 
 
@@ -233,69 +239,20 @@ class MemoryGateway(Protocol):
         ...
 
     async def forget(self, coord: str, tenant_id: str) -> bool:
-        """Delete one memory from the brain."""
+        """Delete one memory from the brain. Three honest outcomes (T-5):
+
+        - ``True``  — brain reports deleted
+        - ``False`` — brain reports not-found (a real answer, not an error)
+        - raises ``MemoryWriteError`` — transport/backend failure
+
+        A transport failure is NEVER collapsed into ``False``.
+        """
         ...
 
 
 # =============================================================================
-# COORDINATE — one scheme, SFM-key compatible
+# COORDINATE — one scheme, SFM-key compatible (authority: soma_memory_contract)
 # =============================================================================
-
-
-def _norm_ts(ts: str | datetime) -> str:
-    """Normalize a timestamp to a stable ISO-8601 string."""
-
-    if isinstance(ts, datetime):
-        dt = ts if ts.tzinfo is not None else ts.replace(tzinfo=UTC)
-        return dt.isoformat()
-    return str(ts).strip()
-
-
-def coord_key_material(tenant_id: str, kind: str, ts: str | datetime, text: str) -> str:
-    """Return the canonical preimage hashed into the coordinate.
-
-    Callers that must make SomaBrain place the record at the seam coordinate
-    pass this string as the SomaBrain ``key`` (its write path derives
-    ``_stable_coord(f"{universe}::{key}")`` — somabrain/memory/client/write.py:21).
-    """
-
-    return f"{tenant_id}|{kind}|{_norm_ts(ts)}|{text}"
-
-
-def _stable_coord(seed: str) -> tuple[float, float, float]:
-    """Derive a deterministic 3D point in [-1, 1]^3 from a string seed.
-
-    Same math as SomaBrain's ``_stable_coord`` so both sides of the seam
-    agree on placement (somabrain/memory/client/serialization.py:9).
-    """
-
-    digest = hashlib.blake2b(seed.encode("utf-8"), digest_size=12).digest()
-    a = int.from_bytes(digest[0:4], "big") / 2**32
-    b = int.from_bytes(digest[4:8], "big") / 2**32
-    c = int.from_bytes(digest[8:12], "big") / 2**32
-    return (2 * a - 1, 2 * b - 1, 2 * c - 1)
-
-
-def coord_from_key_material(material: str, universe: str = COORD_UNIVERSE) -> str:
-    """Derive the canonical coord string from key material.
-
-    Must stay identical to ``make_coord``'s internal derivation.
-    """
-
-    x, y, z = _stable_coord(f"{universe}::{material}")
-    # str(float) round-trips through SFM's coord_to_key(key_to_coord(s)) == s.
-    return f"{x},{y},{z}"
-
-
-def make_coord(tenant_id: str, kind: str, ts: str | datetime, text: str) -> str:
-    """Return the one canonical coordinate string for a memory.
-
-    The string is exactly how somafractalmemory keys the row
-    (``Memory.coord_to_key`` of the parsed float tuple), and exactly the
-    ``coord`` field SomaBrain's memory client posts to ``/memories``.
-    """
-
-    return coord_from_key_material(coord_key_material(tenant_id, kind, ts, text))
 
 
 # =============================================================================
@@ -438,6 +395,7 @@ __all__ = [
     "MemoryWrite",
     "coord_from_key_material",
     "coord_key_material",
+    "coord_to_str",
     "embed_text",
     "get_mem_embed_dim",
     "get_memory_setting",

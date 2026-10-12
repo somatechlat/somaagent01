@@ -58,7 +58,6 @@ class AssetStore(BaseStore[AssetRecord]):
         pass
 
     async def get(self, asset_id: Optional[str | UUID]) -> Optional[AssetRecord]:
-        """Get an asset by ID."""
         from admin.core.models import Asset
 
         asset = await Asset.objects.filter(id=str(asset_id)).afirst()

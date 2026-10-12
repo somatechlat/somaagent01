@@ -45,7 +45,6 @@ class File(models.Model):
     deleted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "files_v2"
         ordering = ["-created_at"]

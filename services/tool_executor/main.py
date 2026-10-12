@@ -55,7 +55,6 @@ class ToolExecutor:
     """Tool executor service - thin orchestrator."""
 
     def __init__(self) -> None:
-        """Initialize the instance."""
 
         ensure_metrics_server(SERVICE_SETTINGS)
         self.kafka_settings = kafka_settings()
@@ -82,7 +81,6 @@ class ToolExecutor:
         self._multimodal_task: asyncio.Task | None = None
         self._multimodal_executor: Any | None = None
 
-        # Initialize handlers
         self._request_handler = RequestHandler(self)
         self._result_publisher = ResultPublisher(self)
 
@@ -144,7 +142,6 @@ class ToolExecutor:
             except Exception:
                 LOGGER.exception("Failed to start multimodal executor loop")
 
-        # Start consuming
         await self.bus.consume(
             self.streams["requests"],
             self.streams["group"],

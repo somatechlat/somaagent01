@@ -36,12 +36,10 @@ def kafka_settings() -> KafkaSettings:
 
 
 def redis_url() -> str:
-    """Get Redis URL from configuration."""
     return os.environ.get("REDIS_URL", os.environ.get("SA01_REDIS_URL", ""))
 
 
 def tenant_config_path() -> str:
-    """Get tenant configuration file path."""
     return os.environ.get(
         "TENANT_CONFIG_PATH",
         os.environ.get("TENANT_CONFIG_PATH_EXTRA", "conf/tenants.yaml"),
@@ -49,7 +47,6 @@ def tenant_config_path() -> str:
 
 
 def policy_requeue_prefix() -> str:
-    """Get Redis prefix for policy requeue operations."""
     return os.environ.get(
         "POLICY_REQUEUE_PREFIX",
         os.environ.get("POLICY_REQUEUE_PREFIX_EXTRA", "policy:requeue"),
@@ -57,7 +54,6 @@ def policy_requeue_prefix() -> str:
 
 
 def get_stream_config() -> dict[str, str]:
-    """Get Kafka topic configuration for tool executor."""
     stream_defaults_raw = os.environ.get("TOOL_EXECUTOR_TOPICS")
     if stream_defaults_raw:
         import json

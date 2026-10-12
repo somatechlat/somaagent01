@@ -133,7 +133,7 @@ The following issues identified in the previous audit have been **verified as fi
 
 #### P0-001: Authorization Bypass in Permissions API
 
-**File:** `admin/permissions/api.py` line 336
+**File:** `admin/core/authz.py` line 336
 
 **Issue:** The permissions check endpoint returns `allowed: true` unconditionally, regardless of the actual permission state. This is a complete authorization bypass for any code path that relies on this endpoint.
 

@@ -29,7 +29,6 @@ async def main():
     config = CentralizedConfig()  # type: ignore[call-arg]
     service = ToolExecutorService(config)
 
-    # Start the service using uvicorn
     uvicorn.run(
         service.app,
         host=config.tool_executor_host,

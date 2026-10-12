@@ -233,13 +233,11 @@ def transfer_ownership(
 ) -> dict:
     """Transfer agent ownership to another user."""
     authorize_sync(request, action="agent:manage_users", resource="agents")
-    # Find current owner
     try:
         current_owner = AgentUser.objects.get(agent_id=agent_id, role=AgentRole.AGENT_OWNER)
     except AgentUser.DoesNotExist:
         raise NotFoundError("agent owner", agent_id)
 
-    # Find new owner
     try:
         new_owner = AgentUser.objects.get(agent_id=agent_id, user_id=payload.new_owner_id)
     except AgentUser.DoesNotExist:

@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 """Proof of Life Verification for SomaAgent01 Docker Deployment.
 
-Target: http://localhost:20020
+Target: http://somaagent_standalone:9000
 Verifies:
 1. Health endpoint
 2. API Docs availability (Ninja)

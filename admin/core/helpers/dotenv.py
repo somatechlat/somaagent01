@@ -1,4 +1,3 @@
-"""Module dotenv."""
 
 import os
 import re

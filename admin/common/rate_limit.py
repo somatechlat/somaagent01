@@ -142,13 +142,10 @@ def rate_limit(
             else:
                 key = _get_client_ip(request)
 
-            # Get endpoint from function name
             endpoint = f"/api/v2/auth/{func.__name__}"
 
-            # Check rate limit
             await check_rate_limit(key, endpoint, limit, window)
 
-            # Call original function
             return await func(request, *args, **kwargs)
 
         return wrapper
@@ -161,7 +158,6 @@ def _get_client_ip(request) -> str:
 
     Handles X-Forwarded-For header for proxied requests.
     """
-    # Check X-Forwarded-For header (for reverse proxy)
     x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
     if x_forwarded_for:
         # Take first IP in chain (original client)

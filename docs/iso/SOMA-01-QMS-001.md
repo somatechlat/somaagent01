@@ -252,6 +252,9 @@ All development on SomaAgent01 shall adhere to the VIBE (Verification, Integrati
 | Standards Register — Normative and Applied External Standards | SOMA-01-STD-001 | ISO 9001:2015 clause 7.5; ISO/IEC 27001:2022; ISO/IEC 42001:2023 | Single register of every external standard cited or implemented, organised by standards body |
 | Configuration, Endpoints and Secret Resolution | SOMA-STD-CONFIG-001 | ISO 9001:2015 clause 7.5; ISO/IEC 27001:2022 A.8.9 | Cross-repo rules for value classes, resolution chain, endpoints and secrets |
 | Architecture Decision: Shared Embedding Dimension is 768 | SOMA-ARCH-ADR-001 | ISO 9001:2015 clause 7.5 | ADR recording the single embedding dim shared by the agent seam and SomaFractalMemory |
+| Disaster Recovery Procedures | SOMA-01-DR-001 | ISO 9001:2015 | Recovery objectives, backup schedule and restore procedures |
+| User Acceptance Testing Checklist | SOMA-01-UAT-001 | ISO 9001:2015 | UAT test cases for authentication, chat, memory and settings flows |
+| Security Penetration Test Checklist | SOMA-01-PENTEST-001 | ISO/IEC 27001:2022 Annex A.8 | Penetration test cases for authentication, authorization and data protection |
 
 ---
 

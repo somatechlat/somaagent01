@@ -52,7 +52,6 @@ class ExecutionTracker:
         plan_id: Optional[UUID],
         step_index: int,
     ) -> Optional[ExecutionRecord]:
-        """Get the latest execution record for a step."""
         from admin.core.models import ExecutionRecord as ExecutionRecordModel
 
         record = (

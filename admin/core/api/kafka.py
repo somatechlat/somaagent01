@@ -56,7 +56,6 @@ class KafkaSeekResponse(BaseModel):
 
 
 def _kafka_settings():
-    """Get Kafka settings from environment."""
     from services.common.event_bus import KafkaSettings
 
     return KafkaSettings.from_env()
@@ -78,7 +77,6 @@ async def kafka_status(
     topic: str = Query(..., description="Kafka topic name"),
     group: str = Query(..., description="Consumer group ID"),
 ) -> dict:
-    """Get Kafka consumer lag status for a topic/group."""
     # Seeing that a consumer exists and how far behind it is, is a read of
     # platform state — not the authority to move it.
     await authorize(request, action="system:view", resource="kafka")

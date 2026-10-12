@@ -1,5 +1,7 @@
 # SOMA-CHAT-UI-001 — Chat UI/UX (Agent Soma)
 
+## Document Control
+
 | Field | Value |
 |---|---|
 | Document Title | Agent Soma — Chat workspace UI/UX |
@@ -11,6 +13,8 @@
 | Author | SomaTech Engineering |
 | Approver | — |
 | ISO Reference | ISO 9241-210:2019 |
+| Next Review | 2027-01-08 |
+| Related | `docs/design/SOMA-UI-CHAT-WORKSPACE-001.md`, `docs/design/SOMA-UI-IA-001.md` |
 | Base | Agent Zero webui structure + Soma Capsule / Memory / Tools |
 | Tokens | `--aaas-*` light/dark (`tokens.css`) |
 

@@ -352,7 +352,7 @@ parsed type at the read site. Code fallbacks, where they exist, are cited only a
 | `TENANT_CONFIG_PATH` | Env | str | Tenant config file path | No | `services/common/tenant_config.py` |
 | `TENANT_CONFIG_PATH_EXTRA` | Env | str | Extra tenant config path | No | `services/tool_executor/config.py` |
 | `SA01_REDIS_URL` (requeue store) | Env | str | Requeue Redis URL | No | `config/settings_registry.py:210` |
-| `SOMA_AAAS_MODE` | Env | str | AAAS mode (`true` \| `direct` \| `false`) | No | `config/settings_registry.py:259,376` |
+| *(removed)* | — | — | `SOMA_AAAS_MODE` deleted. Selector is `SA01_DEPLOYMENT_MODE` = STANDALONE \| DEV | — | `config/settings_registry.py` |
 
 ### 9.2 C2 — SECURITY
 
@@ -456,7 +456,7 @@ parsed type at the read site. Code fallbacks, where they exist, are cited only a
 | `DEFAULT_EMBED_MODEL_PROVIDER` | Django | str | Default embedding provider | **Yes** | `config/settings.py:104` |
 | `DEFAULT_EMBED_MODEL_NAME` | Django | str | Default embedding model | **Yes** | `config/settings.py:105` |
 | `DEFAULT_VOICE_MODEL` | Django | str | Default voice model | **Yes** | `config/settings.py:99`, `services/gateway/settings.py:309` |
-| `AAAS_DEFAULT_CHAT_MODEL` | Django | str | AAAS default chat model | No | `services/gateway/settings.py:198` |
+| `SA01_DEFAULT_CHAT_MODEL` | Django | str | AAAS default chat model | No | `services/gateway/settings.py:198` |
 | `LLM_CONNECT_TIMEOUT_S` | Django | float | LLM connect timeout (`SA01_LLM_CONNECT_TIMEOUT`) | No | `config/settings.py:88` |
 | `LLM_READ_TIMEOUT_S` | Django | float | LLM read timeout | No | `config/settings.py:89` |
 | `LLM_MAX_RETRIES` | Django | int | LLM max retries | No | `config/settings.py:90` |
@@ -467,7 +467,7 @@ parsed type at the read site. Code fallbacks, where they exist, are cited only a
 | `SA01_LLM_API_URL` | Env | str | Internal LLM API URL | No | `services/gateway/settings.py:307` |
 | `SA01_LLM_BASE_URL` | Env | str | LLM base URL | No | `services/gateway/providers.py` |
 | `SA01_LLM_MODEL` | Env | str | LLM model override | **Yes** | `admin/core/api/llm.py` |
-| `SA01_VISION_MODEL` | Env | str | Vision model name | **Yes** | `services/common/asset_critic.py` |
+| *(removed)* | — | — | Vision is bound via `Capsule.image_model` (LLMModelConfig), not an env key | — | `admin/core/models/core.py` |
 | `SA01_GEMINI_COMPAT_ENABLED` | Django | bool | Gemini compat shim | No | `services/common/llm_compatibility.py` |
 | `SA01_JSON_CLEANING_ENABLED` | Django | bool | JSON cleaning shim | No | `services/common/llm_compatibility.py` |
 | `chat_model_provider` / `chat_model_name` / `chat_model_api_base` | Agent | str | Chat model binding | **Yes** | `settings_model.py:37-43` |
@@ -569,11 +569,11 @@ parsed type at the read site. Code fallbacks, where they exist, are cited only a
 
 | Key | Owner | Type | Description | Capsule-overridable | Source |
 |---|---|---|---|---|---|
-| `AAAS_DEFAULT_TENANT_ID` | Env | str | Default tenant for unauthenticated/dev | No | `config/settings.py:28`, `services/gateway/settings.py:196` |
-| `AAAS_DEFAULT_MAX_AGENTS` | Django | int | Tier default max agents | No | `services/gateway/settings.py:201` |
-| `AAAS_DEFAULT_MAX_USERS` | Django | int | Tier default max users | No | `services/gateway/settings.py:202` |
-| `AAAS_DEFAULT_MAX_TOKENS_MONTHLY` | Django | int | Tier default monthly tokens | No | `services/gateway/settings.py:203` |
-| `AAAS_DEFAULT_STORAGE_GB` | Django | float | Tier default storage (GB) | No | `services/gateway/settings.py:204` |
+| `SA01_DEFAULT_TENANT_ID` | Env | str | Default tenant for unauthenticated/dev | No | `config/settings.py:28`, `services/gateway/settings.py:196` |
+| `SA01_DEFAULT_MAX_AGENTS` | Django | int | Tier default max agents | No | `services/gateway/settings.py:201` |
+| `SA01_DEFAULT_MAX_USERS` | Django | int | Tier default max users | No | `services/gateway/settings.py:202` |
+| `SA01_DEFAULT_MAX_TOKENS_MONTHLY` | Django | int | Tier default monthly tokens | No | `services/gateway/settings.py:203` |
+| `SA01_DEFAULT_STORAGE_GB` | Django | float | Tier default storage (GB) | No | `services/gateway/settings.py:204` |
 | `SA01_DEFAULT_TOKEN_BUDGET` | Django | int | Default per-turn token budget | **Yes** | `config/settings_registry.py:225` |
 | `SA01_FEATURE_PROFILE` | Env | str | Feature profile name | No | `services/gateway/settings.py:229`, `config/settings_registry.py:220` |
 | `ENDPOINT_PERMISSIONS` | Django | dict | Endpoint-level permission map (`{perm: [user_ids] | "*"}`); empty = DENY | No | `services/gateway/settings.py:234` |
@@ -674,7 +674,7 @@ documented settings authority. Per VIBE §4 they are **not** product defaults; t
 | D-02 | `somabrain/memory/consolidation.py:194` | `getattr(settings, "SOMABRAIN_EMBED_DIM", 256)` | MEMORY | Second inconsistent fallback (`256`). Same fix as D-01. |
 | D-03 | `somafractalmemory/admin/core/services.py:127` | `getattr(settings, "SOMA_VECTOR_DIM", 256)` | MEMORY | Fallback `256` conflicts with `settings/infra.py:73` (768). Fail closed. |
 | D-04 | `somabrain/api/endpoints/cognitive.py:102`, `somabrain/api/endpoints/config.py:54` | `HRR_DIM` fallback `512` vs `SOMABRAIN_HRR_DIM` default `8192` (`settings/cognitive.py:245`) | MEMORY | Two names / two fallbacks for one dimension. Unify on `SOMABRAIN_HRR_DIM`. |
-| D-05 | `services/common/memory_contract.py:43` | `DEFAULT_MEM_EMBED_DIM = 768` module constant | MEMORY | Acceptable only as last-resort for non-Django scripts; MUST equal the seam dim. Documented here; keep in lockstep with `MEM_EMBED_DIM`. |
+| D-05 | `services/common/soma-memory-contract/soma_memory_contract/__init__.py:23` | `DEFAULT_MEM_EMBED_DIM = 768` module constant | MEMORY | Acceptable only as last-resort for non-Django scripts; MUST equal the seam dim. Documented here; keep in lockstep with `MEM_EMBED_DIM`. |
 | D-06 | `services/common/degraded_memory_queue.py:25` | `DEGRADED_TOPIC = "degradation.events"` module constant | MEMORY | Duplicate of the `MEMORY_DEGRADED_TOPIC` fallback in `config/settings.py:76`. Collapse to one. |
 | D-07 | `admin/core/helpers/settings_defaults.py:100-111` | Resolution `ENV > DB > default` | (model) | Contradicts §5 (`Capsule > AgentSetting > Django`). Reconcile or mark as migration shim. |
 | D-08 | `admin/core/helpers/settings_model.py` (multiple fields) | Schema fallbacks such as context lengths, thresholds, RFC ports, STT params, `agent_profile="agent0"`, MCP empty registry | LLM / MEMORY / AGENT | These are schema defaults, not settings-backed. Move behavioural ones behind `resolve_setting` so Capsule/AgentSetting can win. |

@@ -5,7 +5,6 @@ from __future__ import annotations
 from django.conf import settings
 
 from config.settings_registry import get_settings
-from services.common.api_key_store import ApiKeyStore
 from services.common.event_bus import (
     KafkaEventBus,
     KafkaSettings,
@@ -61,21 +60,12 @@ def get_session_cache():
 
 
 def get_secret_manager():
-    """Get the SecretManager instance."""
     from services.common.unified_secret_manager import get_secret_manager as _get_sm
 
     return _get_sm()
 
 
-def get_api_key_store() -> ApiKeyStore:
-    """Return the API key store singleton."""
-    from integrations.repositories import get_api_key_store as _repo_get  # type: ignore[import]
-
-    return _repo_get()
-
-
 def get_llm_adapter():
-    """Get the LLM adapter instance for the gateway."""
     from services.common.llm_adapter import LLMAdapter
     from services.common.unified_secret_manager import get_secret_manager
 
@@ -96,21 +86,18 @@ def get_llm_client():
 
 
 def get_asset_store():
-    """Get the AssetStore instance for multimodal assets."""
     from services.common.asset_store import AssetStore
 
     return AssetStore()
 
 
 def get_multimodal_executor():
-    """Get the MultimodalExecutor instance for multimodal job execution."""
     from services.tool_executor.multimodal_executor import MultimodalExecutor
 
     return MultimodalExecutor()
 
 
 def get_session_store():
-    """Get Django ORM Session model."""
     from admin.core.models import Session
 
     return Session.objects

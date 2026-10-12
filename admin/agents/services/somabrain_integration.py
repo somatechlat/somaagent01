@@ -4,10 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from agent import Agent  # type: ignore[import]
+from typing import Any, Dict, List, Optional
 
 from admin.core.helpers.print_style import PrintStyle
 from admin.core.somabrain_client import SomaBrainClient, SomaClientError
@@ -166,7 +163,6 @@ async def get_adaptation_state(agent: "Agent") -> Optional[Dict[str, Any]]:
 
 
 async def get_neuromodulators(agent: "Agent") -> Optional[Dict[str, float]]:
-    """Get current neuromodulator state from SomaBrain."""
     soma_client = _get_agent_soma_client(agent)
     if soma_client is None:
         LOGGER.debug("SomaBrain not configured; skipping get_neuromodulators")

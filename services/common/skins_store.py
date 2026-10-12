@@ -65,12 +65,10 @@ class SkinsStore:
         return records
 
     async def get(self, skin_id: str) -> Optional[SkinRecord]:
-        """Get a skin by ID across all tenants."""
         # Simplified: scan all tenant keys
         return None
 
     async def get_by_name(self, tenant_id: str, name: str) -> Optional[SkinRecord]:
-        """Get a skin by name for a tenant."""
         records = await self.list(tenant_id, include_unapproved=True)
         for rec in records:
             if rec.name == name:

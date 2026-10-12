@@ -10,8 +10,8 @@ VIBE COMPLIANT:
 - AgentIQ derivation + UnifiedGate permission checks
 - 5-lane context building with memory recall
 
-This module REPLACES and SUPERSEDES:
-- services/common/chat_service.py (old facade)
+This module SUPERSEDES the core logic of:
+- services/common/chat_service.py (retained as a thin test facade)
 - services/common/chat/message_service.py (fragmented core)
 - services/common/chat/conversation_service.py (fragmented CRUD)
 - services/common/chat/session_manager.py (fragmented sessions)
@@ -303,7 +303,6 @@ class V3ChatOrchestrator:
     async def get_conversation(
         self, conversation_id: str, user_id: str
     ) -> Optional[ConversationSummary]:
-        """Get conversation with ownership check."""
         from admin.chat.models import Conversation as ConversationModel
 
         @sync_to_async
@@ -551,7 +550,12 @@ class V3ChatOrchestrator:
                 return_exceptions=True,
             )
             if isinstance(history, BaseException):
-                history = turn.history or []
+                # History recall failed. NEVER dress an outage as an empty
+                # history (T-5 / R-05). ``None`` is the typed degraded
+                # sentinel — same contract as memory_hits=None below. ``[]``
+                # still means "recall ran, no turns stored".
+                logger.warning("History recall degraded this turn: %s", history)
+                history = None
             if isinstance(memory_hits, BaseException):
                 memory_hits = None
             if isinstance(body, BaseException):
@@ -559,7 +563,7 @@ class V3ChatOrchestrator:
             context = await build_context(
                 capsule=capsule,
                 user_message=turn.user_message,
-                history=history or [],
+                history=history,
                 memory_hits=memory_hits,
                 budget_override=budget_override,
             )
@@ -933,7 +937,11 @@ class V3ChatOrchestrator:
             return_exceptions=True,
         )
         if isinstance(history, BaseException):
-            history = turn.history or []
+            # History recall failed. NEVER dress an outage as an empty history
+            # (T-5 / R-05). ``None`` is the typed degraded sentinel — same
+            # contract as memory_hits=None below.
+            logger.warning("History recall degraded this turn: %s", history)
+            history = None
         if isinstance(memory_hits, BaseException):
             memory_hits = None
         if isinstance(brain_eval, BaseException):
@@ -967,7 +975,7 @@ class V3ChatOrchestrator:
         context = await build_context(
             capsule=capsule,
             user_message=turn.user_message,
-            history=history or [],
+            history=history,
             memory_hits=memory_hits,
             budget_override=budget_override,
         )
@@ -1241,9 +1249,17 @@ class V3ChatOrchestrator:
         Session-scoped filter is mandatory: a semantic hit from another chat
         must never be injected as history (that makes every new chat replay
         the same answers). Unscoped hits are dropped, not guessed.
+
+        Fail-closed (T-5 / R-05): an outage raises ``MemoryRecallUnavailable``
+        and is turned into a typed degraded sentinel by the caller. It is
+        NEVER reported as an empty list — ``[]`` here means the recall ran and
+        this conversation genuinely has no stored turns.
         """
         if not conversation_id:
+            # No session to look up. That is a real empty, not a failure.
             return []
+        from services.common.memory_contract import MemoryRecallUnavailable
+
         try:
             gateway = _require_memory_gateway()
             hits = await gateway.recall(
@@ -1251,9 +1267,15 @@ class V3ChatOrchestrator:
                 k=int(_mem_setting("MEM_HISTORY_LIMIT")),
                 tenant_id=tenant_id,
             )
+        except MemoryRecallUnavailable:
+            raise
         except Exception as exc:
-            logger.warning("SomaBrain history recall failed: %s", exc)
-            return []
+            # Any other transport/config failure is still "history could not
+            # be read" — surface it as the same typed degraded signal rather
+            # than an empty list dressed as success.
+            raise MemoryRecallUnavailable(
+                f"SomaBrain history recall failed for conversation={conversation_id!r}: {exc}"
+            ) from exc
 
         messages: List[Dict[str, str]] = []
         for h in hits or []:
@@ -1853,7 +1875,6 @@ _orchestrator_lock = asyncio.Lock()
 
 
 async def get_chat_orchestrator() -> V3ChatOrchestrator:
-    """Get singleton V3ChatOrchestrator."""
     global _orchestrator_instance
     if _orchestrator_instance is None:
         async with _orchestrator_lock:

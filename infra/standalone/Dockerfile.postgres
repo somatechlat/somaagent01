@@ -1,0 +1,10 @@
+# Postgres + Channel-ENV bootstrap (SOMA-STD-BOOTSTRAP-001 §2.5).
+# bootstrap_exec.py: init/unseal/seed/mint with root in process RAM only,
+# then entrypoint_pg_vault.py Channel-ENVs the password and execve's postgres.
+FROM postgres:15-alpine
+RUN apk add --no-cache python3
+COPY vault_unseal.py init_vault.py vault_scoped_tokens.py entrypoint_pg_vault.py \
+     bootstrap_exec.py bootstrap_exec.sh /work/
+COPY vault-policies /work/vault-policies
+RUN chmod +x /work/bootstrap_exec.sh /work/entrypoint_pg_vault.py
+ENTRYPOINT ["/work/bootstrap_exec.sh", "python3", "/work/entrypoint_pg_vault.py"]

@@ -224,7 +224,6 @@ def export_audit_logs(
     auth=AuthBearer(),
 )
 def get_audit_actions(request) -> dict:
-    """Get list of distinct action types for filtering."""
     # Gate before the query: an unauthenticated caller must not learn which
     # action names exist in the log.
     authorize_sync(request, action="audit:read", resource="audit")
@@ -239,7 +238,6 @@ def get_audit_actions(request) -> dict:
     auth=AuthBearer(),
 )
 def get_resource_types(request) -> dict:
-    """Get list of distinct resource types for filtering."""
     # Same rule as action names: the vocabulary is part of the evidence.
     authorize_sync(request, action="audit:read", resource="audit")
 

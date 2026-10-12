@@ -25,7 +25,6 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class ExecutionResult:
-    """Executionresult class implementation."""
 
     status: str
     payload: Dict[str, Any]
@@ -37,7 +36,6 @@ class ExecutionEngine:
     """Coordinates tool execution across sandbox and resource controls."""
 
     def __init__(self, sandbox: SandboxManager, resources: ResourceManager) -> None:
-        """Initialize the instance."""
 
         self._sandbox = sandbox
         self._resources = resources

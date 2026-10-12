@@ -79,7 +79,6 @@ async def query_logs(
     auth=AuthBearer(),
 )
 async def get_log(request, log_id: str) -> LogEntry:
-    """Get log entry details."""
     await authorize(request, action="system:view", resource="logging")
     return LogEntry(
         log_id=log_id,

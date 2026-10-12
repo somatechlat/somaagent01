@@ -47,7 +47,7 @@ created at.
 
 | Where | Value | File:line |
 |---|---|---|
-| Agent seam constant | `DEFAULT_MEM_EMBED_DIM = 768` | `services/common/memory_contract.py:43` |
+| Agent seam constant | `DEFAULT_MEM_EMBED_DIM = 768` | `services/common/soma-memory-contract/soma_memory_contract/__init__.py:23` |
 | Agent env default | `MEM_EMBED_DIM = int(os.environ.get("MEM_EMBED_DIM", "768"))` | `config/settings.py:116` |
 | Gateway settings | same, default `"768"` | `services/gateway/settings.py:254` |
 | Unified settings | `SOMA_VECTOR_DIM = int(os.environ.get("SOMA_VECTOR_DIM", "768"))` | `infra/aaas/unified_settings.py:315` |

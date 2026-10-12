@@ -46,35 +46,30 @@ async def audit_export(
     # in the catalog — not "is this person a sysadmin", which is a role string
     # that lives outside the catalog and renames itself.
     await authorize(request, action="audit:export", resource="audit")
-    from integrations.repositories import get_audit_store  # type: ignore[import-not-found]
+    from services.common.audit_store import AuditStore
 
-    store = get_audit_store()
+    store = AuditStore()
     try:
         await store.ensure_schema()
     except Exception:
         logger.debug("audit ensure_schema failed", exc_info=True)
 
-    records = await store.list(action=action, limit=1000)
+    records = await store.list(event_type=action, limit=1000)
 
-    def _serialize(evt) -> dict:
-        """Execute serialize.
-
-        Args:
-            evt: The evt.
-        """
-        ts = getattr(evt, "ts", None)
+    def _serialize(evt: dict) -> dict:
+        """Project a store row onto the NDJSON export shape."""
         return {
-            "id": getattr(evt, "id", None),
-            "timestamp": ts.isoformat() if ts is not None else None,
-            "action": getattr(evt, "action", None),
-            "resource": getattr(evt, "resource", None),
-            "session_id": getattr(evt, "session_id", None),
-            "tenant": getattr(evt, "tenant", None),
-            "details": getattr(evt, "details", None),
-            "trace_id": getattr(evt, "trace_id", None),
-            "request_id": getattr(evt, "request_id", None),
-            "ip": getattr(evt, "ip", None),
-            "user_agent": getattr(evt, "user_agent", None),
+            "id": evt.get("id"),
+            "timestamp": evt.get("timestamp"),
+            "action": evt.get("action"),
+            "resource": evt.get("resource"),
+            "session_id": evt.get("session_id"),
+            "tenant": evt.get("tenant"),
+            "details": evt.get("details"),
+            "trace_id": evt.get("trace_id"),
+            "request_id": evt.get("request_id"),
+            "ip": evt.get("ip"),
+            "user_agent": evt.get("user_agent"),
         }
 
     payload = "\n".join(json.dumps(_serialize(evt), default=str) for evt in records)

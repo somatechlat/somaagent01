@@ -48,7 +48,6 @@ def resolve_kafka_sasl_password() -> Optional[str]:
 
 @dataclass
 class KafkaSettings:
-    """Kafkasettings class implementation."""
 
     bootstrap_servers: str
     security_protocol: str = "PLAINTEXT"
@@ -95,7 +94,6 @@ class KafkaEventBus:
     """Thin wrapper around aiokafka producer/consumer."""
 
     def __init__(self, settings: Optional[KafkaSettings] = None) -> None:
-        """Initialize the instance."""
 
         self.settings = settings or KafkaSettings.from_env()
         self._producer: Optional[AIOKafkaProducer] = None

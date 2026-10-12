@@ -472,7 +472,7 @@ standalone or as a unified AAAS.
 |-----------|---------------------|--------|---------|
 | **Software Mode** | `SOMASTACK_SOFTWARE_MODE` | `StandAlone` / `SomaStackClusterMode` | Service coupling |
 | **Environment** | `SA01_DEPLOYMENT_MODE` | `DEV` / `PROD` | Debug vs production (fail-fast) |
-| **AAAS Bridge** | `SOMA_AAAS_MODE` | `true` / `false` | In-process vs HTTP calls |
+| *(removed)* | `SOMA_AAAS_MODE` deleted | — | Use `SA01_DEPLOYMENT_MODE` |
 | **Infrastructure** | Tilt / K8s / Docker | Varies | Orchestration target |
 
 ### 1.1 Dimension Relationships

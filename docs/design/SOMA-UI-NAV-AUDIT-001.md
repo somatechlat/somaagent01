@@ -9,9 +9,23 @@
 | Version | 1.0.0 |
 | Date | 2026-10-08 |
 | Status | Draft |
+| Classification | Internal |
+| Author | SomaTech Engineering |
+| Approver | — |
+| ISO Reference | ISO 9241-210:2019 |
+| Next Review | 2027-01-08 |
 | Source of truth | `somaAgent01/webui/src/main.ts` (route table, lines cited) + `docs/design/mockups/*.md` |
 | Related | SOMA-UI-NAV-001 · SOMA-UI-MODEL-ADMIN-001 · SOMA-UI-MOCKUPS-001 (7–7G) |
 | Rule | One home per feature. Memory once. No invented routes. Settings = one shell, 7 sections. |
+
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-10-08 | SomaTech Engineering | Document Control fields completed; Revision History added for ISO compliance. |
+
+---
 
 ---
 

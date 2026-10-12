@@ -18,7 +18,6 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class SandboxExecutionResult:
-    """Sandboxexecutionresult class implementation."""
 
     status: str
     payload: dict[str, Any]

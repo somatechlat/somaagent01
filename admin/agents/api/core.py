@@ -120,7 +120,6 @@ async def create_agent(
     auth=AuthBearer(),
 )
 async def get_agent(request, agent_id: str) -> Agent:
-    """Get agent details."""
     await authorize(request, action="agent:read", resource="agents")
     effective_tenant_id = _resolve_tenant_id(request, None)
     agent = await _get_agent_by_id(agent_id, effective_tenant_id)
@@ -510,7 +509,6 @@ async def get_multimodal_config(request, agent_id: str) -> dict:
     gd = await PlatformConfig.aget_instance()
     defaults = gd.defaults
 
-    # Return stored config or defaults
     config = defaults.get("multimodal_policy", MultimodalConfig().dict())
 
     return {

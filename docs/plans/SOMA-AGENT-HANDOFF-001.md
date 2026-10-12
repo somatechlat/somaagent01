@@ -1,17 +1,29 @@
 # SOMA-AGENT-HANDOFF-001 — Handoff to the next agent
 
+## Document Control
+
 | Field | Value |
 |---|---|
 | Document Title | Soma Triad — full handoff for the next agent |
 | Document Identifier | SOMA-AGENT-HANDOFF-001 |
 | Version | 1.0.0 |
 | Date | 2026-10-07 |
-| Status | Active |
-| Author | SomaTech Engineering |
+| Status | Draft |
 | Classification | Internal |
+| Author | SomaTech Engineering |
+| Approver | — |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2027-01-07 |
+| Related | `docs/standards/SOMA-STD-CODING-001.md`, `docs/standards/SOMA-RAPID-DEVELOPMENT-001.md` |
 | Scope | somaAgent01 · somabrain · somafractalmemory |
 | Authority | `docs/standards/SOMA-STD-CODING-001.md` (VIBE) · `docs/standards/SOMA-RAPID-DEVELOPMENT-001.md` · `docs/standards/SOMA-STD-CONFIG-001.md` |
 | Coordination | `somabrain/docs/plans/a2a/` — CLAIMS · INBOX · OUTBOX · LEDGER |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-10-08 | SomaTech Engineering | Document Control heading applied; Status normalized from `Active` to closed-set `Draft`. |
 
 ---
 
@@ -122,15 +134,15 @@ Computed **once** in the gateway by `embed_text()` (`services/common/memory_cont
 
 ⚠️ **This embedder is not semantic.** Measured: `embed_text("dog bites man")` vs `embed_text("man bites dog")` → **cos 1.0**. It is lexical feature-hashing. Never present its score as semantic similarity.
 
-### Coordinate (T-2) — **NOT MET**
+### Coordinate (T-2) — **MET**
 ```
 make_coord(tenant_id, kind, ts, text) → BLAKE2b digest_size=12 → 3 floats in [-1,1)³
 ```
-**Two `_stable_coord` definitions exist:**
-- `somaAgent01/services/common/memory_contract.py:164` ← authority
-- `somabrain/somabrain/memory/client/serialization.py:9`
-
-They produce **byte-identical** output (verified). But T-2 says *"one shared module imported by all three repos. No copy, no comment-agreement."* Docs claim "T-2 MET" — **the docs are wrong.** The shared `soma-memory-contract` package does not exist.
+**One `_stable_coord` definition:** `soma-memory-contract/soma_memory_contract/__init__.py:26`.
+Consumed by `somaAgent01/services/common/memory_contract.py` and
+`somabrain/somabrain/memory/client/serialization.py` (W3 of SOMA-A0-PARITY-001).
+Golden-vector parity tests both sides: `tests/unit/test_coord_golden_vectors.py`.
+`grep -rn 'def _stable_coord'` across the triad = **1 hit**.
 
 ### Idempotency (T-6)
 Dedupe key **must** be `f"mem:{coord}"` — not a UUID. *"a random suffix makes the outbox multiply memories."*
@@ -191,7 +203,7 @@ Also: no in-flight status → stale `ev.save()` can reopen a `sent` row. `OUTBOX
 ### 🟡 P2 — open, named
 | Item | Anchor |
 |---|---|
-| Second `_stable_coord` (T-2) | `somabrain/memory/client/serialization.py:9` |
+| Second `_stable_coord` (T-2) | **CLOSED** — one definition in `soma-memory-contract` |
 | `mem:{coord}` collides across topics | `graph.link`@X and `memory.store`@X share one slot |
 | WAL replay re-stamps `ts` → new coord per replay | `services/memory_replicator/main.py:149-156` |
 | `MemoryAck.durability` ignored by consumers | `memory_gateway.py:198` completes the WAL on `ok=True` |

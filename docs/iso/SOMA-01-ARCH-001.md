@@ -120,7 +120,7 @@ Agent-only deployment without SomaBrain or SomaFractalMemory dependencies. Suita
 | Variable | Value | Description |
 |----------|-------|-------------|
 | `SA01_DEPLOYMENT_MODE` | `STANDALONE` | Mode selector |
-| `SOMA_AAAS_MODE` | `false` | AAAS feature flag |
+| *(removed)* | — | `SOMA_AAAS_MODE` deleted |
 | `SA01_DB_DSN` | `postgresql://...` | Database connection |
 | `SA01_REDIS_URL` | `redis://...` | Redis connection |
 | `KEYCLOAK_URL` | `http://somaagent_keycloak:8080` | Identity provider |
@@ -145,7 +145,7 @@ Full cognitive triad deployment: Agent + SomaBrain + SomaFractalMemory. Requires
 | Variable | Value | Description |
 |----------|-------|-------------|
 | `SA01_DEPLOYMENT_MODE` | `AAAS` | Mode selector |
-| `SOMA_AAAS_MODE` | `true` | AAAS feature flag |
+| *(removed)* | — | `SOMA_AAAS_MODE` deleted |
 | `SA01_DB_DSN` | `postgresql://...` | Database connection |
 | `SA01_REDIS_URL` | `redis://...` | Redis connection |
 | `KEYCLOAK_URL` | `http://somaagent_keycloak:8080` | Identity provider |
@@ -203,7 +203,7 @@ The system follows a three-tier layered architecture:
 | AAAS | `admin/aaas/` | Multi-tenant models, subscription tiers |
 | Chat | `admin/chat/` | Chat API endpoints, conversation CRUD |
 | Agents | `admin/agents/` | Agent management and configuration |
-| Permissions | `admin/permissions/` | RBAC API endpoints |
+| Permissions | `admin/core/authz.py` + `admin/core/permission_matrix.py` | RBAC catalog and checks |
 | Memory | `admin/memory/` | Memory integration hooks |
 | Voice | `admin/voice/` | Speech-to-text and text-to-speech |
 | Workflows | `admin/workflows/` | Temporal workflow hooks |
@@ -572,7 +572,7 @@ The gate is **fail-closed**: any policy engine unavailability denies the request
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `SA01_DEPLOYMENT_MODE` | Yes | `STANDALONE` | Deployment mode: `STANDALONE`, `AAAS`, or `DEV` |
-| `SOMA_AAAS_MODE` | Yes | `false` | AAAS feature flag |
+| *(removed)* | — | — | `SOMA_AAAS_MODE` deleted |
 | `SA01_DB_DSN` | Yes | — | PostgreSQL connection string |
 | `SA01_REDIS_URL` | Yes | — | Redis connection string |
 | `POSTGRES_USER` | Yes | `somaagent` | PostgreSQL username |

@@ -6,7 +6,7 @@
  * - Real Lit implementation
  * - OAuth integration (Google, Keycloak SSO)
  * - Minimal white/black design
- * - Glassmorphism Enterprise SSO Modal
+ * - SSO login modal
  * - LDAP, Active Directory, SAML, OIDC support
  */
 
@@ -624,7 +624,6 @@ export class SomaLogin extends LitElement {
         const input = e.target as HTMLInputElement;
         this._email = input.value;
 
-        // Clear error when user starts typing
         if (this._emailError && this._email) {
             this._emailError = '';
         }
@@ -839,7 +838,6 @@ export class SomaLogin extends LitElement {
             return;
         }
 
-        // Validate email format per RFC 5322
         if (!this._validateEmail(this._email)) {
             this._emailError = 'Please enter a valid email address';
             return;

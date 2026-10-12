@@ -82,7 +82,6 @@ class CapabilityRegistry:
         return list(self._capabilities.values())
 
     def get(self, name: str) -> Optional[Dict[str, Any]]:
-        """Get a capability by name."""
         return self._capabilities.get(name)
 
     async def find_candidates(

@@ -39,7 +39,6 @@ class ProviderError(Exception):
         error_code: Optional[str] = None,
         retryable: bool = False,
     ) -> None:
-        """Initialize the instance."""
 
         self.message = message
         self.provider = provider
@@ -63,7 +62,6 @@ class RateLimitError(ProviderError):
         provider: str,
         retry_after_seconds: Optional[int] = None,
     ) -> None:
-        """Initialize the instance."""
 
         super().__init__(message, provider, "RATE_LIMIT", retryable=True)
         self.retry_after_seconds = retry_after_seconds
@@ -253,7 +251,6 @@ class MultimodalProvider(ABC):
         return True
 
     def get_model_version(self) -> Optional[str]:
-        """Get current model version if applicable."""
         return None
 
     def __repr__(self) -> str:

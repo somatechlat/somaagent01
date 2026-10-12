@@ -849,7 +849,7 @@ Soma: same **behaviours** via `services/bridge_worker` + `Channel/Inbound/Outbou
 | 4 | `somaagent_webui` :20080 healthy | **currently restart loop F-12** |
 | 5 | Vault-seeded provider keys `secret/agent/api_keys/*` | no keys in env |
 | 6 | `LLMModelConfig` row (e.g. groq/openai/gpt-oss-120b) | |
-| 7 | `AAAS_DEFAULT_TENANT_ID` + active Capsule | WS requires conversation_id |
+| 7 | `SA01_DEFAULT_TENANT_ID` + active Capsule | WS requires conversation_id |
 | 8 | Keycloak realm if JWT path used | client `eye-of-god` frontend |
 | 9 | **Never** `--profile mocks` | F-04 |
 

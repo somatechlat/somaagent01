@@ -1,4 +1,3 @@
-"""Module tokens."""
 
 from typing import Literal
 

@@ -33,7 +33,6 @@ class ProvenanceRecorder(BaseStore[ProvenanceRecord]):
         pass
 
     async def get(self, asset_id: UUID) -> Optional[ProvenanceRecord]:
-        """Get provenance record by asset ID."""
         from admin.core.models import Provenance
 
         record = await Provenance.objects.filter(asset_id=str(asset_id)).afirst()

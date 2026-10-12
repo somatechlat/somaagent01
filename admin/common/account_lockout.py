@@ -179,7 +179,6 @@ class AccountLockoutService:
         lockout_key = self._lockout_key(email)
         attempts_key = self._attempts_key(email)
 
-        # Check lockout
         locked_at = await self._redis.get(lockout_key)
 
         if locked_at:
@@ -195,7 +194,6 @@ class AccountLockoutService:
                 locked_at=locked_timestamp,
             )
 
-        # Get current attempts
         attempts = await self._redis.get(attempts_key)
         attempts_count = int(attempts) if attempts else 0
         remaining = max(0, self.config.max_attempts - attempts_count)
@@ -223,7 +221,6 @@ class AccountLockoutService:
         attempts_key = self._attempts_key(email)
         lockout_key = self._lockout_key(email)
 
-        # Increment attempts with TTL
         pipe = self._redis.pipeline()
         pipe.incr(attempts_key)
         pipe.expire(attempts_key, self.config.attempt_window)
@@ -234,7 +231,6 @@ class AccountLockoutService:
 
         logger.info("Failed login attempt: email=%s, attempts=%s", email, attempts_count)
 
-        # Check if should lock
         if attempts_count >= self.config.max_attempts:
             # Lock the account
             now = time.time()
@@ -279,7 +275,6 @@ class AccountLockoutService:
 
         attempts_key = self._attempts_key(email)
 
-        # Clear attempts on successful login
         await self._redis.delete(attempts_key)
 
         LOGIN_ATTEMPTS.labels("success").inc()
@@ -300,7 +295,6 @@ class AccountLockoutService:
         lockout_key = self._lockout_key(email)
         attempts_key = self._attempts_key(email)
 
-        # Clear both lockout and attempts
         pipe = self._redis.pipeline()
         pipe.delete(lockout_key)
         pipe.delete(attempts_key)

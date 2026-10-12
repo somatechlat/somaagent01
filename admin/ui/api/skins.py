@@ -182,7 +182,6 @@ async def list_skins(request: HttpRequest) -> dict:
 
 @router.get("/{skin_id}", response=SkinResponse, summary="Get skin", auth=AuthBearer())
 async def get_skin(request: HttpRequest, skin_id: str) -> dict:
-    """Get a single skin by ID."""
     await authorize(request, action="org:read", resource="skins")
     store = _get_store()
     await store.ensure_schema()

@@ -99,7 +99,6 @@ class SensorOutbox(models.Model):
     dead_letter = models.BooleanField(default=False, db_index=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "sensor_outbox"
         ordering = ["created_at"]
@@ -179,7 +178,6 @@ class SensorOutbox(models.Model):
 
     @classmethod
     def get_pending_count(cls, target_service: str) -> int:
-        """Get count of pending events for monitoring."""
         return cls.objects.filter(
             target_service=target_service,
             synced=False,
@@ -188,7 +186,6 @@ class SensorOutbox(models.Model):
 
     @classmethod
     def get_dead_letter_count(cls) -> int:
-        """Get count of dead letter events for monitoring."""
         return cls.objects.filter(dead_letter=True).count()
 
     @classmethod

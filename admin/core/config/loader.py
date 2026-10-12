@@ -36,7 +36,6 @@ import yaml  # type: ignore
 from .models import Config
 
 # ---------------------------------------------------------------------------
-# Helper functions
 # ---------------------------------------------------------------------------
 
 
@@ -311,7 +310,6 @@ class ConfigLoader:
     """
 
     def __init__(self, config_file_path: Optional[Union[str, Path]] = None):
-        """Initialize the instance."""
 
         self.config_file_path = Path(config_file_path) if config_file_path else None
         self.env_mapping = EnvironmentMapping()

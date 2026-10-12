@@ -23,7 +23,6 @@ class NotificationsStore(BaseStore[Dict[str, Any]]):
         pass
 
     async def get(self, identifier: str) -> Optional[Dict[str, Any]]:
-        """Get a notification by ID."""
         from admin.core.models import Notification
 
         n = await Notification.objects.filter(id=identifier).afirst()

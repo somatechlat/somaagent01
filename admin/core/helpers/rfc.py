@@ -1,4 +1,3 @@
-"""Module rfc."""
 
 import importlib
 import inspect
@@ -15,7 +14,6 @@ from admin.core.helpers import crypto
 
 
 class RFCInput(TypedDict):
-    """Rfcinput class implementation."""
 
     module: str
     function_name: str
@@ -24,7 +22,6 @@ class RFCInput(TypedDict):
 
 
 class RFCCall(TypedDict):
-    """Rfccall class implementation."""
 
     rfc_input: str
     hash: str

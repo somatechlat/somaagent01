@@ -115,7 +115,6 @@ class Tenant(models.Model):
         users: Manager["TenantUser"]
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "tenants"
         ordering = ["-created_at"]
@@ -173,7 +172,6 @@ class TenantUser(models.Model):
     last_login_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "tenant_users"
         ordering = ["-created_at"]

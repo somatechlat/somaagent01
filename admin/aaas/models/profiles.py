@@ -147,7 +147,6 @@ class AdminProfile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "aaas_admin_profile"
         verbose_name = "Admin Profile"
@@ -220,7 +219,6 @@ class TenantSettings(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "aaas_tenant_settings"
         verbose_name = "Tenant Settings"
@@ -307,7 +305,6 @@ class UserPreferences(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "aaas_user_preferences"
         verbose_name = "User Preferences"
@@ -349,7 +346,12 @@ class UserSession(models.Model):
     location = models.CharField(max_length=100, blank=True, default="")
 
     # Tokens
-    refresh_token_hash = models.CharField(max_length=64, blank=True)
+    refresh_token_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="SHA256 of refresh token; empty when absent (partial unique)",
+    )
 
     # Status
     is_current = models.BooleanField(default=False)
@@ -358,12 +360,18 @@ class UserSession(models.Model):
     expires_at = models.DateTimeField()
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "aaas_user_session"
         verbose_name = "User Session"
         verbose_name_plural = "User Sessions"
         ordering = ["-last_active"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["refresh_token_hash"],
+                condition=~models.Q(refresh_token_hash=""),
+                name="uniq_user_session_refresh_token_hash",
+            ),
+        ]
 
     def __str__(self):
         """Return string representation."""
@@ -391,7 +399,12 @@ class ApiKey(models.Model):
     # Key info
     name = models.CharField(max_length=100)
     key_prefix = models.CharField(max_length=8, help_text="First 8 chars of key for display")
-    key_hash = models.CharField(max_length=64, help_text="SHA256 hash of full key")
+    key_hash = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+        help_text="SHA256 hash of full key (unique verifier, not a credential)",
+    )
 
     # Permissions
     scopes = models.JSONField(default=list, help_text="List of permission scopes")
@@ -403,12 +416,14 @@ class ApiKey(models.Model):
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "aaas_api_key"
         verbose_name = "API Key"
         verbose_name_plural = "API Keys"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["key_hash"], name="api_key_hash_idx"),
+        ]
 
     def __str__(self):
         """Return string representation."""

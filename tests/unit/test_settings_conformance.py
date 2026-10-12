@@ -174,7 +174,6 @@ class TestNoSecretsInEnv:
     SETTINGS_MODULES = [
         "config/settings.py",
         "services/gateway/settings.py",
-        "infra/aaas/unified_settings.py",
         "admin/core/helpers/settings_model.py",
         "admin/core/helpers/settings_defaults.py",
         "admin/core/helpers/capsule_settings.py",
@@ -203,7 +202,6 @@ class TestNoSecretsInEnv:
     PENDING_VAULT_MIGRATION = {
         "config/settings.py": set(),
         "services/gateway/settings.py": set(),
-        "infra/aaas/unified_settings.py": set(),
     }
 
     def test_settings_modules_do_not_read_secret_keys_from_env(self):
@@ -232,7 +230,6 @@ class TestNoSecretsInEnv:
         SEALED = {
             "config/settings.py": 6,
             "services/gateway/settings.py": 7,
-            "infra/aaas/unified_settings.py": 5,
         }
         for rel, keys in allowed.items():
             assert rel in SEALED, f"new module added to pending list: {rel}"

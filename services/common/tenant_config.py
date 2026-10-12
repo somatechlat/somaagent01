@@ -28,7 +28,6 @@ class TenantConfig:
     """Loads tenant configuration from YAML with simple caching."""
 
     def __init__(self, path: Optional[str] = None) -> None:
-        """Initialize the instance."""
 
         self.path = path or os.environ.get("TENANT_CONFIG_PATH", "conf/tenants.yaml")
         self._cache: dict[str, TenantSettings] | None = None

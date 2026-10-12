@@ -29,7 +29,6 @@ class ResultPublisher:
     """Publishes tool execution results and handles feedback/memory."""
 
     def __init__(self, executor: "ToolExecutor") -> None:
-        """Initialize the instance."""
 
         self._executor = executor
 

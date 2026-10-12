@@ -9,11 +9,25 @@
 | Version | 1.0.0 |
 | Date | 2026-10-08 |
 | Status | Draft |
+| Classification | Internal |
+| Author | SomaTech Engineering |
+| Approver | — |
+| ISO Reference | ISO 9241-210:2019 |
+| Next Review | 2027-01-08 |
 | Source of truth | Live Lit views + `admin/**/api.py` (code is truth) |
 | Related | SOMA-UI-NAV-001 · SOMA-UI-CHAT-WORKSPACE-001 · UI-S-* · UI-X-* |
 | Rules | **No inventions.** Every control binds to a real endpoint/WS frame or is **GATED** with a reason string. Memory once at `/memory`. No “slot” UI copy, no SaaS / Eye of God, no fabricated metrics. |
 
 API base prefix: `/api/v2/` (`apiClient`). WS base: `/ws/v2/` (`main.ts:430-431`).
+
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-10-08 | SomaTech Engineering | Document Control fields completed; Revision History added for ISO compliance. |
+
+---
 
 ---
 

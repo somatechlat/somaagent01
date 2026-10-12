@@ -1,13 +1,13 @@
-# 🚀 SOMAAGENT01 — COMPLETE DEPLOYMENT PLAN
+# SomaAgent01 — Complete Deployment Plan
 
 ## Document Control
 
 | Field | Value |
 |---|---|
-| Document Title | 🚀 SOMAAGENT01 — COMPLETE DEPLOYMENT PLAN |
+| Document Title | SomaAgent01 — Complete Deployment Plan |
 | Document Identifier | SOMA-OPS-PLAN-001 |
-| Version | 1.0.0 |
-| Date | 2026-09-28 |
+| Version | 1.0.1 |
+| Date | 2026-10-08 |
 | Status | Draft |
 | Author | SomaTech Engineering |
 | Approver | — |
@@ -20,6 +20,7 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under ISO document control. |
+| 1.0.1 | 2026-10-08 | SomaTech Engineering | Title/Document Title emoji removed for enterprise register hygiene. |
 
 
 **Date**: 2026-05-26  

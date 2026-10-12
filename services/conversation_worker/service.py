@@ -25,8 +25,6 @@ class ConversationWorkerService(BaseService):
     service_name: str = "conversation-worker"
 
     def __init__(self, config: CentralizedConfig | None = None) -> None:
-        # Initialize BaseService
-        """Initialize the instance."""
 
         super().__init__(config)
 
@@ -39,13 +37,10 @@ class ConversationWorkerService(BaseService):
         LOGGER.info("Starting %s service", self.service_name)
 
         try:
-            # Import the ConversationWorker from the original module
             from .main import ConversationWorker
 
-            # Create the worker instance
             self.worker = ConversationWorker()
 
-            # Start the worker as a background task
             self.worker_task = asyncio.create_task(self.worker.start())
 
             LOGGER.info("%s service startup completed", self.service_name)
@@ -67,7 +62,6 @@ class ConversationWorkerService(BaseService):
                 except asyncio.CancelledError:
                     pass
 
-            # Close worker connections gracefully
             if self.worker:
                 try:
                     # SomaBrain is optional: get() returns None in standalone mode.
@@ -95,7 +89,6 @@ class ConversationWorkerService(BaseService):
     def register_routes(self, app: Router) -> None:
         """Register health check endpoints for the conversation worker service."""
 
-        # Add a health check endpoint for the orchestrator
         @app.get("/health")
         async def health_check():
             """Execute health check."""
@@ -103,13 +96,11 @@ class ConversationWorkerService(BaseService):
             status = "healthy"
             details = {"service": self.service_name}
 
-            # Check if worker task is running
             if self.worker_task:
                 if self.worker_task.done():
                     status = "unhealthy"
                     details["error"] = "Worker task has stopped"
                     try:
-                        # Check if there was an exception
                         result = self.worker_task.result()
                         details["result"] = str(result)
                     except Exception as e:
@@ -120,7 +111,6 @@ class ConversationWorkerService(BaseService):
 
             return {"status": status, "details": details}
 
-        # Add a metrics endpoint
         @app.get("/metrics")
         async def metrics():
             """Return basic metrics about the conversation worker service."""

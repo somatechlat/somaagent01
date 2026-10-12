@@ -102,7 +102,7 @@ spec:
             #
             # Default chat model is selected in LLMModelConfig (admin/llm), not
             # by an environment variable.
-            - name: AAAS_DEFAULT_TENANT_ID
+            - name: SA01_DEFAULT_TENANT_ID
               value: "cb6fc5b8-9525-4e81-8b6d-8ccf86460e9c"
             # Logging
             - name: LOG_FORMAT

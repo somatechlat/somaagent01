@@ -27,7 +27,6 @@ class Session(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "sessions"
         ordering = ["-created_at"]
@@ -49,7 +48,6 @@ class SessionEvent(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "session_events"
         ordering = ["created_at"]
@@ -86,13 +84,18 @@ class Constitution(models.Model):
     revoked_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "constitutions"
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["is_active"]),
-            models.Index(fields=["content_hash"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["is_active"],
+                condition=models.Q(is_active=True),
+                name="one_active_constitution",
+            ),
         ]
 
     def __str__(self):
@@ -213,7 +216,7 @@ class Capsule(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        help_text="Image generation model (e.g. dall-e-3)",
+        help_text="Vision / image model for this agent (LLMModelConfig). Used for image generation and vision critique.",
     )
 
     # 🗣️ VOICE (TTS/STT)
@@ -321,9 +324,16 @@ class Capsule(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "capsules"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(
+                    status__in=["draft", "active", "archived"]
+                ),
+                name="capsule_status_valid",
+            ),
+        ]
         unique_together = [["name", "version", "tenant"]]
         indexes = [
             models.Index(fields=["tenant", "status"]),
@@ -512,7 +522,6 @@ class CapsuleInstance(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "capsule_instances"
 
@@ -558,7 +567,6 @@ class Capability(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "capabilities"
         verbose_name_plural = "capabilities"
@@ -586,7 +594,6 @@ class UISetting(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "ui_settings"
         unique_together = [["tenant", "user_id", "key"]]
@@ -633,10 +640,15 @@ class Job(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "jobs"
         ordering = ["-priority", "scheduled_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(priority__gte=-1000, priority__lte=1000),
+                name="job_priority_bounds",
+            ),
+        ]
 
     def __str__(self):
         """Return string representation."""
@@ -671,7 +683,6 @@ class Notification(models.Model):
     read_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "notifications"
         ordering = ["-created_at"]
@@ -702,7 +713,6 @@ class Prompt(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "prompts"
         unique_together = [["name", "version", "tenant"]]
@@ -733,9 +743,14 @@ class FeatureFlag(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "feature_flags"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(rollout_percentage__gte=0, rollout_percentage__lte=100),
+                name="feature_flag_rollout_pct_0_100",
+            ),
+        ]
 
     def __str__(self):
         """Return string representation."""
@@ -779,7 +794,6 @@ class MemoryReplica(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "memory_replica"
         ordering = ["-created_at"]
@@ -815,7 +829,6 @@ class AgentSetting(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "agent_settings"
         unique_together = [["agent_id", "key"]]

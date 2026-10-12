@@ -272,8 +272,10 @@ class TestD13LLMKeyCategory:
 class TestD14ChannelLayerAuthority:
     """D-14: both settings modules read the channel backend from config/env."""
 
+    # Backend must be settings-driven (_behaviour → SettingsModel, or the
+    # legacy env read). Both modules cannot silently disagree.
     CHANNEL_RE = re.compile(
-        r'"BACKEND"\s*:\s*(?:os\.environ\.get\([^)]+\)|os\.getenv\([^)]+\))',
+        r'"BACKEND"\s*:\s*(?:_behaviour\([^)]+\)|os\.environ\.get\([^)]+\)|os\.getenv\([^)]+\))',
         re.DOTALL,
     )
 

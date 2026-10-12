@@ -61,7 +61,6 @@ class RedisRateLimiter:
         default_window_seconds: int = 60,
         key_prefix: str = "rate_limit:",
     ):
-        """Initialize the instance."""
 
         # One resolver. ``redis_pool.get_redis_url`` already owns the
         # environment chain; repeating it here with a private default is a
@@ -117,7 +116,6 @@ class RedisRateLimiter:
         Returns:
             RateLimitResult with allowed status and remaining quota
         """
-        # Build key
         key_parts = [self.key_prefix, tenant_id]
         if endpoint:
             key_parts.append(endpoint.replace("/", "_"))
@@ -231,7 +229,6 @@ RATE_LIMITS = {
 
 
 def get_limit_for_endpoint(endpoint: str) -> Tuple[int, int]:
-    """Get rate limit configuration for an endpoint."""
     for pattern, config in RATE_LIMITS.items():
         if pattern in endpoint:
             return config["limit"], config["window"]
@@ -245,7 +242,6 @@ _limiter_lock = asyncio.Lock()
 
 
 async def get_rate_limiter() -> RedisRateLimiter:
-    """Get or create the singleton rate limiter."""
     global _limiter_instance
     async with _limiter_lock:
         if _limiter_instance is None:

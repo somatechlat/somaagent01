@@ -1,4 +1,3 @@
-"""Module errors."""
 
 import asyncio
 import re
@@ -44,7 +43,6 @@ def format_error(e: Exception, start_entries=6, end_entries=4):
     if not start_entries and not end_entries:
         trimmed_lines = []
     else:
-        # Find all "File" lines
         file_indices = [i for i, line in enumerate(lines) if line.strip().startswith("File ")]
 
         # If we found at least one "File" line, trim the middle if there are more than start_entries+end_entries lines
@@ -61,7 +59,6 @@ def format_error(e: Exception, start_entries=6, end_entries=4):
             # If no "File" lines found, or not enough to trim, just return the original traceback
             trimmed_lines = lines
 
-    # Find the error message at the end
     error_message = ""
     for line in reversed(lines):
         # match both simple errors and module.path.Error patterns

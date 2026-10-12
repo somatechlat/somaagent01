@@ -196,7 +196,6 @@ def measure_duration(metric_name: str):
 
 
 def get_metrics_snapshot() -> Dict[str, Any]:
-    """Get current metrics snapshot for health checks."""
 
     def _safe_total(counter) -> float:
         try:

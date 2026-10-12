@@ -1,4 +1,4 @@
-"""Authentication SSO Module - Enterprise SSO endpoints.
+"""SSO authentication endpoints.
 
 Extracted from admin/auth/api.py for 650-line compliance.
 """

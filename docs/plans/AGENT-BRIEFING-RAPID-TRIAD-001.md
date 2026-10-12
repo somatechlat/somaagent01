@@ -1,5 +1,28 @@
 # AGENT BRIEFING — RAPID TRIAD 001
 
+## Document Control
+
+| Field | Value |
+|---|---|
+| Document Title | AGENT BRIEFING — RAPID TRIAD 001 |
+| Document Identifier | AGENT-BRIEFING-RAPID-TRIAD-001 |
+| Version | 1.0.0 |
+| Date | 2026-10-04 |
+| Status | Draft |
+| Classification | Internal |
+| Author | SomaTech Engineering |
+| Approver | — |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2027-01-04 |
+| Related | `docs/plans/2026-10-04-RAPID-TRIAD-001.md`, `docs/standards/SOMA-STD-CODING-001.md` |
+| Audience | Agents dispatched under RAPID TRIAD 001 |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-10-08 | SomaTech Engineering | Document Control added. Content unchanged. |
+
 **Every agent dispatched under `2026-10-04-RAPID-TRIAD-001.md` receives this briefing verbatim, plus its own TASK block. An agent that has not read this file has not started.**
 
 ---

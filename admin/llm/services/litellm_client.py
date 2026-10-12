@@ -78,7 +78,6 @@ if not llm_logger.handlers:
     llm_logger.addHandler(handler)
     llm_logger.setLevel(logging.INFO)
 
-# Initialize
 turn_off_logging()
 if litellm is not None:
     try:
@@ -102,7 +101,6 @@ class LiteLLMChatWrapper(SimpleChatModel):
     def __init__(
         self, model: str, provider: str, model_config: Optional[Any] = None, **kwargs: Any
     ):
-        """Initialize the instance."""
         # Avoid double-prefixing: if model already starts with provider/, don't add it
         if model.startswith(f"{provider}/"):
             model_value = model
@@ -687,7 +685,6 @@ def _get_litellm_embedding(
 def get_chat_model(
     provider: str, name: str, model_config: Optional[Any] = None, **kwargs: Any
 ) -> LiteLLMChatWrapper:
-    """Get a chat model for the specified provider and model name."""
     orig = provider.lower()
     provider_name, kwargs = _merge_provider_defaults("chat", orig, kwargs)
     use_llm = _env_flag("SA01_USE_LLM", True)
@@ -704,7 +701,6 @@ def get_chat_model(
 def get_browser_model(
     provider: str, name: str, model_config: Optional[Any] = None, **kwargs: Any
 ) -> BrowserCompatibleChatWrapper:
-    """Get a browser-compatible chat model."""
     orig = provider.lower()
     provider_name, kwargs = _merge_provider_defaults("chat", orig, kwargs)
     return _get_litellm_chat(
@@ -715,7 +711,6 @@ def get_browser_model(
 def get_embedding_model(
     provider: str, name: str, model_config: Optional[Any] = None, **kwargs: Any
 ):
-    """Get an embedding model for the specified provider."""
     orig = provider.lower()
     provider_name, kwargs = _merge_provider_defaults("embedding", orig, kwargs)
     return _get_litellm_embedding(name, provider_name, model_config, **kwargs)

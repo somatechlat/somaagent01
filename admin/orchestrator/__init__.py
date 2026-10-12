@@ -15,7 +15,6 @@ The package follows the
 implementations only, and full type‑checked configuration.
 """
 
-from .cache_sync_service import CacheSyncService
 from .config import CentralizedConfig, load_config
 from .health_monitor import UnifiedHealthMonitor
 
@@ -30,5 +29,4 @@ __all__ = [
     "UnifiedHealthMonitor",
     "CentralizedConfig",
     "load_config",
-    "CacheSyncService",
 ]

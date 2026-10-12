@@ -139,7 +139,6 @@ class PlaywrightProvider(MultimodalProvider):
         """
         start_time = time.time()
 
-        # Validate first
         errors = self.validate(request)
         if errors:
             return GenerationResult(
@@ -160,7 +159,6 @@ class PlaywrightProvider(MultimodalProvider):
             await self._ensure_browser()
             assert self._browser is not None
 
-            # Create new context with viewport
             context = await self._browser.new_context(
                 viewport=viewport,
                 device_scale_factor=request.parameters.get("device_scale_factor", 1),
@@ -190,7 +188,6 @@ class PlaywrightProvider(MultimodalProvider):
 
             latency_ms = int((time.time() - start_time) * 1000)
 
-            # Get actual page dimensions
             dimensions = viewport.copy()
             if full_page:
                 dimensions = await page.evaluate(
@@ -261,7 +258,6 @@ class PlaywrightProvider(MultimodalProvider):
         if not url.startswith(("http://", "https://")):
             errors.append("URL must start with http:// or https://")
 
-        # Validate format
         if request.format and request.format not in self.supported_formats:
             errors.append(
                 f"Unsupported format: {request.format}. Supported: {self.supported_formats}"
@@ -289,7 +285,6 @@ class PlaywrightProvider(MultimodalProvider):
         return importlib.util.find_spec("playwright") is not None
 
     def get_model_version(self) -> Optional[str]:
-        """Get browser type as version."""
         return f"playwright-{self._browser_type}"
 
     async def close(self) -> None:

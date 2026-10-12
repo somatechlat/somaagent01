@@ -5,51 +5,24 @@ read through ``services.common.unified_secret_manager``. This module's only
 job is to know which string values must be masked before anything reaches a
 log or a print — its one consumer is ``admin.core.helpers.print_style``.
 
-It used to also *write* secrets to a plaintext ``tmp/secrets.env`` via
-``save_secrets`` / ``save_secrets_with_merge``. That was a second secret store
-sitting next to Vault, and nothing ever called it: the write path is gone.
+There is no secrets file. There is no ``tmp/secrets.env``. There is no
+``SECRETS_DIR``. The file-backed store is deleted; values for masking are
+loaded from Vault only.
 """
+
+from __future__ import annotations
 
 import re
 import threading
-from dataclasses import dataclass
-from io import StringIO
-from typing import Callable, Dict, List, Literal, Optional, Set
+from typing import Dict, List, Optional, Set
 
-from dotenv.parser import parse_stream
-
-from admin.core.helpers import files
-from admin.core.helpers.errors import RepairableException
-
-# New alias-based placeholder format §§secret(KEY)
+# Alias-based placeholder format §§secret(KEY)
 ALIAS_PATTERN = r"§§secret\(([A-Za-z_][A-Za-z0-9_]*)\)"
 
 
 def alias_for_key(key: str, placeholder: str = "§§secret({key})") -> str:
-    # Return alias string for given key in upper-case
-    """Execute alias for key.
-
-    Args:
-        key: The key.
-        placeholder: The placeholder.
-    """
-
     key = key.upper()
     return placeholder.format(key=key)
-
-
-@dataclass
-class EnvLine:
-    """Envline class implementation."""
-
-    raw: str
-    type: Literal["pair", "comment", "blank", "other"]
-    key: Optional[str] = None
-    value: Optional[str] = None
-    key_part: Optional[str] = None  # original left side including whitespace up to '='
-    inline_comment: Optional[str] = (
-        None  # preserves trailing inline comment including leading spaces and '#'
-    )
 
 
 class StreamingSecretsFilter:
@@ -62,28 +35,19 @@ class StreamingSecretsFilter:
     """
 
     def __init__(self, key_to_value: Dict[str, str], min_trigger: int = 3):
-        """Initialize the instance."""
-
         self.min_trigger = max(1, int(min_trigger))
-        # Map value -> key for placeholder construction
         self.value_to_key: Dict[str, str] = {
             v: k for k, v in key_to_value.items() if isinstance(v, str) and v
         }
-        # Only keep non-empty values
         self.secret_values: List[str] = [v for v in self.value_to_key.keys() if v]
-        # Precompute all prefixes for quick suffix matching
         self.prefixes: Set[str] = set()
         for v in self.secret_values:
             for i in range(self.min_trigger, len(v) + 1):
                 self.prefixes.add(v[:i])
         self.max_len: int = max((len(v) for v in self.secret_values), default=0)
-
-        # Internal buffer of pending text that is not safe to flush yet
         self.pending: str = ""
 
     def _replace_full_values(self, text: str) -> str:
-        """Replace all full secret values with placeholders in the given text."""
-        # Sort by length desc to avoid partial overlaps
         for val in sorted(self.secret_values, key=len, reverse=True):
             if not val:
                 continue
@@ -93,8 +57,6 @@ class StreamingSecretsFilter:
         return text
 
     def _longest_suffix_prefix(self, text: str) -> int:
-        """Return length of longest suffix of text that is a known secret prefix.
-        Returns 0 if none found (or only shorter than min_trigger)."""
         max_check = min(len(text), self.max_len)
         for length in range(max_check, self.min_trigger - 1, -1):
             suffix = text[-length:]
@@ -103,43 +65,25 @@ class StreamingSecretsFilter:
         return 0
 
     def process_chunk(self, chunk: str) -> str:
-        """Execute process chunk.
-
-        Args:
-            chunk: The chunk.
-        """
-
         if not chunk:
             return ""
-
         self.pending += chunk
-
-        # Replace any full secret occurrences first
         self.pending = self._replace_full_values(self.pending)
-
-        # Determine the longest suffix that could still form a secret
         hold_len = self._longest_suffix_prefix(self.pending)
         if hold_len > 0:
-            # Flush everything except the hold suffix
             emit = self.pending[:-hold_len]
             self.pending = self.pending[-hold_len:]
         else:
-            # Safe to flush everything
             emit = self.pending
             self.pending = ""
-
         return emit
 
     def finalize(self) -> str:
-        """Flush any remaining buffered text. If pending contains an unresolved partial
-        (i.e., a prefix of a secret >= min_trigger), mask it with *** to avoid leaks."""
         if not self.pending:
             return ""
-
         hold_len = self._longest_suffix_prefix(self.pending)
         if hold_len > 0:
             safe = self.pending[:-hold_len]
-            # Mask unresolved partial
             result = safe + "***"
         else:
             result = self.pending
@@ -147,297 +91,89 @@ class StreamingSecretsFilter:
         return result
 
 
-class SecretsManager:
-    """Secretsmanager class implementation."""
+# Logical credential names the app reads via UnifiedSecretManager.get_credential().
+# Keep in sync with infra/standalone/init_vault.py CREDENTIAL_KEYS.
+_CREDENTIAL_KEYS = (
+    "django_secret_key",
+    "postgres_password",
+    "test_db_password",
+    "soma_api_token",
+    "somabrain_memory_http_token",
+    "somabrain_jwt_secret",
+    "keycloak_client_secret",
+    "keycloak_admin_password",
+    "minio_access_key",
+    "minio_secret_key",
+    "supervisor_http_pass",
+)
 
-    SECRETS_FILE = "tmp/secrets.env"
+_API_KEY_PROVIDERS = ("groq", "openai", "elevenlabs", "anthropic")
+
+
+class SecretsManager:
+    """Vault-backed redaction vocabulary. Never reads or writes a secrets file."""
+
     PLACEHOLDER_PATTERN = ALIAS_PATTERN
     MASK_VALUE = "***"
 
     _instance: Optional["SecretsManager"] = None
     _secrets_cache: Optional[Dict[str, str]] = None
-    _last_raw_text: Optional[str] = None
 
     @classmethod
     def get_instance(cls) -> "SecretsManager":
-        """Retrieve instance."""
-
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
 
     def __init__(self):
-        """Initialize the instance."""
-
         self._lock = threading.RLock()
-        # instance-level override for secrets file
-        self._secrets_file_rel = self.SECRETS_FILE
-
-    def set_secrets_file(self, relative_path: str):
-        """Override the relative secrets file location (useful for tests)."""
-        with self._lock:
-            self._secrets_file_rel = relative_path
-            self.clear_cache()
-
-    def read_secrets_raw(self) -> str:
-        """Read raw secrets file content from local filesystem (same system)."""
-        try:
-            content = files.read_file(self._secrets_file_rel)
-            self._last_raw_text = content
-            return content
-        except Exception:
-            self._last_raw_text = ""
-            return ""
 
     def load_secrets(self) -> Dict[str, str]:
-        """Load the redaction vocabulary, return key-value dict."""
+        """Load redaction values from Vault only. No file fallback."""
         with self._lock:
             if self._secrets_cache is not None:
                 return self._secrets_cache
 
             secrets: Dict[str, str] = {}
             try:
-                content = self.read_secrets_raw()
-                self._last_raw_text = content
-                if content:
-                    secrets = self.parse_env_content(content)
+                from services.common.unified_secret_manager import get_secret_manager
+
+                mgr = get_secret_manager()
+                for key in _CREDENTIAL_KEYS:
+                    value = mgr.get_credential(key)
+                    if value:
+                        secrets[key.upper()] = value
+                for provider in _API_KEY_PROVIDERS:
+                    value = mgr.get_provider_key(provider)
+                    if value:
+                        secrets[f"{provider.upper()}_API_KEY"] = value
             except Exception:
-                # On unexpected failure, keep empty cache rather than crash
+                # Vault down: mask nothing rather than fall back to a file.
                 secrets = {}
 
             self._secrets_cache = secrets
             return secrets
 
     def get_keys(self) -> List[str]:
-        """Get list of secret keys"""
-        secrets = self.load_secrets()
-        return list(secrets.keys())
-
-    def get_secrets_for_prompt(self) -> str:
-        """Get formatted string of secret keys for system prompt"""
-        content = self._last_raw_text or self.read_secrets_raw()
-        if not content:
-            return ""
-
-        env_lines = self.parse_env_lines(content)
-        return self._serialize_env_lines(
-            env_lines,
-            with_values=False,
-            with_comments=True,
-            with_blank=True,
-            with_other=True,
-            key_formatter=alias_for_key,
-        )
+        return list(self.load_secrets().keys())
 
     def create_streaming_filter(self) -> "StreamingSecretsFilter":
-        """Create a streaming-aware secrets filter snapshotting current secret values."""
         return StreamingSecretsFilter(self.load_secrets())
-
-    def replace_placeholders(self, text: str) -> str:
-        """Replace secret placeholders with actual values"""
-        if not text:
-            return text
-
-        secrets = self.load_secrets()
-
-        def replacer(match):
-            """Execute replacer.
-
-            Args:
-                match: The match.
-            """
-
-            key = match.group(1)
-            key = key.upper()
-            if key in secrets:
-                return secrets[key]
-            else:
-                available_keys = ", ".join(secrets.keys())
-                error_msg = (
-                    f"Secret placeholder '{alias_for_key(key)}' not found in secrets store.\n"
-                )
-                error_msg += f"Available secrets: {available_keys}"
-
-                raise RepairableException(error_msg)
-
-        return re.sub(self.PLACEHOLDER_PATTERN, replacer, text)
-
-    def change_placeholders(self, text: str, new_format: str) -> str:
-        """Substitute secret placeholders with a different placeholder format"""
-        if not text:
-            return text
-
-        secrets = self.load_secrets()
-        result = text
-
-        # Sort by length (longest first) to avoid partial replacements
-        for key, _value in sorted(secrets.items(), key=lambda x: len(x[1]), reverse=True):
-            result = result.replace(alias_for_key(key), new_format.format(key=key))
-
-        return result
 
     def mask_values(
         self, text: str, min_length: int = 4, placeholder: str = "§§secret({key})"
     ) -> str:
-        """Replace actual secret values with placeholders in text"""
+        """Replace actual secret values with placeholders in text."""
         if not text:
             return text
 
         secrets = self.load_secrets()
         result = text
-
-        # Sort by length (longest first) to avoid partial replacements
         for key, value in sorted(secrets.items(), key=lambda x: len(x[1]), reverse=True):
             if value and len(value.strip()) >= min_length:
                 result = result.replace(value, alias_for_key(key, placeholder))
-
         return result
 
-    def get_masked_secrets(self) -> str:
-        """Get content with values masked for frontend display (preserves comments and unrecognized lines)"""
-        if not (content := self.read_secrets_raw()):
-            return ""
-
-        # Parse content for known keys using python-dotenv
-        secrets_map = self.parse_env_content(content)
-        env_lines = self.parse_env_lines(content)
-        # Replace values with mask for keys present
-        for ln in env_lines:
-            if ln.type == "pair" and ln.key is not None:
-                ln.key = ln.key.upper()
-                if ln.key in secrets_map and secrets_map[ln.key] != "":
-                    ln.value = self.MASK_VALUE
-        return self._serialize_env_lines(env_lines)
-
-    def parse_env_content(self, content: str) -> Dict[str, str]:
-        """Parse .env format content into key-value dict using python-dotenv. Keys are always uppercase."""
-        env: Dict[str, str] = {}
-        for binding in parse_stream(StringIO(content)):
-            if binding.key and not binding.error:
-                env[binding.key.upper()] = binding.value or ""
-        return env
-
-    # Backward-compatible alias for callers using the old private method name
-    def _parse_env_content(self, content: str) -> Dict[str, str]:
-        """Execute parse env content.
-
-        Args:
-            content: The content.
-        """
-
-        return self.parse_env_content(content)
-
     def clear_cache(self):
-        """Clear the secrets cache"""
         with self._lock:
             self._secrets_cache = None
-
-    # ---------------- Internal helpers for parsing/merging ----------------
-
-    def parse_env_lines(self, content: str) -> List[EnvLine]:
-        """Parse env file into EnvLine objects using python-dotenv, preserving comments and order.
-        We reconstruct key_part and inline_comment based on the original string.
-        """
-        lines: List[EnvLine] = []
-        for binding in parse_stream(StringIO(content)):
-            orig = getattr(binding, "original", None)
-            raw = getattr(orig, "string", "") if orig is not None else ""
-            if binding.key and not binding.error:
-                # Determine key_part and inline_comment from original line
-                line_text = raw.rstrip("\n")
-                # Use composed key_part if original not available
-                if "=" in line_text:
-                    left, right = line_text.split("=", 1)
-                    key_part = left
-                else:
-                    key_part = binding.key
-                    right = ""
-                # Try to extract inline comment by scanning right side to comment start, respecting quotes
-                in_single = False
-                in_double = False
-                esc = False
-                comment_index = None
-                for i, ch in enumerate(right):
-                    if esc:
-                        esc = False
-                        continue
-                    if ch == "\\":
-                        esc = True
-                        continue
-                    if ch == "'" and not in_double:
-                        in_single = not in_single
-                        continue
-                    if ch == '"' and not in_single:
-                        in_double = not in_double
-                        continue
-                    if ch == "#" and not in_single and not in_double:
-                        comment_index = i
-                        break
-                inline_comment = None
-                if comment_index is not None:
-                    inline_comment = right[comment_index:]
-                lines.append(
-                    EnvLine(
-                        raw=line_text,
-                        type="pair",
-                        key=binding.key,
-                        value=binding.value or "",
-                        key_part=key_part,
-                        inline_comment=inline_comment,
-                    )
-                )
-            else:
-                # Comment, blank, or other lines
-                raw_line = raw.rstrip("\n")
-                if raw_line.strip() == "":
-                    lines.append(EnvLine(raw=raw_line, type="blank"))
-                elif raw_line.lstrip().startswith("#"):
-                    lines.append(EnvLine(raw=raw_line, type="comment"))
-                else:
-                    lines.append(EnvLine(raw=raw_line, type="other"))
-        return lines
-
-    def _serialize_env_lines(
-        self,
-        lines: List[EnvLine],
-        with_values=True,
-        with_comments=True,
-        with_blank=True,
-        with_other=True,
-        key_delimiter="",
-        key_formatter: Optional[Callable[[str], str]] = None,
-    ) -> str:
-        """Execute serialize env lines.
-
-        Args:
-            lines: The lines.
-            with_values: The with_values.
-            with_comments: The with_comments.
-            with_blank: The with_blank.
-            with_other: The with_other.
-            key_delimiter: The key_delimiter.
-            key_formatter: The key_formatter.
-        """
-
-        out: List[str] = []
-        for ln in lines:
-            if ln.type == "pair" and ln.key is not None:
-                left_raw = ln.key_part if ln.key_part is not None else ln.key
-                left = left_raw.upper()
-                val = ln.value if ln.value is not None else ""
-                comment = ln.inline_comment or ""
-                formatted_key = (
-                    key_formatter(left)
-                    if key_formatter
-                    else f"{key_delimiter}{left}{key_delimiter}"
-                )
-                val_part = f'="{val}"' if with_values else ""
-                comment_part = f" {comment}" if with_comments and comment else ""
-                out.append(f"{formatted_key}{val_part}{comment_part}")
-            elif ln.type == "blank" and with_blank:
-                out.append(ln.raw)
-            elif ln.type == "comment" and with_comments:
-                out.append(ln.raw)
-            elif ln.type == "other" and with_other:
-                out.append(ln.raw)
-        return "\n".join(out)

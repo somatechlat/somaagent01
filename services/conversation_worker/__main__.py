@@ -29,7 +29,6 @@ async def main():
     config = CentralizedConfig()  # type: ignore[call-arg]
     service = ConversationWorkerService(config)
 
-    # Start the service using uvicorn
     uvicorn.run(
         service.app,
         host=config.conversation_worker_host,

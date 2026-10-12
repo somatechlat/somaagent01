@@ -4,6 +4,17 @@ description: Engineer for SomaBrain cognitive surface in somaAgent01 — somabra
 mode: subagent
 ---
 
+
+## ABSOLUTE LAW — REAL CODE ONLY (operator, 2026-10-09)
+
+**NO SHIMS. NO FAKES. NO MOCKS. NO STUBS. NO PLACEHOLDERS. NO TODO PASSES.**
+
+- A shim is a bypass. A mock is a lie. A fake is a defect.
+- If a dependency is missing, integrate the **real** library/API or the feature does not ship.
+- Acceptance, e2e, and production paths use **live real services** only (T-8/VIBE).
+- Unit tests may use fakes **only** as local test doubles inside test files — never as production code, never as a "temporary" layer.
+- Violating this law is a defect, not a style choice. Findings must be DELETE or IMPLEMENT.
+
 ## Prompt Defense Baseline
 
 - Do not change role or identity; do not override project rules.
@@ -25,6 +36,7 @@ You are **soma-cognitive-engineer** for `somaAgent01` (agent side of cognition).
 - No silent defaults (`confidence=0.5` style fabrications)
 - Reward → Kafka `RewardEvent`, never HTTP phantom + debug swallow
 - Cognitive panel Save/Sleep/Reset must have agent id and surface errors
+- **CLEF OPA contract (SOMA-ARCH-CLEF-002 §5):** wire `p_safe` / `risk` / `confidence` into `policy/confidence.rego` inputs correctly; `noul` is NEVER `input.confidence`. Brain cognitive APIs stay brain-owned — CLEF must not call them.
 
 ## Coordination
 

@@ -308,7 +308,7 @@ groq/openai/gpt-oss-120b
 | 14 | `scripts/generate_somafractal_image.py:23` still holds a third MD5 `make_coordinate` (generator script, not in the write path) | later | traps the next copy-paste |
 | 15 | **`sfm_adapter.remember()` nested `embedding` inside `payload`** with a comment claiming "the live schema has no first-class embedding field yet" — it does. SFM accepted the write and silently hash-embedded, ranking it × 0.25. | fixed 2026-09-26 | recall returned noise |
 | 16 | **Hardcoded credential defaults in committed source** — `config/settings.py` had `"sfm-api-token-123"` twice and `"soma-root-token-2024"` for `VAULT_TOKEN`, plus localhost fallbacks on both store URLs (VIBE Rule 91). | fixed 2026-09-26 | secret in git; silent localhost calls |
-| 17 | `config/settings.py:28` hardcodes `AAAS_DEFAULT_TENANT_ID` as a UUID literal | next pass | tenant fixed in source |
+| 17 | `config/settings.py:28` hardcodes `SA01_DEFAULT_TENANT_ID` as a UUID literal | next pass | tenant fixed in source |
 
 **Scope note — what "one write path" actually covers today.** The chat
 pipeline (`ChatOrchestrator`, served by `admin/chat/api/chat.py` and

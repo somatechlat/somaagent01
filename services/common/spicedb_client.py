@@ -316,7 +316,6 @@ class SpiceDBClient:
 
         start_time = time.perf_counter()
 
-        # Define all possible permissions to check
         all_permissions = [
             "view",
             "use",
@@ -337,7 +336,6 @@ class SpiceDBClient:
                 SubjectReference,
             )
 
-            # Check each permission
             for permission in all_permissions:
                 request = CheckPermissionRequest(
                     resource=ObjectReference(
@@ -358,7 +356,6 @@ class SpiceDBClient:
                     if response.permissionship == 2:  # HAS_PERMISSION
                         granted_permissions.append(permission)
                 except Exception:
-                    # Skip this permission on error
                     pass
 
             elapsed = time.perf_counter() - start_time

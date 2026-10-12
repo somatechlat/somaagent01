@@ -73,8 +73,10 @@ class BudgetManager:
 
                 settings = SettingsRegistry.get()
                 budget = settings.sa01_default_token_budget
-            except Exception:
-                budget = int(os.environ.get("SA01_DEFAULT_TOKEN_BUDGET", "4096"))
+            except Exception as exc:
+                raise RuntimeError(
+                    "SA01_DEFAULT_TOKEN_BUDGET is not configured in settings registry."
+                ) from exc
         return {
             "max_tokens": budget,
             "degraded": False,

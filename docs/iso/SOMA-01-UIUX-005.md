@@ -315,7 +315,7 @@ Dispositions use the legends of §4.4–§4.5. `Impl` is the implementation stat
 | 64 | `TENANT_CONFIG_PATH` | UI-S-27 | Platform | Platform | path text | L3-ro | L3 topology — operator-set in env, shown for diagnosis only | new |
 | 65 | `TENANT_CONFIG_PATH_EXTRA` | UI-S-27 | Platform | Platform | path text | L3-ro | L3 topology — operator-set in env, shown for diagnosis only | new |
 | 66 | `SA01_REDIS_URL (requeue store)` | UI-S-27 | Platform | Platform | read-only text | L3-ro | L3 topology — operator-set in env, shown for diagnosis only; alias of the same topology key | new |
-| 67 | `SOMA_AAAS_MODE` | UI-S-27 | Platform | Platform | select | L3-ro | L3 topology — operator-set in env, shown for diagnosis only | new |
+| 67 | *(removed)* | — | — | — | — | — | `SOMA_AAAS_MODE` deleted; use `SA01_DEPLOYMENT_MODE` (STANDALONE\|DEV) | gone |
 
 ### 5.2 C2 — SECURITY (38 rows)
 
@@ -419,7 +419,7 @@ Dispositions use the legends of §4.4–§4.5. `Impl` is the implementation stat
 | 5 | `DEFAULT_EMBED_MODEL_PROVIDER` | UI-S-16 | Brain | Agent | reference picker | L2 | tenant-default slot binding (admin/llm/api.py) — agent owner may override per Capsule; Django default is baseline | ro |
 | 6 | `DEFAULT_EMBED_MODEL_NAME` | UI-S-16 | Brain | Agent | reference picker | L2 | tenant-default slot binding (admin/llm/api.py) — agent owner may override per Capsule; Django default is baseline | ro |
 | 7 | `DEFAULT_VOICE_MODEL` | UI-S-02 | Brain | Agent | reference picker | L2 | voice model slot — agent owner; Capsule.voice_model FK is the body authority (core.py:225) | new |
-| 8 | `AAAS_DEFAULT_CHAT_MODEL` | UI-S-16 | Brain | Platform | read-only text | L1-gated | AAAS platform default — operator baseline; shown read-only on Models for diagnosis | ro |
+| 8 | `SA01_DEFAULT_CHAT_MODEL` | UI-S-16 | Brain | Platform | read-only text | L1-gated | AAAS platform default — operator baseline; shown read-only on Models for diagnosis | ro |
 | 9 | `LLM_CONNECT_TIMEOUT_S` | UI-S-27 | Brain | Platform | number | L1-gated | LLM transport tunable — operator role required; KEY_CATEGORY agrees these are LLM (capsule_settings.py:75-80) | new |
 | 10 | `LLM_READ_TIMEOUT_S` | UI-S-27 | Brain | Platform | number | L1-gated | LLM transport tunable — operator role required; KEY_CATEGORY agrees these are LLM (capsule_settings.py:75-80) | new |
 | 11 | `LLM_MAX_RETRIES` | UI-S-27 | Brain | Platform | number | L1-gated | LLM transport tunable — operator role required; KEY_CATEGORY agrees these are LLM (capsule_settings.py:75-80) | new |
@@ -430,7 +430,7 @@ Dispositions use the legends of §4.4–§4.5. `Impl` is the implementation stat
 | 16 | `SA01_LLM_API_URL` | UI-S-27 | Brain | Platform | read-only text | L3-ro | L3 topology — operator-set in env, shown for diagnosis only | new |
 | 17 | `SA01_LLM_BASE_URL` | UI-S-27 | Brain | Platform | read-only text | L3-ro | L3 topology — operator-set in env, shown for diagnosis only | new |
 | 18 | `SA01_LLM_MODEL` | UI-S-16 | Brain | Agent | reference picker | L2 | env mirror of the chat slot — superseded by chat_model_id when set | ro |
-| 19 | `SA01_VISION_MODEL` | UI-S-02 | Brain | Agent | reference picker | L2 | vision model name — agent owner; bind via Capsule.image_model FK | new |
+| 19 | `Capsule.image_model` | UI-S-02 | Brain | Agent | reference picker | L2 | vision/image model — agent owner; FK to LLMModelConfig (no env key) | new |
 | 20 | `SA01_GEMINI_COMPAT_ENABLED` | UI-S-31 | Brain | Developer | toggle | L1-gated | LLM compatibility shim (services/common/llm_compatibility.py) — operator/developer scope; toggle shows effective shim state | new |
 | 21 | `SA01_JSON_CLEANING_ENABLED` | UI-S-31 | Brain | Developer | toggle | L1-gated | LLM compatibility shim — operator/developer scope | new |
 | 22 | `chat_model_provider / chat_model_name / chat_model_api_base` | UI-S-16 | Brain | Agent | text | L2 | SettingsModel chat binding (settings_model.py:37-43) — agent owner; provider rows save base_url and default model name (saas-settings-models.ts:699-717) | yes |
@@ -528,11 +528,11 @@ Dispositions use the legends of §4.4–§4.5. `Impl` is the implementation stat
 
 | # | Setting key (§9) | Screen | Facet | Scope | Control | Edit | Disabled-reason / note | Impl |
 |---|---|---|---|---|---|---|---|---|
-| 1 | `AAAS_DEFAULT_TENANT_ID` | UI-S-22 | Governance | Platform | read-only text | L3-ro | L3 topology — operator-set in env, shown for diagnosis only | new |
-| 2 | `AAAS_DEFAULT_MAX_AGENTS` | UI-S-22 | Governance | Platform | number | L1-gated | tier default quota (services/gateway/settings.py:201-204) — operator role required; tiers UI (UI-S-23/25) reads these as baselines | new |
-| 3 | `AAAS_DEFAULT_MAX_USERS` | UI-S-22 | Governance | Platform | number | L1-gated | tier default quota (services/gateway/settings.py:201-204) — operator role required; tiers UI (UI-S-23/25) reads these as baselines | new |
-| 4 | `AAAS_DEFAULT_MAX_TOKENS_MONTHLY` | UI-S-22 | Governance | Platform | number | L1-gated | tier default quota (services/gateway/settings.py:201-204) — operator role required; tiers UI (UI-S-23/25) reads these as baselines | new |
-| 5 | `AAAS_DEFAULT_STORAGE_GB` | UI-S-22 | Governance | Platform | number | L1-gated | tier default quota (services/gateway/settings.py:201-204) — operator role required; tiers UI (UI-S-23/25) reads these as baselines | new |
+| 1 | `SA01_DEFAULT_TENANT_ID` | UI-S-22 | Governance | Platform | read-only text | L3-ro | L3 topology — operator-set in env, shown for diagnosis only | new |
+| 2 | `SA01_DEFAULT_MAX_AGENTS` | UI-S-22 | Governance | Platform | number | L1-gated | tier default quota (services/gateway/settings.py:201-204) — operator role required; tiers UI (UI-S-23/25) reads these as baselines | new |
+| 3 | `SA01_DEFAULT_MAX_USERS` | UI-S-22 | Governance | Platform | number | L1-gated | tier default quota (services/gateway/settings.py:201-204) — operator role required; tiers UI (UI-S-23/25) reads these as baselines | new |
+| 4 | `SA01_DEFAULT_MAX_TOKENS_MONTHLY` | UI-S-22 | Governance | Platform | number | L1-gated | tier default quota (services/gateway/settings.py:201-204) — operator role required; tiers UI (UI-S-23/25) reads these as baselines | new |
+| 5 | `SA01_DEFAULT_STORAGE_GB` | UI-S-22 | Governance | Platform | number | L1-gated | tier default quota (services/gateway/settings.py:201-204) — operator role required; tiers UI (UI-S-23/25) reads these as baselines | new |
 | 6 | `SA01_DEFAULT_TOKEN_BUDGET` | UI-S-22 | Governance | Agent | number | L2 | default per-turn token budget — Capsule-overridable per §9.8 | new |
 | 7 | `SA01_FEATURE_PROFILE` | UI-S-21 | Governance | Platform | read-only text | L1-gated | feature profile name — platform constant; flags UI shows the effective profile | new |
 | 8 | `ENDPOINT_PERMISSIONS` | UI-S-24 | Governance | Platform | JSON editor | L1-gated | endpoint permission map (services/gateway/settings.py:234) — empty = DENY; operator role required | new |
@@ -730,7 +730,7 @@ until reconciled).
 | D-02 | `somabrain/memory/consolidation.py:194` fallback `256` | **visible** | same seam panel as D-01 | Second inconsistent fallback for the same dimension. |
 | D-03 | `somafractalmemory/admin/core/services.py:127` fallback `256` | **visible** | same seam panel as D-01 | Third inconsistent fallback. |
 | D-04 | `HRR_DIM` fallback `512` vs `SOMABRAIN_HRR_DIM` default `8192` | **visible** | UI-S-27 `SOMABRAIN_HRR_DIM` meter (§5 C3 row 42) | Two names for one dimension; UI shows the resolved name only, with a note that `HRR_DIM` is a deprecated alias. |
-| D-05 | `memory_contract.py:43` `DEFAULT_MEM_EMBED_DIM = 768` | **hidden** | none | Acceptable last-resort for non-Django scripts (N-1 §10). Keep equal to the seam dim. Not a user-facing setting. |
+| D-05 | `soma-memory-contract/soma_memory_contract/__init__.py:23` `DEFAULT_MEM_EMBED_DIM = 768` | **hidden** | none | Acceptable last-resort for non-Django scripts (N-1 §10). Keep equal to the seam dim. Not a user-facing setting. |
 | D-06 | `degraded_memory_queue.py:25` `DEGRADED_TOPIC` module constant | **hidden** | none | **Code already reads `get_memory_setting("MEMORY_DEGRADED_TOPIC", "")`** (`services/common/degraded_memory_queue.py:33`). The duplicate module constant of §10 is no longer how the topic is resolved — drift appears closed in code and open in the document (X-08). |
 | D-07 | `settings_defaults.py:100-111` resolution `ENV > DB > default` | **authority-gap** | none until reconciled | **Code no longer matches the drift entry** (X-03). Current `_env_or_db` docstring and body implement `AgentSetting > Django > (env only for topology keys) > default` (`admin/core/helpers/settings_defaults.py:100-127`). §10 D-07 is stale; §5 resolution order is closer to code than the drift register claims. |
 | D-08 | `settings_model.py` schema fallbacks | **visible** | UI-S-12 Advanced collapse shows "effective value" + "source" badge (Capsule / AgentSetting / Django / schema fallback) per `resolve_setting` (`capsule_settings.py:138-175`) | Users must see when a value is a schema fallback rather than an authority value. |

@@ -106,13 +106,11 @@ def _list_sessions(limit: int):
 
 @sync_to_async
 def _get_session(session_id: str):
-    """Get session by ID."""
     return Session.objects.filter(session_id=session_id).first()
 
 
 @sync_to_async
 def _get_session_events(session_id: str, limit: int):
-    """Get session events."""
     session = Session.objects.filter(session_id=session_id).first()
     if not session:
         return None
@@ -121,7 +119,6 @@ def _get_session_events(session_id: str, limit: int):
 
 @sync_to_async
 def _get_events_after(session_id: str, after_id: Optional[int], limit: int):
-    """Get events after a given ID."""
     session = Session.objects.filter(session_id=session_id).first()
     if not session:
         return []
@@ -213,7 +210,6 @@ async def list_sessions(request: HttpRequest, limit: int = Query(50, ge=1, le=20
 
 @router.get("/{session_id}", response=SessionDetailResponse, summary="Get session details", auth=AuthBearer())
 async def get_session(request: HttpRequest, session_id: str) -> SessionDetailResponse:
-    """Get session envelope."""
     await authorize(request, action="resource:conversation_read", resource="sessions")
     session = await _get_session(session_id)
     if session:

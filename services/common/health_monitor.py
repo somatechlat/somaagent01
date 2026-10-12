@@ -23,8 +23,8 @@ from typing import Callable, Optional
 logger = logging.getLogger(__name__)
 
 # Deployment mode detection
-DEPLOYMENT_MODE = os.environ.get("SA01_DEPLOYMENT_MODE", "dev").upper()
-AAAS_MODE = DEPLOYMENT_MODE == "AAAS"
+from django.conf import settings as _django_settings
+DEPLOYMENT_MODE = getattr(_django_settings, "SA01_DEPLOYMENT_MODE", "STANDALONE").upper()
 STANDALONE_MODE = DEPLOYMENT_MODE == "STANDALONE"
 
 
@@ -58,7 +58,6 @@ class OverallHealth:
     last_update: float
 
     def get_critical_failures(self) -> list[str]:
-        """Get list of critical services that are unhealthy."""
         critical = ["somabrain", "database", "llm"]
         return [
             name for name, status in self.checks.items() if name in critical and not status.healthy
@@ -224,14 +223,9 @@ class HealthMonitor:
     async def _check_all_services(self) -> None:
         """Check health of all registered services.
 
-        HEALTH-002: Deployment mode-specific health check strategy:
-        - AAAS mode: Check distributed services via HTTP endpoints
-        - STANDALONE mode: Check embedded modules via direct import checks
+        HEALTH-002: STANDALONE mode checks embedded modules via direct import.
         """
-        # Log deployment mode health check strategy
-        if AAAS_MODE:
-            logger.debug("AAAS mode: Checking distributed services via HTTP endpoints")
-        elif STANDALONE_MODE:
+        if STANDALONE_MODE:
             logger.debug("STANDALONE mode: Checking embedded modules")
 
         tasks = []
@@ -304,9 +298,7 @@ class HealthMonitor:
 
             # HEALTH-002: Deployment mode-specific error logging
             error_prefix = f"{DEPLOYMENT_MODE} mode:"
-            if AAAS_MODE and service_name == "somabrain":
-                error_msg = f"{error_prefix} Health check failed for {service_name}: {e} (HTTP endpoint likely unavailable)"
-            elif STANDALONE_MODE and service_name == "somabrain":
+            if STANDALONE_MODE and service_name == "somabrain":
                 error_msg = f"{error_prefix} Health check failed for {service_name}: {e} (Embedded module likely unavailable)"
             else:
                 error_msg = f"{error_prefix} Health check failed for {service_name}: {e}"
@@ -444,7 +436,6 @@ _health_monitor: Optional[HealthMonitor] = None
 
 
 def get_health_monitor() -> HealthMonitor:
-    """Get health monitor singleton."""
     global _health_monitor
     if _health_monitor is None:
         _health_monitor = HealthMonitor()

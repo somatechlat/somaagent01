@@ -1,39 +1,18 @@
 #!/bin/sh
 # =============================================================================
-# Standalone Keycloak entrypoint — secret sourcing
+# Standalone Keycloak entrypoint — Channel ENV only (no secret files)
 # =============================================================================
-# WHY THIS EXISTS
-# ---------------
 # Keycloak documents KC_DB_PASSWORD and KEYCLOAK_ADMIN_PASSWORD but ships no
-# _FILE variant for either (verified against keycloak.org/server/configuration,
-# "Server configuration"). A Java KeyStore is the upstream's file-based option
-# and is disproportionate for a local stack.
+# _FILE variant. vault_inject.py fetches them from Vault into THIS process's
+# RAM environment and execve's this script. Nothing is written to disk.
 #
-# So the two values are mounted as Docker secrets and exported into this
-# container's process environment by this script. They are never in
-# docker-compose.yml, never in .env and never in git.
-#
-# This is a named LOCAL LIMITATION of the third-party image, not a workaround
-# we invented to hide a secret. See README.md §"Local limitations".
-#
-# Nothing here prints a secret. Errors name a file, never a value.
+# R-SEC-01 / Operator LAW 2026-10-11: no secret files. No /run/t0 password
+# handoff. Channel ENV is the only delivery. Nothing here prints a secret.
 # =============================================================================
 
 set -eu
 
-read_secret() {
-    # read_secret <var-name> <file>
-    if [ ! -s "$2" ]; then
-        echo "❌ missing or empty secret file: $2" >&2
-        echo "   See infra/standalone/secrets/README.md. The value is not logged." >&2
-        exit 1
-    fi
-    # Exported directly from the file read; never echoed.
-    export "$1=$(cat "$2")"
-}
+: "${KC_DB_PASSWORD:?KC_DB_PASSWORD must be supplied by vault_inject (Channel ENV)}"
+: "${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD must be supplied by vault_inject (Channel ENV)}"
 
-read_secret KC_DB_PASSWORD        /run/secrets/postgres_password
-read_secret KEYCLOAK_ADMIN_PASSWORD /run/secrets/keycloak_admin_password
-
-# Upstream image's own start-dev invocation.
 exec /opt/keycloak/bin/kc.sh start-dev

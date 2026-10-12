@@ -98,7 +98,6 @@ class VoiceService:
     """
 
     def __init__(self, config: Config) -> None:
-        """Initialize the instance."""
 
         self._config = config
         self._capture: AudioCapture | None = None
@@ -500,7 +499,6 @@ def list_sessions(
 
 
 def get_session_stats(tenant_id: str) -> VoiceSessionStats:
-    """Get aggregated session statistics for the given tenant."""
     VoiceModel, VoicePersona, VoiceSession = _get_voice_models()
     active_count = VoiceSession.objects.filter(tenant_id=tenant_id, status="active").count()
     total_count = VoiceSession.objects.filter(tenant_id=tenant_id).count()

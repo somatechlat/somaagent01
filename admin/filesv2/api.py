@@ -88,7 +88,6 @@ def list_files(
 
     offset = (page - 1) * per_page
 
-    # Get files with tenant isolation
     queryset = File.objects.filter(deleted_at__isnull=True)
     if tenant_id:
         queryset = queryset.filter(tenant_id=tenant_id)
@@ -225,7 +224,6 @@ def create_upload_url(
 # 405 (live-verified) — literal paths must precede the {file_id} catch-all.
 @router.get("/{file_id}", response=FileOut, auth=AuthBearer())
 def get_file(request, file_id: str):
-    """Get file details."""
     authorize_sync(request, action="resource:file_read", resource="files")
 
     from admin.filesv2.models import File
@@ -281,7 +279,6 @@ def upload_local(request, file_id: str, file: UploadedFile = File(...)):
         )
 
     try:
-        # Save to local storage using the pre-defined key
         path = default_storage.save(f.storage_key, ContentFile(file.read()))
     except Exception as e:
         logger.exception("Local upload failed: %s", e)
@@ -310,7 +307,6 @@ def delete_file(request, file_id: str):
 
 @router.get("/{file_id}/download-url", auth=AuthBearer())
 def get_download_url(request, file_id: str):
-    """Get presigned download URL."""
     authorize_sync(request, action="resource:file_read", resource="files")
 
     import boto3  # type: ignore[import]

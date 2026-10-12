@@ -72,7 +72,6 @@ async def get_rate_limits(request) -> dict:
     gd = await PlatformConfig.aget_instance()
     defaults = gd.defaults
 
-    # Initialize if missing
     if "ratelimits" not in defaults:
         defaults["ratelimits"] = [
             {
@@ -142,7 +141,6 @@ async def create_rate_limit(
     if "ratelimits" not in defaults:
         defaults["ratelimits"] = []
 
-    # Check for duplicate
     for limit in defaults["ratelimits"]:
         if limit["name"] == payload.name:
             return {"error": get_message(ErrorCode.RATE_LIMIT_RULE_EXISTS), "created": False}
@@ -330,7 +328,6 @@ async def get_usage_history(
     tenant_id: Optional[str] = None,
     period: str = "24h",  # 1h, 24h, 7d, 30d
 ) -> dict:
-    """Get historical usage metrics."""
     await authorize(request, action="system:read_metrics", resource="ratelimit")
     return {
         "period": period,

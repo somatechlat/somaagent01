@@ -145,7 +145,6 @@ class MermaidProvider(MultimodalProvider):
 
         start_time = time.time()
 
-        # Validate first
         errors = self.validate(request)
         if errors:
             return GenerationResult(
@@ -171,10 +170,8 @@ class MermaidProvider(MultimodalProvider):
                 input_file = Path(tmpdir) / "diagram.mmd"
                 output_file = Path(tmpdir) / f"diagram.{output_format}"
 
-                # Write Mermaid code to input file
                 input_file.write_text(request.prompt)
 
-                # Build command
                 if cli.startswith("npx"):
                     cmd_parts = cli.split() + ["-i", str(input_file), "-o", str(output_file)]
                 else:
@@ -219,7 +216,6 @@ class MermaidProvider(MultimodalProvider):
                         provider=self.provider_id,
                     )
 
-                # Read output
                 if not output_file.exists():
                     return GenerationResult(
                         success=False,
@@ -292,13 +288,11 @@ class MermaidProvider(MultimodalProvider):
             # Not a hard error, but worth noting
             logger.debug("No recognized diagram type keyword in Mermaid code")
 
-        # Validate format
         if request.format and request.format not in self.supported_formats:
             errors.append(
                 f"Unsupported format: {request.format}. Supported: {self.supported_formats}"
             )
 
-        # Validate dimensions
         max_dims = self.max_dimensions
         if request.dimensions and max_dims:
             if request.dimensions.get("width", 0) > max_dims["width"]:
@@ -341,7 +335,6 @@ class MermaidProvider(MultimodalProvider):
             return False
 
     async def _get_version(self) -> Optional[str]:
-        """Get Mermaid CLI version."""
         cli = self._find_cli()
         if not cli:
             return None
@@ -392,5 +385,4 @@ class MermaidProvider(MultimodalProvider):
         return "unknown"
 
     def get_model_version(self) -> Optional[str]:
-        """Get cached model version."""
         return None  # Version retrieved dynamically

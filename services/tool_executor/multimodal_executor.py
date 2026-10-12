@@ -87,7 +87,6 @@ class MultimodalExecutor:
         self._provenance_recorder = ProvenanceRecorder()
         self._initialized = False
 
-        # Initialize LLM Adapter for AssetCritic if needed
         # In a real app, we might inject this from a factory or globals
         from services.common.llm_adapter import LLMAdapter
         from services.common.unified_secret_manager import get_secret_manager
@@ -102,7 +101,6 @@ class MultimodalExecutor:
 
         self._asset_critic = asset_critic or AssetCritic(llm_adapter=self._llm_adapter)
 
-        # Initialize providers registry
         self._providers: Dict[str, MultimodalProvider] = {}
         self._capability_map: Dict[ProviderCapability, List[str]] = {}
 
@@ -187,7 +185,6 @@ class MultimodalExecutor:
             logger.info("Plan %s already finished via status %s", plan_id, plan.status)
             return True
 
-        # Update status to RUNNING
         await self._job_planner.update_status(plan.id, JobStatus.RUNNING)
 
         context: Dict[str, Any] = {}
@@ -228,7 +225,6 @@ class MultimodalExecutor:
                         error_msg = f"budget_exceeded: used {budget_used_cents} > limit {plan.budget_limit_cents}"
                         break
 
-                # Update progress
                 await self._job_planner.update_status(
                     plan.id,
                     JobStatus.RUNNING,
@@ -439,7 +435,10 @@ class MultimodalExecutor:
                             rubric.min_width = task.constraints.get("min_width")
 
                         evaluation = await self._asset_critic.evaluate(
-                            asset, rubric, context=context
+                            asset,
+                            rubric,
+                            context=context,
+                            capsule=context.get("capsule"),
                         )
                         quality_gate_passed = evaluation.passed
                         evaluation_score = evaluation.score

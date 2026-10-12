@@ -154,7 +154,6 @@ class DalleProvider(MultimodalProvider):
         return {"width": 1792, "height": 1792}
 
     async def _get_client(self) -> httpx.AsyncClient:
-        """Get or create HTTP client."""
         if self._client is None:
             self._client = httpx.AsyncClient(
                 timeout=self._timeout,
@@ -176,7 +175,6 @@ class DalleProvider(MultimodalProvider):
         """
         start_time = time.time()
 
-        # Check API key
         if not self._api_key:
             return GenerationResult(
                 success=False,
@@ -185,7 +183,6 @@ class DalleProvider(MultimodalProvider):
                 provider=self.provider_id,
             )
 
-        # Validate first
         errors = self.validate(request)
         if errors:
             return GenerationResult(
@@ -246,7 +243,6 @@ class DalleProvider(MultimodalProvider):
                     provider=self.provider_id,
                 )
 
-            # Parse response
             data = response.json()
             image_data = data["data"][0]
 
@@ -314,17 +310,14 @@ class DalleProvider(MultimodalProvider):
         if len(request.prompt) > 4000:
             errors.append("Prompt exceeds maximum length of 4000 characters")
 
-        # Validate size
         size = request.parameters.get("size", "1024x1024")
         if size not in self.SIZES:
             errors.append(f"Invalid size: {size}. Supported: {self.SIZES}")
 
-        # Validate quality
         quality = request.parameters.get("quality", "standard")
         if quality not in self.QUALITIES:
             errors.append(f"Invalid quality: {quality}. Supported: {self.QUALITIES}")
 
-        # Validate style
         style = request.parameters.get("style", "vivid")
         if style not in self.STYLES:
             errors.append(f"Invalid style: {style}. Supported: {self.STYLES}")
@@ -353,7 +346,6 @@ class DalleProvider(MultimodalProvider):
             return False
 
     def get_model_version(self) -> Optional[str]:
-        """Get current model version."""
         return self._model
 
     async def close(self) -> None:

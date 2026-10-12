@@ -40,6 +40,7 @@ from services.common.memory_contract import (
     MemoryHit,
     MemoryRecallUnavailable,
     MemoryWrite,
+    MemoryWriteError,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -222,14 +223,28 @@ class SomaBrainAdapter:
         The brain rejects any body tenant that is not the credential's tenant
         (403). App-level tenant IDs are not the brain partition unless the
         credential is bound to them. Always speak the credential tenant.
+
+        Fail-closed: a missing/unreadable tenant setting raises. There is no
+        silent ``"standalone"`` default — that would violate the tenant
+        fail-closed law and risk a wrong partition.
+
+        The setting name is ``SA01_DEFAULT_TENANT_ID`` (SettingsModel
+        ``sa01_default_tenant_id``). One vocabulary per concept (AP-06) —
+        never invent a second name for the same tenant.
         """
         from services.common.memory_contract import get_memory_setting
 
         try:
-            resolved = get_memory_setting("SOMABRAIN_DEFAULT_TENANT")
-        except Exception:
-            resolved = None
-        return str(resolved or "standalone")
+            resolved = get_memory_setting("SA01_DEFAULT_TENANT_ID")
+        except Exception as exc:
+            raise RuntimeError(
+                "SA01_DEFAULT_TENANT_ID is not provisioned; refusing to guess a brain tenant"
+            ) from exc
+        if not resolved:
+            raise RuntimeError(
+                "SA01_DEFAULT_TENANT_ID is empty; refusing to guess a brain tenant"
+            )
+        return str(resolved)
 
     def _headers(self, tenant_id: str | None = None) -> dict[str, str]:
         """Build request headers; bearer token plus tenant hint."""
@@ -369,15 +384,16 @@ class SomaBrainAdapter:
         return hits
 
     async def forget(self, coord: str, tenant_id: str) -> bool:
-        """Delete via POST /memory/forget. True only when the brain reports ``ok: true``.
+        """Delete via POST /memory/forget.
 
-        Request/response are the brain's ``ForgetRequest`` / ``ForgetResponse``
-        (somabrain.api.memory.models:454-471). ``ok: false`` with
-        ``error: "not found"`` is a real answer — the coordinate was not
-        present — and returns False. A transport or backend failure is logged
-        and also returns False; it is never a silent skip of the call.
+        Three distinct outcomes (T-5 honesty — never collapse them):
+        - ``True``  — brain reports ``ok: true`` (deleted)
+        - ``False`` — brain reports ``ok: false`` / not-found (real answer)
+        - raises    — transport or backend failure (``MemoryWriteError``)
+
+        A transport failure is NOT "not found"; callers must be able to tell
+        an outage from absence.
         """
-
         body = ForgetRequest(coord=coord, tenant=self._brain_tenant(tenant_id), tenant_id=self._brain_tenant(tenant_id))
         try:
             response = await self._client.post(
@@ -388,8 +404,8 @@ class SomaBrainAdapter:
             response.raise_for_status()
             payload = ForgetResponse.model_validate(response.json() or {})
         except Exception as exc:
-            LOGGER.warning("SomaBrain forget failed for coord=%s: %s", coord, exc)
-            return False
+            LOGGER.error("SomaBrain forget transport failure for coord=%s: %s", coord, exc)
+            raise MemoryWriteError(f"forget transport failure for {coord}: {exc}") from exc
         if not payload.ok:
             LOGGER.info("SomaBrain forget: coord=%s not deleted (%s)", coord, payload.error)
         return bool(payload.ok)

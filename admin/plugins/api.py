@@ -139,7 +139,6 @@ async def install_plugin(
     auth=AuthBearer(),
 )
 async def get_plugin(request, plugin_id: str) -> Plugin:
-    """Get plugin details."""
     await authorize(request, action="system:view", resource="plugins")
     try:
         module = module_registry.get_module(plugin_id)

@@ -36,7 +36,6 @@ def _require_tenant_id_value(tenant_id) -> str:
 # VIBE: Multiple services defining same metric names causes registry conflicts
 from services.common.unified_metrics import UnifiedMetrics
 
-# Initialize metrics singleton on module load
 _metrics = UnifiedMetrics.get_instance()
 
 # Metric shortcuts for backwards compatibility
@@ -174,7 +173,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
     MESSAGE_TIMEOUT = 30  # seconds
 
     def __init__(self, *args, **kwargs):
-        """Initialize the instance."""
 
         super().__init__(*args, **kwargs)
         self.user_id: Optional[str] = None
@@ -334,10 +332,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             # Track connection
             _metrics.WEBSOCKET_CONNECTIONS.labels(agent_id=self.agent_id or "unknown").inc()
 
-            # Start heartbeat
             self.heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
-            # Send connected message
             await self.send_json(
                 WSMessage(
                     type=MSG_CONNECTED,
@@ -625,7 +621,6 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         self.is_streaming = True
 
         try:
-            # Send typing indicator
             await self.send_json(
                 WSMessage(
                     type=MSG_TYPING,

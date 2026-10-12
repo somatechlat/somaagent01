@@ -33,7 +33,6 @@ class SomaClientError(Exception):
     """Exception raised for SomaBrain client errors."""
 
     def __init__(self, message: str, status_code: Optional[int] = None):
-        """Initialize the instance."""
 
         super().__init__(message)
         self.status_code = status_code
@@ -501,7 +500,6 @@ class SomaBrainClient:
             return False
 
     async def health(self) -> Dict[str, Any]:
-        """Get health status from SomaBrain."""
         try:
             return await self._request("GET", "/health")
         except SomaClientError as e:

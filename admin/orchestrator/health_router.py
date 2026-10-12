@@ -36,7 +36,6 @@ class UnifiedHealthRouter:
         registry=None,
         services_provider: Optional[Callable[[], List[BaseSomaService]]] = None,
     ) -> None:
-        """Initialize the instance."""
 
         self._services = services or []
         self._registry = registry

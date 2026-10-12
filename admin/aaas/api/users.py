@@ -107,7 +107,7 @@ def list_users(
 ) -> dict:
     """List all users in the tenant with filtering."""
     authorize_sync(request, action="org:user_read", resource="users")
-    tenant_id = getattr(request.auth, "tenant_id", None) or settings.AAAS_DEFAULT_TENANT_ID
+    tenant_id = getattr(request.auth, "tenant_id", None) or settings.SA01_DEFAULT_TENANT_ID
 
     qs = TenantUser.objects.filter(tenant_id=tenant_id)
 
@@ -160,7 +160,7 @@ def add_user(
     if TenantUser.objects.filter(user_id=principal_id).exists():
         raise ValidationError("That principal is already a member.", field="user_id")
 
-    tenant_id = getattr(request.auth, "tenant_id", None) or settings.AAAS_DEFAULT_TENANT_ID
+    tenant_id = getattr(request.auth, "tenant_id", None) or settings.SA01_DEFAULT_TENANT_ID
 
     user = TenantUser.objects.create(
         id=uuid4(),

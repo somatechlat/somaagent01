@@ -4,7 +4,7 @@ Tests for Week 1 P0 tasks: CTX-002, CHAT-003, HEALTH-002, METRICS-002, GOV-002
 
 VIBE COMPLIANT:
 - Real implementation tests
-- Deployment mode-specific test scenarios
+- Live standalone cluster scenarios (AAAS mode removed)
 - Production-grade error validation
 - No mocks - use real infrastructure where possible
 """
@@ -54,50 +54,6 @@ def _restore_deployment_mode(original: str) -> None:
 class TestContextBuilderDeploymentMode:
     """CTX-002: Test ContextBuilder deployment mode memory retrieval."""
 
-    @pytest.mark.asyncio
-    async def test_aaas_mode_memory_lane_degrades_on_outage(self):
-        """AAAS mode: a SomaBrain outage degrades the lane, it does not abort.
-
-        Contract since 547d43a7 (tests/unit/test_memory_lane_degrades.py):
-        ``memory_hits=None`` means recall could not run. The lane states that
-        truthfully. ``[]`` is the honest empty result and must not claim
-        unavailability. There is still no second read path.
-        """
-        original = _set_deployment_mode("aaas")
-        try:
-            import admin.core.context.builder as cb_module
-
-            importlib.reload(cb_module)
-
-            builder = cb_module.ContextBuilder()
-
-            capsule = SimpleNamespace(
-                tenant_id="test-tenant",
-                id="test-capsule",
-                body={"persona": {"memory": {"recall_limit": 5, "similarity_threshold": 0.7}}},
-            )
-            persona = capsule.body["persona"]
-
-            outage_lane = await builder._build_memory_lane(
-                capsule=capsule,
-                query="test query",
-                persona=persona,
-                budget=100,
-                memory_hits=None,
-            )
-            assert "unavailable" in outage_lane.lower()
-
-            empty_lane = await builder._build_memory_lane(
-                capsule=capsule,
-                query="test query",
-                persona=persona,
-                budget=100,
-                memory_hits=[],
-            )
-            assert "unavailable" not in empty_lane.lower()
-            print("  ✅ AAAS mode: outage degrades honestly; [] is not 'unavailable'")
-        finally:
-            _restore_deployment_mode(original)
 
     @pytest.mark.asyncio
     async def test_standalone_mode_memory_lane_degrades_on_outage(self):
@@ -199,33 +155,6 @@ class TestChatOrchestratorErrorHandling:
 class TestHealthMonitorDeploymentMode:
     """HEALTH-002: Test HealthMonitor deployment mode health checks."""
 
-    @pytest.mark.asyncio
-    async def test_aaas_mode_service_health_check(self):
-        """Test AAAS mode service health check via real checker."""
-        original = _set_deployment_mode("aaas")
-        try:
-            import services.common.health_monitor as hm_module
-
-            importlib.reload(hm_module)
-
-            from services.common.health_monitor import HealthCheck, HealthMonitor
-
-            monitor = HealthMonitor()
-
-            def aaas_check():
-                return HealthCheck(healthy=True, latency_ms=45.0)
-
-            monitor.register_health_checker("somabrain", aaas_check)
-            await monitor._check_service("somabrain", aaas_check)
-
-            status = monitor.checks.get("somabrain")
-            assert status is not None
-            assert status.healthy is True
-            # Real implementation measures actual execution latency, not the returned value
-            assert status.latency_ms >= 0.0
-            print("  ✅ AAAS mode: Service health check completed")
-        finally:
-            _restore_deployment_mode(original)
 
     @pytest.mark.asyncio
     async def test_standalone_mode_module_health_check(self):
@@ -260,7 +189,7 @@ class TestHealthMonitorDeploymentMode:
     @pytest.mark.asyncio
     async def test_deployment_mode_error_logging(self):
         """Test that health check errors include deployment mode context."""
-        original = _set_deployment_mode("aaas")
+        original = _set_deployment_mode("standalone")
         try:
             import services.common.health_monitor as hm_module
 
@@ -296,15 +225,15 @@ class TestUnifiedMetricsDeploymentMode:
 
         metrics = get_metrics()
 
-        # AAAS mode
-        original = _set_deployment_mode("aaas")
+        # live mode
+        original = _set_deployment_mode("standalone")
         try:
             metrics.record_health_status(
                 service_name="somabrain",
                 is_healthy=True,
                 latency_ms=85.0,
             )
-            print("  ✅ AAAS mode: Health status recorded with latency 85ms")
+            print("  ✅ live mode: Health status recorded with latency 85ms")
         finally:
             _restore_deployment_mode(original)
 
@@ -327,10 +256,10 @@ class TestUnifiedMetricsDeploymentMode:
 
         metrics = get_metrics()
 
-        original = _set_deployment_mode("aaas")
+        original = _set_deployment_mode("standalone")
         try:
             metrics.record_memory_retrieval(latency_seconds=0.065, snippet_count=3)
-            print("  ✅ AAAS mode: Memory retrieval recorded at 65ms")
+            print("  ✅ live mode: Memory retrieval recorded at 65ms")
         finally:
             _restore_deployment_mode(original)
 
@@ -348,10 +277,10 @@ class TestUnifiedMetricsDeploymentMode:
 
         metrics = get_metrics()
 
-        original = _set_deployment_mode("aaas")
+        original = _set_deployment_mode("standalone")
         try:
             metrics.record_circuit_open(service_name="somabrain")
-            print("  ✅ AAAS mode: Circuit open logged")
+            print("  ✅ live mode: Circuit open logged")
         finally:
             _restore_deployment_mode(original)
 

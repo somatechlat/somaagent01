@@ -575,7 +575,6 @@ KEYCLOAK_REALM=somaagent
 
 # Deployment Mode
 SA01_DEPLOYMENT_MODE=STANDALONE
-SOMA_AAAS_MODE=false
 ```
 
 ### 14.3 Canonical Patterns

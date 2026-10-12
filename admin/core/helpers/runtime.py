@@ -1,4 +1,3 @@
-"""Module runtime."""
 
 import argparse
 import asyncio

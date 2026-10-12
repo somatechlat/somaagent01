@@ -30,8 +30,8 @@ _COORD_RE = re.compile(r"^-?\d+(\.\d+)?(,-?\d+(\.\d+)?){2}$")
 
 def _postgres_available() -> bool:
     """True when the test Postgres answers a TCP connect."""
-    host = os.environ.get("SA01_DB_HOST", "localhost")
-    port = int(os.environ.get("SA01_DB_PORT", "63932"))
+    host = os.environ.get("SA01_DB_HOST", "somaagent_postgres")
+    port = int(os.environ.get("SA01_DB_PORT", "5432"))
     try:
         with socket.create_connection((host, port), timeout=2):
             return True

@@ -28,7 +28,6 @@ class FeatureFlagsStore:
         return f"{self.KEY_PREFIX}:{tenant}"
 
     async def get(self, tenant: str, flag: str, default: bool = False) -> bool:
-        """Get feature flag value."""
         key = self._key(tenant)
         data = await self.redis.hget(key, flag)
         if data is None:
@@ -51,13 +50,11 @@ class FeatureFlagsStore:
         return {k: json.loads(v) for k, v in data.items()}
 
     async def get_effective_flags(self, tenant: str) -> Dict[str, Any]:
-        """Get effective flags with profile info."""
         flags = await self.list(tenant)
         profile = await self.get_profile(tenant)
         return {"profile": profile, "flags": flags, "source": "redis"}
 
     async def get_profile(self, tenant: str) -> str:
-        """Get feature profile for tenant."""
         key = f"{self._key(tenant)}:profile"
         data = await self.redis.get(key)
         if data is None:

@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field, field_validator
+from pydantic_core import PydanticUndefined
 
 
 def _dj(name: str, default: Any = None) -> Any:
@@ -26,9 +27,60 @@ def _dj(name: str, default: Any = None) -> Any:
     return default
 
 
+# ---------------------------------------------------------------------------
+# R-VAL-01 / AP-03 — ONE schema default per concept. These constants are the
+# only literal sites. Every field and every ``_env_or_db`` fallback derives
+# from them; a second literal is drift.
+# ---------------------------------------------------------------------------
+
+# MEM_PROXIMITY_TOP_K — proximity / solutions top-k (int).
+_MEM_PROXIMITY_TOP_K_DEFAULT = 10
+
+# MEM_DEFAULT_SOURCE — default source label for a memory write (str).
+_MEM_DEFAULT_SOURCE_DEFAULT = "agent-chat"
+
+
+def mem_proximity_top_k_default() -> int:
+    """Schema default for MEM_PROXIMITY_TOP_K. One integer, one place."""
+    return int(_dj("MEM_PROXIMITY_TOP_K") or _MEM_PROXIMITY_TOP_K_DEFAULT)
+
+
+def mem_default_source_default() -> str:
+    """Schema default for MEM_DEFAULT_SOURCE. One string, one place."""
+    value = _dj("MEM_DEFAULT_SOURCE") or _MEM_DEFAULT_SOURCE_DEFAULT
+    return str(value)
+
+
+# Field-name aliases so UPPER Django keys and legacy snake keys resolve to one
+# declaration (R-VAL-06). Values are the canonical SettingsModel field names.
+_KEY_ALIASES = {
+    "memory_embed_dim": "mem_embed_dim",
+    "memory_http_timeout": "mem_http_timeout",
+    "memory_write_timeout_s": "mem_write_timeout_s",
+    "memory_recall_timeout_s": "mem_recall_timeout_s",
+    "memory_history_timeout_s": "mem_history_timeout_s",
+    "memory_recall_top_k": "mem_recall_top_k",
+    "memory_proximity_top_k": "mem_proximity_top_k",
+    "memory_history_limit": "mem_history_limit",
+    "memory_chat_namespace": "mem_chat_namespace",
+    "memory_default_kind": "mem_default_kind",
+    "memory_default_salience": "mem_default_salience",
+    "memory_default_source": "mem_default_source",
+    "sa01_default_chat_model_name": "default_chat_model_name",
+    "sa01_default_util_model_name": "default_util_model_name",
+    "sa01_default_embed_model_name": "default_embed_model_name",
+    "sa01_login_rate_limit": "login_rate_limit",
+    "sa01_login_rate_window": "login_rate_window",
+    "sa01_voice_max_audio_bytes": "voice_max_audio_bytes",
+    "sa01_voice_llm_max_tokens": "voice_llm_max_tokens",
+    "sa01_multimodal_prompt_max_chars": "multimodal_prompt_max_chars",
+    "sa01_multimodal_image_timeout_s": "multimodal_image_timeout_s",
+    "sa01_multimodal_diagram_timeout_s": "multimodal_diagram_timeout_s",
+}
+
+
 class SettingsModel(BaseModel):
     # Core identity/versioning
-    """Settingsmodel class implementation."""
 
     version: str = "unknown"
 
@@ -89,13 +141,13 @@ class SettingsModel(BaseModel):
         default_factory=lambda: int(_dj("MEM_RECALL_TOP_K", 8))
     )
     memory_recall_solutions_max_search: int = Field(
-        default_factory=lambda: int(_dj("MEM_PROXIMITY_TOP_K", 10))
+        default_factory=mem_proximity_top_k_default
     )
     memory_recall_memories_max_result: int = Field(
         default_factory=lambda: int(_dj("MEM_RECALL_TOP_K", 8))
     )
     memory_recall_solutions_max_result: int = Field(
-        default_factory=lambda: int(_dj("MEM_PROXIMITY_TOP_K", 10))
+        default_factory=mem_proximity_top_k_default
     )
     memory_recall_similarity_threshold: float = Field(
         default_factory=lambda: float(_dj("MEM_SIMILARITY_THRESHOLD", 0.7))
@@ -216,6 +268,13 @@ class SettingsModel(BaseModel):
     service_smtp_host: str = Field(default_factory=lambda: str(_dj("SMTP_HOST", "")))
     service_smtp_port: str = Field(default_factory=lambda: str(_dj("SMTP_PORT", "")))
     service_searxng_url: str = Field(default_factory=lambda: str(_dj("SEARXNG_URL", "")))
+
+    # Cloudflare Clef System One. Empty is honest (Rule 91).
+    clef_backend: str = Field(default_factory=lambda: str(_dj("CLEF_BACKEND", "")))
+    clef_api_base: str = Field(default_factory=lambda: str(_dj("CLEF_API_BASE", "")))
+    clef_account_id: str = Field(default_factory=lambda: str(_dj("CLEF_ACCOUNT_ID", "")))
+    clef_model_id: str = Field(default_factory=lambda: str(_dj("CLEF_MODEL_ID", "")))
+    clef_timeout_ms: Optional[int] = Field(default_factory=lambda: _dj("CLEF_TIMEOUT_MS"))
     web_search_enabled: bool = Field(
         default_factory=lambda: str(_dj("WEB_SEARCH_ENABLED", "True")).strip().lower()
         in {"1", "true", "yes", "on"}
@@ -367,10 +426,219 @@ class SettingsModel(BaseModel):
     litellm_global_kwargs: Dict[str, Any] = {}
     USE_LLM: bool = True
 
+    # ---------------------------------------------------------------------------
+    # Gateway behaviour knobs (SOMA-STD-CONFIG-001 R-BEH-01 / R-VAL-01).
+    # Schema default lives HERE and nowhere else. `_behaviour()` in
+    # services/gateway/settings.py reads these at settings-load time; Capsule
+    # and AgentSetting override at resolve time. Never ENV (AP-05).
+    # ---------------------------------------------------------------------------
+
+    # DB pool
+    sa01_db_conn_max_age: int = Field(
+        default_factory=lambda: int(_dj("SA01_DB_CONN_MAX_AGE", 60))
+    )
+    sa01_db_connect_timeout: int = Field(
+        default_factory=lambda: int(_dj("SA01_DB_CONNECT_TIMEOUT", 10))
+    )
+
+    # Temporal queues (schema identifiers — not hosts)
+    sa01_temporal_conversation_queue: str = Field(
+        default_factory=lambda: str(_dj("SA01_TEMPORAL_CONVERSATION_QUEUE", "conversation"))
+    )
+    sa01_temporal_a2a_queue: str = Field(
+        default_factory=lambda: str(_dj("SA01_TEMPORAL_A2A_QUEUE", "a2a"))
+    )
+
+    # Kafka conversation topic
+    conversation_inbound: str = Field(
+        default_factory=lambda: str(_dj("CONVERSATION_INBOUND", "conversation.inbound"))
+    )
+
+    # Feature profile (matches config.settings_registry.sa01_feature_profile)
+    sa01_feature_profile: str = Field(
+        default_factory=lambda: str(_dj("SA01_FEATURE_PROFILE", "enhanced"))
+    )
+
+    # Memory seam knobs (UPPER names are the KEY_CATEGORY keys)
+    mem_embed_dim: Optional[int] = Field(default_factory=lambda: _dj("MEM_EMBED_DIM"))
+    mem_http_timeout: str = Field(default_factory=lambda: str(_dj("MEM_HTTP_TIMEOUT", "5.0")))
+    mem_write_timeout_s: str = Field(
+        default_factory=lambda: str(_dj("MEM_WRITE_TIMEOUT_S", "10.0"))
+    )
+    mem_recall_timeout_s: str = Field(
+        default_factory=lambda: str(_dj("MEM_RECALL_TIMEOUT_S", "2.5"))
+    )
+    mem_history_timeout_s: str = Field(
+        default_factory=lambda: str(_dj("MEM_HISTORY_TIMEOUT_S", "2.5"))
+    )
+    mem_recall_top_k: str = Field(default_factory=lambda: str(_dj("MEM_RECALL_TOP_K", "8")))
+    mem_proximity_top_k: str = Field(
+        default_factory=lambda: str(mem_proximity_top_k_default())
+    )
+    mem_history_limit: str = Field(default_factory=lambda: str(_dj("MEM_HISTORY_LIMIT", "12")))
+    mem_chat_namespace: str = Field(
+        default_factory=lambda: str(_dj("MEM_CHAT_NAMESPACE", "chat_history"))
+    )
+    mem_default_kind: str = Field(default_factory=lambda: str(_dj("MEM_DEFAULT_KIND", "episodic")))
+    mem_default_salience: Optional[str] = Field(
+        default_factory=lambda: _dj("MEM_DEFAULT_SALIENCE")
+    )
+    mem_default_source: str = Field(
+        default_factory=mem_default_source_default
+    )
+    memory_wal_topic: str = Field(
+        default_factory=lambda: str(_dj("MEMORY_WAL_TOPIC", "memory.wal"))
+    )
+    memory_degraded_topic: str = Field(
+        default_factory=lambda: str(_dj("MEMORY_DEGRADED_TOPIC", "degradation.events"))
+    )
+    somabrain_topic_reward_events: str = Field(
+        default_factory=lambda: str(_dj("SOMABRAIN_TOPIC_REWARD_EVENTS", "reward.events"))
+    )
+    tool_reward_success: Optional[str] = Field(default_factory=lambda: _dj("TOOL_REWARD_SUCCESS"))
+    tool_reward_failure: Optional[str] = Field(default_factory=lambda: _dj("TOOL_REWARD_FAILURE"))
+    somabrain_context_confidence_default: str = Field(
+        default_factory=lambda: str(_dj("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT", "0.5"))
+    )
+
+    # LLM timeouts / retries (schema default = the one declaration site;
+    # litellm_helpers.DEFAULT_* are reader last-resorts only).
+    sa01_llm_connect_timeout: str = Field(
+        default_factory=lambda: str(_dj("LLM_CONNECT_TIMEOUT_S", "5.0"))
+    )
+    sa01_llm_read_timeout: str = Field(
+        default_factory=lambda: str(_dj("LLM_READ_TIMEOUT_S", "15.0"))
+    )
+    sa01_llm_max_retries: str = Field(
+        default_factory=lambda: str(_dj("LLM_MAX_RETRIES", "1"))
+    )
+    sa01_llm_retry_base_delay_s: str = Field(
+        default_factory=lambda: str(_dj("LLM_RETRY_BASE_DELAY_S", "0.4"))
+    )
+    sa01_llm_retry_backoff_cap_s: str = Field(
+        default_factory=lambda: str(_dj("LLM_RETRY_BACKOFF_CAP_S", "2.0"))
+    )
+    sa01_llm_retry_after_cap_s: str = Field(
+        default_factory=lambda: str(_dj("LLM_RETRY_AFTER_CAP_S", "3.0"))
+    )
+
+    # Generic HTTP timeouts (schema default = the one declaration site;
+    # http_timeouts._setting fallbacks are reader last-resorts only).
+    sa01_http_connect_timeout: str = Field(
+        default_factory=lambda: str(_dj("HTTP_CONNECT_TIMEOUT_S", "5.0"))
+    )
+    sa01_http_read_timeout: str = Field(
+        default_factory=lambda: str(_dj("HTTP_READ_TIMEOUT_S", "10.0"))
+    )
+    sa01_http_slow_read_timeout: str = Field(
+        default_factory=lambda: str(_dj("HTTP_SLOW_READ_TIMEOUT_S", "30.0"))
+    )
+
+    # Circuit breaker bounds
+    cb_failure_threshold: str = Field(
+        default_factory=lambda: str(_dj("CB_FAILURE_THRESHOLD", "5"))
+    )
+    cb_reset_timeout_s: str = Field(default_factory=lambda: str(_dj("CB_RESET_TIMEOUT_S", "60.0")))
+
+    # Default model slots (schema view of DEFAULT_*_MODEL_NAME)
+    default_chat_model_name: str = Field(
+        default_factory=lambda: str(_dj("DEFAULT_CHAT_MODEL_NAME", ""))
+    )
+    default_util_model_name: str = Field(
+        default_factory=lambda: str(_dj("DEFAULT_UTIL_MODEL_NAME", ""))
+    )
+    default_embed_model_name: str = Field(
+        default_factory=lambda: str(_dj("DEFAULT_EMBED_MODEL_NAME", ""))
+    )
+    sa01_default_voice_model: Optional[str] = Field(
+        default_factory=lambda: _dj("DEFAULT_VOICE_MODEL")
+    )
+
+    # AAAS default tenant / quota knobs
+    sa01_default_tenant_id: Optional[str] = Field(
+        default_factory=lambda: _dj("SA01_DEFAULT_TENANT_ID")
+    )
+    sa01_default_chat_model: Optional[str] = Field(
+        default_factory=lambda: _dj("SA01_DEFAULT_CHAT_MODEL")
+    )
+    sa01_default_max_agents: Optional[str] = Field(
+        default_factory=lambda: _dj("SA01_DEFAULT_MAX_AGENTS")
+    )
+    sa01_default_max_users: Optional[str] = Field(
+        default_factory=lambda: _dj("SA01_DEFAULT_MAX_USERS")
+    )
+    sa01_default_max_tokens_monthly: Optional[str] = Field(
+        default_factory=lambda: _dj("SA01_DEFAULT_MAX_TOKENS_MONTHLY")
+    )
+    sa01_default_storage_gb: Optional[str] = Field(
+        default_factory=lambda: _dj("SA01_DEFAULT_STORAGE_GB")
+    )
+
+    # Auth / JWT posture (administrator knobs, not env)
+    sa01_keycloak_realm: str = Field(
+        default_factory=lambda: str(_dj("KEYCLOAK_REALM", "somaagent"))
+    )
+    sa01_keycloak_client_id: str = Field(
+        default_factory=lambda: str(_dj("KEYCLOAK_CLIENT_ID", "somaagent-api"))
+    )
+    sa01_keycloak_public_key: str = Field(
+        default_factory=lambda: str(_dj("KEYCLOAK_PUBLIC_KEY", ""))
+    )
+    sa01_jwt_jwks_url: Optional[str] = Field(default_factory=lambda: _dj("JWT_JWKS_URL"))
+    sa01_jwt_algorithms: str = Field(default_factory=lambda: str(_dj("JWT_ALGORITHMS", "RS256")))
+    sa01_jwt_leeway: Optional[str] = Field(default_factory=lambda: _dj("JWT_LEEWAY"))
+    sa01_jwt_issuer_strict: str = Field(
+        default_factory=lambda: str(_dj("JWT_ISSUER_STRICT", "true"))
+    )
+    google_client_id: str = Field(default_factory=lambda: str(_dj("GOOGLE_CLIENT_ID", "")))
+
+    # Transport / observability
+    sa01_hsts_seconds: Optional[str] = Field(default_factory=lambda: _dj("SECURE_HSTS_SECONDS"))
+    sa01_channel_layer_backend: str = Field(
+        default_factory=lambda: str(
+            _dj("SA01_CHANNEL_LAYER_BACKEND", "channels_redis.core.RedisChannelLayer")
+        )
+    )
+    log_format: str = Field(default_factory=lambda: str(_dj("LOG_FORMAT", "json")))
+    log_level: str = Field(default_factory=lambda: str(_dj("LOG_LEVEL", "INFO")))
+
     class Config:
-        """Config class implementation."""
 
         extra = "allow"
+
+    @classmethod
+    def get(cls, key: str, default: Any = None) -> Any:
+        """Return the schema-default value for one tunable (declaration site).
+
+        Accepts the UPPER Django name (``MEM_RECALL_TOP_K``), the snake_case
+        model field (``mem_recall_top_k``), or a legacy ``sa01_`` alias.
+        Never reads ENV (AP-05). Used by ``_behaviour()`` at Django-settings
+        load time, when Capsule / AgentSetting cannot be consulted yet.
+        """
+        if key is None:
+            return default
+        raw = str(key).strip()
+        if not raw:
+            return default
+        lower = raw.lower()
+        candidates = [lower, raw]
+        if lower.startswith("sa01_"):
+            candidates.append(lower[5:])
+        alias = _KEY_ALIASES.get(lower)
+        if alias:
+            candidates.append(alias)
+        fields_map = cls.model_fields
+        for name in candidates:
+            field = fields_map.get(name)
+            if field is None:
+                continue
+            if field.default is not PydanticUndefined:
+                return field.default
+            if field.default_factory is not None:
+                # Rule 91: a key-absent maps to ``default``; a failing schema
+                # factory is a config error and must NOT be swallowed.
+                return field.default_factory()
+        return default
 
     def __getitem__(self, item: str) -> Any:
         """Execute getitem  .

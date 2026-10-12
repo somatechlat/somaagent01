@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class CandidateScore:
-    """Candidatescore class implementation."""
 
     provider_name: str
     score: float
@@ -28,7 +27,6 @@ class PortfolioRanker:
     """Ranks provider candidates based on historical performance."""
 
     def __init__(self, soma_client: SomaBrainOutcomesStore) -> None:
-        """Initialize the instance."""
 
         self.client = soma_client
 
@@ -73,7 +71,6 @@ class PortfolioRanker:
                 stats["avg_quality"],
             )
 
-        # Sort by score descending
         scores.sort(key=lambda x: x[1], reverse=True)
 
         return [item[0] for item in scores]

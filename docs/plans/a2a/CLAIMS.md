@@ -28,6 +28,7 @@
 | path/prefix | agent | task | started_at | status |
 |---|---|---|---|---|
 | admin/core/tool_calling.py admin/core/chat_orchestrator.py | MiMoCode-somaAgent01 | W2.5 policy choke UnifiedGate per tool | 2026-10-08T21:19:56Z | ACTIVE |
+| docs/iso/ docs/README.md docs/standards/ docs/architecture/ docs/requirements/ docs/operations/ docs/project/ docs/reports/ docs/tasks/ docs/modules/ | MiMoCode-somaAgent01 | ISO docs-truth pass: fix DC headers, register, README index to match source; no code moves | 2026-10-08T22:30:00Z | ACTIVE |
 | services/tool_executor/tools.py services/tool_executor/assistant_tools/ services/common/path_guard.py | MiMoCode-somaAgent01 | W3.1-W3.2 file tools | 2026-10-08T21:19:56Z | ACTIVE |
 | services/conversation_worker/temporal_worker.py | MiMoCode-somaAgent01 | W3.3 ResearchReportWorkflow | 2026-10-08T21:19:56Z | ACTIVE |
 | path/prefix | agent | task | started_at | status |
@@ -51,3 +52,76 @@
 | services/tool_executor/assistant_tools/__init__.py services/tool_executor/default_tools.py admin/core/models/core.py admin/core/tool_calling.py services/conversation_worker/temporal_worker.py docs/architecture/SOMA-ARCH-TOOLS-001.md (§5.4 rows only) | MiMoCode-somaAgent01 | packages_ensure registration/policy/doc rows (shared files — merge, do not revert peer web_search edits) | 2026-10-09T02:25:49Z | ACTIVE |
 | services/tool_executor/os_package_profiles.py services/conversation_worker/os_package_ensure_workflow.py services/tool_executor/assistant_tools/os_packages_ensure.py tests/unit/test_os_package_ensure_tools.py | MiMoCode-somaAgent01 | TOOLS-001 os_packages_ensure allowlisted container packages (new files) | 2026-10-09T03:40:00Z | ACTIVE |
 | services/tool_executor/default_tools.py services/conversation_worker/temporal_worker.py admin/core/models/core.py admin/core/tool_calling.py services/tool_executor/assistant_tools/research_report.py docs/architecture/SOMA-ARCH-TOOLS-001.md (§5.4.1 subsection + approval example only) | MiMoCode-somaAgent01 | os_packages_ensure registration (shared files — merge additively, do not revert peer packages_ensure/web_search edits) | 2026-10-09T03:40:00Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| docs/architecture/SOMA-ARCH-JEV-001.md docs/project/SOMA-PM-PLAN-JEV-INTEGRATION-001.md | MiMoCode-somaAgent01 | OpenJev architecture audit + integration plan (docs only) | 2026-10-09T15:50:00Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| services/common/decisions/ admin/modules/mod_jev/ admin/core/tool_calling.py | soma-jev-engineer | JEV H.0+W-J1+W-J2: client, real OpenJev dependency, mod_jev, guardrail choke | 2026-10-09T16:45:00Z | ACTIVE |
+| .mimocode/agent/ CLAUDE.md | MiMoCode-somaAgent01 | Triad profile correction for JEV workstream | 2026-10-09T16:45:00Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| docs/plans/2026-10-09-RAPID-DATA-REMEDIATION-001.md docs/reports/ | MiMoCode-somaAgent01 | RAPID-DATA-REMEDIATION-001 plan + three-way audit report | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| admin/aaas/models/profiles.py admin/aaas/migrations/ | MiMoCode-somaAgent01 | W0.1+W0.2 ApiKey.key_hash + UserSession.refresh_token_hash UNIQUE/index | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| admin/core/models/zdl.py | MiMoCode-somaAgent01 | W0.3 atomic IdempotencyRecord.check_and_set | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| admin/core/models/core.py admin/core/migrations/ | MiMoCode-somaAgent01 | W0.5 CHECK constraints + W3.2/W3.4/W3.8 indexes/types (shared — merge additive) | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| admin/auth/mfa.py | MiMoCode-somaAgent01 | W0.6 MFA fail-first (remove dead QR/backup codes) | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| admin/chat/api/chat.py admin/chat/models.py admin/chat/migrations/ | MiMoCode-somaAgent01 | W1.1 N+1 + W1.4 index + W3.1 chat FKs + W4.7 keyset pagination | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| config/settings.py | MiMoCode-somaAgent01 | W1.2 CONN_MAX_AGE + W1.7 GZip (shared — merge additive, do not revert peer Temporal/JEV edits) | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| admin/common/auth.py | MiMoCode-somaAgent01 | W1.3 throttle last_seen_at write | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| admin/core/chat_orchestrator.py | MiMoCode-somaAgent01 | W1.5 parallel SomaBrain writes + W4.1 TurnPlan extraction (shared — merge additive) | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| admin/core/helpers/capsule_settings.py | MiMoCode-somaAgent01 | W1.6 AgentSetting resolution cache | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| admin/core/api/settings_v2.py | MiMoCode-somaAgent01 | W1.8 bulk settings save | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| admin/common/api_keys.py admin/gateway/api/gateway.py admin/aaas/api/settings.py | MiMoCode-somaAgent01 | W2.1 unify mint_api_key | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| admin/common/responses.py | MiMoCode-somaAgent01 | W2.2 one envelope + timestamp fix | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| admin/common/health_probe.py admin/core/api/health.py admin/aaas/api/health.py admin/core/infrastructure/health_checker.py | MiMoCode-somaAgent01 | W2.3 shared health probes | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| admin/llm/__init__.py admin/core/permissions.py | MiMoCode-somaAgent01 | W2.4 dead re-export removal + W2.6 Actions constants | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| admin/filesv2/models.py admin/filesv2/migrations/ | MiMoCode-somaAgent01 | W3.3 partial index live rows | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| schemas/spicedb/schema.zed | MiMoCode-somaAgent01 | W3.9 strip subscription_tier / view_billing | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| webui/src/services/api-client.ts webui/src/views/soma-chat.ts | MiMoCode-somaAgent01 | W4.2 ApiClient adoption + keyed repeat/virtualizer | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| services/common/memory_gateway.py | MiMoCode-somaAgent01 | W4.9 outbox happy-path create+IntegrityError (preserve T-6) | 2026-10-09T17:35:00Z | RELEASED — no code landed; suite topology unresolved |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| services/common/decisions/ admin/modules/mod_clef/ admin/core/tool_calling.py policy/confidence.rego | soma-clef-engineer | Clef W-C1+W-C2: client, mod_clef, guardrail choke, brain write | 2026-10-09T19:30:00Z | ACTIVE |
+| docs/architecture/SOMA-ARCH-CLEF-001.md | MiMoCode-architect | Clef replaces OpenJev — full revised architecture (docs only) | 2026-10-09T19:48:00Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| docs/ (all *.md) AGENT.md CLAUDE.md .mimocode/agent/ | triad-iso-docs | OpenJev removal + Clef truth-pass: inventory, supersede JEV docs, write Clef controlled docs, profiles | 2026-10-09T20:30:00Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| services/common/decisions/ admin/modules/mod_clef/ admin/core/tool_calling.py policy/confidence.rego | soma-clef-engineer | SUPERSEDES soma-jev-engineer claims (OpenJev removed → Clef live). W-C1+W-C2 as-built. | 2026-10-09T20:30:00Z | ACTIVE |
+| docs/architecture/SOMA-ARCH-CLEF-001.md docs/architecture/SOMA-ARCH-JEV-001.md docs/architecture/SOMA-ARCH-JEV-002.md docs/project/SOMA-PM-JEV-PIN-001.md docs/project/SOMA-PM-PLAN-JEV-INTEGRATION-001.md docs/project/SOMA-PM-PLAN-CLEF-INTEGRATION-001.md | triad-iso-docs | Supersede JEV docs → Clef; truth-pass CLEF-001; write CLEF plan | 2026-10-09T20:30:00Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| services/gateway/providers.py admin/core/api/general.py admin/core/api/llm.py services/common/api_key_store.py config/settings.py admin/core/helpers/service_urls.py admin/core/chat_orchestrator.py services/common/memory_contract.py services/common/adapters/somabrain_adapter.py | MiMoCode-rapid-prod | WAVE1-RAPID: kill phantom integrations.repositories + non-persisting ApiKeyStore + DEBUG default + A-1 settings resolver + orchestrator silent [] + forget honesty + embed docs. NOT touching decisions/mod_clef/tool_calling (clef claims ACTIVE). | 2026-10-10T15:30:00Z | ACTIVE |
+| .mimocode/agent/soma-deadcode-remover.md .mimocode/agent/soma-dedup-engineer.md .mimocode/agent/soma-e2e-prover.md .mimocode/agent/soma-vault-authorer.md .mimocode/agent/soma-infra-health.md .mimocode/agent/soma-prod-hardening.md | MiMoCode-rapid-prod | WAVE1-RAPID: create missing specialized agent profiles for RAPID roster | 2026-10-10T15:30:00Z | ACTIVE |
+| infra/standalone/init_vault.py | MiMoCode-rapid-wave14 | RAPID WAVE 1.4 A: shared somabrain_memory_http_token contract — write→read-back length assert + documented one-value authority | 2026-01-10T00:00:00Z | ACTIVE |
+| docs/standards/SOMA-STD-BOOTSTRAP-001.md infra/standalone/ services/common/vault_secrets.py services/common/unified_secret_manager.py | MiMoCode-somaAgent01 | SOMA-STD-BOOTSTRAP-001 secret-lifecycle blueprint (no-secrets-on-disk) | 2026-10-10T17:36:35Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| infra/standalone/vault_scoped_tokens.py infra/standalone/docker-compose.yml | soma-vault-authority | F-10 wire scoped tokens (stop mounting root in app/tests) + F-11 token delivery to T0_DIR tmpfs + F-19 re-unseal watch | 2026-10-10T18:30:00Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| infra/standalone/vault.hcl infra/standalone/docker-compose.yml infra/standalone/vault_unseal.py services/gateway/settings.py services/common/vault_secrets.py docs/standards/SOMA-STD-BOOTSTRAP-001.md (§3 append only) | soma-prod-hardening | F-16 audit device + F-20 JWT strict + F-22 vault cache TTL + break-glass notes (shared files — merge additive, do not revert peer edits) | 2026-10-10T18:00:00Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| services/gateway/settings.py admin/core/helpers/settings_model.py admin/core/helpers/capsule_settings.py infra/standalone/docker-compose.yml tests/unit/test_settings_model_drift.py | MiMoCode-somaAgent01 | SOMA-STD-CONFIG-001 R-BEH-01: finish gateway behaviour migration — SettingsModel.get + schema defaults, _behaviour() only, strip behaviour ENV (shared with soma-prod-hardening — merge additive, JWT_ISSUER_STRICT default preserved true) | 2026-10-10T19:00:00Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| services/gateway/settings.py admin/core/helpers/settings_model.py admin/core/helpers/settings_defaults.py admin/core/helpers/capsule_settings.py services/common/memory_contract.py services/common/memory_gateway.py admin/core/chat_orchestrator.py somabrain/somabrain/settings/django_core.py somabrain/somabrain/brain_settings/models.py somabrain/somabrain/transport/codec.py | soma-dedup-engineer | AP-03 one schema default (MEM_PROXIMITY_TOP_K / MEM_DEFAULT_SOURCE) + Rule 91 fail-closed SettingsModel.get/_behaviour + BRAIN_DEFAULTS circuit one-site + forget 3-outcome protocol doc. Under MiMoCode-somaAgent01 R-BEH-01 wave — merge additive, do not revert peer edits. NOT touching decisions/mod_clef/tool_calling (clef ACTIVE). | 2026-10-11T01:00:00Z | ACTIVE |
+| admin/core/helpers/secrets.py | MiMoCode | hard-delete file-backed secret store; Vault-only redaction | 2026-10-11T17:52:57Z | ACTIVE |
+| docs/standards/SOMA-STD-SECURITY-001.md docs/plans/a2a/ infra/standalone/bootstrap_exec.py infra/standalone/docker-compose.yml infra/standalone/vault_unseal.py infra/standalone/init_vault.py infra/standalone/vault_scoped_tokens.py infra/standalone/vault_inject.py infra/standalone/vault-policies/ | security-reviewer | SOMA-STD-SECURITY-001 sole security design + agent-seat minimal fixes under that standard (no ad-hoc patterns). Peer seats implement same pattern via A2A ACK. | 2026-10-11T19:46:26Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| services/common/chat_service.py tests/unit/test_chat_service_memory_honesty.py | MiMoCode-somaAgent01 | CONDITION-001 wave: C1 de-fake chat_service memory honesty (TDD) | 2026-10-12T13:16:34Z | ACTIVE |
+| docs/reports/SOMA-RPT-CONDITION-001.md | MiMoCode-somaAgent01 | Full condition report (code-truth) | 2026-10-12T13:16:34Z | ACTIVE |
+| infra/standalone/docker-compose.shared-network.yml infra/standalone/docker-compose.yml (shared — merge additive) | MiMoCode-somaAgent01 | Docker attach to live somabrain + health/CHAT proof | 2026-10-12T13:16:34Z | ACTIVE |
+| tests/e2e/test_degradation_auto.py tests/unit/test_degradation_doctrine.py | MiMoCode-somaAgent01 | Degradation auto-down + auto-recover proof | 2026-10-12T13:17:00Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| admin/core/CURRENT_PLAN.md admin/core/MASTER_FIX_TODO.md admin/core/MASTER_TODO_LIST.md admin/core/UNIFIED_AUDIT_AND_PLAN.md docs/ (orphan scan) | triad-docs-remediation | Documentation + source-comment remediation: hard-delete orphans, fix wrong docs, comment audit, ISO control gaps | 2026-10-12T09:00:00Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| docs/architecture/SOMA-ARCH-SEC-TOKEN-001.md docs/standards/SOMA-STD-SECURITY-001.md docs/plans/a2a/ infra/standalone/bootstrap_exec.py infra/standalone/init_vault.py infra/standalone/vault_unseal.py infra/standalone/vault_scoped_tokens.py infra/standalone/vault_inject.py infra/standalone/docker-compose.yml infra/standalone/vault-policies/ services/common/vault_secrets.py services/common/http_egress.py services/tool_executor/tools.py admin/filesv2/api.py | security-reviewer | SOMA-ARCH-SEC-TOKEN-001 ADR (sole trust boundary) + W0-W3 fixes (C-1 SSRF, C-2 IDOR, C-3 generation stamp). Shared files merge-additive with soma-vault-authority / soma-prod-hardening. NOT touching decisions/mod_clef. | 2026-10-12T13:53:10Z | ACTIVE |

@@ -133,7 +133,6 @@ class JobPlanner:
         )
 
     async def get(self, plan_id: Optional[UUID]) -> Optional[JobPlan]:
-        """Get a job plan by ID."""
         from admin.core.models import Job
 
         if not plan_id:

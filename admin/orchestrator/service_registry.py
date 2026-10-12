@@ -40,7 +40,6 @@ class ServiceRegistry:
     """Registry of all services managed by the orchestrator."""
 
     def __init__(self, config: CentralizedConfig) -> None:
-        """Initialize the instance."""
 
         self.config = config
         self.services: Dict[str, ServiceDefinition] = {}
@@ -102,7 +101,6 @@ class ServiceRegistry:
         if service.name in self.services:
             raise ValueError(f"Service {service.name} already registered")
 
-        # Validate dependencies exist
         for dep in service.dependencies:
             if dep not in self.services and dep != service.name:
                 # Allow self-dependency for validation purposes
@@ -112,15 +110,12 @@ class ServiceRegistry:
         LOGGER.debug("Registered service: %s", service.name)
 
     def get_service(self, name: str) -> Optional[ServiceDefinition]:
-        """Get a service definition by name."""
         return self.services.get(name)
 
     def get_services_by_startup_order(self) -> List[ServiceDefinition]:
-        """Get all services sorted by startup order."""
         return sorted(self.services.values(), key=lambda s: s.startup_order)
 
     def get_startup_sequence(self) -> List[List[ServiceDefinition]]:
-        """Get services grouped by startup order for parallel startup."""
         services_by_order: Dict[int, List[ServiceDefinition]] = {}
 
         for service in self.get_services_by_startup_order():
@@ -133,7 +128,6 @@ class ServiceRegistry:
         return [services_by_order.get(i, []) for i in range(max_order + 1)]
 
     def get_shutdown_sequence(self) -> List[ServiceDefinition]:
-        """Get services in reverse startup order for shutdown."""
         return list(reversed(self.get_services_by_startup_order()))
 
     def validate_dependencies(self) -> None:
@@ -144,7 +138,6 @@ class ServiceRegistry:
                     raise ValueError(f"Service {service.name} depends on missing service: {dep}")
 
     def get_critical_services(self) -> List[ServiceDefinition]:
-        """Get all critical services."""
         return [s for s in self.services.values() if s.critical]
 
     def get_service_dependencies(self, service_name: str) -> Set[str]:

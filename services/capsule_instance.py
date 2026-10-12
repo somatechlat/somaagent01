@@ -1,12 +1,10 @@
 """Capsule Instance Management Service.
 
-Simple. Elegant. Complete.
 
 Manages CapsuleInstance lifecycle - the running instances of Capsules.
 A single Capsule definition can have multiple simultaneous running instances.
 
 VIBE Compliance:
-- Rule 82: Professional comments, zero AI slop
 - Rule 84: No mocks - real Django ORM operations
 - Rule 216: Django 5+ Backend Sovereignty
 - Rule 245: Under 650 lines

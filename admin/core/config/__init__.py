@@ -44,7 +44,6 @@ def env(name: str, default: Any = None) -> Any:
     if env_val is not None:
         return env_val
 
-    # Return the caller supplied default.
     return default
 
 
@@ -152,7 +151,6 @@ def opa_url() -> str:
 
 # Export a convenient singleton that mimics the historic ``runtime_config``
 class _CfgFacade:
-    """Cfgfacade class implementation."""
 
     def env(self, name: str, default: Any = None) -> Any:  # pragma: no cover – thin wrapper
         """Execute env.
@@ -175,10 +173,8 @@ class _CfgFacade:
         from .registry import get_config
 
         class StateWrapper:
-            """Statewrapper class implementation."""
 
             def __init__(self, config):
-                """Initialize the instance."""
 
                 self.settings = config
 

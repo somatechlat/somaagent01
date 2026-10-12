@@ -2,13 +2,13 @@
 >
 > This handoff is a record of a past session. It is retained for traceability only. It describes `BrainBridge` (`aaas/brain.py`) as the memory access path; **that class and file were deleted** in commit `6395bd78`. The current memory seam is `MemoryGateway` → `SomaBrainAdapter` (`services/common/memory_contract.py`, `services/common/memory_gateway.py`, `services/common/adapters/somabrain_adapter.py`), and T-1 holds: the agent never holds an SFM client. The old `ChatService`/`ConversationService`/`MessageService` hierarchy under `services/common/chat/` was deleted and replaced by the V3 orchestrator in `admin/core/chat_orchestrator.py`; `SOMA_AAAS_MODE` is no longer the canonical deployment-mode switch (use `SA01_DEPLOYMENT_MODE`). For current architecture, see `AGENT.md` and `docs/iso/SOMA-TRIAD-ARCH-001.md`.
 
-# 🤖 AGENT HANDOFF - SomaAgent01 Repository
+# Agent Handoff — SomaAgent01 Repository
 
 ## Document Control
 
 | Field | Value |
 |---|---|
-| Document Title | 🤖 AGENT HANDOFF - SomaAgent01 Repository |
+| Document Title | Agent Handoff — SomaAgent01 Repository |
 | Document Identifier | SOMA-TASK-HANDOFF-001 |
 | Version | 1.1.0 |
 | Date | 2026-10-03 |
@@ -70,8 +70,8 @@ User → Django API → SomaBrain → LLM
 
 | Mode | Configuration | Behavior |
 |------|--------------|----------|
-| **Direct** | `SOMA_AAAS_MODE=true` | In-process Python imports, zero latency (<0.1ms) |
-| **HTTP** | `SOMA_AAAS_MODE=false` | HTTP client fallback, 30s timeout |
+| **Direct (DELETED)** | ~~`SOMA_AAAS_MODE`~~ | In-process Python imports, zero latency (<0.1ms) |
+| **HTTP (DELETED)** | ~~`SOMA_AAAS_MODE`~~ | HTTP client fallback, 30s timeout |
 
 **Direct Mode Capabilities:**
 - `encode_text()` - Text → HRR vector
@@ -178,7 +178,7 @@ All scripts now reference aaas/ instead of saas/
 
 ### AAAS Service Coupling
 
-| Mode | `SOMA_AAAS_MODE` | Behavior |
+| Mode | *deleted flag* | Behavior |
 |------|-------------------|----------|
 | **Direct** | `true` | BrainBridge with Python imports (zero latency) |
 | **HTTP** | `false` | SomaBrainClient with HTTP calls (30s timeout) |
@@ -188,12 +188,12 @@ All scripts now reference aaas/ instead of saas/
 ```bash
 # Example AAAS Mode (Unified Deployment)
 SOMASTACK_SOFTWARE_MODE=SomaStackClusterMode
-SOMA_AAAS_MODE=true
+# DELETED: SOMA_AAAS_MODE=true
 SA01_DEPLOYMENT_MODE=PROD
 
 # Example StandAlone Mode (Independent Services)
 SOMASTACK_SOFTWARE_MODE=StandAlone
-SOMA_AAAS_MODE=false
+# DELETED: SOMA_AAAS_MODE=false
 SA01_DEPLOYMENT_MODE=DEV
 ```
 

@@ -155,7 +155,6 @@ class ChatGenerationResult:
     """Chat generation result object for processing LLM stream output."""
 
     def __init__(self, chunk: ChatChunk | None = None):
-        """Initialize the instance."""
         self.reasoning = ""
         self.response = ""
         self.thinking = False

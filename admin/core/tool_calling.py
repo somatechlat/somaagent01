@@ -298,7 +298,19 @@ async def decide_and_authorize_tool(
         )
         if not allowed:
             return "denied"
-        return decision
+
+        # Cloudflare Clef guardrail (D-1/D-2). Tighten-only. One helper for
+        # chat, Kafka and Temporal. Flag off/unset tightens tier-3.
+        from services.common.decisions.guardrail import choke_tool_call
+
+        tenant_id = str(getattr(subject, "tenant_id", "") or "")
+        return await choke_tool_call(
+            tool_name=tool_name,
+            args=args,
+            tenant=tenant_id,
+            caller="v3",
+            current_decision=decision,
+        )
     except Exception as exc:  # noqa: BLE001 — fail-closed by contract
         logger.warning("tool choke fail-closed for %s: %s", tool_name, exc)
         return "denied"

@@ -23,8 +23,6 @@ spec:
           ports:
             - containerPort: 10101
           env:
-            - name: SOMA_AAAS_MODE
-              value: "false"
             - name: SFM_PORT
               value: "10101"
             - name: POSTGRES_HOST

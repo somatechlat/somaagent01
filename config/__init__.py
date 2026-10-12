@@ -12,7 +12,6 @@ Usage:
 """
 
 from config.settings_registry import (
-    AAASSettings,
     BaseSettings,
     get_settings,
     SettingsRegistry,
@@ -29,6 +28,5 @@ __all__ = [
     "SettingsRegistry",
     "BaseSettings",
     "StandaloneSettings",
-    "AAASSettings",
     "get_settings",
 ]

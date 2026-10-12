@@ -52,6 +52,10 @@ def _token_count(text: str) -> int:
 # continues; the user is told the truth rather than getting no answer or a
 # crash. It is NOT shown when recall ran and found nothing.
 _MEMORY_UNAVAILABLE = "[Long-term memory unavailable this turn]"
+# Parallel degraded sentinel for the history lane. ``history=None`` means the
+# history recall could not run (SomaBrain outage) — distinct from ``history=[]``
+# which means the recall ran and this conversation has no stored turns (T-5).
+_HISTORY_UNAVAILABLE = "[Prior turns unavailable this turn]"
 
 
 class ContextBuilder:
@@ -87,7 +91,11 @@ class ContextBuilder:
         Args:
             capsule: Capsule with body containing persona
             user_message: Current user message
-            history: Optional conversation history
+            history: Conversation history for the history lane. ``[]`` means
+                the recall ran and this conversation has no stored turns.
+                ``None`` means the history recall could not run (SomaBrain
+                outage) and the lane degrades to a truthful sentinel. Never
+                collapse the two (T-5).
             budget_override: Optional explicit token budget per lane from
                 SimpleGovernor, keyed by LANE_KEYS (system, history, memory,
                 tools, buffer). A missing lane is a caller error and raises.
@@ -129,10 +137,10 @@ class ContextBuilder:
         # 3. Build system lane
         system = self._build_system_lane(persona, token_budget["system"])
 
-        # 4. Build history lane
-        history_str = self._build_history_lane(history or [], token_budget["history"])
+        # 4. Build history lane (``None`` = degraded sentinel, ``[]`` = empty)
+        history_str = self._build_history_lane(history, token_budget["history"])
 
-        # 5. Build memory lane (async — gateway hits, else SomaBrain/SFM DI)
+        # 5. Build memory lane (async — MemoryGateway hits only; T-1, no SFM path)
         memory_str = await self._build_memory_lane(
             capsule, user_message, persona, token_budget["memory"], memory_hits=memory_hits
         )
@@ -170,8 +178,15 @@ class ContextBuilder:
         # Truncate to budget
         return system[: budget * 4]
 
-    def _build_history_lane(self, history: List[Dict[str, str]], budget: int) -> str:
-        """Format conversation history."""
+    def _build_history_lane(self, history: Optional[List[Dict[str, str]]], budget: int) -> str:
+        """Format conversation history.
+
+        ``None`` is the typed degraded sentinel — the history recall could not
+        run this turn (T-5). ``[]`` is a real empty: the recall ran and this
+        conversation has no stored turns. Never collapse the two.
+        """
+        if history is None:
+            return _HISTORY_UNAVAILABLE
         if not history:
             return ""
 

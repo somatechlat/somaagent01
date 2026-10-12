@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 # TEST CONFIGURATION
 # =============================================================================
 
-BASE_URL = "http://localhost:8000/api/v2"
-SOMABRAIN_URL = "http://localhost:9696"
+BASE_URL = "http://somaagent_standalone:9000/api/v2"
+SOMABRAIN_URL = "http://somabrain-somabrain_standalone_app-1:30101"
 
 
 @dataclass
@@ -448,7 +448,6 @@ async def run_integration_tests(auth_token: str = "") -> TestSuite:
 
 
 def get_test_summary(suite: TestSuite) -> dict:
-    """Get test summary as dict."""
     return {
         "suite_name": suite.suite_name,
         "total": suite.total,

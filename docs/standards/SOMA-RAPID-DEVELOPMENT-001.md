@@ -1,9 +1,31 @@
 # SOMA-RAPID-DEVELOPMENT-001 — Rapid Development Plan + The Rules
 
-**Status:** ACTIVE. Every agent working on this triad reads this file first and obeys it.
-**Owner standing order:** *"do not fucking violate the rules … feed the rules to every agent."*
+## Document Control
+
+| Field | Value |
+|---|---|
+| Document Title | Rapid Development Plan + The Rules |
+| Document Identifier | SOMA-RAPID-DEVELOPMENT-001 |
+| Version | 1.0.0 |
+| Date | 2026-10-08 |
+| Status | Draft |
+| Classification | Internal |
+| Author | SomaTech Engineering |
+| Approver | — |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2027-01-08 |
+| Related | `docs/standards/SOMA-STD-CODING-001.md`, `docs/standards/SOMA-STD-TRIAD-001.md` |
+| Audience | Every agent working on this triad |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-10-08 | SomaTech Engineering | Brought under Document Control. Status was informal "ACTIVE"; now uses the closed set (`Draft` \| `In Review` \| `Approved` \| `Obsolete`). Content body unchanged. |
 
 ---
+
+**Status note:** Standing order for agents: read this file first and obey it. Owner standing order preserved from prior revision: do not violate the rules; feed the rules to every agent.
 
 ## THE RAPID PLAN
 

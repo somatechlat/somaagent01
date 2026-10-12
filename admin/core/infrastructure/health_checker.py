@@ -49,7 +49,6 @@ class HealthCheckResult:
         details: dict | None = None,
         error: str | None = None,
     ):
-        """Initialize the instance."""
 
         self.name = name
         # healthy | degraded | down | not_deployed
@@ -99,7 +98,6 @@ class InfrastructureHealthChecker:
     """Probes the declared deployment inventory. No mocks, no fake data."""
 
     def __init__(self):
-        """Initialize the instance."""
 
         self.check_timeout = 5.0  # seconds
 

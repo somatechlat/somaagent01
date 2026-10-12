@@ -140,7 +140,6 @@ async def upload_asset(
     """
     await authorize(request, action="resource:file_upload", resource="files")
 
-    # Read file content
     content = await file.aread() if hasattr(file, "aread") else file.read()  # type: ignore[attr-defined]
 
     if len(content) > MAX_ASSET_SIZE:
@@ -175,7 +174,6 @@ async def upload_asset(
 
     await _store()
 
-    # Create provenance record
     await _record_provenance(
         asset_id=asset_id,
         action="created",

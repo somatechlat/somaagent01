@@ -92,7 +92,6 @@ class RateLimitPolicy(models.Model):
     updated_by = models.CharField(max_length=255, blank=True, help_text="User who last updated")
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "rate_limit_policies"
         ordering = ["key"]
@@ -114,11 +113,9 @@ class RateLimitPolicy(models.Model):
         return f"{self.key}: {self.limit}/{window_str} ({self.policy})"
 
     def get_limit_for_tier(self, tier_slug: str) -> int:
-        """Get the effective limit for a specific capacity profile."""
         return self.tier_overrides.get(tier_slug, self.limit)
 
     def to_redis_key(self) -> str:
-        """Get the Redis key for this rate limit config."""
         return f"ratelimit:config:{self.key}"
 
     def to_dict(self) -> dict:
@@ -219,7 +216,6 @@ class ServiceHealth(models.Model):
     )
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "service_health"
         ordering = ["category", "service_name"]
@@ -329,7 +325,6 @@ class InfrastructureConfig(models.Model):
     updated_by = models.CharField(max_length=255, blank=True)
 
     class Meta:
-        """Meta class implementation."""
 
         db_table = "infrastructure_configs"
         unique_together = ["service", "key"]

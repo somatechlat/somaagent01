@@ -540,7 +540,6 @@ api.add_router("/auth/", auth_router, tags=["Authentication"])
 
 ---
 
-**Next Phase:** [TASKS-PHASE2-AUTH.md](./TASKS-PHASE2-AUTH.md)
 # Implementation Tasks — Phase 2: Authentication
 
 **Phase:** 2 of 4  
@@ -999,7 +998,6 @@ sequenceDiagram
 
 ---
 
-**Next Phase:** [TASKS-PHASE3-ADMIN.md](./TASKS-PHASE3-ADMIN.md)
 # Implementation Tasks — Phase 3: Admin Interfaces
 
 **Phase:** 3 of 4  
@@ -1265,7 +1263,6 @@ None. There is no billing integration to implement in this system.
 
 ---
 
-**Next Phase:** [TASKS-PHASE2-AUTH.md](./TASKS-PHASE2-AUTH.md)
 # Implementation Tasks — Phase 2: Authentication
 
 **Phase:** 2 of 4  
@@ -1724,7 +1721,6 @@ sequenceDiagram
 
 ---
 
-**Next Phase:** [TASKS-PHASE3-ADMIN.md](./TASKS-PHASE3-ADMIN.md)
 # Implementation Tasks — Phase 3: Admin Interfaces
 
 **Phase:** 3 of 4  
@@ -1988,4 +1984,3 @@ None. There is no billing integration to implement in this system.
 
 ---
 
-**Next Phase:** [TASKS-PHASE4-AGENT.md](./TASKS-PHASE4-AGENT.md)

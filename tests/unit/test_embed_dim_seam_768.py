@@ -36,24 +36,10 @@ class TestAgentDimDefaults:
         src = _read("services/common/memory_contract.py")
         assert "DEFAULT_MEM_EMBED_DIM = 768" in src
 
-    def test_unified_settings_vector_dim_default_768(self):
-        src = _read("infra/aaas/unified_settings.py")
-        assert re.search(
-            r'SOMA_VECTOR_DIM\s*=\s*int\(os\.environ\.get\(\s*["\']SOMA_VECTOR_DIM["\']\s*,\s*["\']768["\']\s*\)\)',
-            src,
-        )
-
-    def test_aaas_env_uses_768(self):
-        env = _read("infra/aaas/aaas/.env")
-        assert "SOMA_VECTOR_DIM=1536" not in env
-        assert re.search(r"^SOMA_VECTOR_DIM=768\s*$", env, re.M)
-
-    def test_aaas_env_example_uses_768(self):
-        env = _read("infra/aaas/aaas/.env.example")
-        assert (
-            "1536" not in env.split("SFM_VECTOR_DIM")[-1][:20] if "SFM_VECTOR_DIM" in env else True
-        )
-        assert re.search(r"^(SFM_VECTOR_DIM|SOMA_VECTOR_DIM)=768\s*$", env, re.M)
+    def test_standalone_env_uses_768(self):
+        env = _read("infra/standalone/.env")
+        assert "MEM_EMBED_DIM=1536" not in env
+        assert re.search(r"^MEM_EMBED_DIM=768\s*$", env, re.M)
 
     def test_memory_contract_default_is_768(self):
         src = _read("services/common/memory_contract.py")

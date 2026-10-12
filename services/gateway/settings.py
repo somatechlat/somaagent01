@@ -13,11 +13,9 @@ This module is the runtime configuration for the gateway.
 import os
 from pathlib import Path
 
-# Import environment configuration helpers
 from services.common.env_config import get_optional_env, get_required_env
 from services.common.unified_secret_manager import get_secret_manager
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 ENVIRONMENT = os.environ.get("SA01_ENVIRONMENT", "dev").strip().lower()
@@ -59,7 +57,6 @@ CSRF_COOKIE_SECURE = not DEBUG
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
-SECURE_HSTS_SECONDS = os.environ.get("SA01_HSTS_SECONDS") if not DEBUG else 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
 SECURE_HSTS_PRELOAD = not DEBUG
 
@@ -137,12 +134,39 @@ TEMPLATES = [
 # environment puts a credential in a file and in the process table. The single
 # place that knows how to reach Postgres is config/settings_registry.py
 # (VIBE Rule 100).
-from config.settings_registry import SettingsRegistry
+from django.core.exceptions import ImproperlyConfigured
+from admin.core.helpers.settings_model import SettingsModel  # noqa: E402
+from config.settings_registry import SettingsRegistry  # noqa: E402
+
+
+def _behaviour(key: str, default: str | None = None) -> str | None:
+    """Resolve a behavioural tunable from SettingsModel (not ENV).
+
+    SOMA-STD-CONFIG-001 R-BEH-01 / AP-05: env is topology only. Knobs live on
+    SettingsModel and resolve Capsule > AgentSetting > SettingsModel > default.
+    The schema default is declared on the SettingsModel field (R-VAL-01);
+    ``default`` here is only a last-resort when the key is absent from the model.
+    Rule 91: key-absent maps to ``default``. A config error from the schema
+    factory is NOT swallowed — it propagates (fail-closed).
+    """
+    value = SettingsModel.get(key)
+    if value is not None and str(value).strip() != "":
+        return str(value)
+    return default
+
 
 _db = SettingsRegistry.load().django_database_config
-_db["CONN_MAX_AGE"] = int(os.environ.get("SA01_DB_CONN_MAX_AGE", "60"))
+# Schema defaults live on SettingsModel (R-VAL-01). `or "0"` is only an int()
+# coercion guard, not a second default.
+def _behaviour_int(key: str, schema_default: str) -> int:
+    raw = _behaviour(key, schema_default)
+    if raw is None or str(raw).strip() == "":
+        raise ImproperlyConfigured(f"{key} is empty; Rule 91 — no silent 0")
+    return int(raw)
+
+_db["CONN_MAX_AGE"] = _behaviour_int("sa01_db_conn_max_age", "60")
 _db["OPTIONS"] = {
-    "connect_timeout": int(os.environ.get("SA01_DB_CONNECT_TIMEOUT", "10")),
+    "connect_timeout": _behaviour_int("sa01_db_connect_timeout", "10"),
 }
 
 # VIBE RULE: PostgreSQL ONLY. NO SQLite fallback under any condition.
@@ -172,19 +196,20 @@ WHITENOISE_ROOT = BASE_DIR / "webui" / "dist"  # Root for SPA assets
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # =============================================================================
-# AAAS ADMIN DEFAULTS (Centralized - env overridable)
+# AAAS ADMIN DEFAULTS (Centralized — behaviour via SettingsModel, not ENV)
 # =============================================================================
 
+# SECURITY WARNING: keep the HSTS max-age an operator knob (R-BEH-01).
+SECURE_HSTS_SECONDS = 0 if DEBUG else _behaviour("sa01_hsts_seconds")
+
 # Default tenant for unauthenticated requests (development only)
-AAAS_DEFAULT_TENANT_ID = os.environ.get("AAAS_DEFAULT_TENANT_ID", None)
-
-AAAS_DEFAULT_CHAT_MODEL = os.environ.get("AAAS_DEFAULT_CHAT_MODEL")
-
-# Default tier limits (can be overridden per-tier in database)
-AAAS_DEFAULT_MAX_AGENTS = os.environ.get("AAAS_DEFAULT_MAX_AGENTS")
-AAAS_DEFAULT_MAX_USERS = os.environ.get("AAAS_DEFAULT_MAX_USERS")
-AAAS_DEFAULT_MAX_TOKENS_MONTHLY = os.environ.get("AAAS_DEFAULT_MAX_TOKENS_MONTHLY")
-AAAS_DEFAULT_STORAGE_GB = os.environ.get("AAAS_DEFAULT_STORAGE_GB")
+# Defaults are BEHAVIOUR (R-BEH-01) — schema default lives on SettingsModel.
+SA01_DEFAULT_TENANT_ID = _behaviour("sa01_default_tenant_id")
+SA01_DEFAULT_CHAT_MODEL = _behaviour("sa01_default_chat_model")
+SA01_DEFAULT_MAX_AGENTS = _behaviour("sa01_default_max_agents")
+SA01_DEFAULT_MAX_USERS = _behaviour("sa01_default_max_users")
+SA01_DEFAULT_MAX_TOKENS_MONTHLY = _behaviour("sa01_default_max_tokens_monthly")
+SA01_DEFAULT_STORAGE_GB = _behaviour("sa01_default_storage_gb")
 
 # =============================================================================
 # INFRASTRUCTURE SETTINGS (for migrated Django Ninja endpoints)
@@ -207,19 +232,17 @@ REDIS_URL = get_required_env("SA01_REDIS_URL", "Redis connection for caching and
 # Queue names are optional schema identifiers; the default lives ONLY
 # here (R-VAL-04). Call sites must not invent "conversation"/"a2a".
 TEMPORAL_HOST = (os.environ.get("SA01_TEMPORAL_HOST") or "").strip()
-TEMPORAL_CONVERSATION_QUEUE = (
-    os.environ.get("SA01_TEMPORAL_CONVERSATION_QUEUE") or "conversation"
-)
-TEMPORAL_A2A_QUEUE = os.environ.get("SA01_TEMPORAL_A2A_QUEUE") or "a2a"
+TEMPORAL_CONVERSATION_QUEUE = _behaviour("sa01_temporal_conversation_queue")
+TEMPORAL_A2A_QUEUE = _behaviour("sa01_temporal_a2a_queue")
 
 # Kafka
 KAFKA_BOOTSTRAP_SERVERS = get_optional_env(
     "SA01_KAFKA_BOOTSTRAP_SERVERS", "", "Kafka broker for event streaming"
 )
-KAFKA_CONVERSATION_TOPIC = os.environ.get("CONVERSATION_INBOUND", "conversation.inbound")
+KAFKA_CONVERSATION_TOPIC = _behaviour("conversation_inbound")
 
 # Feature Flags
-FEATURE_PROFILE = os.environ.get("SA01_FEATURE_PROFILE", "default")
+FEATURE_PROFILE = _behaviour("sa01_feature_profile")
 
 # Authentication
 # VIBE SECURITY: No backdoor flags in production code. Period.
@@ -229,24 +252,24 @@ FEATURE_PROFILE = os.environ.get("SA01_FEATURE_PROFILE", "default")
 AUTH_REQUIRED = True
 
 # SomaBrain (Cognitive Runtime)
-SOMABRAIN_URL = get_optional_env(
-    "SOMABRAIN_URL",
-    get_optional_env("SA01_SOMA_BASE_URL", "", "SomaBrain cognitive runtime HTTP endpoint"),
-    "SomaBrain cognitive runtime HTTP endpoint",
-)
+# Topology boot bridge (R-TOP-01): env may supply the first value before the
+# admin UI exists. Readers MUST resolve through require_service_url /
+# InfrastructureConfig (R-VEN-02) — Capsule > AgentSetting > InfrastructureConfig
+# > SettingsModel.service_* — never getattr with an invented host. Empty means
+# unconfigured; require_service_url raises (R-TOP-02). No get_optional_env and
+# no SA01_SOMA_BASE_URL alias (OPEN-07 / R-VAL-06).
+SOMABRAIN_URL = (os.environ.get("SOMABRAIN_URL") or "").strip()
 SOMABRAIN_BASE_URL = SOMABRAIN_URL  # Alias for compatibility
 # Memory addressing partition. No default (Rule 91): empty until the operator
 # sets it through Capsule.memory_pointer / AgentSetting / InfrastructureConfig.
-SOMABRAIN_NAMESPACE = os.environ.get("SOMABRAIN_NAMESPACE")
+SOMABRAIN_NAMESPACE = _behaviour("somabrain_namespace")
 SOMABRAIN_MEMORY_HTTP_TOKEN = get_secret_manager().get_credential("somabrain_memory_http_token")
 # Absent becomes None, never "". An empty string reads as "configured with a blank
 # secret" and is then sent as `Authorization: Bearer ` — an unauthenticated call
 # that fails at the far end with a 401 nobody can trace back to the missing key.
 # None is the honest "not configured", and every consumer refuses to send a
 # request on it (VIBE Rule 91).
-SOMAFRACTALMEMORY_URL = get_optional_env(
-    "SOMAFRACTALMEMORY_URL", "", "SomaFractalMemory store URL (Brain-side only)"
-)
+SOMAFRACTALMEMORY_URL = (os.environ.get("SOMAFRACTALMEMORY_URL") or "").strip()
 # SOMABRAIN_API_KEY used to be defined here as
 #     get_credential("somabrain_api_key") or get_credential("soma_api_token") or None
 # — a silent cross-credential substitution that let a missing somabrain_api_key
@@ -258,59 +281,56 @@ SOMAFRACTALMEMORY_URL = get_optional_env(
 # caller actually needs it.
 
 # ---------------------------------------------------------------------------
-# MEMORY TOOLS / SEAM — fully configurable (Django settings is the authority).
+# MEMORY TOOLS / SEAM — Django settings is the authority (SOMA-STD-CONFIG-001).
 # ---------------------------------------------------------------------------
-# No default here. The schema default lives once, as
-# services.common.memory_contract.DEFAULT_MEM_EMBED_DIM, and must equal
-# SFM's SOMA_VECTOR_DIM (ARCHITECTURE-INVARIANTS §2).
-MEM_EMBED_DIM = int(os.environ["MEM_EMBED_DIM"]) if os.environ.get("MEM_EMBED_DIM") else None
-MEM_HTTP_TIMEOUT = os.environ.get("MEM_HTTP_TIMEOUT") or "5.0"
-MEM_WRITE_TIMEOUT_S = os.environ.get("MEM_WRITE_TIMEOUT_S") or "10.0"
-MEM_RECALL_TIMEOUT_S = os.environ.get("MEM_RECALL_TIMEOUT_S") or "2.5"
-MEM_HISTORY_TIMEOUT_S = os.environ.get("MEM_HISTORY_TIMEOUT_S") or "2.5"
-MEM_RECALL_TOP_K = os.environ.get("MEM_RECALL_TOP_K") or "8"
-MEM_PROXIMITY_TOP_K = os.environ.get("MEM_PROXIMITY_TOP_K")
-MEM_HISTORY_LIMIT = os.environ.get("MEM_HISTORY_LIMIT") or "12"
-MEM_CHAT_NAMESPACE = os.environ.get("MEM_CHAT_NAMESPACE", "chat_history")
-MEM_DEFAULT_KIND = os.environ.get("MEM_DEFAULT_KIND", "episodic")
-MEM_DEFAULT_SALIENCE = os.environ.get("MEM_DEFAULT_SALIENCE")
-MEM_DEFAULT_SOURCE = os.environ.get("MEM_DEFAULT_SOURCE", "agent-chat")
-MEMORY_WAL_TOPIC = os.environ.get("MEMORY_WAL_TOPIC", "memory.wal")
-MEMORY_DEGRADED_TOPIC = os.environ.get("MEMORY_DEGRADED_TOPIC", "degradation.events")
+# R-BEH-01 / R-VAL-01: behavioural knobs are declared on SettingsModel and
+# resolved through the chain Capsule > AgentSetting > SettingsModel > schema
+# default. They are NOT read from os.environ (AP-05). Env carries topology
+# only (VAULT_ADDR) — never a knob, never a URL, never a secret.
+#
+# Schema default for dimension lives once:
+# services.common.memory_contract.DEFAULT_MEM_EMBED_DIM (== SFM SOMA_VECTOR_DIM).
+MEM_EMBED_DIM = _behaviour("mem_embed_dim")
+MEM_HTTP_TIMEOUT = _behaviour("mem_http_timeout")
+MEM_WRITE_TIMEOUT_S = _behaviour("mem_write_timeout_s")
+MEM_RECALL_TIMEOUT_S = _behaviour("mem_recall_timeout_s")
+MEM_HISTORY_TIMEOUT_S = _behaviour("mem_history_timeout_s")
+MEM_RECALL_TOP_K = _behaviour("mem_recall_top_k")
+MEM_PROXIMITY_TOP_K = _behaviour("mem_proximity_top_k")
+MEM_HISTORY_LIMIT = _behaviour("mem_history_limit")
+MEM_CHAT_NAMESPACE = _behaviour("mem_chat_namespace")
+MEM_DEFAULT_KIND = _behaviour("mem_default_kind")
+MEM_DEFAULT_SALIENCE = _behaviour("mem_default_salience")
+MEM_DEFAULT_SOURCE = _behaviour("mem_default_source")
+MEMORY_WAL_TOPIC = _behaviour("memory_wal_topic")
+MEMORY_DEGRADED_TOPIC = _behaviour("memory_degraded_topic")
 # Reward events (RewardEvent → learner) — Kafka-only reward lane (W1.5/R-04).
-SOMABRAIN_TOPIC_REWARD_EVENTS = os.environ.get(
-    "SOMABRAIN_TOPIC_REWARD_EVENTS", "reward.events"
-)
-TOOL_REWARD_SUCCESS = os.environ.get("TOOL_REWARD_SUCCESS")
-TOOL_REWARD_FAILURE = os.environ.get("TOOL_REWARD_FAILURE")
-# R-VAL-04 declaration-site default — optional feedback utility, not a call-site
-# guess. Same value as config/settings.py so chat does not crash when unset.
-SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT = (
-    os.environ.get("SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT") or "0.5"
-)
+SOMABRAIN_TOPIC_REWARD_EVENTS = _behaviour("somabrain_topic_reward_events")
+TOOL_REWARD_SUCCESS = _behaviour("tool_reward_success")
+TOOL_REWARD_FAILURE = _behaviour("tool_reward_failure")
+SOMABRAIN_CONTEXT_CONFIDENCE_DEFAULT = _behaviour("somabrain_context_confidence_default")
 
-# Temporal async-cycle schedule cadence. Deployment env may override at boot;
-# the schema default lives only on SettingsModel (R-VAL-01 — one number, one
-# place), so this bridge carries no default of its own.
-SA01_SLEEP_CYCLE_HOURS = os.environ.get("SA01_SLEEP_CYCLE_HOURS")
-SA01_JOB_ADVANCE_SECONDS = os.environ.get("SA01_JOB_ADVANCE_SECONDS")
-SA01_OUTBOX_REPLAY_SECONDS = os.environ.get("SA01_OUTBOX_REPLAY_SECONDS")
+# Temporal async-cycle schedule cadence. Schema default lives on SettingsModel
+# (R-VAL-01 — one number, one place).
+SA01_SLEEP_CYCLE_HOURS = _behaviour("sa01_sleep_cycle_hours")
+SA01_JOB_ADVANCE_SECONDS = _behaviour("sa01_job_advance_seconds")
+SA01_OUTBOX_REPLAY_SECONDS = _behaviour("sa01_outbox_replay_seconds")
 
-# LLM / HTTP / MODEL runtime tunables (Django settings authority).
-LLM_CONNECT_TIMEOUT_S = os.environ.get("SA01_LLM_CONNECT_TIMEOUT")
-LLM_READ_TIMEOUT_S = os.environ.get("SA01_LLM_READ_TIMEOUT")
-LLM_MAX_RETRIES = os.environ.get("SA01_LLM_MAX_RETRIES")
-LLM_RETRY_BASE_DELAY_S = os.environ.get("SA01_LLM_RETRY_BASE_DELAY_S")
-LLM_RETRY_BACKOFF_CAP_S = os.environ.get("SA01_LLM_RETRY_BACKOFF_CAP_S")
-LLM_RETRY_AFTER_CAP_S = os.environ.get("SA01_LLM_RETRY_AFTER_CAP_S")
-HTTP_CONNECT_TIMEOUT_S = os.environ.get("SA01_HTTP_CONNECT_TIMEOUT")
-HTTP_READ_TIMEOUT_S = os.environ.get("SA01_HTTP_READ_TIMEOUT")
-HTTP_SLOW_READ_TIMEOUT_S = os.environ.get("SA01_HTTP_SLOW_READ_TIMEOUT")
-DEFAULT_CHAT_MODEL_NAME = os.environ.get("SA01_DEFAULT_CHAT_MODEL_NAME", "")
-DEFAULT_UTIL_MODEL_NAME = os.environ.get("SA01_DEFAULT_UTIL_MODEL_NAME", "")
-DEFAULT_EMBED_MODEL_NAME = os.environ.get("SA01_DEFAULT_EMBED_MODEL_NAME", "")
-CB_FAILURE_THRESHOLD = os.environ.get("CB_FAILURE_THRESHOLD")
-CB_RESET_TIMEOUT_S = os.environ.get("CB_RESET_TIMEOUT_S")
+# LLM / HTTP / MODEL runtime tunables (Django settings authority — R-BEH-01).
+LLM_CONNECT_TIMEOUT_S = _behaviour("sa01_llm_connect_timeout")
+LLM_READ_TIMEOUT_S = _behaviour("sa01_llm_read_timeout")
+LLM_MAX_RETRIES = _behaviour("sa01_llm_max_retries")
+LLM_RETRY_BASE_DELAY_S = _behaviour("sa01_llm_retry_base_delay_s")
+LLM_RETRY_BACKOFF_CAP_S = _behaviour("sa01_llm_retry_backoff_cap_s")
+LLM_RETRY_AFTER_CAP_S = _behaviour("sa01_llm_retry_after_cap_s")
+HTTP_CONNECT_TIMEOUT_S = _behaviour("sa01_http_connect_timeout")
+HTTP_READ_TIMEOUT_S = _behaviour("sa01_http_read_timeout")
+HTTP_SLOW_READ_TIMEOUT_S = _behaviour("sa01_http_slow_read_timeout")
+DEFAULT_CHAT_MODEL_NAME = _behaviour("default_chat_model_name")
+DEFAULT_UTIL_MODEL_NAME = _behaviour("default_util_model_name")
+DEFAULT_EMBED_MODEL_NAME = _behaviour("default_embed_model_name")
+CB_FAILURE_THRESHOLD = _behaviour("cb_failure_threshold")
+CB_RESET_TIMEOUT_S = _behaviour("cb_reset_timeout_s")
 OPA_URL = get_optional_env("SA01_OPA_URL", "", "Open Policy Agent for authorization policies")
 
 # Voice Services (Whisper STT + Kokoro TTS).
@@ -341,18 +361,18 @@ LLM_API_URL = get_optional_env("SA01_LLM_API_URL", "", "Internal LLM chat endpoi
 # Consumers refuse to call the LLM with a missing key rather than sending
 # `Authorization: Bearer ` and getting a 401 back.
 LLM_API_KEY = get_secret_manager().get_credential("llm_api_key")
-DEFAULT_VOICE_MODEL = os.environ.get("SA01_DEFAULT_VOICE_MODEL", "gpt-4o-mini")
+DEFAULT_VOICE_MODEL = _behaviour("sa01_default_voice_model")
 
-# AuthN / login hardening (administrator-managed; schema defaults on SettingsModel)
-LOGIN_RATE_LIMIT = os.environ.get("SA01_LOGIN_RATE_LIMIT")
-LOGIN_RATE_WINDOW = os.environ.get("SA01_LOGIN_RATE_WINDOW")
+# AuthN / login hardening (schema defaults on SettingsModel)
+LOGIN_RATE_LIMIT = _behaviour("login_rate_limit")
+LOGIN_RATE_WINDOW = _behaviour("login_rate_window")
 
-# Voice payload ceilings and multimodal bounds
-VOICE_MAX_AUDIO_BYTES = int(os.environ.get("SA01_VOICE_MAX_AUDIO_BYTES", str(10 * 1024 * 1024)))
-VOICE_LLM_MAX_TOKENS = os.environ.get("SA01_VOICE_LLM_MAX_TOKENS")
-MULTIMODAL_PROMPT_MAX_CHARS = os.environ.get("SA01_MULTIMODAL_PROMPT_MAX_CHARS")
-MULTIMODAL_IMAGE_TIMEOUT_S = os.environ.get("SA01_MULTIMODAL_IMAGE_TIMEOUT_S")
-MULTIMODAL_DIAGRAM_TIMEOUT_S = os.environ.get("SA01_MULTIMODAL_DIAGRAM_TIMEOUT_S")
+# Voice payload ceilings and multimodal bounds (schema default on SettingsModel)
+VOICE_MAX_AUDIO_BYTES = _behaviour_int("voice_max_audio_bytes", str(10 * 1024 * 1024))
+VOICE_LLM_MAX_TOKENS = _behaviour("voice_llm_max_tokens")
+MULTIMODAL_PROMPT_MAX_CHARS = _behaviour("multimodal_prompt_max_chars")
+MULTIMODAL_IMAGE_TIMEOUT_S = _behaviour("multimodal_image_timeout_s")
+MULTIMODAL_DIAGRAM_TIMEOUT_S = _behaviour("multimodal_diagram_timeout_s")
 
 
 # Multimodal Services (empty when unset — never a guessed host)
@@ -368,10 +388,12 @@ PROMETHEUS_URL = get_optional_env("SA01_PROMETHEUS_URL", "", "Prometheus base UR
 # =============================================================================
 
 KEYCLOAK_URL = get_required_env("SA01_KEYCLOAK_URL", "Keycloak OIDC identity provider base URL")
-KEYCLOAK_REALM = os.environ.get("SA01_KEYCLOAK_REALM", "somaagent")
-KEYCLOAK_CLIENT_ID = os.environ.get("SA01_KEYCLOAK_CLIENT_ID", "somaagent-api")
+KEYCLOAK_REALM = _behaviour("sa01_keycloak_realm")
+KEYCLOAK_CLIENT_ID = _behaviour("sa01_keycloak_client_id")
 KEYCLOAK_CLIENT_SECRET = get_secret_manager().get_credential("keycloak_client_secret") or None
-KEYCLOAK_PUBLIC_KEY = os.environ.get("SA01_KEYCLOAK_PUBLIC_KEY", "")
+# Public key material — not a secret (R-SEC-01 covers credentials). Behaviour:
+# administrator-managed on SettingsModel, never ENV.
+KEYCLOAK_PUBLIC_KEY = _behaviour("sa01_keycloak_public_key") or ""
 
 # JWT Settings for Keycloak
 JWT_ALGORITHM = "RS256"
@@ -380,18 +402,21 @@ JWT_ISSUER = f"{KEYCLOAK_URL}/realms/{KEYCLOAK_REALM}"
 
 # Unified JWT Settings (for Gateway & Admin)
 # -----------------------------------------------------------------------------
-JWT_JWKS_URL = os.environ.get("SA01_JWT_JWKS_URL", f"{JWT_ISSUER}/protocol/openid-connect/certs")
-JWT_ALGORITHMS = os.environ.get("SA01_JWT_ALGORITHMS", "RS256").split(",")
-JWT_LEEWAY = os.environ.get("SA01_JWT_LEEWAY")
+# JWKS endpoint is derived topology from KEYCLOAK_URL + realm. An operator
+# override lives on SettingsModel (service/behaviour chain), never ENV.
+_jwt_jwks_override = _behaviour("sa01_jwt_jwks_url")
+JWT_JWKS_URL = _jwt_jwks_override or f"{JWT_ISSUER}/protocol/openid-connect/certs"
+JWT_ALGORITHMS = (_behaviour("sa01_jwt_algorithms") or "RS256").split(",")
+JWT_LEEWAY = _behaviour("sa01_jwt_leeway")
 # Disable issuer/audience validation for Docker dev (localhost/container hostname mismatch)
-JWT_ISSUER_STRICT = os.environ.get("SA01_JWT_ISSUER_STRICT", "true").lower() == "true"
+JWT_ISSUER_STRICT = (_behaviour("sa01_jwt_issuer_strict") or "true").lower() == "true"
 
 
 # =============================================================================
 # GOOGLE OAUTH SETTINGS (Secrets from Vault)
 # =============================================================================
 
-GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_ID = _behaviour("google_client_id") or ""
 GOOGLE_CLIENT_SECRET = get_secret_manager().get_credential("google_client_secret") or None
 GOOGLE_REDIRECT_URI = get_optional_env(
     "GOOGLE_REDIRECT_URI", "", "Google OAuth redirect URI (deployment topology)"
@@ -417,13 +442,12 @@ CACHES = {
 
 # Channel-layer transport. This module is authoritative for gateway/production
 # deployments; config/settings.py is authoritative for standalone/dev
-# deployments. Both read SA01_CHANNEL_LAYER_BACKEND so an operator can move a
-# deployment onto Redis without editing code (D-14).
+# deployments. Both resolve the backend from SettingsModel (R-BEH-01) so an
+# operator can move a deployment onto Redis without editing code (D-14).
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": os.environ.get(
-            "SA01_CHANNEL_LAYER_BACKEND", "channels_redis.core.RedisChannelLayer"
-        ),
+        "BACKEND": _behaviour("sa01_channel_layer_backend")
+        or "channels_redis.core.RedisChannelLayer",
         "CONFIG": {"hosts": [REDIS_URL]},
     }
 }
@@ -457,9 +481,9 @@ LOGGING = {
     },
     "root": {
         "handlers": (
-            ["json_console"] if os.environ.get("LOG_FORMAT", "json") == "json" else ["console"]
+            ["json_console"] if (_behaviour("log_format") or "json") == "json" else ["console"]
         ),
-        "level": os.environ.get("LOG_LEVEL", "INFO").upper(),
+        "level": (_behaviour("log_level") or "INFO").upper(),
     },
     "loggers": {
         # Django internals

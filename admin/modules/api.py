@@ -124,7 +124,6 @@ def list_hooks(request) -> dict:
 
 @router.get("/{name}", response=ModuleOut, summary="Get Capsule Module", auth=AuthBearer())
 def get_module(request, name: str) -> dict:
-    """Get one Capsule Module by name."""
     authorize_sync(request, action="system:view", resource="modules")
 
     try:
@@ -157,7 +156,6 @@ def disable_module(request, name: str) -> dict:
 
 @router.get("/{name}/config", summary="Get module config", auth=AuthBearer())
 def get_module_config(request, name: str) -> dict[str, Any]:
-    """Get runtime config for a module."""
     authorize_sync(request, action="system:view", resource="modules")
 
     try:

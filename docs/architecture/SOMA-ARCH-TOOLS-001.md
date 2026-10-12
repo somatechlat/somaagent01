@@ -132,21 +132,34 @@ This §5 is the **single catalog** for agent hands. Status values: **LIVE** (in 
 
 ### 5.2 LIVE — default kit (every agent)
 
+Inventory from `services/tool_executor/default_tools.py` `DEFAULT_AGENT_TOOLS` (24 tools).
+
 | Tool | Tier | Policy | Notes |
 |---|---|---|---|
 | `timestamp` | 1 | auto | UTC |
-| `memory_recall` / `save` / `forget` / `proximity` / `get` | 1 | auto (NON_DISABLEABLE) | T-1 only |
+| `memory_recall` | 1 | auto (NON_DISABLEABLE) | T-1 only |
+| `memory_save` | 1 | auto (NON_DISABLEABLE) | T-1 only |
+| `memory_proximity` | 1 | auto (NON_DISABLEABLE) | T-1 only |
+| `memory_get` | 1 | auto (NON_DISABLEABLE) | T-1 only |
+| `memory_forget` | 1 | approval_required (bare coord) · auto (query= ≥3 chars) | **NOT NON_DISABLEABLE** — bare coord forget stays approval; multi-row erase with `query` auto-runs (`tool_calling.py`) |
 | `file_read` | 1 | auto | PathGuard; workroot |
 | `file_list` | 1 | auto | PathGuard; metadata |
 | `file_search` | 1 | auto | PathGuard; literal |
 | `file_write` | 2 | approval | PathGuard; SHA-256 |
 | `file_patch` | 2 | approval | PathGuard; exact once |
-| `research_report` | 2 | approval | Temporal ResearchReportWorkflow |
-| `job_status` | 1 | auto | Temporal describe + progress query |
 | `code_execute` | 2 | approval | Restricted Python; **not** a security sandbox (L0–L4 is) |
 | `http_fetch` | 2 | approval + egress | SSRF deny-list; IQ `egress_allowed` |
-| `document_ingest` | 2 | approval | Attachment → knowledge (upload lane live; ingest residual) |
+| `document_ingest` | 2 | approval | Attachment → knowledge |
+| `document_index` | 2 | approval | Document RAG (TOOLS-001 §5.9); MemoryGateway → SomaBrain only |
+| `document_query` | 2 | approval | Document RAG (TOOLS-001 §5.9) |
 | `canvas_append` | 1 | auto | Session canvas |
+| `research_report` | 2 | approval | Temporal ResearchReportWorkflow |
+| `job_status` | 1 | auto | Temporal describe + progress query |
+| `web_search` | 2 | approval + egress | **LIVE** — configured SearxNG; egress IQ |
+| `web_read` | 2 | approval + egress | Fetch + extract page text |
+| `os_packages_ensure` | 3 | approval | Allowlisted container apt (TOOLS-001 §5.4.1) |
+| `packages_ensure` | 3 | approval | Allowlist profiles; Temporal PackageEnsureWorkflow (§5.4) |
+| `packages_list` | 1 | auto | List allowlisted package profiles |
 
 ### 5.3 File creation suite (docs / decks / sheets / plots) — PLANNED
 

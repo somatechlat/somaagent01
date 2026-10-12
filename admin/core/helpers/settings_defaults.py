@@ -33,7 +33,6 @@ def _ensure_django() -> None:
 
 
 def _get_version() -> str:
-    """Get current version from git."""
     try:
         from admin.core.helpers import git
 
@@ -154,7 +153,6 @@ def _env_or_db(env_key: str, agent_id: str, db_key: str, default: str = "") -> s
 
 
 def _env_or_db_int(env_key: str, agent_id: str, db_key: str, default: int = 0) -> int:
-    """Get integer value from environment or database."""
     val = _env_or_db(env_key, agent_id, db_key, str(default))
     try:
         return int(val)
@@ -163,7 +161,6 @@ def _env_or_db_int(env_key: str, agent_id: str, db_key: str, default: int = 0) -
 
 
 def _env_or_db_float(env_key: str, agent_id: str, db_key: str, default: float = 0.0) -> float:
-    """Get float value from environment or database."""
     val = _env_or_db(env_key, agent_id, db_key, str(default))
     try:
         return float(val)
@@ -172,7 +169,6 @@ def _env_or_db_float(env_key: str, agent_id: str, db_key: str, default: float = 
 
 
 def _env_or_db_bool(env_key: str, agent_id: str, db_key: str, default: bool = False) -> bool:
-    """Get boolean value from environment or database."""
     val = _env_or_db(env_key, agent_id, db_key, str(default))
     return str(val).lower() in ("true", "1", "yes")
 
@@ -305,7 +301,13 @@ def get_default_settings(agent_id: str = "default"):
             "SA01_MEMORY_RECALL_SOLUTIONS_MAX_SEARCH",
             agent_id,
             "memory_recall_solutions_max_search",
-            8,
+            # Schema default is SettingsModel.mem_proximity_top_k (R-VAL-01).
+            # No second literal here (AP-03).
+            int(
+                __import__(
+                    "admin.core.helpers.settings_model", fromlist=["mem_proximity_top_k_default"]
+                ).mem_proximity_top_k_default()
+            ),
         ),
         memory_recall_memories_max_result=_env_or_db_int(
             "SA01_MEMORY_RECALL_MEMORIES_MAX_RESULT",
@@ -317,7 +319,11 @@ def get_default_settings(agent_id: str = "default"):
             "SA01_MEMORY_RECALL_SOLUTIONS_MAX_RESULT",
             agent_id,
             "memory_recall_solutions_max_result",
-            3,
+            int(
+                __import__(
+                    "admin.core.helpers.settings_model", fromlist=["mem_proximity_top_k_default"]
+                ).mem_proximity_top_k_default()
+            ),
         ),
         memory_recall_similarity_threshold=_env_or_db_float(
             "SA01_MEMORY_RECALL_SIMILARITY_THRESHOLD",

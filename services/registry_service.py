@@ -34,7 +34,6 @@ class RegistryService:
     """
 
     def __init__(self):
-        """Initialize the instance."""
 
         self._signing_key: Optional[SigningKey] = None
         self._verify_key: Optional[VerifyKey] = None
