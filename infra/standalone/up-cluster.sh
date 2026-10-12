@@ -24,17 +24,54 @@ AGENT_DIR="$ROOT/somaAgent01/infra/standalone"
 BRAIN_DIR="$ROOT/somabrain/infra/standalone"
 SFM_DIR="$ROOT/somafractalmemory/infra/standalone"
 
+# Load KEY=VALUE from a .env file into the current shell WITHOUT exporting
+# secrets. Only keys already allowlisted for cluster topology are read.
+# This removes the need for the operator to retype URLs that the stack
+# already owns in its settings (.env is the system of record for topology).
+load_env_topology() {
+  local f="$1"; shift
+  [[ -f "$f" ]] || return 0
+  local key val
+  while IFS= read -r line; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" != *=* ]] && continue
+    key="${line%%=*}"
+    val="${line#*=}"
+    # strip optional surrounding quotes
+    val="${val%\"}"; val="${val#\"}"
+    val="${val%\'}"; val="${val#\'}"
+    case " $* " in
+      *" $key "*) printf -v "$key" '%s' "$val" ;;
+    esac
+  done < "$f"
+}
+
+# Topology keys read from each stack's .env (never secrets — only endpoints).
+load_env_topology "$AGENT_DIR/.env" \
+  SOMABRAIN_URL SOMAFRACTALMEMORY_URL SA01_WEBUI_HOST_URL SA01_API_HOST_URL
+load_env_topology "$BRAIN_DIR/.env" \
+  SOMABRAIN_HOST SOMABRAIN_PORT SOMABRAIN_HOST_PORT
+load_env_topology "$SFM_DIR/.env" \
+  SOMA_API_PORT
+
 # Service DNS names on soma-stack-net. The brain is addressed by its RFC 1035
 # alias `somabrain` (an underscore name is rejected by Django host_validation_re
-# as HTTP_HOST before any route runs). REQUIRED — a default is a hardcoded value.
-BRAIN_URL="${SOMABRAIN_URL:?set SOMABRAIN_URL to the brain service URL on soma-stack-net}"
-SFM_URL="${SOMAFRACTALMEMORY_URL:?set SOMAFRACTALMEMORY_URL to the SFM service URL on soma-stack-net}"
+# as HTTP_HOST before any route runs).
+# Prefer values already present in the environment (CI / explicit override),
+# else the stack .env, else fail closed — never a silent localhost default.
+BRAIN_URL="${SOMABRAIN_URL:-}"
+SFM_URL="${SOMAFRACTALMEMORY_URL:-}"
+[[ -n "$BRAIN_URL" ]] || die "SOMABRAIN_URL missing from env and $AGENT_DIR/.env"
+[[ -n "$SFM_URL"   ]] || die "SOMAFRACTALMEMORY_URL missing from env and $AGENT_DIR/.env"
 
-# Host-bound probe URLs (operator status only). REQUIRED — no localhost default.
-UI_URL="${SA01_WEBUI_HOST_URL:?set SA01_WEBUI_HOST_URL}"
-API_URL="${SA01_API_HOST_URL:?set SA01_API_HOST_URL}"
-BRAIN_HOST_URL="${SOMABRAIN_HOST_URL:?set SOMABRAIN_HOST_URL}"
-SFM_HOST_URL="${SOMAFRACTALMEMORY_HOST_URL:?set SOMAFRACTALMEMORY_HOST_URL}"
+# Host-bound probe URLs (operator status only). Derived from published ports
+# when not explicitly set — the port mapping is the system of record.
+_ui_port="${SA01_WEBUI_HOST_URL:-}"
+_api_port="${SA01_API_HOST_URL:-}"
+BRAIN_HOST_URL="${SOMABRAIN_HOST_URL:-http://127.0.0.1:${SOMABRAIN_HOST_PORT:-${SOMABRAIN_PORT:-30101}}}"
+SFM_HOST_URL="${SOMAFRACTALMEMORY_HOST_URL:-http://127.0.0.1:${SOMA_API_PORT:-10101}}"
+UI_URL="${_ui_port:-http://127.0.0.1:20080}"
+API_URL="${_api_port:-http://127.0.0.1:20020}"
 
 log()  { printf '\033[1;36m▸ %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m✓ %s\033[0m\n' "$*"; }

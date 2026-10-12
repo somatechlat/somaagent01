@@ -110,6 +110,10 @@ class MemoryHit(BaseModel):
     # Taxonomy the write path set (episodic / semantic / belief / …). Optional
     # because an older store row may not carry it; callers filter only when set.
     kind: str | None = None
+    # TRIAD degradation contract (flag, never silent)
+    degraded: bool = False
+    error_code: str | None = None
+    degraded_reason: str | None = None
 
 
 class MemoryAck(BaseModel):
@@ -131,6 +135,10 @@ class MemoryAck(BaseModel):
     outbox_event_id: int | None = None
     persisted_to_ltm: bool = False
     queued_for_ltm: bool = False
+    # TRIAD degradation contract (flag, never silent)
+    degraded: bool = False
+    error_code: str | None = None
+    degraded_reason: str | None = None
 
     @classmethod
     def from_brain_response(

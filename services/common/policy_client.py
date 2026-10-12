@@ -60,7 +60,9 @@ class PolicyClient:
             # role-based access control (admin.core.authz) and a policy engine,
             # when one is attached, may only narrow that. See evaluate().
             self.base_url = None
-            self.data_path = "/v1/data/soma/allow"
+            # ONE OPA plane (product law): the same data path the Brain
+            # middleware queries. `soma/allow` was a second plane.
+            self.data_path = "/v1/data/somabrain/auth/allow"
             self._client = None
             self.cache_ttl = float(_policy_setting("POLICY_CACHE_TTL_S", 2.0))
             self.fail_open_default = False
@@ -70,15 +72,22 @@ class PolicyClient:
             self._disabled = True
             return
         self._disabled = False
-        # Strip trailing /v1/data/soma or /v1/data/soma/allow
-        # so we don't double-append the data path when env var includes it.
+        # Strip trailing data-path suffixes so we don't double-append.
+        # ONE OPA plane: somabrain/auth/allow (product law).
         _base = default_base_url.rstrip("/")
-        if _base.endswith("/v1/data/soma/allow"):
-            _base = _base[: -len("/v1/data/soma/allow")]
-        elif _base.endswith("/v1/data/soma"):
-            _base = _base[: -len("/v1/data/soma")]
+        for suffix in (
+            "/v1/data/somabrain/auth/allow",
+            "/v1/data/somabrain/auth",
+            "/v1/data/soma/allow",
+            "/v1/data/soma",
+        ):
+            if _base.endswith(suffix):
+                _base = _base[: -len(suffix)]
+                break
         self.base_url = _base
-        self.data_path = _policy_setting("POLICY_DATA_PATH", "/v1/data/soma/allow")
+        self.data_path = _policy_setting(
+            "POLICY_DATA_PATH", "/v1/data/somabrain/auth/allow"
+        )
         self._client = httpx.AsyncClient(timeout=httpx_timeout())
         self.cache_ttl = float(_policy_setting("POLICY_CACHE_TTL_S", 2.0))
         # Fail-closed by default; POLICY_FAIL_OPEN is no longer honored

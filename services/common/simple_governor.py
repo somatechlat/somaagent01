@@ -214,20 +214,18 @@ class SimpleGovernor:
     def is_degraded(self, health_check_result: dict[str, bool]) -> bool:
         """Determine if system is degraded from health checks.
 
+        Critical services come from the TRIAD degradation contract — one
+        vocabulary (``degradation_contract.CRITICAL_SERVICES``).
+
         Args:
             health_check_result: Dict of service_name -> is_healthy
 
         Returns:
             True if any critical service is unhealthy
         """
-        # Critical services that trigger degraded mode
-        critical_services = [
-            "somabrain",
-            "database",
-            "llm",
-        ]
+        from services.common.degradation_contract import CRITICAL_SERVICES
 
-        for service in critical_services:
+        for service in CRITICAL_SERVICES:
             if not health_check_result.get(service, True):
                 logger.warning(
                     "Service %s is unhealthy - entering degraded mode",
@@ -237,6 +235,29 @@ class SimpleGovernor:
                 return True
 
         return False
+
+    def decide_from_health_monitor(self, max_tokens: int) -> GovernorDecision:
+        """Allocate using the live HealthMonitor (critical services).
+
+        Wires the product degradation contract: HealthMonitor → Governor →
+        rescue_path when any CRITICAL_SERVICES entry is down.
+        """
+        try:
+            from services.common.degradation_contract import CRITICAL_SERVICES
+            from services.common.health_monitor import get_health_monitor
+
+            monitor = get_health_monitor()
+            health_map = {
+                name: bool(getattr(monitor.checks.get(name), "healthy", False))
+                for name in CRITICAL_SERVICES
+            }
+        except Exception as exc:
+            logger.warning("HealthMonitor unavailable for governor: %s", exc)
+            return self.get_fallback_decision()
+
+        if self.is_degraded(health_map):
+            return self.allocate_budget(max_tokens, is_degraded=True)
+        return self.allocate_budget(max_tokens, is_degraded=False)
 
     def get_fallback_decision(self) -> GovernorDecision:
         logger.warning("Using rescue path due to governor error")

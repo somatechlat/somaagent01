@@ -107,6 +107,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # OPA on EVERY request (fail-closed) — one policy plane with Brain.
+    "services.common.opa_middleware.OpaMiddleware",
 ]
 
 ROOT_URLCONF = "services.gateway.urls"
