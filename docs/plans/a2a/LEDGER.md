@@ -87,3 +87,5 @@
 ## [2026-10-12T13:53:59Z] commit (main)
 - Scope: ISO docs remediation + orphan hard-delete + CLEF/JEV/SEC docs + infra prune + wave0 migrations/tests
 - Agent: MiMoCode session (operator-requested commit+push)
+
+## [2026-10-12T14:00:53Z] LAND SOMA-PM-PLAN-CLEF-INTEGRATION-001 written (closes ARCH-CLEF-001:17 dangling ref). W-C0/C1/C2 code LIVE; W-C3+ not started; I-1 CF token still open.

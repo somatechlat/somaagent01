@@ -48,6 +48,7 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-ARCH-JEV-001 | docs/architecture/SOMA-ARCH-JEV-001.md | OpenJev System One decision layer for SomaAgent01 | 1.0.0 | Obsolete | — | 2027-01-09 | Compliant |
 | SOMA-ARCH-JEV-002 | docs/architecture/SOMA-ARCH-JEV-002.md | Revised target architecture: OpenJev in the SomaAgent01 triad | 1.1.0 | Obsolete | — | 2027-01-09 | Compliant |
 | SOMA-ARCH-REDESIGN-001 | docs/architecture/SOMA-ARCH-REDESIGN-001.md | Enterprise Architecture Redesign | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-ARCH-SEC-TOKEN-001 | docs/architecture/SOMA-ARCH-SEC-TOKEN-001.md | TRIAD Token/Secret Trust Boundary — Architectural Decision Record | 1.0.0 | **Accepted — Operator LAW 2026-10-12** | Operator | 2027-01-12 | Non-compliant |
 | SOMA-ARCH-TOOLS-001 | docs/architecture/SOMA-ARCH-TOOLS-001.md | Agent tool framework — standardized implementation for assistant file/OS tools | 1.4.0 | Draft | — | 2027-01-08 | Compliant |
 | SOMA-CHAT-UI-001 | docs/design/SOMA-CHAT-UI-001.md | Agent Soma — Chat workspace UI/UX | 1.0.0 | Draft | — | 2027-01-08 | Non-compliant |
 | SOMA-UI-BINDINGS-001 | docs/design/SOMA-UI-BINDINGS-001.md | Agent Soma — UI mock control → live binding map | 1.0.0 | Draft | — | 2027-01-08 | Compliant |
@@ -187,6 +188,7 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-PM-DELIV-001 | docs/project/SOMA-PM-DELIV-001.md | Deliverables Register | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-PM-JEV-PIN-001 | docs/project/SOMA-PM-JEV-PIN-001.md | OpenJev pin, contract freeze, G-0 release record | 1.1.0 | Obsolete | — | 2027-01-09 | Compliant |
 | SOMA-PM-MILE-001 | docs/project/SOMA-PM-MILE-001.md | Milestone Tracker | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-PM-PLAN-CLEF-INTEGRATION-001 | docs/project/SOMA-PM-PLAN-CLEF-INTEGRATION-001.md | Cloudflare Clef integration plan (SA01) | 1.0.0 | Draft | operator | 2027-01-12 | Compliant |
 | SOMA-PM-PLAN-JEV-INTEGRATION-001 | docs/project/SOMA-PM-PLAN-JEV-INTEGRATION-001.md | OpenJev integration delivery plan | 1.1.0 | Obsolete | — | 2027-01-09 | Compliant |
 | SOMA-PM-PLAN-TRIAD-001 | docs/project/SOMA-PM-PLAN-TRIAD-001.md | PLAN — Seamless Triad: Agent ↔ SomaBrain ↔ SomaFractalMemory | 1.1.0 | Draft | — | 2027-01-03 | Compliant |
 | SOMA-PM-RACI-001 | docs/project/SOMA-PM-RACI-001.md | RACI Matrix (Responsible, Accountable, Consulted, Informed) | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
@@ -236,9 +238,9 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 
 | Metric | Count |
 |---|---|
-| Registered documents | 191 |
-| Compliant | 115 |
-| Non-compliant (tracked gaps) | 9 |
+| Registered documents | 193 |
+| Compliant | 116 |
+| Non-compliant (tracked gaps) | 10 |
 | Annexes (design artefacts) | 67 |
 
 ## 4. Tracked remediation
