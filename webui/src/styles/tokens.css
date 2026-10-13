@@ -447,3 +447,114 @@ h6 {
     background: rgba(59, 130, 246, 0.2);
     color: #60a5fa;
 }
+
+/* ==========================================================================
+   SKIN STRUCTURAL DEFAULTS (AgentSkin L0 — glass + density)
+   `--skin-*` names used by styles/glass.ts and styles/density.ts.
+   Colour / type / space / radius / shadow / motion come from the skin
+   vocabulary (SkinApplier writes them). Glass, border-width, and z-index
+   are structural: defaults resolve to the platform tokens above so
+   glass/density never hardcode values. Skin packs may override any
+   `--skin-*` name; applier aliases keep `--platform-*` / `--soma-*` in sync.
+   ========================================================================== */
+
+:root {
+    /* Glass surface */
+    --skin-glass-bg: color-mix(in srgb, var(--skin-color-bg-card, var(--platform-glass-bg)) 88%, transparent);
+    --skin-glass-border: var(--skin-color-border, var(--platform-glass-border));
+    --skin-glass-blur: var(--platform-glass-blur);
+    --skin-glass-backdrop: var(--platform-glass-backdrop);
+
+    /* Hairline */
+    --skin-border-width: 1px;
+
+    /* Stacking (MODULE-CATALOG M-005/M-006/M-008/M-013) */
+    --skin-z-dropdown: var(--platform-z-dropdown);
+    --skin-z-modal: var(--platform-z-modal);
+    --skin-z-overlay: var(--platform-z-overlay);
+    --skin-z-toast: var(--platform-z-toast);
+    --skin-z-tooltip: var(--platform-z-tooltip);
+}
+
+/* Fallback skin colour / density aliases while no skin pack is active.
+   Values live in the platform token layer above; names match the closed
+   vocabulary so glass.ts / density.ts resolve before the first Apply. */
+:root {
+    --skin-color-bg-void: var(--platform-bg-void);
+    --skin-color-bg-base: var(--platform-bg-base);
+    --skin-color-bg-card: var(--platform-bg-card);
+    --skin-color-bg-sidebar: var(--platform-bg-sidebar);
+    --skin-color-bg-hover: var(--platform-bg-hover);
+    --skin-color-bg-active: var(--platform-bg-active);
+
+    --skin-color-text-primary: var(--platform-text-main);
+    --skin-color-text-secondary: var(--platform-text-dim);
+    --skin-color-text-muted: var(--platform-text-muted);
+    --skin-color-text-inverse: var(--platform-text-inverse);
+    --skin-color-text-link: var(--platform-accent);
+
+    --skin-color-accent: var(--platform-accent);
+    --skin-color-accent-hover: var(--platform-accent-hover);
+    --skin-color-accent-text: var(--platform-text-inverse);
+
+    --skin-color-success: var(--platform-success);
+    --skin-color-success-text: var(--platform-text-main);
+    --skin-color-warning: var(--platform-warning);
+    --skin-color-warning-text: var(--platform-text-main);
+    --skin-color-danger: var(--platform-danger);
+    --skin-color-danger-text: var(--platform-text-inverse);
+    --skin-color-info: var(--platform-info);
+    --skin-color-info-text: var(--platform-text-inverse);
+
+    --skin-color-border: var(--platform-border-color);
+    --skin-color-border-strong: var(--platform-border-hover);
+    --skin-color-border-subtle: var(--platform-glass-border);
+
+    --skin-focus-ring: var(--platform-accent);
+    --skin-focus-ring-width: var(--skin-border-width);
+    --skin-focus-ring-offset: var(--platform-space-xs);
+
+    --skin-font-sans: var(--platform-font-sans);
+    --skin-font-mono: var(--platform-font-mono);
+
+    --skin-text-xs: var(--platform-text-xs);
+    --skin-text-sm: var(--platform-text-sm);
+    --skin-text-base: var(--platform-text-base);
+    --skin-text-lg: var(--platform-text-lg);
+    --skin-text-xl: var(--platform-text-xl);
+    --skin-text-2xl: var(--platform-text-2xl);
+
+    --skin-weight-normal: var(--platform-font-normal);
+    --skin-weight-medium: var(--platform-font-medium);
+    --skin-weight-semibold: var(--platform-font-semibold);
+    --skin-weight-bold: var(--platform-font-bold);
+
+    --skin-leading-tight: var(--platform-leading-tight);
+    --skin-leading-normal: var(--platform-leading-normal);
+    --skin-leading-relaxed: var(--platform-leading-relaxed);
+
+    --skin-space-xs: var(--platform-space-xs);
+    --skin-space-sm: var(--platform-space-sm);
+    --skin-space-md: var(--platform-space-md);
+    --skin-space-lg: var(--platform-space-lg);
+    --skin-space-xl: var(--platform-space-xl);
+    --skin-space-2xl: var(--platform-space-2xl);
+
+    --skin-radius-sm: var(--platform-radius-sm);
+    --skin-radius-md: var(--platform-radius-md);
+    --skin-radius-lg: var(--platform-radius-lg);
+    --skin-radius-xl: var(--platform-radius-xl);
+    --skin-radius-full: var(--platform-radius-full);
+
+    --skin-shadow-sm: var(--platform-shadow-sm);
+    --skin-shadow-md: var(--platform-shadow-md);
+    --skin-shadow-lg: var(--platform-shadow-lg);
+    --skin-shadow-overlay: var(--platform-shadow-glass);
+
+    /* Motion domains: fast/normal/slow = time; ease = easing (vocabulary).
+       Keep these pure — glass.ts composes `duration ease`. */
+    --skin-motion-fast: 150ms;
+    --skin-motion-normal: 200ms;
+    --skin-motion-slow: 300ms;
+    --skin-motion-ease: ease;
+}
