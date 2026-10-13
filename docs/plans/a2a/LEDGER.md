@@ -451,3 +451,7 @@ Fix: stability window raised to 3000 ms in both `test_memory_human_name.spec.js`
 - Files: webui/src/components/soma-message.ts · webui/src/views/soma-chat.ts · webui/src/i18n/{en,es}.json · webui/src/components/soma-file-manager.ts · docs/reports/SOMA-RPT-UIUX-FULL-AUDIT-001.md · docs/plans/SOMA-PLAN-UIUX-P0-P3-001.md
 - Gates: tsc clean · vite build ok · check-skin-literals 0 new debt · en/es parity 134/134
 - Note: soma-chat.ts / soma-file-manager.ts include concurrent modularization state on claimed paths (merge-additive).
+
+| ts | agent | action | detail |
+|---|---|---|---|
+| 2026-10-14T23:25:00Z | soma-ui-engineer | commit | File browser repair: list-all pages, preview/download via GET /filesv2/{id}/content, uploadFiles+refresh, drop→upload, honest gates, bootstrap_identity --roles. Live curl + Playwright files-modal 2/2 on :20080. |

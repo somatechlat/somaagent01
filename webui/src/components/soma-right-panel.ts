@@ -767,11 +767,24 @@ export class SomaRightPanel extends LitElement {
             return;
         }
 
+        // Primary: local stream GET /filesv2/{id}/content (auth via cookie).
+        // Fallback: signed download_url when content has no bytes (S3-only).
+        const contentUrl = `/api/v2/filesv2/${encodeURIComponent(file.id)}/content`;
+        try {
+            const res = await fetch(contentUrl, { credentials: 'include' });
+            if (res.ok) {
+                this._fileContent = await res.text();
+                this._fileStatus = 'ready';
+                return;
+            }
+        } catch {
+            /* fall through */
+        }
         try {
             const signed = await apiClient.get<DownloadUrlOut>(
                 `/filesv2/${encodeURIComponent(file.id)}/download-url`
             );
-            const res = await fetch(signed.download_url);
+            const res = await fetch(signed.download_url, { credentials: 'include' });
             if (!res.ok) {
                 this._fileStatus = 'error';
                 return;

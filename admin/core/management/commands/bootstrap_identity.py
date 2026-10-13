@@ -13,6 +13,7 @@ Usage::
 
     python manage.py bootstrap_identity            # create if absent
     python manage.py bootstrap_identity --check    # report, change nothing
+    python manage.py bootstrap_identity --email a@b.c --roles developer
 """
 
 from __future__ import annotations
@@ -45,10 +46,19 @@ class Command(BaseCommand):
             default=None,
             help="local identity to provision or repair; prompts for the password",
         )
+        parser.add_argument(
+            "--roles",
+            default="member",
+            help=(
+                "comma-separated catalog roles to assign "
+                "(admin.core.authz). Default: member. "
+                "Use developer for file delete (resource:file_delete)."
+            ),
+        )
 
     def handle(self, *args, **options) -> None:
         if options["email"]:
-            return self._provision_identity(options["email"])
+            return self._provision_identity(options["email"], options.get("roles") or "member")
         if options["check"]:
             try:
                 get_password_pepper()
@@ -79,13 +89,18 @@ class Command(BaseCommand):
             "Rotating it invalidates every stored password hash."
         )
 
-    def _provision_identity(self, email: str) -> None:
+    def _provision_identity(self, email: str, roles_csv: str = "member") -> None:
         """Create or repair one local identity under the current pepper.
 
         The password is read from stdin, never argv (argv is visible in `ps`)
         and never from source. A pepper change invalidates every stored hash,
         so this is how an operator restores access after a rotation or a
         bootstrap — it does not weaken verification.
+
+        ``roles_csv`` names catalog roles (``admin.core.authz``). An identity
+        with an empty ``roles`` list resolves to zero permissions and is
+        refused by every authorize() call — including ``identity:self`` — so
+        the product looks broken (Files list is a bare 403). Default ``member``.
         """
         import getpass
         import sys
@@ -108,6 +123,17 @@ class Command(BaseCommand):
 
         encoded = hash_password(password, pepper)
 
+        from admin.core.authz import ROLE_PERMISSIONS
+
+        roles = [r.strip() for r in (roles_csv or "").split(",") if r.strip()]
+        if not roles:
+            raise CommandError("refusing to provision an identity with no roles")
+        unknown = [r for r in roles if r not in ROLE_PERMISSIONS]
+        if unknown:
+            raise CommandError(
+                f"unknown role(s) {unknown}; known: {sorted(ROLE_PERMISSIONS)}"
+            )
+
         # This command is synchronous, so the ORM runs directly. Wrapping it in
         # sync_to_async here would return a coroutine nobody awaits and the
         # write would be silently lost.
@@ -115,11 +141,16 @@ class Command(BaseCommand):
 
         _row, created = LocalIdentity.objects.update_or_create(
             email=email,
-            defaults={"password_hash": encoded, "is_active": True},
+            defaults={
+                "password_hash": encoded,
+                "is_active": True,
+                "roles": roles,
+            },
         )
         verb = "created" if created else "password re-set under the current pepper"
         self.stdout.write(
             self.style.SUCCESS(
-                f"{verb}: {email}. The value was read from stdin and never logged."
+                f"{verb}: {email} roles={roles}. "
+                f"The value was read from stdin and never logged."
             )
         )

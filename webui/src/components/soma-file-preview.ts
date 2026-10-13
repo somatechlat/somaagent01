@@ -2,17 +2,18 @@
  * soma-file-preview — honest mime-scoped preview host (CM-02 FM-30…FM-36).
  *
  * Real bindings only:
- *   GET /api/v2/filesv2/{id}/download-url  → signed body URL (S3-backed)
- *   fetch(signed)                          → text / image / pdf bytes
+ *   GET /api/v2/filesv2/{id}/content       → local stream (Soma Platform-in-a-box)
+ *   GET /api/v2/filesv2/{id}/download-url  → signed body URL (S3-backed fallback)
  *
  * Preview policy (normative CM-02 §5):
  *   markdown                  → rendered doc body
  *   text/* · json · source    → readonly code/text body
- *   image/*                   → <img> from authorized URL
- *   application/pdf           → iframe from authorized URL
+ *   image/*                   → <img> from authorized bytes (blob URL)
+ *   application/pdf           → iframe from authorized bytes (blob URL)
  *   binary / unknown          → metadata card + Download only (never a fake renderer)
  *
- * When the signed-URL endpoint is missing or the bytes cannot be fetched,
+ * Body source of record is the local content stream. When that route has no
+ * bytes (S3-only object), the signed download URL is used. If neither answers,
  * the pane says so — it never invents content.
  */
 
@@ -373,11 +374,13 @@ export class SomaFilePreview extends LitElement {
 
     @state() private _status: FilePreviewStatus = 'idle';
     @state() private _kind: FilePreviewKind = 'metadata';
+    /** Object URL (or authorized absolute URL) used by image/pdf renderers. */
     @state() private _signedUrl = '';
     @state() private _textBody: string | null = null;
     @state() private _error = '';
 
     private _loadToken = 0;
+    private _objectUrl: string | null = null;
 
     override willUpdate(changed: Map<string, unknown>): void {
         if (
@@ -390,17 +393,33 @@ export class SomaFilePreview extends LitElement {
         }
     }
 
+    override disconnectedCallback(): void {
+        this._revokeObjectUrl();
+        super.disconnectedCallback();
+    }
+
+    private _revokeObjectUrl(): void {
+        if (this._objectUrl) {
+            URL.revokeObjectURL(this._objectUrl);
+            this._objectUrl = null;
+        }
+    }
+
     /** Public reload — hosts call after a replace/upload of the same id. */
     reload(): void {
         void this._load();
     }
 
+    /**
+     * Load preview bytes. Primary: GET /filesv2/{id}/content (local stream).
+     * Fallback: signed download_url when content has no bytes (S3-only).
+     */
     private async _load(): Promise<void> {
         const token = ++this._loadToken;
-        const kindAtStart: FilePreviewKind = this._kind;
         this._error = '';
         this._signedUrl = '';
         this._textBody = null;
+        this._revokeObjectUrl();
 
         if (!this.fileId) {
             this._status = 'idle';
@@ -414,6 +433,36 @@ export class SomaFilePreview extends LitElement {
         }
 
         this._status = 'loading';
+
+        const contentUrl = `/api/v2/filesv2/${encodeURIComponent(this.fileId)}/content`;
+        let contentStatus = 0;
+        let contentErr = '';
+
+        // 1) Local stream — the deployment's own bytes (auth via httpOnly cookie).
+        try {
+            const res = await fetch(contentUrl, { credentials: 'include' });
+            if (token !== this._loadToken) return;
+            contentStatus = res.status;
+            if (res.ok) {
+                const blob = await res.blob();
+                if (token !== this._loadToken) return;
+                if (this._kind === 'image' || this._kind === 'pdf') {
+                    this._revokeObjectUrl();
+                    this._objectUrl = URL.createObjectURL(blob);
+                    this._signedUrl = this._objectUrl;
+                    this._status = 'ready';
+                    return;
+                }
+                this._textBody = await blob.text();
+                if (token !== this._loadToken) return;
+                this._status = 'ready';
+                return;
+            }
+        } catch (err) {
+            contentErr = reasonOf(err);
+        }
+
+        // 2) Signed URL fallback (S3-backed objects with no local bytes).
         try {
             const signed = await apiClient.get<DownloadUrlOut>(
                 `/filesv2/${encodeURIComponent(this.fileId)}/download-url`,
@@ -422,18 +471,19 @@ export class SomaFilePreview extends LitElement {
             if (!signed?.download_url) {
                 this._status = 'error';
                 this._error =
-                    'GET /api/v2/filesv2/{id}/download-url returned no download_url — Preview unavailable.';
+                    `GET ${contentUrl} (HTTP ${contentStatus || 0})` +
+                    `${contentErr ? ` — ${contentErr}` : ''}` +
+                    ' and GET /api/v2/filesv2/{id}/download-url returned no download_url — Preview unavailable.';
                 return;
             }
-            this._signedUrl = signed.download_url;
 
             if (this._kind === 'image' || this._kind === 'pdf') {
-                // Authorized URL is the renderer source; browser fetches bytes.
+                this._signedUrl = signed.download_url;
                 this._status = 'ready';
                 return;
             }
 
-            const res = await fetch(signed.download_url);
+            const res = await fetch(signed.download_url, { credentials: 'include' });
             if (token !== this._loadToken) return;
             if (!res.ok) {
                 this._status = 'error';
@@ -441,14 +491,15 @@ export class SomaFilePreview extends LitElement {
                 return;
             }
             this._textBody = await res.text();
+            if (token !== this._loadToken) return;
             this._status = 'ready';
         } catch (err) {
             if (token !== this._loadToken) return;
             this._status = 'error';
             this._error =
-                kindAtStart === 'metadata'
-                    ? reasonOf(err)
-                    : `Preview unavailable — ${reasonOf(err)}`;
+                `GET ${contentUrl} (HTTP ${contentStatus || 0})` +
+                `${contentErr ? ` — ${contentErr}` : ''}` +
+                ` · fallback — ${reasonOf(err)}`;
         }
     }
 

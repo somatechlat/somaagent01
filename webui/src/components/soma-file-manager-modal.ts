@@ -4,9 +4,10 @@
  * Material Symbols only — no emojis.
  */
 import { LitElement, css, html, nothing } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, query } from 'lit/decorators.js';
 import { t, onLocaleChange } from '../i18n/index.js';
 import './soma-file-manager.js';
+import type { SomaFileManager } from './soma-file-manager.js';
 
 @customElement('soma-file-manager-modal')
 export class SomaFileManagerModal extends LitElement {
@@ -111,6 +112,9 @@ export class SomaFileManagerModal extends LitElement {
     private _dragging = false;
     private _unsubLocale: (() => void) | null = null;
 
+    @query('soma-file-manager')
+    private _manager!: SomaFileManager | null;
+
     override connectedCallback(): void {
         super.connectedCallback();
         this._unsubLocale = onLocaleChange(() => this.requestUpdate());
@@ -125,6 +129,28 @@ export class SomaFileManagerModal extends LitElement {
     private _close(): void {
         this.open = false;
         this.dispatchEvent(new CustomEvent('close', { bubbles: true, composed: true }));
+    }
+
+    /** Drop zone → the real filesv2 upload pipeline (never a silent no-op). */
+    private _onDrop(e: DragEvent): void {
+        e.preventDefault();
+        this._dragging = false;
+        this.requestUpdate();
+        const files = e.dataTransfer?.files;
+        const list = files && files.length > 0 ? Array.from(files) : [];
+        if (list.length === 0) return;
+        const manager = this._manager;
+        if (!manager) {
+            this.dispatchEvent(
+                new CustomEvent('soma-drop-files', {
+                    detail: { files: list },
+                    bubbles: true,
+                    composed: true,
+                }),
+            );
+            return;
+        }
+        void manager.uploadFiles(list);
     }
 
     override render() {
@@ -145,21 +171,7 @@ export class SomaFileManagerModal extends LitElement {
                     this._dragging = false;
                     this.requestUpdate();
                 }}
-                @drop=${(e: DragEvent) => {
-                    e.preventDefault();
-                    this._dragging = false;
-                    this.requestUpdate();
-                    const files = e.dataTransfer?.files;
-                    if (files && files.length > 0) {
-                        this.dispatchEvent(
-                            new CustomEvent('soma-drop-files', {
-                                detail: { files: Array.from(files) },
-                                bubbles: true,
-                                composed: true,
-                            }),
-                        );
-                    }
-                }}
+                @drop=${(e: DragEvent) => this._onDrop(e)}
             >
                 <div class="drop ${this._dragging ? 'on' : ''}"></div>
                 <div class="bar">
