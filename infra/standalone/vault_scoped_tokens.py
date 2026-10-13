@@ -83,13 +83,11 @@ def require_env(name: str) -> str:
     return value
 
 
-T0_DIR = Path(require_env("T0_DIR"))
-VAULT_ADDR = require_env("VAULT_ADDR").rstrip("/")
-
-# Lease length is a security decision, not a literal. It is required config so
-# an operator owns it; a default here would be a hardcoded policy.
-TOKEN_TTL_HOURS = int(require_env("VAULT_TOKEN_TTL_HOURS"))
-TOKEN_TTL = f"{TOKEN_TTL_HOURS}h"
+# Resolved after `die`/`log` are defined below — require_env calls die().
+T0_DIR = None  # set in _configure()
+VAULT_ADDR = ""
+TOKEN_TTL_HOURS = 0
+TOKEN_TTL = ""
 
 # policy name -> (custodian account to hand the issued token under, description)
 # The account name is the file name inside the RAM tmpfs T0_DIR — never a path
@@ -106,6 +104,15 @@ def log(msg: str) -> None:
 
 def die(msg: str) -> "SystemExit":
     return SystemExit(f"❌ {msg}")
+
+
+def _configure() -> None:
+    """Bind operator bootstrap config after helpers exist (Soma law)."""
+    global T0_DIR, VAULT_ADDR, TOKEN_TTL_HOURS, TOKEN_TTL
+    T0_DIR = Path(require_env("T0_DIR"))
+    VAULT_ADDR = require_env("VAULT_ADDR").rstrip("/")
+    TOKEN_TTL_HOURS = int(require_env("VAULT_TOKEN_TTL_HOURS"))
+    TOKEN_TTL = f"{TOKEN_TTL_HOURS}h"
 
 
 def _keychain_available() -> bool:
@@ -268,6 +275,7 @@ def issue_token(policy: str, token: str, account: str, comment: str) -> None:
 
 
 def main(argv: list[str]) -> int:
+    _configure()
     check_only = "--check" in argv
     unknown = [a for a in argv if a not in {"--check", "-h", "--help"}]
     if unknown:
