@@ -6,7 +6,7 @@
 |---|---|
 | Document Title | Control Map — Chat Workspace (chrome, sidebar, composer, stream, tools) |
 | Document Identifier | SOMA-UI-CM-01 |
-| Version | 1.0.0 |
+| Version | 1.1.0 |
 | Date | 2026-10-13 |
 | Status | Draft |
 | Author | SomaTech Engineering (soma-ui-engineer) |
@@ -22,6 +22,7 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-10-13 | soma-ui-engineer | Exhaustive control map for chat chrome, sidebar, composer, stream, tool timeline, welcome hero. |
+| 1.1.0 | 2026-10-13 | soma-ui-engineer | Attachment display polish: Material file-type icons (no emojis), honest media/attachment cards (no stuck spinner), tool chevron as Material icon. C-30/C-30a/C-67 as-built. |
 
 ---
 
@@ -120,7 +121,7 @@
 | C-25c | Tool schema expand | button | local over `ToolInfo.parameters` | collapsed, expanded | — | aria-expanded | LIVE |
 | C-26 | Typing / thinking | readout | local streaming state | visible/hidden | — | `status` “Assistant is thinking” | LIVE |
 | C-27 | Message skeleton | readout | — | loading | — | `aria-hidden` decorative | LIVE |
-| C-30 | Attachment chip | chip | `composerStore` + `POST /api/v2/filesv2/upload` | uploading, ready, failed | — | `listitem` with remove | LIVE |
+| C-30 | Attachment chip | chip | `composerStore` + `POST /api/v2/filesv2/upload` | uploading, ready, failed | — | `listitem` with remove; **Material file-type icon** via `attachmentIcon()` (`utils/file-icons.ts`) — no emojis | LIVE |
 | C-30a | Remove attachment | button | `composerStore.removeAttachment` | default | — | aria-label “Remove {file.name}” | LIVE |
 | C-31 | Composer menu | menu | local `_toggleMenu` | closed, open | — | `button` aria-label “Composer menu” + `menu` | LIVE |
 | C-31a | Attach files (menu) | input.file | `POST /api/v2/filesv2/upload` (+ presigned PUT or `/upload-local/{file_id}`) | default, uploading | — | `menuitem` | LIVE |
@@ -150,7 +151,9 @@
 | C-64 | Message edit | textarea | PATCH message lane (target) | default, dirty | — | `button` Edit + form | PLANNED |
 | C-65 | Branch prev / next / create | button | branch API (target `M-040`) | single, multi, disabled | Branch API not deployed → create hidden; navigate only when server provides branches | aria-label “Previous/Next branch” | PLANNED |
 | C-66 | Drag-and-drop attach dropzone | surface | same as C-31a upload | idle, dragover, uploading | — | `button` equivalent for keyboard | PLANNED |
-| C-67 | Attachment open (in message) | button | `GET /filesv2/{id}/download-url` | default | — | `button` | PLANNED |
+| C-67 | Attachment card (in message) | figure | `GET /filesv2/{id}/content` (images) · `GET /filesv2/{id}/download-url` (other) | media-ok, download-card, not-uploaded, preview-unavailable | — | `figure` with Material file-type icon (`attachmentIcon`); name + type + size; Download link when URL resolved; honest “Not uploaded” / “Preview unavailable” — **never a stuck spinner** | LIVE |
+| C-67a | Attachment media frame (image/audio/video) | figure | same `/content` or signed URL | loaded, error→icon card | — | `img`/`audio`/`video` with filename caption | LIVE |
+| C-67b | Attachment download link | link | signed `download_url` | default | URL unresolved → no link (honest card) | `link` “Download” | LIVE |
 | C-68 | Tool approval reason field | textarea | WS `tool.approval` `{reason}` (optional) | default | — | labelled textbox | PLANNED |
 | C-70 | AgentIQ knobs (intelligence, autonomy, resource, style) | slider/select | `GET/PATCH /agents/{id}/capsule` `persona_config.knobs` | dirty, saved, busy | No capsule selected — knobs are not loaded. | `slider` with valuetext | LIVE |
 | C-71 | AgentIQ Save | button | `PATCH /agents/{id}/capsule` | default, disabled-when-clean, busy | — | `button` | LIVE |
@@ -178,6 +181,9 @@
 3. TRN/ADM modes stay visible-but-disabled with the lock reason (not hidden silently).
 4. Brain micro-indicator uses live `GET /core/brain-connector`; no invented latency.
 5. Welcome system panel disappears when diagnostics fail — it does not print zeros.
+6. **No emojis in user-facing UI.** Icons are Material Symbols only (file trees, chips, labels, chevrons, status marks).
+7. Attachment cards use `attachmentIcon(name, type)` for the file-type glyph; unresolved media renders an honest card, never a perpetual spinner.
+8. Product names in UI: Agent / Hands / Brain / Memory — never “Capsule” as a product label (API field names may keep capsule).
 
 ---
 
@@ -197,3 +203,23 @@
 | `webui/src/services/websocket-client.ts` | WS transport + frame log feed |
 
 End of Document
+
+## Chat list (left rail) — compact glass cards (2026-10-13)
+
+| Control | Spec |
+|---|---|
+| Card | min-height 52px · glass bg · radius-md · icon + title + meta |
+| Active | accent border + accent icon tile |
+| Scroll | thin scrollbar · `overscroll-behavior: contain` · only list scrolls (sidebar fixed) |
+| Actions | hover/focus reveal: rename · export · delete |
+| Skin | `--skin-*` only · no huge scroll jump |
+
+WIREFRAME:
+```
+[+ New chat]
+[🔍 Search]
+──────
+[🟦] Q3 report          2h
+[🟦] Fix WS bug          1d
+[🟦] API docs           3d
+```

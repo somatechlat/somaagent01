@@ -146,12 +146,14 @@ export class SomaChat extends LitElement {
            ========================= */
         .sidebar {
             width: 272px;
-            background: var(--platform-bg-sidebar, #111111);
-            border-right: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
+            background: var(--skin-color-bg-sidebar, var(--platform-bg-sidebar));
+            border-right: var(--skin-border-width) solid var(--skin-color-border);
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
+            height: 100%;
             min-height: 0;
+            overflow: hidden;
         }
 
         .sidebar-header {
@@ -254,40 +256,68 @@ export class SomaChat extends LitElement {
         }
 
         .conversations-section {
-            padding: 0 8px;
+            padding: 0 var(--skin-space-sm) var(--skin-space-sm);
             flex: 1;
+            overflow-x: hidden;
             overflow-y: auto;
             min-height: 0;
+            max-height: 100%;
+            overscroll-behavior: contain;
+            scrollbar-width: thin;
+            scrollbar-color: var(--skin-color-border-strong) transparent;
+        }
+
+        .conversations-section::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .conversations-section::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .conversations-section::-webkit-scrollbar-thumb {
+            background: var(--skin-color-border-strong);
+            border-radius: var(--skin-radius-full);
         }
 
         .section-label {
-            font-size: 10px;
+            font-size: var(--skin-text-xs);
             text-transform: uppercase;
-            color: var(--platform-text-muted, #999999);
-            padding: 10px 10px 6px;
-            font-weight: 600;
-            letter-spacing: 0.08em;
+            color: var(--skin-color-text-muted);
+            padding: var(--skin-space-sm) var(--skin-space-xs) var(--skin-space-xs);
+            font-weight: var(--skin-weight-semibold);
+            letter-spacing: 0.06em;
         }
 
+        /* Compact glass chat cards */
         .conversation-item {
             position: relative;
-            padding: 9px 10px;
-            border-radius: var(--platform-radius-md, 8px);
+            padding: var(--skin-space-sm) var(--skin-space-sm);
+            margin: 0 0 var(--skin-space-xs) 0;
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid transparent;
+            background: color-mix(in srgb, var(--skin-color-bg-card) 72%, transparent);
             cursor: pointer;
-            transition: background 120ms ease;
-            margin-bottom: 2px;
+            transition:
+                background var(--skin-motion-fast) var(--skin-motion-ease),
+                border-color var(--skin-motion-fast) var(--skin-motion-ease);
             display: flex;
-            align-items: flex-start;
-            gap: 8px;
+            align-items: center;
+            gap: var(--skin-space-sm);
+            min-height: 52px;
+            max-height: 64px;
+            overflow: hidden;
         }
 
         .conversation-item:hover,
         .conversation-item:focus-within {
-            background: var(--platform-bg-hover, #141414);
+            background: var(--skin-color-bg-hover);
+            border-color: var(--skin-color-border);
         }
 
         .conversation-item.active {
-            background: var(--platform-bg-active, #1a1a1a);
+            background: var(--skin-color-bg-active);
+            border-color: var(--skin-color-accent);
         }
 
         .conversation-item .conv-body {
@@ -295,19 +325,36 @@ export class SomaChat extends LitElement {
             min-width: 0;
         }
 
+        .conv-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--skin-radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            background: var(--skin-color-bg-hover);
+            color: var(--skin-color-text-secondary);
+        }
+
+        .conversation-item.active .conv-icon {
+            background: var(--skin-color-accent);
+            color: var(--skin-color-accent-text);
+        }
+
         .conversation-title {
-            font-size: 13px;
-            font-weight: 500;
+            font-size: var(--skin-text-sm);
+            font-weight: var(--skin-weight-medium);
             margin-bottom: 2px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            color: var(--platform-text-primary, #ffffff);
+            color: var(--skin-color-text-primary);
         }
 
         .conversation-meta {
-            font-size: 11px;
-            color: var(--platform-text-muted, #999999);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-muted);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -317,7 +364,7 @@ export class SomaChat extends LitElement {
             display: flex;
             gap: 2px;
             opacity: 0;
-            transition: opacity 120ms ease;
+            transition: opacity var(--skin-motion-fast) var(--skin-motion-ease);
             flex-shrink: 0;
         }
 
@@ -327,27 +374,30 @@ export class SomaChat extends LitElement {
         }
 
         .conv-action {
-            width: 26px;
-            height: 26px;
-            border-radius: 6px;
+            width: 28px;
+            height: 28px;
+            border-radius: var(--skin-radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--platform-text-muted, #999999);
-            transition: background 120ms ease, color 120ms ease;
+            color: var(--skin-color-text-muted);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: background var(--skin-motion-fast) var(--skin-motion-ease), color var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .conv-action:hover {
-            background: var(--platform-bg-active, #1a1a1a);
-            color: var(--platform-text-primary, #ffffff);
+            background: var(--skin-color-bg-active);
+            color: var(--skin-color-text-primary);
         }
 
         .conv-action.danger:hover {
-            color: var(--platform-danger, #ef4444);
+            color: var(--skin-color-danger);
         }
 
         .conv-action .material-symbols-outlined {
-            font-size: 15px;
+            font-size: var(--skin-text-sm);
         }
 
         .rename-row {
@@ -2799,6 +2849,9 @@ export class SomaChat extends LitElement {
                 }}
                 aria-current=${isActive ? 'true' : 'false'}
             >
+                <span class="conv-icon" aria-hidden="true">
+                    ${ICON('forum', 18)}
+                </span>
                 <div class="conv-body">
                     ${renaming
                         ? html`
