@@ -241,3 +241,7 @@
 | path/prefix | agent | task | started_at | status |
 |---|---|---|---|---|
 | docs/reports/SOMA-RPT-VAULT-AUTHORITY-001.md | soma-vault-authority | Vault-authority static code-truth audit: skill-claim vs code (single credential, KV merge-safe, read-back, *_FILE, fail-closed, orphan 720h). Docs only; no secret values. | 2026-10-13T21:19:40Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| docs/reports/SOMA-RPT-SEC-CODE-DOCS-001.md docs/standards/SOMA-LAW-SECURITY-001.md infra/standalone/README.md | security-reviewer | Doc-vs-code security verification report + two doc mismatches fixed (README root-in-T0, LAW policy wording). Docs only. | 2026-10-13T22:00:00Z | ACTIVE |

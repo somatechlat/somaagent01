@@ -50,7 +50,7 @@
 | Custodian (this deploy) | Docker volume `standalone_t0_agent` → `/run/t0` (**ext4**, not tmpfs) |
 | File mode | `0600` `appuser:appuser` (docker cp as root then `chown`) |
 | Root | **Never** in `/run/t0`. generate-root + `auth/token/revoke-self` after mint. |
-| Policies | `agent-runtime.hcl` · `brain-runtime.hcl` (read-only KV v2) |
+| Policies | `agent-runtime.hcl` (read-only on `secret/data/agent/credentials` + `api_keys`) · `brain-runtime.hcl` (read shared agent doc + **own** `somabrain/*` write allowed) |
 | TTL config | `VAULT_TOKEN_TTL_HOURS=720` in `infra/standalone/.env` |
 
 ### 2.1 T0 tmpfs vs volume (doc correction)

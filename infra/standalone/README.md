@@ -36,11 +36,12 @@ are held by a custodian in a different trust domain from the Vault data volume:
 | Material | Custodian | Never |
 |---|---|---|
 | `vault_unseal_key` | OS keychain, or `VAULT_UNSEAL_KEY` in the operator's shell | a file in this repo, stdout, `os.environ` as steady state |
-| `vault_root_token` | OS keychain, or the T0_DIR RAM tmpfs (`/run/t0/vault_root_token`) for the one-shot seeder | a file in this repo, a long-running app process |
+| `vault_root_token` | **Process RAM of the one-shot seeder only** (`VAULT_TOKEN` env for that process, or OS keychain). **Never written to T0 or any filesystem** (R-SEC-01 / SEC-LAW-01). | a file in this repo, T0, `/tmp`, compose env, a long-running app process |
 
 There is no `./secrets/` directory and no `SECRETS_DIR`. `vault_unseal.py`
 generates both values in process memory and stores them in the OS keychain
-(macOS `security`) or the T0_DIR tmpfs custodian — never on disk. `init_vault.py`
+(macOS `security`) or the T0 custodian (unseal key only — **never** root)
+— never on disk in the repo. `init_vault.py`
 reads the root token from that same custodian and writes application
 credentials **only** into Vault.
 
@@ -105,8 +106,9 @@ docker compose logs -f somaagent_vault_unseal somaagent_vault_init somaagent_sta
 ```
 
 No token to export. `vault_unseal.py` initialises Vault on this first boot and
-stores `vault_root_token` / `vault_unseal_key` in the OS keychain (or the
-T0_DIR tmpfs). `init_vault.py` then generates every application credential in
+stores `vault_unseal_key` in the OS keychain (or the T0 custodian). Root is
+never written to T0: the one-shot seeder uses `VAULT_TOKEN` process env or the
+keychain, then `auth/token/revoke-self`. `init_vault.py` then generates every application credential in
 process memory and writes it to Vault only.
 
 Startup order is enforced, not hoped for: Vault is reachable → `vault_unseal.py`

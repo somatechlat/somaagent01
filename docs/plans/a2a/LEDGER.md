@@ -433,3 +433,4 @@ Fix: stability window raised to 3000 ms in both `test_memory_human_name.spec.js`
 
 **Residual (code, later turn):** `bootstrap_exec.py` `mint_scoped` still mints **without** `no_parent` (Δ-06). Do not pair with root revoke. Mint path of record remains `vault_scoped_tokens.py`.
 | 2026-10-13T21:45:00Z | security-reviewer | COMMIT | def52636 docs: Vault ceremony truth — orphan tokens, 720h TTL, T0 volume, no root on disk (SOMA-RPT-SEC-VAULT-001 + BOOTSTRAP/SECURITY/LAW errata + CLAUDE.md + register). |
+| 2026-10-13T22:00:00Z | security-reviewer | LAND | SOMA-RPT-SEC-CODE-DOCS-001 issued: full LAW/STD vs live-code matrix (orphan 720h, root guards, policies, vault_secrets F-10/F-11, t0_agent volume, auth 503/200). GO with residual risks. Doc fixes: README root custodian (no T0 root), LAW §2 policy wording (brain owns somabrain/*). Listed: SECURITY §1.5 table, compose tmpfs comments, T0 root read fallbacks. |
