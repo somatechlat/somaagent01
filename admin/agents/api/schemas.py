@@ -84,6 +84,8 @@ class CapsuleConfigOut(BaseModel):
     personality_traits: dict
     neuromodulator_baseline: dict
     learning_config: dict
+    tool_policy: dict = {}
+    persona_config: dict = {}
 
 
 class CapsuleConfigUpdate(BaseModel):
@@ -95,6 +97,10 @@ class CapsuleConfigUpdate(BaseModel):
     personality_traits: Optional[dict] = None
     neuromodulator_baseline: Optional[dict] = None
     learning_config: Optional[dict] = None
+    # Hands / tools policy (auto_execute | approval_required | deny) and
+    # persona knobs — required so PATCH is not a silent drop (no-mocks law).
+    tool_policy: Optional[dict] = None
+    persona_config: Optional[dict] = None
 
 
 class CapsuleConfigUpdateResult(BaseModel):

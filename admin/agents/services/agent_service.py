@@ -122,6 +122,10 @@ def _update_capsule(
         capsule.neuromodulator_baseline = payload.neuromodulator_baseline
     if payload.learning_config is not None:
         capsule.learning_config = payload.learning_config
+    if payload.tool_policy is not None:
+        capsule.tool_policy = payload.tool_policy
+    if payload.persona_config is not None:
+        capsule.persona_config = payload.persona_config
     capsule.save()
 
 

@@ -572,6 +572,8 @@ async def get_agent_capsule_config(request, agent_id: str) -> CapsuleConfigOut:
         personality_traits=capsule.personality_traits,
         neuromodulator_baseline=capsule.neuromodulator_baseline,
         learning_config=capsule.learning_config,
+        tool_policy=capsule.tool_policy or {},
+        persona_config=capsule.persona_config or {},
     )
 
 
