@@ -385,3 +385,4 @@ Fix: stability window raised to 3000 ms in both `test_memory_human_name.spec.js`
   Tests run via `bun node_modules/@playwright/test/cli.js`.
 
 **No commits (operator order).**
+| 2026-10-13T01:20:00Z | MiMoCode-AgentSkin-SDK | PUSH | AgentSkin-SDK → origin (5e2b3151 SDK + 01663585 gallery + 1fb791bc alias bridge). Installable skin packs, Settings gallery, live-UI alias bridge. 21 tests green, tsc clean. No mocks/fakes — localStorage is real standalone store; API sync documented gap not stubbed. |
