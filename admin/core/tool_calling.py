@@ -274,15 +274,8 @@ async def decide_and_authorize_tool(
         if decision == "denied":
             return "denied"
 
-        # Product path for explicit multi-row erasure ("delete my name"):
-        # memory_forget with a non-empty query= auto-runs. Bare coord forget
-        # stays approval_required (single-row, accidental free-fire risk).
-        if decision == "approval_required" and tool_name == "memory_forget":
-            q = ""
-            if isinstance(args, dict):
-                q = str(args.get("query") or args.get("text") or args.get("match") or "").strip()
-            if len(q) >= 3:
-                decision = "auto_execute"
+        # W5-7: ToolPolicy.decision is the single place a policy outcome is
+        # upgraded. Never rewrite approval_required → auto_execute here.
 
         if tool_name in _NETWORK_TOOLS and not egress_permitted(iq):
             return "denied"

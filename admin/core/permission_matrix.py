@@ -156,8 +156,17 @@ class PermissionChecker:
         # Determine level
         level = self._get_level(permission)
 
-        # Build cache key
-        cache_key = f"{user_id}:{permission}:{tenant_id}:{agent_id}:{resource_id}"
+        if roles is None:
+            roles = await self._roles_for(user_id, tenant_id)
+
+        # Cache key after roles resolve (W5-4). Includes roles AND scopes so a
+        # later empty-roles check cannot inherit a cached allow.
+        role_part = ",".join(sorted(roles)) if roles is not None else "-"
+        scope_part = ",".join(sorted(scopes)) if scopes is not None else "-"
+        cache_key = (
+            f"{user_id}:{permission}:{tenant_id}:{agent_id}:{resource_id}:"
+            f"{role_part}:{scope_part}"
+        )
         if cache_key in self._cache:
             return PermissionCheckResult(
                 allowed=self._cache[cache_key],
@@ -166,9 +175,6 @@ class PermissionChecker:
                 reason="Cached result",
                 cached=True,
             )
-
-        if roles is None:
-            roles = await self._roles_for(user_id, tenant_id)
 
         # Floor: role-based access control. A delegated key is authorized by
         # its scopes alone and never by the issuer's roles. The grant is

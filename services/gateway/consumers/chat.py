@@ -843,6 +843,22 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
         if msg_type == MSG_TOOL_APPROVAL:
             tool_call_id = payload.get("tool_call_id") or payload.get("toolCallId") or ""
             approved = bool(payload.get("approved"))
+            # W5-3: approver must hold the tool_execute role floor. A socket
+            # that authenticated as chat only cannot resolve someone else's
+            # (or its own) tool approval.
+            from admin.core.permission_matrix import PermissionChecker
+
+            perm = await PermissionChecker().check(
+                user_id=self.user_id or "",
+                permission="resource:tool_execute",
+                tenant_id=self.tenant_id,
+                roles=self._roles,
+            )
+            if not perm.allowed:
+                await self._send_error(
+                    f"tool approval denied: {perm.reason or 'insufficient role'}"
+                )
+                return
             future = self._tool_approvals.pop(tool_call_id, None)
             if future is not None and not future.done():
                 future.set_result(approved)

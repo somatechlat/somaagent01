@@ -444,21 +444,10 @@ class V3ChatOrchestrator:
             logger.info("Phase 3: AgentIQ (tier=%s, auto=%s)", iq.model_tier, iq.tool_approval)
             result.phase_completed = 3
 
-            # Phase 4: Permission Check (UnifiedGate + PermissionChecker)
-            # Roles come from the authenticated principal (ChatTurn.roles).
-            # None means "not on the turn" and falls back to membership;
-            # an empty list is still "no roles" and still denies.
-            perm = await self._permission_checker.check(
-                user_id=turn.user_id,
-                permission="resource:chat_send",
-                tenant_id=tenant_id,
-                roles=turn.roles,
-            )
-            if not perm.allowed:
-                result.response = get_message(ErrorCode.DEGRADED_PERMISSION_DENIED)
-                result.errors.append(perm.reason)
-                return result
-
+            # Phase 4: Permission Check — ONE decision surface (W5).
+            # UnifiedGate owns chat_send: RBAC floor (admin.core.authz) then
+            # OPA/SpiceDB may only narrow. PermissionChecker was a second
+            # decision of the same action on the same request.
             gate_ok = await self._unified_gate.check(
                 capsule,
                 action="resource:chat_send",
@@ -467,7 +456,7 @@ class V3ChatOrchestrator:
                 roles=turn.roles,
             )
             if not gate_ok:
-                result.response = get_message(ErrorCode.DEGRADED_GATE_DENIED)
+                result.response = get_message(ErrorCode.DEGRADED_PERMISSION_DENIED)
                 result.errors.append("UnifiedGate rejected resource:chat_send")
                 return result
             result.phase_completed = 4
@@ -858,31 +847,20 @@ class V3ChatOrchestrator:
         if not iq:
             iq = await sync_to_async(derive_all_settings)(capsule)
 
-        # Permission + gate must be sub-second (cache + short budget).
+        # Permission + gate must be sub-second. ONE surface (W5): UnifiedGate.
         try:
-            perm, gate_ok = await asyncio.wait_for(
-                asyncio.gather(
-                    self._permission_checker.check(
-                        user_id=turn.user_id,
-                        permission="resource:chat_send",
-                        tenant_id=tenant_id,
-                        roles=turn.roles,
-                    ),
-                    self._unified_gate.check(
-                        capsule,
-                        action="resource:chat_send",
-                        user_id=turn.user_id,
-                        tenant_id=tenant_id,
-                        roles=turn.roles,
-                    ),
+            gate_ok = await asyncio.wait_for(
+                self._unified_gate.check(
+                    capsule,
+                    action="resource:chat_send",
+                    user_id=turn.user_id,
+                    tenant_id=tenant_id,
+                    roles=turn.roles,
                 ),
                 timeout=2.0,
             )
         except asyncio.TimeoutError:
             yield "[Permission check timeout]"
-            return
-        if not perm.allowed:
-            yield "[Permission denied]"
             return
 
         if not gate_ok:
