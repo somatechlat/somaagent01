@@ -23,6 +23,7 @@ import { workspaceStore } from '../stores/workspace-store.js';
 import { apiClient, ApiError } from '../services/api-client.js';
 import { wsFrameLog, onWsFrame, type WsFrame } from '../services/websocket-client.js';
 import './soma-capsule-editor.js';
+import './soma-file-manager.js';
 import '../views/soma-cognitive-panel.js';
 
 // ---------------------------------------------------------------------------
@@ -864,70 +865,22 @@ export class SomaRightPanel extends LitElement {
     }
 
     private _renderFiles(): TemplateResult {
-        if (this._filesStatus === 'idle' || this._filesStatus === 'loading') {
-            return html`<div class="loading">Loading files…</div>`;
-        }
-        if (this._filesStatus === 'error') {
-            return html`<div class="error" role="alert">
-                <span>Files could not be listed.</span>
-                ${this._filesError
-                    ? html`<span class="row-sub">${this._filesError}</span>`
-                    : nothing}
-                <button
-                    class="btn"
-                    @click=${() => void this._loadFiles()}
-                    aria-label="Retry listing files"
-                >
-                    Retry
-                </button>
-            </div>`;
-        }
-        if (this._filesStatus === 'denied') {
-            return html`<div class="error">
-                You need <code>files:read</code> to browse files.
-            </div>`;
-        }
-        if (this._filesStatus === 'empty' || this._files.length === 0) {
-            return html`<div class="empty">
-                <span>No files in the working set.</span>
-                <span class="row-sub">
-                    filesv2 storage only — agent work-directory files (file_list /
-                    file_write tools) have no list API in this deployment.
-                </span>
-            </div>`;
-        }
-
+        // Full File Manager (upload tray, list, preview) — live filesv2.
         return html`
-            <div class="row-list" role="list">
-                ${this._files.map(
-                    f => html`
-                        <div
-                            class="row"
-                            role="listitem"
-                            tabindex="0"
-                            @click=${() => void this._openFileInEditor(f)}
-                            @keydown=${(e: KeyboardEvent) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
-                                    void this._openFileInEditor(f);
-                                }
-                            }}
-                        >
-                            <span class="material-symbols-outlined">description</span>
-                            <div class="row-main">
-                                <div class="row-title">${f.original_name || f.name}</div>
-                                <div class="row-sub">${f.mime_type || '—'} · v${f.version}</div>
-                            </div>
-                            <div class="row-meta">${formatBytes(f.size_bytes)}</div>
-                        </div>
-                    `
-                )}
-            </div>
-            ${this._filesTotal > this._files.length
-                ? html`<div class="row-sub" style="margin-top:8px">
-                      showing ${this._files.length} of ${this._filesTotal}
-                  </div>`
-                : nothing}
+            <soma-file-manager
+                mode="browse"
+                show-upload
+                @soma-upload-complete=${(e: CustomEvent<{ fileId: string; name: string }>) => {
+                    void this._loadFiles();
+                    this.dispatchEvent(
+                        new CustomEvent('soma-upload-complete', {
+                            detail: e.detail,
+                            bubbles: true,
+                            composed: true,
+                        }),
+                    );
+                }}
+            ></soma-file-manager>
         `;
     }
 
