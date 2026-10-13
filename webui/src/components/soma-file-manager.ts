@@ -11,16 +11,19 @@
  *   GET    /api/v2/workroot/tree              tree + breadcrumb  (absent → gate)
  *   PATCH  /api/v2/filesv2/{id}               rename             (absent → gate)
  *   POST   /api/v2/workroot/mkdir             new folder         (absent → gate)
+ *   POST   /api/v2/workroot/move               move               (absent → gate)
  *   PUT    /api/v2/filesv2/{id}/content       editor save        (absent → gate)
  *
+ * Standard locations: workroot / inbox (tree chrome; list stays filesv2).
  * Modes: browse | select (composer attach) | manage.
  */
 
 import { LitElement, css, html, nothing, TemplateResult } from 'lit';
-import { customElement, property, state } from 'lit/decorators.js';
+import { customElement, property, query, state } from 'lit/decorators.js';
 import { apiClient, ApiError } from '../services/api-client.js';
 import { uploadAttachment, type AttachmentMeta } from '../services/file-upload.js';
 import { formatBytes } from '../utils/markdown.js';
+import { attachmentIcon } from '../utils/file-icons.js';
 import './soma-file-preview.js';
 import './soma-glass-modal.js';
 import type { SomaGlassModal } from './soma-glass-modal.js';
@@ -88,6 +91,12 @@ const TREE_ABSENT_REASON =
 
 const EDITOR_SAVE_DISABLED_REASON =
     'Editor Save needs the filesv2 content write API (PUT /api/v2/filesv2/{id}/content).';
+
+const MOVE_DISABLED_REASON =
+    'Move needs the workroot write API (POST /api/v2/workroot/move).';
+
+const INBOX_PATH = 'inbox';
+const WORKROOT_ROOT = 'workroot';
 
 function reasonOf(err: unknown): string {
     if (err instanceof ApiError) {
@@ -307,6 +316,50 @@ export class SomaFileManager extends LitElement {
             background: var(--skin-color-bg-sidebar, rgba(0, 0, 0, 0.02));
         }
 
+        .tree-std {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-bottom: var(--skin-space-sm, 10px);
+        }
+
+        .tree-node {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
+            padding: 6px 8px;
+            border: none;
+            border-radius: var(--skin-radius-sm, 4px);
+            background: transparent;
+            color: var(--skin-color-text-secondary, #555555);
+            font-size: var(--skin-text-sm, 12px);
+            font-family: inherit;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .tree-node.child {
+            padding-left: 24px;
+        }
+
+        .tree-node:hover {
+            background: var(--skin-color-bg-hover, rgba(0, 0, 0, 0.04));
+            color: var(--skin-color-text-primary, #1a1a1a);
+        }
+
+        .tree-node.selected {
+            background: var(--skin-color-bg-active, rgba(59, 130, 246, 0.12));
+            color: var(--skin-color-text-primary, #1a1a1a);
+            font-weight: var(--skin-weight-medium, 500);
+        }
+
+        .tree-node:focus-visible {
+            outline: var(--skin-focus-ring-width, 2px) solid
+                var(--skin-focus-ring, var(--skin-color-accent, #3b82f6));
+            outline-offset: -2px;
+        }
+
         .gate {
             margin: 0;
             padding: var(--skin-space-md, 12px);
@@ -345,7 +398,7 @@ export class SomaFileManager extends LitElement {
 
         .list-head {
             display: grid;
-            grid-template-columns: 28px minmax(0, 1fr) 80px 110px 120px;
+            grid-template-columns: 28px 28px minmax(0, 1fr) 80px 110px 160px;
             gap: var(--skin-space-xs, 6px);
             padding: 8px var(--skin-space-md, 12px);
             font-size: var(--skin-text-xs, 11px);
@@ -361,7 +414,7 @@ export class SomaFileManager extends LitElement {
 
         .row {
             display: grid;
-            grid-template-columns: 28px minmax(0, 1fr) 80px 110px 120px;
+            grid-template-columns: 28px 28px minmax(0, 1fr) 80px 110px 160px;
             gap: var(--skin-space-xs, 6px);
             align-items: center;
             padding: 8px var(--skin-space-md, 12px);
@@ -383,6 +436,17 @@ export class SomaFileManager extends LitElement {
             outline: var(--skin-focus-ring-width, 2px) solid
                 var(--skin-focus-ring, var(--skin-color-accent, #3b82f6));
             outline-offset: -2px;
+        }
+
+        .row .file-type {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--skin-color-text-secondary, #555555);
+        }
+
+        .row .file-type .material-symbols-outlined {
+            font-size: 18px;
         }
 
         .row .name {
@@ -567,17 +631,6 @@ export class SomaFileManager extends LitElement {
             height: 15px;
             cursor: pointer;
         }
-
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            border: 0;
-        }
     `;
 
     @property({ type: String, reflect: true }) mode: FileManagerMode = 'browse';
@@ -611,9 +664,21 @@ export class SomaFileManager extends LitElement {
     @state() private _deleteError = '';
     @state() private _deleteBusy = false;
 
+    @state() private _moveTarget: FileOut | null = null;
+    @state() private _moveDest = INBOX_PATH;
+    @state() private _moveError = '';
+    @state() private _moveBusy = false;
+
     private _fileInput: HTMLInputElement | null = null;
-    private _renameModal: SomaGlassModal | null = null;
-    private _deleteModal: SomaGlassModal | null = null;
+
+    @query('soma-glass-modal#rename-modal')
+    private _renameModal!: SomaGlassModal | null;
+
+    @query('soma-glass-modal#delete-modal')
+    private _deleteModal!: SomaGlassModal | null;
+
+    @query('soma-glass-modal#move-modal')
+    private _moveModal!: SomaGlassModal | null;
 
     override connectedCallback(): void {
         super.connectedCallback();
@@ -959,6 +1024,48 @@ export class SomaFileManager extends LitElement {
         }
     }
 
+    // -- Move modal (gated target API) --------------------------------------
+
+    private _openMove(file: FileOut): void {
+        this._moveTarget = file;
+        this._moveDest = INBOX_PATH;
+        this._moveError = MOVE_DISABLED_REASON;
+        this._moveBusy = false;
+        this._moveModal?.show();
+    }
+
+    private async _confirmMove(): Promise<void> {
+        if (!this._moveTarget) return;
+        const dest = this._moveDest.trim();
+        if (!dest) {
+            this._moveError = 'A destination path is required.';
+            return;
+        }
+        this._moveBusy = true;
+        this._moveError = '';
+        const target = this._moveTarget;
+        try {
+            await apiClient.post(`/workroot/move`, {
+                file_id: target.id,
+                dest,
+            });
+            this.dispatchEvent(
+                new CustomEvent<{ fileId: string; name: string; dest: string }>('soma-file-move', {
+                    detail: { fileId: target.id, name: fileName(target), dest },
+                    bubbles: true,
+                    composed: true,
+                }),
+            );
+            this._moveModal?.close();
+            this._moveTarget = null;
+            void this._loadFiles();
+        } catch (err) {
+            this._moveError = `${MOVE_DISABLED_REASON} Attempted POST /api/v2/workroot/move for ${target.id} — ${reasonOf(err)}`;
+        } finally {
+            this._moveBusy = false;
+        }
+    }
+
     // -- Render -------------------------------------------------------------
 
     override render(): TemplateResult {
@@ -1101,7 +1208,7 @@ export class SomaFileManager extends LitElement {
                     : nothing}
             </div>
 
-            ${this._renderRenameModal()} ${this._renderDeleteModal()}
+            ${this._renderRenameModal()} ${this._renderDeleteModal()} ${this._renderMoveModal()}
         `;
     }
 
@@ -1166,15 +1273,51 @@ export class SomaFileManager extends LitElement {
                 </aside>
             `;
         }
+        // Standardized locations: workroot root + inbox. Selecting a node only
+        // changes the path chrome — the list stays filesv2 until a typed tree
+        // schema is bound. Never invent children.
+        const onRoot = this.path === '' || this.path === WORKROOT_ROOT;
+        const onInbox = this.path === INBOX_PATH || this.path === `${WORKROOT_ROOT}/${INBOX_PATH}`;
         return html`
             <aside class="col tree-panel" aria-label="Workroot tree">
+                <div class="tree-std" role="tree" aria-label="Workroot locations">
+                    <button
+                        class="tree-node ${onRoot ? 'selected' : ''}"
+                        role="treeitem"
+                        aria-selected=${onRoot ? 'true' : 'false'}
+                        @click=${() => this._setPath('')}
+                    >
+                        <span class="material-symbols-outlined" aria-hidden="true">folder</span>
+                        ${WORKROOT_ROOT}
+                    </button>
+                    <button
+                        class="tree-node child ${onInbox ? 'selected' : ''}"
+                        role="treeitem"
+                        aria-selected=${onInbox ? 'true' : 'false'}
+                        @click=${() => this._setPath(INBOX_PATH)}
+                    >
+                        <span class="material-symbols-outlined" aria-hidden="true">inbox</span>
+                        ${INBOX_PATH}
+                    </button>
+                </div>
                 <p class="gate" role="status">
-                    <strong>Tree bound</strong>
-                    Typed node rendering is not wired to a verified tree schema yet. The file
-                    list remains the live filesv2 source.
+                    <strong>${this._treeStatus === 'ready' ? 'Tree bound' : 'Tree gated'}</strong>
+                    ${this._treeGateReason ||
+                    'Typed node rendering is not wired to a verified tree schema yet. The file list remains the live filesv2 source.'}
                 </p>
             </aside>
         `;
+    }
+
+    private _setPath(path: string): void {
+        this.path = path;
+        this.dispatchEvent(
+            new CustomEvent<{ path: string }>('soma-path-change', {
+                detail: { path },
+                bubbles: true,
+                composed: true,
+            }),
+        );
     }
 
     private _renderList(): TemplateResult {
@@ -1213,6 +1356,7 @@ export class SomaFileManager extends LitElement {
 
         return html`
             <div class="list-head" role="row">
+                <span></span>
                 <span></span>
                 <span>Name</span>
                 <span>Size</span>
@@ -1255,6 +1399,9 @@ export class SomaFileManager extends LitElement {
                             this._toggleSelect(file, (e.target as HTMLInputElement).checked)}
                     />
                 </span>
+                <span class="file-type" aria-hidden="true">
+                    <span class="material-symbols-outlined">${attachmentIcon(fileName(file), file.mime_type)}</span>
+                </span>
                 <span>
                     <span class="name" title=${fileName(file)}>${fileName(file)}</span>
                     <span class="sub">${file.mime_type || '—'} · v${file.version}</span>
@@ -1290,6 +1437,16 @@ export class SomaFileManager extends LitElement {
                     </button>
                     <button
                         class="icon-btn"
+                        aria-label="Move"
+                        title=${canMutate ? 'Move' : MOVE_DISABLED_REASON}
+                        ?disabled=${!canMutate}
+                        aria-disabled=${!canMutate ? 'true' : 'false'}
+                        @click=${() => this._openMove(file)}
+                    >
+                        <span class="material-symbols-outlined">drive_file_move</span>
+                    </button>
+                    <button
+                        class="icon-btn"
                         aria-label="Delete"
                         title=${canMutate ? 'Delete' : 'Switch to manage mode to delete'}
                         ?disabled=${!canMutate}
@@ -1321,6 +1478,7 @@ export class SomaFileManager extends LitElement {
     private _renderRenameModal(): TemplateResult {
         return html`
             <soma-glass-modal
+                id="rename-modal"
                 size="sm"
                 title="Rename file"
                 subtitle=${this._renameTarget ? fileName(this._renameTarget) : ''}
@@ -1369,9 +1527,65 @@ export class SomaFileManager extends LitElement {
         `;
     }
 
+    private _renderMoveModal(): TemplateResult {
+        return html`
+            <soma-glass-modal
+                id="move-modal"
+                size="sm"
+                title="Move file"
+                subtitle=${this._moveTarget ? fileName(this._moveTarget) : ''}
+                @soma-modal-close=${() => {
+                    this._moveTarget = null;
+                    this._moveError = '';
+                }}
+            >
+                <div class="modal-field">
+                    <label for="move-dest">Destination</label>
+                    <input
+                        id="move-dest"
+                        .value=${this._moveDest}
+                        placeholder=${INBOX_PATH}
+                        @input=${(e: Event) => {
+                            this._moveDest = (e.target as HTMLInputElement).value;
+                        }}
+                    />
+                </div>
+                <p class="modal-note">
+                    Standard locations:
+                    <code>${WORKROOT_ROOT}</code>
+                    /
+                    <code>${INBOX_PATH}</code>.
+                    Target API:
+                    <code>POST /api/v2/workroot/move</code>
+                    (not mounted in this deployment).
+                </p>
+                ${this._moveError
+                    ? html`<div class="modal-error" role="alert">${this._moveError}</div>`
+                    : nothing}
+                <div slot="actions">
+                    <button
+                        class="btn"
+                        @click=${() => this._moveModal?.close()}
+                        ?disabled=${this._moveBusy}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        class="btn primary"
+                        ?disabled=${this._moveBusy || !this._moveDest.trim()}
+                        @click=${() => void this._confirmMove()}
+                    >
+                        ${this._moveBusy ? 'Moving…' : 'Move'}
+                    </button>
+                </div>
+            </soma-glass-modal>
+        `;
+    }
+
     private _renderDeleteModal(): TemplateResult {
         return html`
             <soma-glass-modal
+                id="delete-modal"
                 size="sm"
                 title="Delete file"
                 subtitle=${this._deleteTarget ? fileName(this._deleteTarget) : ''}
@@ -1410,10 +1624,6 @@ export class SomaFileManager extends LitElement {
         `;
     }
 
-    override firstUpdated(): void {
-        this._renameModal = this.renderRoot.querySelector('soma-glass-modal[title="Rename file"]');
-        this._deleteModal = this.renderRoot.querySelector('soma-glass-modal[title="Delete file"]');
-    }
 }
 
 declare global {

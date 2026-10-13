@@ -26,6 +26,9 @@ import '../components/soma-message.js';
 import '../components/soma-tool-timeline.js';
 import '../components/soma-chat-topbar.js';
 import '../components/soma-composer.js';
+import '../components/soma-chat-settings.js';
+import '../components/soma-profile-modal.js';
+import '../components/soma-file-manager-modal.js';
 import '../components/soma-right-panel.js';
 import '../components/soma-status-dot.js';
 import '../components/soma-glass-modal.js';
@@ -511,128 +514,6 @@ export class SomaChat extends LitElement {
             background: var(--platform-bg-void, #0A0A0A);
         }
 
-        .header {
-            padding: 12px 24px;
-            background: var(--platform-bg-void, #0A0A0A);
-            border-bottom: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            flex-shrink: 0;
-        }
-
-        .header soma-chat-topbar {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-
-        /* Mode selector */
-        .mode-selector {
-            position: relative;
-        }
-
-        .mode-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 10px;
-            border-radius: var(--platform-radius-md, 8px);
-            background: var(--platform-surface, #141414);
-            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--platform-text-secondary, #a1a1a1);
-            cursor: pointer;
-            transition: all 120ms ease;
-        }
-
-        .mode-btn:hover {
-            background: var(--platform-surface-hover, #1a1a1a);
-        }
-
-        .mode-badge {
-            padding: 2px 6px;
-            border-radius: 4px;
-            background: var(--platform-accent, #3B82F6);
-            color: var(--platform-bg-void, #f5f5f5);
-            font-size: 10px;
-            font-weight: 700;
-        }
-
-        .mode-dropdown {
-            position: absolute;
-            top: calc(100% + 6px);
-            right: 0;
-            background: var(--platform-bg-card, #1A1A1A);
-            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
-            border-radius: var(--platform-radius-lg, 12px);
-            box-shadow: var(--platform-shadow-lg, 0 8px 24px rgba(0,0,0,0.6));
-            min-width: 240px;
-            z-index: 100;
-            overflow: hidden;
-            display: none;
-            padding: 4px;
-        }
-
-        .mode-dropdown.open {
-            display: block;
-        }
-
-        .mode-option {
-            padding: 10px 12px;
-            cursor: pointer;
-            border-radius: var(--platform-radius-md, 8px);
-            transition: background 120ms ease;
-            border: none;
-            width: 100%;
-            text-align: left;
-            background: transparent;
-            color: inherit;
-        }
-
-        .mode-option:hover {
-            background: var(--platform-bg-hover, #141414);
-        }
-
-        .mode-option.active {
-            background: var(--platform-bg-active, #1a1a1a);
-        }
-
-        .mode-option.locked {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
-
-        .mode-option-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 2px;
-        }
-
-        .mode-option-title {
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--platform-text-primary, #ffffff);
-        }
-
-        .mode-option-desc {
-            font-size: 11px;
-            color: var(--platform-text-muted, #999999);
-        }
-
-        .lock-icon {
-            font-size: 12px;
-            color: var(--platform-text-muted, #999999);
-        }
-
         /* Messages */
         .messages {
             flex: 1;
@@ -1084,34 +965,6 @@ export class SomaChat extends LitElement {
             display: inline-flex;
             padding: 4px;
         }
-        .chat-foot {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            height: 28px;
-            padding: 0 14px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            background: rgba(10, 10, 10, 0.7);
-            backdrop-filter: blur(18px) saturate(120%);
-            -webkit-backdrop-filter: blur(18px) saturate(120%);
-            font-size: 11px;
-            color: #64748B;
-            font-variant-numeric: tabular-nums;
-            white-space: nowrap;
-            overflow: hidden;
-        }
-
-        .foot-spacer {
-            flex: 1;
-        }
-
-        .foot-link {
-            border: 0;
-            background: transparent;
-            color: #FF4D00;
-            cursor: pointer;
-            font-size: 11px;
-        }
 
         .del-body {
             display: flex;
@@ -1204,35 +1057,6 @@ export class SomaChat extends LitElement {
             box-shadow: 0 12px 28px rgba(255, 77, 0, 0.36);
         }
 
-        .chat-header-slim {
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-            padding: 8px 14px 6px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-            background: rgba(10, 10, 10, 0.72);
-            backdrop-filter: blur(20px) saturate(130%);
-            -webkit-backdrop-filter: blur(20px) saturate(130%);
-        }
-
-        .chat-title-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            min-height: 28px;
-        }
-
-        .chat-title {
-            margin: 0;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--platform-text-bright, #F8FAFC);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 42ch;
-        }
-
         .model-chip {
             font-size: 11px;
             padding: 2px 10px;
@@ -1241,90 +1065,6 @@ export class SomaChat extends LitElement {
             border: 1px solid rgba(255, 77, 0, 0.35);
             color: #FFB088;
             white-space: nowrap;
-        }
-
-        .turn-state {
-            font-size: 11px;
-            color: var(--platform-text-secondary, #a1a1aa);
-        }
-
-        .title-spacer {
-            flex: 1;
-        }
-
-        .hdr-btn {
-            border: 0;
-            background: transparent;
-            color: var(--platform-text-secondary, #a1a1aa);
-            cursor: pointer;
-            display: inline-flex;
-            padding: 4px;
-            border-radius: 6px;
-        }
-
-        .hdr-btn:hover {
-            background: color-mix(in srgb, var(--platform-border-light, rgba(255,255,255,0.08)) 80%, transparent);
-            color: var(--platform-text-bright, #f8fafc);
-        }
-
-        .memory-ghost {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 4px;
-            font-size: 11px;
-            color: var(--platform-text-secondary, #71717a);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .ghost-link {
-            border: 0;
-            background: transparent;
-            color: #FF4D00;
-            cursor: pointer;
-            font-size: 11px;
-            padding: 0;
-        }
-
-        .chat-top-strip {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            height: 40px;
-            padding: 0 14px;
-            border-bottom: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.06));
-            background: var(--platform-bg-card, #141414);
-            width: 100%;
-        }
-
-        .strip-brand {
-            font-size: 13px;
-            font-weight: 600;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-            color: var(--platform-text-bright, #f8fafc);
-        }
-
-        .strip-clock {
-            font-size: 12px;
-            font-variant-numeric: tabular-nums;
-            color: var(--platform-text-secondary, #a1a1aa);
-            margin-left: 8px;
-        }
-
-        .strip-spacer {
-            flex: 1;
-        }
-
-        .sidebar-toggle-hint {
-            border: 0;
-            background: transparent;
-            color: var(--platform-text-secondary, #a1a1aa);
-            cursor: pointer;
-            display: inline-flex;
-            padding: 4px;
         }
 
         /* Message skeletons */
@@ -1419,19 +1159,6 @@ export class SomaChat extends LitElement {
             display: flex;
         }
 
-
-        /* Agent selector */
-        .agent-select {
-            padding: 5px 8px;
-            border-radius: var(--platform-radius-md, 8px);
-            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
-            background: var(--platform-surface, #141414);
-            color: var(--platform-text-primary, #ffffff);
-            font-size: 12px;
-            outline: none;
-            max-width: 160px;
-        }
-
         /* Scrollbars */
         .conversations-section::-webkit-scrollbar,
         .messages::-webkit-scrollbar {
@@ -1452,9 +1179,6 @@ export class SomaChat extends LitElement {
             .right-canvas.open {
                 width: 260px;
             }
-            .welcome-actions {
-                grid-template-columns: 1fr;
-            }
         }
     `;
 
@@ -1469,7 +1193,6 @@ export class SomaChat extends LitElement {
     @state() private _activeTools: ToolCallStep[] = [];
     @state() private _paused = false;
     @state() private _currentMode: AgentMode = 'STD';
-    @state() private _showModeDropdown = false;
     @state() private _activeConversationId = '';
     @state() private _wsConnected = false;
     @state() private _wsEverConnected = false;
@@ -1514,6 +1237,9 @@ export class SomaChat extends LitElement {
     @state() private _deleteSkipConfirm = localStorage.getItem('soma_skip_delete_confirm') === '1';
     @state() private _deleteDontAsk = false;
     @state() private _knobPanelOpen = false;
+    @state() private _chatSettingsOpen = false;
+    @state() private _profileOpen = false;
+    @state() private _filesModalOpen = false;
     @state() private _knobCapsuleId = '';
     @state() private _iqPreview: { iq: number; auto: number } | null = null;
     private _iqUnsub: (() => void) | null = null;
@@ -1530,22 +1256,12 @@ export class SomaChat extends LitElement {
     private _connectionChipTimer = 0;
     private _lastErrorMessage = '';
 
-    private _modes = [
-        { id: 'STD', name: 'Standard', desc: 'Normal operation', locked: false },
-        { id: 'DEV', name: 'Developer', desc: 'Debug tools, logs', locked: false },
-        { id: 'TRN', name: 'Training', desc: 'Cognitive parameters', locked: true },
-        { id: 'ADM', name: 'Admin', desc: 'Agent configuration', locked: true },
-        { id: 'RO', name: 'Read-Only', desc: 'View only, no actions', locked: false },
-        { id: 'DGR', name: 'Degraded', desc: 'Limited tools, resilience budget (governor)', locked: false },
-    ];
-
     async connectedCallback() {
         super.connectedCallback();
         await this._loadUser();
         await this._loadAgents();
         void this._loadIqForAgent();
         await this._loadConversations();
-        document.addEventListener('click', this._handleOutsideClick);
         // One health read on connect. No auto-poll: a poll interval is
         // latency policy and must come from a named setting.
         void this._pollBrainConnector();
@@ -1566,7 +1282,6 @@ export class SomaChat extends LitElement {
             this._wsClient.disconnect();
             this._wsClient = null;
         }
-        document.removeEventListener('click', this._handleOutsideClick);
         window.removeEventListener('keydown', this._onGlobalKeydown);
         window.clearTimeout(this._reconnectBannerTimer);
         window.clearTimeout(this._connectionChipTimer);
@@ -1582,18 +1297,10 @@ export class SomaChat extends LitElement {
     private _onGlobalKeydown = (e: KeyboardEvent) => {
         if ((e as KeyboardEvent).key === 'Escape' && this._knobPanelOpen) { this._knobPanelOpen = false; }
         if (e.key === 'Escape') {
-            this._showModeDropdown = false;
             if (this._renamingId) {
                 this._renamingId = '';
                 this._renameDraft = '';
             }
-        }
-    };
-
-    private _handleOutsideClick = (e: Event) => {
-        const target = e.target as HTMLElement;
-        if (!target.closest('.mode-selector')) {
-            this._showModeDropdown = false;
         }
     };
 
@@ -2501,6 +2208,9 @@ export class SomaChat extends LitElement {
             case 'nudge':
                 this._sendChatControl('chat.nudge');
                 break;
+            case 'chat-settings':
+                this._chatSettingsOpen = true;
+                break;
             default:
                 break;
         }
@@ -2879,16 +2589,31 @@ export class SomaChat extends LitElement {
         );
     }
 
-    private get modeLabel(): string {
-        return this._modes.find((m) => m.id === this._currentMode)?.name ?? this._currentMode;
-    }
-
     render() {
         return html`
             ${this._renderSidebar()}
             ${this._renderMain()}
             ${this._renderCanvas()}
             ${this._renderDeleteConfirm()}
+            ${this._chatSettingsOpen
+                ? html`<soma-chat-settings
+                      open
+                      @close=${() => (this._chatSettingsOpen = false)}
+                  ></soma-chat-settings>`
+                : nothing}
+            ${this._profileOpen
+                ? html`<soma-profile-modal
+                      open
+                      @close=${() => (this._profileOpen = false)}
+                      @logout=${() => this._logout()}
+                  ></soma-profile-modal>`
+                : nothing}
+            ${this._filesModalOpen
+                ? html`<soma-file-manager-modal
+                      open
+                      @close=${() => (this._filesModalOpen = false)}
+                  ></soma-file-manager-modal>`
+                : nothing}
         `;
     }
 
@@ -3007,6 +2732,16 @@ export class SomaChat extends LitElement {
                 </div>
 
                 <nav class="nav-links" aria-label="Workspace">
+                    <button
+                        class="nav-link"
+                        data-testid="open-files-modal"
+                        @click=${() => {
+                            this._filesModalOpen = true;
+                        }}
+                        title="Files — browse, upload, organize"
+                    >
+                        ${ICON('folder_open', 18)} Files
+                    </button>
                     <button class="nav-link" @click=${() => this._navigate('/memory')}>
                         ${ICON('psychology', 18)} Memory
                     </button>
@@ -3015,13 +2750,36 @@ export class SomaChat extends LitElement {
                     </button>
                 </nav>
 
-                <div class="user-section">
+                <div
+                    class="user-section"
+                    role="button"
+                    tabindex="0"
+                    data-testid="open-profile"
+                    title="Open profile — photo, password, chat display"
+                    @click=${() => {
+                        this._profileOpen = true;
+                    }}
+                    @keydown=${(e: KeyboardEvent) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            this._profileOpen = true;
+                        }
+                    }}
+                >
                     <div class="user-avatar" aria-hidden="true">${this._userInitials}</div>
                     <div class="user-info">
                         <div class="user-name" title=${this._userName}>${this._userName}</div>
                         <div class="user-role">${this._userRole}</div>
                     </div>
-                    <button class="logout-btn" @click=${this._logout} title="Logout" aria-label="Logout">
+                    <button
+                        class="logout-btn"
+                        @click=${(e: Event) => {
+                            e.stopPropagation();
+                            this._logout();
+                        }}
+                        title="Logout"
+                        aria-label="Logout"
+                    >
                         ${ICON('logout', 18)}
                     </button>
                 </div>
@@ -3195,6 +2953,9 @@ export class SomaChat extends LitElement {
                     @send-message=${this._onComposerSend}
                     @clear-chat=${this._onClearChat}
                     @export-chat=${this._onExportChat}
+                    @soma-open-files=${() => {
+                        this._filesModalOpen = true;
+                    }}
                 ></soma-composer>
 
                 <footer class="dock ${this._knobPanelOpen ? 'open' : ''}" data-control="chat-footer">
@@ -3288,7 +3049,7 @@ export class SomaChat extends LitElement {
                         </div>
                         <span
                             class="dock-knobs-preview"
-                            title="Live from AgentIQ · Capsule.persona_config.knobs"
+                            title="Live from AgentIQ · Agent persona knobs"
                             data-control="iq-preview"
                             >${this._iqPreview
                                 ? html`IQ ${this._iqPreview.iq} · AUTO ${this._iqPreview.auto}`
@@ -3322,7 +3083,7 @@ export class SomaChat extends LitElement {
                                     <soma-status-dot kind="memory" state=${this._memoryDot} title=${this._memoryTooltip} label="memory"></soma-status-dot>
                                     <span class="muted">${this._brainTooltip}</span>
                                 </span>
-                                <span class="muted">tune live · saved to Capsule</span>
+                                <span class="muted">tune live · saved to Agent</span>
                                 <span class="spacer"></span>
                                 <button class="dock-x" aria-label="Close knobs" @click=${() => (this._knobPanelOpen = false)}>
                                     ${ICON('close', 16)}
@@ -3402,7 +3163,7 @@ export class SomaChat extends LitElement {
                     : nothing}
 
                 <div class="welcome-quick" role="navigation" aria-label="Quick actions">
-                    <button class="wq-card" @click=${() => this._toggleRightPanel()}>
+                    <button class="wq-card" @click=${() => (this._filesModalOpen = true)}>
                         ${ICON('folder_open', 22)}
                         <span class="wq-label">Files</span>
                     </button>
@@ -3554,32 +3315,6 @@ export class SomaChat extends LitElement {
                     : nothing}
             </aside>
         `;
-    }
-
-    /* ---------- misc handlers ---------- */
-
-    private _toggleModeDropdown(e: Event) {
-        e.stopPropagation();
-        this._showModeDropdown = !this._showModeDropdown;
-    }
-
-    private _selectMode(mode: AgentMode, locked: boolean) {
-        if (locked) return;
-        this._currentMode = mode;
-        this._showModeDropdown = false;
-    }
-
-    private _handleAgentSelect(e: Event) {
-        const select = e.target as HTMLSelectElement;
-        const agentId = select.value;
-        if (agentId && agentId !== this._selectedAgentId) {
-            this._selectedAgentId = agentId;
-            this._persistSelectedAgentId();
-            this._activeConversationId = '';
-            this._messages = [];
-            this._chatTitle = 'New conversation';
-            this._connectWebSocket();
-        }
     }
 }
 

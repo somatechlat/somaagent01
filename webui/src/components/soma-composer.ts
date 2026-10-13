@@ -74,15 +74,15 @@ export class SomaComposer extends LitElement {
             display: flex;
             align-items: flex-end;
             gap: 8px;
-            background: var(--platform-bg-card, #1e1e1e);
-            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
-            border-radius: var(--platform-radius-xl, 16px);
+            background: var(--skin-color-bg-card, #1e1e1e);
+            border: 1px solid var(--skin-color-border-subtle, rgba(255,255,255,0.06));
+            border-radius: var(--skin-radius-xl, 16px);
             padding: 10px 12px;
             transition: border-color 200ms ease, box-shadow 200ms ease;
         }
 
         .input-row:focus-within {
-            border-color: var(--platform-border-medium, rgba(255,255,255,0.14));
+            border-color: var(--skin-color-border, rgba(255,255,255,0.14));
             box-shadow: 0 0 0 3px rgba(232, 228, 220, 0.1);
         }
 
@@ -95,7 +95,7 @@ export class SomaComposer extends LitElement {
             border-radius: 50%;
             background: transparent;
             border: none;
-            color: var(--platform-text-muted, #999999);
+            color: var(--skin-color-text-muted, #999999);
             cursor: pointer;
             flex-shrink: 0;
             transition: all 150ms ease;
@@ -106,18 +106,18 @@ export class SomaComposer extends LitElement {
         }
 
         .icon-btn:hover:not(:disabled) {
-            background: var(--platform-bg-hover, #141414);
-            color: var(--platform-text-secondary, #a1a1a1);
+            background: var(--skin-color-bg-hover, #141414);
+            color: var(--skin-color-text-secondary, #a1a1a1);
         }
 
         .icon-btn:focus-visible {
-            outline: 2px solid var(--platform-info, #3b82f6);
+            outline: 2px solid var(--skin-color-info, #3b82f6);
             outline-offset: 2px;
         }
 
         .icon-btn.active {
-            background: var(--platform-bg-active, #1a1a1a);
-            color: var(--platform-accent, #e8e4dc);
+            background: var(--skin-color-bg-active, #1a1a1a);
+            color: var(--skin-color-accent, #e8e4dc);
             transform: rotate(45deg);
         }
 
@@ -125,7 +125,7 @@ export class SomaComposer extends LitElement {
             flex: 1;
             background: transparent;
             border: none;
-            color: var(--platform-text-primary, #ffffff);
+            color: var(--skin-color-text-primary, #ffffff);
             font-size: 14px;
             line-height: 1.5;
             resize: none;
@@ -137,11 +137,11 @@ export class SomaComposer extends LitElement {
         }
 
         textarea::placeholder {
-            color: var(--platform-text-muted, #999999);
+            color: var(--skin-color-text-muted, #999999);
         }
 
         .mic-btn.recording {
-            background: var(--platform-danger, #ef4444);
+            background: var(--skin-color-danger, #ef4444);
             color: #fff;
             animation: micPulse 1.2s ease-in-out infinite;
         }
@@ -163,9 +163,9 @@ export class SomaComposer extends LitElement {
             align-items: center;
             justify-content: center;
             border-radius: 50%;
-            background: var(--platform-accent, #e8e4dc);
+            background: var(--skin-color-accent, #e8e4dc);
             border: none;
-            color: var(--platform-bg-void, #f5f5f5);
+            color: var(--skin-color-bg-void, #f5f5f5);
             cursor: pointer;
             flex-shrink: 0;
             transition: all 150ms ease;
@@ -176,12 +176,12 @@ export class SomaComposer extends LitElement {
         }
 
         .send-btn:hover:not(:disabled) {
-            background: var(--platform-accent-hover, #ffffff);
+            background: var(--skin-color-accent-hover, #ffffff);
             transform: scale(1.05);
         }
 
         .send-btn:focus-visible {
-            outline: 2px solid var(--platform-info, #3b82f6);
+            outline: 2px solid var(--skin-color-info, #3b82f6);
             outline-offset: 2px;
         }
 
@@ -220,11 +220,11 @@ export class SomaComposer extends LitElement {
             align-items: center;
             gap: 6px;
             padding: 4px 10px;
-            border-radius: var(--platform-radius-full, 9999px);
-            background: var(--platform-bg-hover, #141414);
-            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
+            border-radius: var(--skin-radius-full, 9999px);
+            background: var(--skin-color-bg-hover, #141414);
+            border: 1px solid var(--skin-color-border-subtle, rgba(255,255,255,0.06));
             font-size: 12px;
-            color: var(--platform-text-secondary, #a1a1a1);
+            color: var(--skin-color-text-secondary, #a1a1a1);
         }
 
         .queue-chip .material-symbols-outlined {
@@ -234,7 +234,7 @@ export class SomaComposer extends LitElement {
         .queue-chip button {
             border: none;
             background: transparent;
-            color: var(--platform-text-muted, #999999);
+            color: var(--skin-color-text-muted, #999999);
             cursor: pointer;
             font-size: 11px;
             padding: 0 2px;
@@ -243,21 +243,21 @@ export class SomaComposer extends LitElement {
         }
 
         .queue-chip button:hover {
-            color: var(--platform-danger, #ef4444);
+            color: var(--skin-color-danger, #ef4444);
         }
 
         .queue-chip button:focus-visible {
-            outline: 2px solid var(--platform-info, #3b82f6);
+            outline: 2px solid var(--skin-color-info, #3b82f6);
             outline-offset: 1px;
         }
 
         .mic-hint {
             font-size: 12px;
-            color: var(--platform-text-muted, #999999);
+            color: var(--skin-color-text-muted, #999999);
         }
 
         .mic-hint.error {
-            color: var(--platform-danger, #ef4444);
+            color: var(--skin-color-danger, #ef4444);
         }
 
         .attachments {
@@ -272,11 +272,11 @@ export class SomaComposer extends LitElement {
             align-items: center;
             gap: 8px;
             padding: 6px 10px;
-            background: var(--skin-color-bg-hover, var(--platform-bg-hover, #f5f5f5));
-            border: 1px solid var(--skin-color-border, var(--platform-border-light, rgba(0,0,0,.08)));
+            background: var(--skin-color-bg-hover, var(--skin-color-bg-hover, #f5f5f5));
+            border: 1px solid var(--skin-color-border, var(--skin-color-border-subtle, rgba(0,0,0,.08)));
             border-radius: var(--skin-radius-md, 8px);
             font-size: 12px;
-            color: var(--skin-color-text-secondary, var(--platform-text-secondary, #666));
+            color: var(--skin-color-text-secondary, var(--skin-color-text-secondary, #666));
             max-width: 280px;
         }
 
@@ -287,7 +287,7 @@ export class SomaComposer extends LitElement {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            background: var(--skin-color-bg-active, var(--platform-bg-active, #eee));
+            background: var(--skin-color-bg-active, var(--skin-color-bg-active, #eee));
             color: var(--skin-color-text-primary, #1a1a1a);
             flex-shrink: 0;
         }
@@ -319,14 +319,14 @@ export class SomaComposer extends LitElement {
         }
 
         .attachment-chip .size {
-            color: var(--platform-text-muted, #999999);
+            color: var(--skin-color-text-muted, #999999);
             font-size: 11px;
             flex-shrink: 0;
         }
 
         .attachment-chip .remove {
             cursor: pointer;
-            color: var(--platform-text-muted, #999999);
+            color: var(--skin-color-text-muted, #999999);
             transition: color 150ms ease;
             display: inline-flex;
             align-items: center;
@@ -336,11 +336,11 @@ export class SomaComposer extends LitElement {
         }
 
         .attachment-chip .remove:hover {
-            color: var(--platform-danger, #ef4444);
+            color: var(--skin-color-danger, #ef4444);
         }
 
         .attachment-chip .remove:focus-visible {
-            outline: 2px solid var(--platform-info, #3b82f6);
+            outline: 2px solid var(--skin-color-info, #3b82f6);
             outline-offset: 1px;
         }
 
@@ -350,7 +350,7 @@ export class SomaComposer extends LitElement {
 
         .hint {
             font-size: 11px;
-            color: var(--platform-text-muted, #999999);
+            color: var(--skin-color-text-muted, #999999);
             margin-top: 6px;
             text-align: center;
         }
@@ -359,8 +359,8 @@ export class SomaComposer extends LitElement {
             font-family: inherit;
             padding: 1px 5px;
             border-radius: 3px;
-            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
-            background: var(--platform-bg-hover, #141414);
+            border: 1px solid var(--skin-color-border-subtle, rgba(255,255,255,0.06));
+            background: var(--skin-color-bg-hover, #141414);
             font-size: 10px;
         }
     `;
@@ -618,10 +618,24 @@ export class SomaComposer extends LitElement {
 
                 <div class="input-row">
                     <button
+                        class="icon-btn"
+                        data-testid="composer-files"
+                        @click=${() => {
+                            this.dispatchEvent(new CustomEvent('soma-open-files', {
+                                bubbles: true,
+                                composed: true,
+                            }));
+                        }}
+                        title="Files"
+                        aria-label="Open files"
+                    >
+                        <span class="material-symbols-outlined">folder_open</span>
+                    </button>
+                    <button
                         class="icon-btn ${this._menuOpen ? 'active' : ''}"
                         @click=${this._toggleMenu}
-                        title="Menu — attach, export, clear"
-                        aria-label="Composer menu"
+                        title="Upload files"
+                        aria-label="Upload files"
                         aria-expanded=${this._menuOpen ? 'true' : 'false'}
                     >
                         <span class="material-symbols-outlined">add</span>

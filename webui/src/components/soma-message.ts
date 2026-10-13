@@ -308,7 +308,7 @@ export class SomaMessage extends LitElement {
         }
 
         .text :deep(.md-code) {
-            font-family: var(--platform-font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
+            font-family: var(--skin-font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
             font-size: 0.86em;
             padding: 0.14em 0.42em;
             border-radius: 6px;
@@ -352,7 +352,7 @@ export class SomaMessage extends LitElement {
         }
 
         .text :deep(.md-codeblock-lang) {
-            font-family: var(--platform-font-mono, ui-monospace, monospace);
+            font-family: var(--skin-font-mono, ui-monospace, monospace);
             font-size: 11px;
             letter-spacing: 0.05em;
             text-transform: uppercase;
@@ -386,7 +386,7 @@ export class SomaMessage extends LitElement {
         }
 
         .text :deep(.md-codeblock) {
-            font-family: var(--platform-font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
+            font-family: var(--skin-font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
             font-size: 12.5px;
             line-height: 1.62;
             color: #e2e8f0;
@@ -438,7 +438,7 @@ export class SomaMessage extends LitElement {
 
         .text :deep(pre),
         .text :deep(code) {
-            font-family: var(--platform-font-mono, ui-monospace, monospace);
+            font-family: var(--skin-font-mono, ui-monospace, monospace);
         }
 
         .text :deep(img) {
@@ -554,18 +554,18 @@ export class SomaMessage extends LitElement {
             padding: 10px 12px;
             border-radius: 14px;
             max-width: 300px;
-            background: rgba(18, 18, 20, 0.92);
-            border: 1px solid rgba(255, 90, 20, 0.2);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
-            color: #E8E8EC;
+            background: var(--skin-color-bg-card, rgba(18, 18, 20, 0.92));
+            border: 1px solid var(--skin-color-border, rgba(255, 90, 20, 0.2));
+            box-shadow: var(--skin-shadow-md, 0 8px 20px rgba(0, 0, 0, 0.22));
+            color: var(--skin-color-text-primary, #E8E8EC);
         }
 
         .attachment-card.is-image {
-            border-color: rgba(52, 211, 153, 0.26);
+            border-color: color-mix(in srgb, var(--skin-color-success, #34d399) 26%, transparent);
         }
 
         .attachment-card.is-unavailable {
-            border-color: rgba(148, 163, 184, 0.22);
+            border-color: color-mix(in srgb, var(--skin-color-text-muted, #94a3b8) 22%, transparent);
             border-style: dashed;
             opacity: 0.92;
         }
@@ -577,18 +577,18 @@ export class SomaMessage extends LitElement {
             border-radius: 11px;
             display: grid;
             place-items: center;
-            background: rgba(255, 90, 20, 0.13);
-            color: #FF8A52;
+            background: color-mix(in srgb, var(--skin-color-accent, #FF8A52) 13%, transparent);
+            color: var(--skin-color-accent, #FF8A52);
         }
 
         .attachment-card.is-image .file-icon {
-            background: rgba(52, 211, 153, 0.13);
-            color: #34d399;
+            background: color-mix(in srgb, var(--skin-color-success, #34d399) 13%, transparent);
+            color: var(--skin-color-success, #34d399);
         }
 
         .attachment-card.is-unavailable .file-icon {
-            background: rgba(148, 163, 184, 0.12);
-            color: #94a3b8;
+            background: color-mix(in srgb, var(--skin-color-text-muted, #94a3b8) 12%, transparent);
+            color: var(--skin-color-text-muted, #94a3b8);
         }
 
         .attachment-card .file-icon .material-symbols-outlined {
@@ -608,18 +608,18 @@ export class SomaMessage extends LitElement {
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            color: #F5F5F7;
+            color: var(--skin-color-text-primary, #F5F5F7);
         }
 
         .attachment-card .sub {
             font-size: 11px;
-            color: #A3A3AC;
+            color: var(--skin-color-text-muted, #A3A3AC);
             text-transform: lowercase;
             letter-spacing: 0.02em;
         }
 
         .attachment-card a.download {
-            color: #FFB088;
+            color: var(--skin-color-text-link, #FFB088);
             font-size: 11px;
             text-decoration: underline;
             text-underline-offset: 2px;
@@ -670,38 +670,27 @@ export class SomaMessage extends LitElement {
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            color: #E2E8F0;
+            color: var(--skin-color-text-primary, #E2E8F0);
             font-weight: 500;
         }
 
-        .media-pending {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px 14px;
-            border-radius: 12px;
-            border: 1px dashed rgba(148, 163, 184, 0.25);
-            color: #94A3B8;
-            font-size: 12px;
-        }
-
         :host([message-role='user']) .attachment-card {
-            background: rgba(255, 255, 255, 0.12);
-            border-color: rgba(255, 255, 255, 0.22);
-            color: #fff;
+            background: color-mix(in srgb, var(--skin-color-text-inverse, #fff) 12%, transparent);
+            border-color: color-mix(in srgb, var(--skin-color-text-inverse, #fff) 22%, transparent);
+            color: var(--skin-color-text-inverse, #fff);
         }
 
         :host([message-role='user']) .attachment-card .name {
-            color: #fff;
+            color: var(--skin-color-text-inverse, #fff);
         }
 
         :host([message-role='user']) .attachment-card .sub {
-            color: rgba(255, 255, 255, 0.72);
+            color: color-mix(in srgb, var(--skin-color-text-inverse, #fff) 72%, transparent);
         }
 
         :host([message-role='user']) .attachment-card .file-icon {
-            background: rgba(255, 255, 255, 0.16);
-            color: #fff;
+            background: color-mix(in srgb, var(--skin-color-text-inverse, #fff) 16%, transparent);
+            color: var(--skin-color-text-inverse, #fff);
         }
 
         /* ---------- typing / thinking ---------- */
@@ -960,8 +949,9 @@ export class SomaMessage extends LitElement {
     }
 
     /**
-     * Resolve a download URL for attachments that carry a real filesv2 id.
-     * Failures land in an honest `unavailable` state — never a broken frame.
+     * Resolve media for attachments with a real filesv2 id.
+     * Images stream from /content (same-origin). Failures → icon card,
+     * never a stuck "Preparing preview" spinner.
      */
     private _resolveMedia() {
         const list = this.attachments ?? [];
@@ -971,12 +961,21 @@ export class SomaMessage extends LitElement {
             this._mediaRequested.add(key);
 
             if (!a.file_id) {
-                // No filesv2 id — the bytes were never accepted. Chip only.
                 this._media = { ...this._media, [key]: { url: null, state: 'unavailable' } };
                 continue;
             }
 
-            this._media = { ...this._media, [key]: { url: null, state: 'pending' } };
+            const contentUrl = `/api/v2/filesv2/${encodeURIComponent(a.file_id)}/content`;
+            const isImg = isImageAttachment(a.name, a.type);
+
+            if (isImg) {
+                // Direct stream — no JSON hop, no spinner.
+                this._media = { ...this._media, [key]: { url: contentUrl, state: 'ok' } };
+                continue;
+            }
+
+            // Non-media: resolve signed download URL (or local /content).
+            this._media = { ...this._media, [key]: { url: contentUrl, state: 'ok' } };
             void apiClient
                 .get<{ download_url?: string }>(`/filesv2/${a.file_id}/download-url`)
                 .then((res) => {
@@ -986,17 +985,13 @@ export class SomaMessage extends LitElement {
                             ...this._media,
                             [key]: { url, state: 'ok' },
                         };
-                    } else {
-                        this._media = {
-                            ...this._media,
-                            [key]: { url: null, state: 'unavailable' },
-                        };
                     }
                 })
                 .catch(() => {
+                    // Keep the content URL fallback — never blank forever.
                     this._media = {
                         ...this._media,
-                        [key]: { url: null, state: 'unavailable' },
+                        [key]: { url: contentUrl, state: 'ok' },
                     };
                 });
         }
@@ -1108,11 +1103,17 @@ export class SomaMessage extends LitElement {
         }`;
 
         if (media?.state === 'pending') {
+            // Brief load only — icon card immediately if no URL yet.
             return html`
-                <div class="media-pending" title=${a.name}>
-                    <span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span>
-                    <span>Preparing preview…</span>
-                </div>
+                <figure class="attachment-card" title=${a.name}>
+                    <span class="file-icon" aria-hidden="true">
+                        <span class="material-symbols-outlined">${icon}</span>
+                    </span>
+                    <figcaption class="file-meta">
+                        <span class="name">${a.name}</span>
+                        <span class="sub">${sub}</span>
+                    </figcaption>
+                </figure>
             `;
         }
 
@@ -1192,7 +1193,7 @@ export class SomaMessage extends LitElement {
                             aria-expanded=${this._toolsExpanded ? 'true' : 'false'}
                             title=${this._toolsExpanded ? 'Collapse tool activity' : 'Expand tool activity'}
                         >
-                            <span class="chev ${this._toolsExpanded ? 'open' : ''}">▶</span>
+                            <span class="chev ${this._toolsExpanded ? 'open' : ''} material-symbols-outlined" aria-hidden="true">play_arrow</span>
                             <span>${visibleTools.length} tool${visibleTools.length === 1 ? '' : 's'}</span>
                         </button>
                         ${this._toolsExpanded ? html`

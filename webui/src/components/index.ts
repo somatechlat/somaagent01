@@ -23,6 +23,8 @@ export type { UserProfileData } from './soma-user-profile-card.js';
 
 // password-modal
 import './soma-password-modal.js';
+import './soma-profile-modal.js';
+export { SomaProfileModal } from './soma-profile-modal.js';
 export { SomaPasswordModal } from './soma-password-modal.js';
 
 // notification-center
@@ -45,6 +47,8 @@ export { SomaArtifacts } from './soma-artifacts.js';
 
 // file-manager
 import './soma-file-manager.js';
+import './soma-file-manager-modal.js';
+export { SomaFileManagerModal } from './soma-file-manager-modal.js';
 export { SomaFileManager } from './soma-file-manager.js';
 export type { FileOut, FileListResponse, FileListResponseEnvelope, FileManagerMode } from './soma-file-manager.js';
 
