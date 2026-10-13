@@ -19,6 +19,8 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
+import { glassCard } from '../styles/glass.js';
+import { moduleBase } from '../styles/module-base.js';
 import '../components/soma-status-badge.js';
 
 type ModelType = 'chat' | 'embedding' | 'decision';
@@ -241,207 +243,210 @@ function payloadFromDraft(d: Draft): Record<string, unknown> {
 
 @customElement('soma-settings-models')
 export class SomaSettingsModels extends LitElement {
-    static styles = css`
+    static styles = [
+        glassCard,
+        moduleBase,
+        css`
         :host {
             display: block;
             min-height: 100%;
-            background: var(--platform-bg-page, #f5f5f5);
-            color: var(--platform-text-primary, #1a1a1a);
-            font-family: var(--platform-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+            background: var(--skin-color-bg-void);
+            color: var(--skin-color-text-primary);
+            font-family: var(--skin-font-sans);
         }
         * { box-sizing: border-box; }
-        .wrap { max-width: 1120px; margin: 0 auto; padding: 24px 20px 48px; }
-        .head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-        h1 { font-size: 1.35rem; font-weight: 650; margin: 0; flex: 1; letter-spacing: -0.02em; }
-        h2 { font-size: 1.05rem; font-weight: 650; margin: 0 0 4px; }
-        .sub { color: var(--platform-text-secondary, #666666); font-size: 0.9rem; margin-bottom: 20px; }
-        .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+        .wrap { max-width: calc(var(--skin-space-md) * 70); margin: 0 auto; padding: var(--skin-space-lg) calc(var(--skin-space-md) + var(--skin-space-xs)) var(--skin-space-2xl); }
+        .head { display: flex; align-items: center; gap: calc(var(--skin-space-sm) + var(--skin-space-xs)); margin-bottom: var(--skin-space-sm); }
+        h1 { font-size: calc(var(--skin-text-2xl) * 0.9); font-weight: calc(var(--skin-weight-semibold) + (var(--skin-weight-bold) - var(--skin-weight-semibold)) / 2); margin: 0; flex: 1; letter-spacing: -0.02em; }
+        h2 { font-size: calc(var(--skin-text-lg) + var(--skin-text-xs) * 0.2); font-weight: calc(var(--skin-weight-semibold) + (var(--skin-weight-bold) - var(--skin-weight-semibold)) / 2); margin: 0 0 var(--skin-space-xs); }
+        .sub { color: var(--skin-color-text-secondary); font-size: calc(var(--skin-text-base) + var(--skin-text-xs) * 0.2); margin-bottom: calc(var(--skin-space-md) + var(--skin-space-xs)); }
+        .toolbar { display: flex; flex-wrap: wrap; gap: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2); margin-bottom: calc(var(--skin-space-md) + var(--skin-space-xs) / 2); }
         input, select, textarea {
-            background: var(--platform-bg-card, #ffffff);
-            border: 1px solid var(--platform-border-light, #e0e0e0);
-            color: var(--platform-text-primary, #1a1a1a);
-            border-radius: var(--platform-radius-md, 8px);
-            padding: 9px 12px;
-            font-size: 0.9rem;
+            background: var(--skin-color-bg-card);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            color: var(--skin-color-text-primary);
+            border-radius: var(--skin-radius-md);
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs) / 4) calc(var(--skin-space-sm) + var(--skin-space-xs));
+            font-size: calc(var(--skin-text-base) + var(--skin-text-xs) * 0.2);
         }
         input:focus, select:focus, textarea:focus {
-            outline: 2px solid var(--platform-info, #3b82f6);
-            outline-offset: 1px;
+            outline: calc(var(--skin-space-xs) / 2) solid var(--skin-color-info);
+            outline-offset: calc(var(--skin-space-xs) / 4);
         }
         .btn {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            border: 1px solid var(--platform-border-light, #e0e0e0);
-            background: var(--platform-bg-card, #ffffff);
-            color: var(--platform-text-primary, #1a1a1a);
-            border-radius: var(--platform-radius-md, 8px);
-            padding: 8px 14px;
-            font-size: 0.88rem;
-            font-weight: 550;
+            gap: calc(var(--skin-space-xs) * 1.5);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            background: var(--skin-color-bg-card);
+            color: var(--skin-color-text-primary);
+            border-radius: var(--skin-radius-md);
+            padding: var(--skin-space-sm) calc(var(--skin-space-md) - var(--skin-space-xs) / 2);
+            font-size: calc(var(--skin-text-sm) + (var(--skin-text-base) - var(--skin-text-sm)) * 0.6);
+            font-weight: calc(var(--skin-weight-medium) + (var(--skin-weight-semibold) - var(--skin-weight-medium)) / 2);
             cursor: pointer;
         }
-        .btn:hover { border-color: var(--platform-accent, #1a1a1a); }
+        .btn:hover { border-color: var(--skin-color-accent); }
         .btn.primary {
-            background: var(--platform-accent, #1a1a1a);
-            border-color: var(--platform-accent, #1a1a1a);
-            color: var(--platform-text-inverse, #ffffff);
+            background: var(--skin-color-accent);
+            border-color: var(--skin-color-accent);
+            color: var(--skin-color-accent-text);
         }
         .btn.ghost { background: transparent; }
         .btn.danger {
-            border-color: var(--platform-danger, #ef4444);
-            color: var(--platform-danger, #ef4444);
+            border-color: var(--skin-color-danger);
+            color: var(--skin-color-danger);
         }
         .btn:disabled { opacity: 0.45; cursor: not-allowed; }
         .panel {
-            background: var(--platform-bg-card, #ffffff);
-            border: 1px solid var(--platform-border-light, #e0e0e0);
-            border-radius: var(--platform-radius-lg, 12px);
-            padding: 16px;
-            margin-bottom: 18px;
+            background: var(--skin-color-bg-card);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-lg);
+            padding: var(--skin-space-md);
+            margin-bottom: calc(var(--skin-space-md) + var(--skin-space-xs) / 2);
         }
         .panel-head {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 12px;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2);
+            margin-bottom: calc(var(--skin-space-sm) + var(--skin-space-xs));
         }
         .panel-head h2 { flex: 1; margin: 0; }
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 14px;
+            grid-template-columns: repeat(auto-fill, minmax(calc(var(--skin-space-md) * 17.5), 1fr));
+            gap: calc(var(--skin-space-md) - var(--skin-space-xs) / 2);
         }
         .card {
-            background: var(--platform-bg-card, #ffffff);
-            border: 1px solid var(--platform-border-light, #e0e0e0);
-            border-radius: var(--platform-radius-lg, 12px);
-            padding: 16px;
+            background: var(--skin-color-bg-card);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-lg);
+            padding: var(--skin-space-md);
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            transition: border-color 0.15s, box-shadow 0.15s;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2);
+            transition: border-color var(--skin-motion-fast), box-shadow var(--skin-motion-fast);
             cursor: pointer;
         }
         .card:hover {
-            border-color: var(--platform-border-medium, #cccccc);
-            box-shadow: var(--platform-shadow-md);
+            border-color: var(--skin-color-border-strong);
+            box-shadow: var(--skin-shadow-md);
         }
         .card.live {
-            border-color: var(--platform-info, #3b82f6);
-            box-shadow: 0 0 0 1px var(--platform-info, #3b82f6);
+            border-color: var(--skin-color-info);
+            box-shadow: 0 0 0 calc(var(--skin-space-xs) / 4) var(--skin-color-info);
         }
-        .card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .card-top { display: flex; align-items: center; gap: var(--skin-space-sm); flex-wrap: wrap; }
         .chip {
-            font-size: 0.68rem;
-            font-weight: 650;
+            font-size: calc(var(--skin-text-xs) + (var(--skin-text-sm) - var(--skin-text-xs)) * 0.4);
+            font-weight: calc(var(--skin-weight-semibold) + (var(--skin-weight-bold) - var(--skin-weight-semibold)) / 2);
             letter-spacing: 0.02em;
-            padding: 2px 8px;
-            border-radius: var(--platform-radius-full, 9999px);
-            background: var(--platform-bg-active, #f0f0f0);
-            color: var(--platform-text-secondary, #666666);
+            padding: calc(var(--skin-space-xs) / 2) var(--skin-space-sm);
+            border-radius: var(--skin-radius-full);
+            background: var(--skin-color-bg-active);
+            color: var(--skin-color-text-secondary);
         }
         .chip.live {
-            background: var(--platform-status-success, #22c55e);
-            color: var(--platform-text-inverse, #ffffff);
+            background: var(--skin-color-success);
+            color: var(--skin-color-accent-text);
         }
         .chip.type {
-            background: var(--platform-bg-hover, #fafafa);
-            color: var(--platform-text-primary, #1a1a1a);
-            border: 1px solid var(--platform-border-light, #e0e0e0);
+            background: var(--skin-color-bg-hover);
+            color: var(--skin-color-text-primary);
+            border: var(--skin-border-width) solid var(--skin-color-border);
         }
         .chip.warn {
-            background: var(--platform-status-warning, #eab308);
-            color: var(--platform-text-inverse, #1a1a1a);
+            background: var(--skin-color-warning);
+            color: var(--skin-color-text-primary);
         }
         .chip.err {
-            background: var(--platform-status-danger, #ef4444);
-            color: var(--platform-text-inverse, #ffffff);
+            background: var(--skin-color-danger);
+            color: var(--skin-color-accent-text);
         }
         .chip.ok {
-            background: var(--platform-status-success, #22c55e);
-            color: var(--platform-text-inverse, #ffffff);
+            background: var(--skin-color-success);
+            color: var(--skin-color-accent-text);
         }
-        .model-id { font-weight: 650; font-size: 1rem; letter-spacing: -0.01em; }
-        .meta { color: var(--platform-text-secondary, #666666); font-size: 0.8rem; line-height: 1.45; }
+        .model-id { font-weight: calc(var(--skin-weight-semibold) + (var(--skin-weight-bold) - var(--skin-weight-semibold)) / 2); font-size: var(--skin-text-lg); letter-spacing: -0.01em; }
+        .meta { color: var(--skin-color-text-secondary); font-size: calc(var(--skin-text-sm) + (var(--skin-text-base) - var(--skin-text-sm)) * 0.2); line-height: var(--skin-leading-normal); }
         .facts {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 4px 10px;
-            font-size: 0.75rem;
-            color: var(--platform-text-muted, #999999);
+            gap: var(--skin-space-xs) calc(var(--skin-space-sm) + var(--skin-space-xs) / 2);
+            font-size: calc(var(--skin-text-xs) + (var(--skin-text-sm) - var(--skin-text-xs)) * 0.7);
+            color: var(--skin-color-text-muted);
         }
-        .facts b { color: var(--platform-text-primary, #1a1a1a); font-weight: 550; }
-        .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-        .actions .btn { padding: 6px 10px; font-size: 0.78rem; }
+        .facts b { color: var(--skin-color-text-primary); font-weight: calc(var(--skin-weight-medium) + (var(--skin-weight-semibold) - var(--skin-weight-medium)) / 2); }
+        .actions { display: flex; flex-wrap: wrap; gap: var(--skin-space-sm); margin-top: var(--skin-space-xs); }
+        .actions .btn { padding: calc(var(--skin-space-xs) * 1.5) calc(var(--skin-space-sm) + var(--skin-space-xs) / 2); font-size: calc(var(--skin-text-xs) + (var(--skin-text-sm) - var(--skin-text-xs)) * 0.7); }
         .empty {
-            border: 1px dashed var(--platform-border-light, #e0e0e0);
-            border-radius: var(--platform-radius-lg, 12px);
-            padding: 36px 20px;
+            border: var(--skin-border-width) dashed var(--skin-color-border);
+            border-radius: var(--skin-radius-lg);
+            padding: calc(var(--skin-space-xl) + var(--skin-space-xs)) calc(var(--skin-space-md) + var(--skin-space-xs));
             text-align: center;
-            color: var(--platform-text-secondary, #666666);
+            color: var(--skin-color-text-secondary);
         }
         .editor {
-            max-width: 960px;
+            max-width: calc(var(--skin-space-md) * 60);
             margin: 0 auto;
-            padding: 24px 20px 48px;
+            padding: var(--skin-space-lg) calc(var(--skin-space-md) + var(--skin-space-xs)) var(--skin-space-2xl);
         }
         .editor-head {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 8px;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs));
+            margin-bottom: var(--skin-space-sm);
         }
-        .editor h2 { margin: 0 0 4px; font-size: 1.25rem; }
+        .editor h2 { margin: 0 0 var(--skin-space-xs); font-size: calc(var(--skin-text-lg) + (var(--skin-text-xl) - var(--skin-text-lg)) * 0.6); }
         .section {
-            border-top: 1px solid var(--platform-border-light, #e0e0e0);
-            padding-top: 14px;
-            margin-top: 14px;
+            border-top: var(--skin-border-width) solid var(--skin-color-border);
+            padding-top: calc(var(--skin-space-md) - var(--skin-space-xs) / 2);
+            margin-top: calc(var(--skin-space-md) - var(--skin-space-xs) / 2);
         }
         .section:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
         .section h3 {
-            margin: 0 0 10px;
-            font-size: 0.85rem;
+            margin: 0 0 calc(var(--skin-space-sm) + var(--skin-space-xs) / 2);
+            font-size: calc(var(--skin-text-xs) + (var(--skin-text-sm) - var(--skin-text-xs)) * 0.8);
             text-transform: uppercase;
             letter-spacing: 0.04em;
-            color: var(--platform-text-secondary, #666666);
+            color: var(--skin-color-text-secondary);
         }
         .field {
             display: grid;
-            grid-template-columns: 170px 1fr;
-            gap: 10px;
+            grid-template-columns: calc(var(--skin-space-md) * 10.625) 1fr;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2);
             align-items: start;
-            margin-bottom: 12px;
+            margin-bottom: calc(var(--skin-space-sm) + var(--skin-space-xs));
         }
         .field label {
-            font-size: 0.82rem;
-            color: var(--platform-text-secondary, #666666);
-            padding-top: 9px;
+            font-size: calc(var(--skin-text-xs) + (var(--skin-text-sm) - var(--skin-text-xs)) * 0.8);
+            color: var(--skin-color-text-secondary);
+            padding-top: calc(var(--skin-space-sm) + var(--skin-space-xs) / 4);
         }
         .field .hint {
             grid-column: 2;
-            font-size: 0.72rem;
-            color: var(--platform-text-muted, #999999);
-            margin-top: -6px;
-            margin-bottom: 6px;
+            font-size: calc(var(--skin-text-xs) + (var(--skin-text-sm) - var(--skin-text-xs)) * 0.1);
+            color: var(--skin-color-text-muted);
+            margin-top: calc(var(--skin-space-xs) * -1.5);
+            margin-bottom: calc(var(--skin-space-xs) * 1.5);
         }
         .field input, .field select, .field textarea { width: 100%; }
-        .field textarea { min-height: 88px; font-family: ui-monospace, monospace; font-size: 0.8rem; }
-        .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .field textarea { min-height: calc(var(--skin-space-md) * 5.5); font-family: var(--skin-font-mono); font-size: calc(var(--skin-text-sm) + (var(--skin-text-base) - var(--skin-text-sm)) * 0.2); }
+        .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2); }
         .editor-foot {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 18px;
-            padding-top: 14px;
-            border-top: 1px solid var(--platform-border-light, #e0e0e0);
+            gap: var(--skin-space-sm);
+            margin-top: calc(var(--skin-space-md) + var(--skin-space-xs) / 2);
+            padding-top: calc(var(--skin-space-md) - var(--skin-space-xs) / 2);
+            border-top: var(--skin-border-width) solid var(--skin-color-border);
         }
         .model-list {
-            border: 1px solid var(--platform-border-light, #e0e0e0);
-            border-radius: var(--platform-radius-md, 8px);
-            max-height: 180px;
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-md);
+            max-height: calc(var(--skin-space-md) * 11.25);
             overflow: auto;
-            margin: 6px 0 2px;
+            margin: calc(var(--skin-space-xs) * 1.5) 0 calc(var(--skin-space-xs) / 2);
         }
         .model-list button {
             display: block;
@@ -449,58 +454,59 @@ export class SomaSettingsModels extends LitElement {
             text-align: left;
             background: transparent;
             border: none;
-            border-bottom: 1px solid var(--platform-border-light, #e0e0e0);
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border);
             color: inherit;
-            padding: 8px 12px;
+            padding: var(--skin-space-sm) calc(var(--skin-space-sm) + var(--skin-space-xs));
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: calc(var(--skin-text-xs) + (var(--skin-text-sm) - var(--skin-text-xs)) * 0.8);
         }
         .model-list button:hover, .model-list button.sel {
-            background: var(--platform-bg-hover, #fafafa);
+            background: var(--skin-color-bg-hover);
         }
-        .status { font-size: 0.85rem; min-height: 1.2em; margin: 8px 0; }
-        .status.err { color: var(--platform-danger, #ef4444); }
-        .status.ok { color: var(--platform-success, #22c55e); }
+        .status { font-size: calc(var(--skin-text-xs) + (var(--skin-text-sm) - var(--skin-text-xs)) * 0.8); min-height: var(--skin-leading-normal); margin: var(--skin-space-sm) 0; }
+        .status.err { color: var(--skin-color-danger); }
+        .status.ok { color: var(--skin-color-success); }
         .provider-strip {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 18px;
+            gap: var(--skin-space-sm);
+            margin-bottom: calc(var(--skin-space-md) + var(--skin-space-xs) / 2);
         }
         .role-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fill, minmax(calc(var(--skin-space-md) * 13.75), 1fr));
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs));
         }
         .role-item {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: calc(var(--skin-space-xs) * 1.5);
         }
         .role-item label {
-            font-size: 0.78rem;
-            font-weight: 650;
-            color: var(--platform-text-primary, #1a1a1a);
+            font-size: calc(var(--skin-text-xs) + (var(--skin-text-sm) - var(--skin-text-xs)) * 0.7);
+            font-weight: calc(var(--skin-weight-semibold) + (var(--skin-weight-bold) - var(--skin-weight-semibold)) / 2);
+            color: var(--skin-color-text-primary);
         }
         .role-item .hint {
-            font-size: 0.7rem;
-            color: var(--platform-text-muted, #999999);
+            font-size: calc(var(--skin-text-xs) + (var(--skin-text-sm) - var(--skin-text-xs)) * 0.1);
+            color: var(--skin-color-text-muted);
         }
         .role-item select { width: 100%; }
         .preset-row {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2);
             flex-wrap: wrap;
-            padding: 10px 0;
-            border-bottom: 1px solid var(--platform-border-light, #e0e0e0);
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2) 0;
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border);
         }
         .preset-row:last-child { border-bottom: none; }
-        .preset-name { font-weight: 650; min-width: 140px; }
-        .preset-meta { font-size: 0.75rem; color: var(--platform-text-muted, #999999); flex: 1; }
-        .preset-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-        .preset-actions .btn { padding: 5px 9px; font-size: 0.75rem; }
-    `;
+        .preset-name { font-weight: calc(var(--skin-weight-semibold) + (var(--skin-weight-bold) - var(--skin-weight-semibold)) / 2); min-width: calc(var(--skin-space-md) * 8.75); }
+        .preset-meta { font-size: calc(var(--skin-text-xs) + (var(--skin-text-sm) - var(--skin-text-xs)) * 0.7); color: var(--skin-color-text-muted); flex: 1; }
+        .preset-actions { display: flex; flex-wrap: wrap; gap: calc(var(--skin-space-xs) * 1.5); }
+        .preset-actions .btn { padding: calc(var(--skin-space-xs) * 1.25) calc(var(--skin-space-sm) + var(--skin-space-xs) / 4); font-size: calc(var(--skin-text-xs) + (var(--skin-text-sm) - var(--skin-text-xs)) * 0.7); }
+    `,
+    ];
 
     @state() private _models: ModelRow[] = [];
     @state() private _providers: ProviderRow[] = [];
@@ -1003,7 +1009,7 @@ export class SomaSettingsModels extends LitElement {
                         : html`<span class="chip">${m.is_active ? 'Ready' : 'Off'}</span>`}
                     <span class="chip type">${this._typeLabel(m.model_type)}</span>
                     ${keyOk
-                        ? html`<span class="chip ok">Key in Vault ✓</span>`
+                        ? html`<span class="chip ok">Key in Vault</span>`
                         : html`<span class="chip warn">Missing</span>`}
                 </div>
                 <div class="model-id">${m.provider && m.name ? `${m.provider}/${m.name}` : m.name}</div>
@@ -1022,7 +1028,7 @@ export class SomaSettingsModels extends LitElement {
                 </div>
                 <div class="actions" @click=${(e: Event) => e.stopPropagation()}>
                     ${live
-                        ? html`<span class="chip live">✓ Active</span>`
+                        ? html`<span class="chip live">Active</span>`
                         : html`<button class="btn primary" @click=${() => void this._activate(m)}>
                               Activate
                           </button>`}
@@ -1048,7 +1054,7 @@ export class SomaSettingsModels extends LitElement {
                 ${this._providers.map(
                     (p) => html`
                         <span class="chip ${p.has_api_key ? 'ok' : 'warn'}" title=${p.label}>
-                            ${p.label} — ${p.has_api_key ? 'Key in Vault ✓' : 'Missing'}
+                            ${p.label} — ${p.has_api_key ? 'Key in Vault' : 'Missing'}
                         </span>
                     `,
                 )}
@@ -1139,11 +1145,11 @@ export class SomaSettingsModels extends LitElement {
                       ? html`<div class="empty">No presets yet. Restore bundled presets or save the current roles.</div>`
                       : html`
                             ${bundled.length
-                                ? html`<div class="meta" style="margin-bottom: 6px">Bundled</div>
+                                ? html`<div class="meta" style="margin-bottom: calc(var(--skin-space-xs) * 1.5)">Bundled</div>
                                       ${bundled.map((p) => this._presetRow(p))}`
                                 : nothing}
                             ${user.length
-                                ? html`<div class="meta" style="margin: 12px 0 6px">Yours</div>
+                                ? html`<div class="meta" style="margin: calc(var(--skin-space-sm) + var(--skin-space-xs)) 0 calc(var(--skin-space-xs) * 1.5)">Yours</div>
                                       ${user.map((p) => this._presetRow(p))}`
                                 : nothing}
                         `}
@@ -1160,14 +1166,14 @@ export class SomaSettingsModels extends LitElement {
             <div class="preset-row" style="flex-direction: column; align-items: stretch">
                 ${editing && r
                     ? html`
-                          <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px">
+                          <div style="display: flex; flex-wrap: wrap; gap: var(--skin-space-sm); margin-bottom: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2)">
                               <input
                                   .value=${this._presetName}
                                   @input=${(e: Event) => {
                                       this._presetName = (e.target as HTMLInputElement).value;
                                   }}
                                   placeholder="Preset name"
-                                  style="min-width: 160px"
+                                  style="min-width: calc(var(--skin-space-md) * 10)"
                               />
                               <input
                                   .value=${this._presetNotes}
@@ -1178,7 +1184,7 @@ export class SomaSettingsModels extends LitElement {
                                   style="flex: 1"
                               />
                           </div>
-                          <div class="role-grid" style="margin-bottom: 10px">
+                          <div class="role-grid" style="margin-bottom: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2)">
                               ${this._presetRoleSelect(ROLE_LABELS.chat_role, r.chat_model_id, 'chat', (id) => {
                                   this._presetRoles = { ...r, chat_model_id: id };
                               })}
@@ -1211,14 +1217,14 @@ export class SomaSettingsModels extends LitElement {
                           </div>
                       `
                     : html`
-                          <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+                          <div style="display: flex; flex-wrap: wrap; gap: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2); align-items: center">
                               <span class="preset-name">${p.name}</span>
                               <span class="chip ${p.is_bundled ? 'type' : 'ok'}">
                                   ${p.is_bundled ? 'Bundled' : 'User'}
                               </span>
                               <span class="preset-meta">${p.notes || p.scope || ''}</span>
                           </div>
-                          <div class="preset-meta" style="margin: 6px 0">
+                          <div class="preset-meta" style="margin: calc(var(--skin-space-xs) * 1.5) 0">
                               ${this._presetRoleSummary(p)}
                           </div>
                           <div class="preset-actions">
@@ -1233,7 +1239,7 @@ export class SomaSettingsModels extends LitElement {
                                               | 'chat',
                                       };
                                   }}
-                                  style="padding: 5px 8px; font-size: 0.75rem"
+                                  style="padding: calc(var(--skin-space-xs) * 1.25) var(--skin-space-sm); font-size: calc(var(--skin-text-xs) * 12 / 11)"
                               >
                                   <option value="global">Global</option>
                                   <option value="agent">This agent</option>
@@ -1249,7 +1255,7 @@ export class SomaSettingsModels extends LitElement {
                                                     [p.id]: (e.target as HTMLSelectElement).value,
                                                 };
                                             }}
-                                            style="padding: 5px 8px; font-size: 0.75rem"
+                                            style="padding: calc(var(--skin-space-xs) * 1.25) var(--skin-space-sm); font-size: calc(var(--skin-text-xs) * 12 / 11)"
                                         >
                                             ${this._agents.length
                                                 ? this._agents.map(
@@ -1315,7 +1321,7 @@ export class SomaSettingsModels extends LitElement {
                         </select>
                         <div class="hint">
                             ${this._keySaved[d.provider]
-                                ? 'Key in Vault ✓'
+                                ? 'Key in Vault'
                                 : 'No API key in Vault for this provider yet.'}
                         </div>
                     </div>
@@ -1351,7 +1357,7 @@ export class SomaSettingsModels extends LitElement {
                         <label>Model list</label>
                         <div>
                             <button class="btn" @click=${() => void this._loadModels()}>Load models</button>
-                            <div class="meta" style="margin-top: 6px">Source: ${this._liveSource || '—'}</div>
+                            <div class="meta" style="margin-top: calc(var(--skin-space-xs) * 1.5)">Source: ${this._liveSource || '—'}</div>
                             <div class="model-list">
                                 ${this._liveModels.length === 0
                                     ? html`<button disabled>No models loaded yet</button>`
@@ -1605,7 +1611,7 @@ export class SomaSettingsModels extends LitElement {
                 ${this._presetsPanel()}
                 <div class="toolbar">
                     <input
-                        style="flex: 1; min-width: 180px"
+                        style="flex: 1; min-width: calc(var(--skin-space-md) * 11.25)"
                         placeholder="Search models…"
                         .value=${this._search}
                         @input=${(e: Event) => {

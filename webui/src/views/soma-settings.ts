@@ -21,6 +21,9 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
 import { applyTheme, getTheme } from '../services/theme-boot.js';
+import { getLocale, setLocale } from '../i18n/index.js';
+import { glassCard } from '../styles/glass.js';
+import { moduleBase } from '../styles/module-base.js';
 import '../components/settings-form.js';
 import './soma-settings-models.js';
 import './soma-settings-somabrain.js';
@@ -106,13 +109,16 @@ const DISABLED_REASON =
 
 @customElement('soma-settings')
 export class SomaSettings extends LitElement {
-    static styles = css`
+    static styles = [
+        glassCard,
+        moduleBase,
+        css`
         :host {
             display: flex;
             height: 100vh;
-            background: var(--soma-bg-page, #f5f5f5);
-            font-family: var(--soma-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-            color: var(--soma-text-primary, #1a1a1a);
+            background: var(--skin-color-bg-void);
+            font-family: var(--skin-font-sans);
+            color: var(--skin-color-text-primary);
         }
 
         * {
@@ -123,7 +129,7 @@ export class SomaSettings extends LitElement {
             font-family: 'Material Symbols Outlined';
             font-weight: normal;
             font-style: normal;
-            font-size: 20px;
+            font-size: calc(var(--skin-space-md) + var(--skin-space-xs));
             line-height: 1;
             letter-spacing: normal;
             text-transform: none;
@@ -139,50 +145,50 @@ export class SomaSettings extends LitElement {
            SIDEBAR
            ======================================== */
         .sidebar {
-            width: 240px;
-            background: var(--soma-bg-card, #ffffff);
-            border-right: 1px solid var(--soma-border-light, #e0e0e0);
+            width: calc(var(--skin-space-md) * 15);
+            background: var(--skin-color-bg-card);
+            border-right: var(--skin-border-width) solid var(--skin-color-border);
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
-            padding: 24px 0;
+            padding: var(--skin-space-lg) 0;
         }
 
         .sidebar-header {
-            padding: 0 20px 20px;
-            border-bottom: 1px solid var(--soma-border-light, #e0e0e0);
-            margin-bottom: 16px;
+            padding: 0 calc(var(--skin-space-md) + var(--skin-space-xs)) calc(var(--skin-space-md) + var(--skin-space-xs));
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border);
+            margin-bottom: var(--skin-space-md);
         }
 
         .sidebar-title {
-            font-size: 20px;
-            font-weight: 600;
-            margin: 0 0 4px 0;
+            font-size: calc(var(--skin-space-md) + var(--skin-space-xs));
+            font-weight: var(--skin-weight-semibold);
+            margin: 0 0 var(--skin-space-xs) 0;
         }
 
         .sidebar-subtitle {
-            font-size: 13px;
-            color: var(--soma-text-secondary, #666);
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-secondary);
         }
 
         /* Tabs */
         .tab-list {
             display: flex;
             flex-direction: column;
-            gap: 4px;
-            padding: 0 12px;
+            gap: var(--skin-space-xs);
+            padding: 0 calc(var(--skin-space-sm) + var(--skin-space-xs));
         }
 
         .tab-item {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 12px 14px;
-            border-radius: 8px;
-            font-size: 14px;
-            color: var(--soma-text-secondary, #666);
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs));
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) calc(var(--skin-space-md) - var(--skin-space-xs) / 2);
+            border-radius: var(--skin-radius-md);
+            font-size: var(--skin-text-base);
+            color: var(--skin-color-text-secondary);
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
             border: none;
             background: transparent;
             width: 100%;
@@ -190,37 +196,37 @@ export class SomaSettings extends LitElement {
         }
 
         .tab-item:hover {
-            background: var(--soma-bg-hover, #fafafa);
-            color: var(--soma-text-primary, #1a1a1a);
+            background: var(--skin-color-bg-hover);
+            color: var(--skin-color-text-primary);
         }
 
         .tab-item.active {
-            background: var(--soma-bg-active, #f0f0f0);
-            color: var(--soma-text-primary, #1a1a1a);
-            font-weight: 500;
+            background: var(--skin-color-bg-active);
+            color: var(--skin-color-text-primary);
+            font-weight: var(--skin-weight-medium);
         }
 
         .tab-item .material-symbols-outlined {
-            font-size: 18px;
+            font-size: calc(var(--skin-space-md) + var(--skin-space-xs) / 2);
         }
 
         /* Back Button */
         .back-btn {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 12px 20px;
+            gap: var(--skin-space-sm);
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) calc(var(--skin-space-md) + var(--skin-space-xs));
             margin-top: auto;
-            font-size: 14px;
-            color: var(--soma-text-secondary, #666);
+            font-size: var(--skin-text-base);
+            color: var(--skin-color-text-secondary);
             cursor: pointer;
-            transition: all 0.1s ease;
+            transition: all calc(var(--skin-motion-fast) * 2 / 3) var(--skin-motion-ease);
             border: none;
             background: transparent;
         }
 
         .back-btn:hover {
-            color: var(--soma-text-primary, #1a1a1a);
+            color: var(--skin-color-text-primary);
         }
 
         /* ========================================
@@ -235,108 +241,108 @@ export class SomaSettings extends LitElement {
 
         /* Header */
         .header {
-            padding: 16px 24px;
-            background: var(--soma-bg-card, #ffffff);
-            border-bottom: 1px solid var(--soma-border-light, #e0e0e0);
+            padding: var(--skin-space-md) var(--skin-space-lg);
+            background: var(--skin-color-bg-card);
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 16px;
+            gap: var(--skin-space-md);
         }
 
         .header-title {
-            font-size: 18px;
-            font-weight: 600;
+            font-size: calc(var(--skin-space-md) + var(--skin-space-xs) / 2);
+            font-weight: var(--skin-weight-semibold);
         }
 
         .header-actions {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs));
         }
 
         .save-status {
-            font-size: 12px;
-            max-width: 360px;
+            font-size: calc(var(--skin-text-xs) + var(--skin-text-xs) / 11);
+            max-width: calc(var(--skin-space-md) * 22.5);
             text-align: right;
         }
 
         .save-status.ok {
-            color: #047857;
+            color: var(--skin-color-success);
         }
 
         .save-status.error {
-            color: #b91c1c;
+            color: var(--skin-color-danger);
         }
 
         .save-btn {
-            padding: 10px 20px;
-            border-radius: 8px;
-            background: #1a1a1a;
-            color: white;
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2) calc(var(--skin-space-md) + var(--skin-space-xs));
+            border-radius: var(--skin-radius-md);
+            background: var(--skin-color-accent);
+            color: var(--skin-color-accent-text);
             border: none;
-            font-size: 14px;
-            font-weight: 500;
+            font-size: var(--skin-text-base);
+            font-weight: var(--skin-weight-medium);
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
-            transition: all 0.1s ease;
+            gap: var(--skin-space-sm);
+            transition: all calc(var(--skin-motion-fast) * 2 / 3) var(--skin-motion-ease);
         }
 
         .save-btn:hover {
-            background: #333;
+            background: var(--skin-color-accent-hover);
         }
 
         .save-btn:disabled {
-            background: var(--soma-border-light, #e0e0e0);
-            color: var(--soma-text-muted, #999);
+            background: var(--skin-color-border);
+            color: var(--skin-color-text-muted);
             cursor: not-allowed;
         }
 
         .save-btn .material-symbols-outlined {
-            font-size: 18px;
+            font-size: calc(var(--skin-space-md) + var(--skin-space-xs) / 2);
         }
 
         /* Content Area */
         .content {
             flex: 1;
             overflow-y: auto;
-            padding: 24px;
+            padding: var(--skin-space-lg);
         }
 
         /* Settings Sections */
         .section {
-            background: var(--soma-bg-card, #ffffff);
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 20px;
+            background: var(--skin-color-bg-card);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-lg);
+            padding: var(--skin-space-lg);
+            margin-bottom: calc(var(--skin-space-md) + var(--skin-space-xs));
         }
 
         .section-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin: 0 0 16px 0;
+            font-size: var(--skin-text-lg);
+            font-weight: var(--skin-weight-semibold);
+            margin: 0 0 var(--skin-space-md) 0;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2);
         }
 
         .section-title .material-symbols-outlined {
-            font-size: 20px;
-            color: var(--soma-text-secondary, #666);
+            font-size: calc(var(--skin-space-md) + var(--skin-space-xs));
+            color: var(--skin-color-text-secondary);
         }
 
         .section-desc {
-            font-size: 13px;
-            color: var(--soma-text-secondary, #666);
-            margin-bottom: 20px;
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-secondary);
+            margin-bottom: calc(var(--skin-space-md) + var(--skin-space-xs));
         }
 
         /* Form Controls */
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: calc(var(--skin-space-md) + var(--skin-space-xs));
         }
 
         .form-group:last-child {
@@ -345,34 +351,34 @@ export class SomaSettings extends LitElement {
 
         .form-label {
             display: block;
-            font-size: 13px;
-            font-weight: 500;
-            margin-bottom: 8px;
-            color: var(--soma-text-primary, #1a1a1a);
+            font-size: var(--skin-text-sm);
+            font-weight: var(--skin-weight-medium);
+            margin-bottom: var(--skin-space-sm);
+            color: var(--skin-color-text-primary);
         }
 
         .form-input,
         .form-select {
             width: 100%;
-            padding: 10px 14px;
-            border-radius: 8px;
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            font-size: 14px;
-            background: var(--soma-bg-card, #ffffff);
-            color: var(--soma-text-primary, #1a1a1a);
-            transition: border-color 0.15s ease;
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2) calc(var(--skin-space-md) - var(--skin-space-xs) / 2);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            font-size: var(--skin-text-base);
+            background: var(--skin-color-bg-card);
+            color: var(--skin-color-text-primary);
+            transition: border-color var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .form-input:focus,
         .form-select:focus {
             outline: none;
-            border-color: var(--soma-text-primary, #1a1a1a);
+            border-color: var(--skin-color-text-primary);
         }
 
         .form-hint {
-            font-size: 12px;
-            color: var(--soma-text-muted, #999);
-            margin-top: 6px;
+            font-size: calc(var(--skin-text-xs) + var(--skin-text-xs) / 11);
+            color: var(--skin-color-text-muted);
+            margin-top: calc(var(--skin-space-xs) * 1.5);
         }
 
         /* Toggle Switch */
@@ -380,8 +386,8 @@ export class SomaSettings extends LitElement {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--soma-border-light, #e0e0e0);
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) 0;
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border);
         }
 
         .toggle-row:last-child {
@@ -389,19 +395,19 @@ export class SomaSettings extends LitElement {
         }
 
         .toggle-label {
-            font-size: 14px;
+            font-size: var(--skin-text-base);
         }
 
         .toggle-desc {
-            font-size: 12px;
-            color: var(--soma-text-secondary, #666);
-            margin-top: 4px;
+            font-size: calc(var(--skin-text-xs) + var(--skin-text-xs) / 11);
+            color: var(--skin-color-text-secondary);
+            margin-top: var(--skin-space-xs);
         }
 
         .toggle-switch {
             position: relative;
-            width: 44px;
-            height: 24px;
+            width: calc(var(--skin-space-2xl) - var(--skin-space-xs));
+            height: var(--skin-space-lg);
         }
 
         .toggle-switch input {
@@ -417,29 +423,29 @@ export class SomaSettings extends LitElement {
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: var(--soma-border-light, #e0e0e0);
-            transition: 0.2s;
-            border-radius: 24px;
+            background-color: var(--skin-color-border);
+            transition: var(--skin-motion-normal);
+            border-radius: var(--skin-space-lg);
         }
 
         .toggle-slider:before {
             position: absolute;
             content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: 0.2s;
+            height: calc(var(--skin-space-md) + var(--skin-space-xs) / 2);
+            width: calc(var(--skin-space-md) + var(--skin-space-xs) / 2);
+            left: calc(var(--skin-space-xs) * 0.75);
+            bottom: calc(var(--skin-space-xs) * 0.75);
+            background-color: var(--skin-color-bg-card);
+            transition: var(--skin-motion-normal);
             border-radius: 50%;
         }
 
         .toggle-switch input:checked + .toggle-slider {
-            background-color: #1a1a1a;
+            background-color: var(--skin-color-accent);
         }
 
         .toggle-switch input:checked + .toggle-slider:before {
-            transform: translateX(20px);
+            transform: translateX(calc(var(--skin-space-md) + var(--skin-space-xs)));
         }
 
         .toggle-switch input:disabled + .toggle-slider {
@@ -451,11 +457,11 @@ export class SomaSettings extends LitElement {
         .api-key-row {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 12px;
-            background: var(--soma-bg-hover, #fafafa);
-            border-radius: 8px;
-            margin-bottom: 12px;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs));
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs));
+            background: var(--skin-color-bg-hover);
+            border-radius: var(--skin-radius-md);
+            margin-bottom: calc(var(--skin-space-sm) + var(--skin-space-xs));
         }
 
         .api-key-row:last-child {
@@ -464,46 +470,46 @@ export class SomaSettings extends LitElement {
 
         .api-key-name {
             flex: 1;
-            font-size: 14px;
-            font-weight: 500;
+            font-size: var(--skin-text-base);
+            font-weight: var(--skin-weight-medium);
         }
 
         .api-key-value {
             flex: 2;
-            font-family: monospace;
-            font-size: 13px;
-            color: var(--soma-text-secondary, #666);
+            font-family: var(--skin-font-mono);
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-secondary);
         }
 
         .api-key-status {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
+            padding: var(--skin-space-xs) var(--skin-space-sm);
+            border-radius: var(--skin-radius-sm);
+            font-size: var(--skin-text-xs);
+            font-weight: var(--skin-weight-semibold);
         }
 
         .api-key-status.active {
-            background: #d1fae5;
-            color: #047857;
+            background: color-mix(in srgb, var(--skin-color-success) 18%, var(--skin-color-bg-card));
+            color: var(--skin-color-success);
         }
 
         .api-key-status.missing {
-            background: #fee2e2;
-            color: #b91c1c;
+            background: color-mix(in srgb, var(--skin-color-danger) 12%, var(--skin-color-bg-card));
+            color: var(--skin-color-danger);
         }
 
         .api-key-action {
-            padding: 6px 12px;
-            border-radius: 6px;
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            background: white;
-            font-size: 12px;
+            padding: calc(var(--skin-space-xs) * 1.5) calc(var(--skin-space-sm) + var(--skin-space-xs));
+            border-radius: calc(var(--skin-space-xs) * 1.5);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            background: var(--skin-color-bg-card);
+            font-size: calc(var(--skin-text-xs) + var(--skin-text-xs) / 11);
             cursor: pointer;
-            transition: all 0.1s ease;
+            transition: all calc(var(--skin-motion-fast) * 2 / 3) var(--skin-motion-ease);
         }
 
         .api-key-action:hover {
-            border-color: var(--soma-border-medium, #ccc);
+            border-color: var(--skin-color-border-strong);
         }
 
         .api-key-action:disabled {
@@ -514,13 +520,13 @@ export class SomaSettings extends LitElement {
         /* Provider key write rows */
         .provider-key-row {
             display: grid;
-            grid-template-columns: 180px 1fr auto auto;
-            gap: 12px;
+            grid-template-columns: calc(var(--skin-space-md) * 11.25) 1fr auto auto;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs));
             align-items: end;
-            padding: 12px;
-            background: var(--soma-bg-hover, #fafafa);
-            border-radius: 8px;
-            margin-bottom: 12px;
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs));
+            background: var(--skin-color-bg-hover);
+            border-radius: var(--skin-radius-md);
+            margin-bottom: calc(var(--skin-space-sm) + var(--skin-space-xs));
         }
 
         .provider-key-row:last-child {
@@ -530,23 +536,23 @@ export class SomaSettings extends LitElement {
         .provider-key-meta {
             display: flex;
             flex-direction: column;
-            gap: 4px;
-            padding-bottom: 8px;
+            gap: var(--skin-space-xs);
+            padding-bottom: var(--skin-space-sm);
         }
 
         .provider-key-name {
-            font-size: 14px;
-            font-weight: 500;
+            font-size: var(--skin-text-base);
+            font-weight: var(--skin-weight-medium);
         }
 
         .provider-key-state {
-            font-size: 12px;
-            color: var(--soma-text-secondary, #666);
+            font-size: calc(var(--skin-text-xs) + var(--skin-text-xs) / 11);
+            color: var(--skin-color-text-secondary);
         }
 
         .provider-key-actions {
             display: flex;
-            gap: 8px;
+            gap: var(--skin-space-sm);
         }
 
         @media (max-width: 900px) {
@@ -560,58 +566,59 @@ export class SomaSettings extends LitElement {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: var(--skin-space-sm);
             width: 100%;
-            padding: 12px;
-            border: 2px dashed var(--soma-border-light, #e0e0e0);
-            border-radius: 8px;
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs));
+            border: calc(var(--skin-space-xs) / 2) dashed var(--skin-color-border);
+            border-radius: var(--skin-radius-md);
             background: transparent;
-            color: var(--soma-text-secondary, #666);
-            font-size: 14px;
+            color: var(--skin-color-text-secondary);
+            font-size: var(--skin-text-base);
             cursor: pointer;
-            transition: all 0.1s ease;
+            transition: all calc(var(--skin-motion-fast) * 2 / 3) var(--skin-motion-ease);
         }
 
         .add-btn:hover {
-            border-color: var(--soma-border-medium, #ccc);
-            color: var(--soma-text-primary, #1a1a1a);
+            border-color: var(--skin-color-border-strong);
+            color: var(--skin-color-text-primary);
         }
 
         /* Permission blocking reason (SOMA-01-UIUX-001.md §2.3) */
         .disabled-reason {
-            font-size: 12px;
-            color: var(--soma-status-danger, #b91c1c);
-            margin: 12px 0 0 0;
+            font-size: calc(var(--skin-text-xs) + var(--skin-text-xs) / 11);
+            color: var(--skin-color-danger);
+            margin: calc(var(--skin-space-sm) + var(--skin-space-xs)) 0 0 0;
         }
 
         /* Flash message (same pattern as soma-settings-models.ts) */
         .toast {
             position: fixed;
-            bottom: 24px;
-            right: 24px;
-            z-index: 1000;
-            padding: 12px 18px;
-            border-radius: 8px;
-            font-size: 13px;
-            background: #1a1a1a;
-            color: #fff;
-            max-width: 420px;
+            bottom: var(--skin-space-lg);
+            right: var(--skin-space-lg);
+            z-index: var(--skin-z-toast);
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) calc(var(--skin-space-md) + var(--skin-space-xs) / 2);
+            border-radius: var(--skin-radius-md);
+            font-size: var(--skin-text-sm);
+            background: var(--skin-color-accent);
+            color: var(--skin-color-accent-text);
+            max-width: calc(var(--skin-space-md) * 26.25);
         }
 
         .toast.error {
-            background: #b91c1c;
+            background: var(--skin-color-danger);
         }
 
         .toast.ok {
-            background: #047857;
+            background: var(--skin-color-success);
         }
 
         .honest-note {
-            font-size: 13px;
-            color: var(--soma-text-secondary, #666);
-            margin: 16px 0 0 0;
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-secondary);
+            margin: var(--skin-space-md) 0 0 0;
         }
-    `;
+    `,
+    ];
 
     @state() private _activeTab: SettingsTab = 'agent';
     /** Capsule for AgentIQ knobs (Settings › Agent). */
@@ -717,7 +724,7 @@ export class SomaSettings extends LitElement {
                             ? html`<div class="save-status ${this._saveStatus.kind}" role="status">${this._saveStatus.text}</div>`
                             : null}
                         ${!this._canEditSettings
-                            ? html`<div class="disabled-reason" style="margin: 0; max-width: 280px; text-align: right;" role="status">${DISABLED_REASON}</div>`
+                            ? html`<div class="disabled-reason" style="margin: 0; max-width: calc(var(--skin-space-md) * 17.5); text-align: right;" role="status">${DISABLED_REASON}</div>`
                             : null}
                         <button
                             class="save-btn"
@@ -873,7 +880,7 @@ export class SomaSettings extends LitElement {
                 </div>
 
                 <div class="toggle-row" style="display:block">
-                    <div class="toggle-label" style="margin-bottom: 8px">Skins</div>
+                    <div class="toggle-label" style="margin-bottom: var(--skin-space-sm)">Skins</div>
                     <soma-skin-gallery></soma-skin-gallery>
                 </div>
 
@@ -884,6 +891,7 @@ export class SomaSettings extends LitElement {
                     </div>
                     <select
                         data-control="interface-language"
+                        .value=${getLocale()}
                         title=${this._canEditSettings ? 'Language' : DISABLED_REASON}
                         ?disabled=${!this._canEditSettings}
                         @change=${(e: Event) => this._setInterface('language', e)}
@@ -928,6 +936,10 @@ export class SomaSettings extends LitElement {
         localStorage.setItem('soma_interface', JSON.stringify(prefs));
         if (key === 'theme') {
             applyTheme(select.value === 'light' ? 'light' : 'dark');
+        }
+        if (key === 'language') {
+            // One source: i18n owns soma_locale + html lang (SOMA-UI-I18N-001).
+            setLocale(select.value);
         }
         this._isDirty = true;
     }
@@ -1003,7 +1015,7 @@ export class SomaSettings extends LitElement {
                 </div>
                 <div class="api-key-row">
                     <span class="api-key-name">Used for</span>
-                    <span class="api-key-value">Chat / Help / Memory — Capsule or tenant defaults</span>
+                    <span class="api-key-value">Chat / Help / Memory — Agent or tenant defaults</span>
                 </div>
                 <div class="api-key-row">
                     <span class="api-key-name">Keys</span>
@@ -1011,7 +1023,7 @@ export class SomaSettings extends LitElement {
                 </div>
                 <button
                     class="add-btn"
-                    style="margin-top: 16px;"
+                    style="margin-top: var(--skin-space-md);"
                     @click=${(e: Event) => { e.stopPropagation(); this._openModels(); }}
                 >
                     <span class="material-symbols-outlined">settings_suggest</span>
@@ -1020,7 +1032,7 @@ export class SomaSettings extends LitElement {
             </div>
 
             <!-- AgentIQ knobs: agent configuration, not chat chrome -->
-            <div class="section" style="margin-top: 16px;">
+            <div class="section" style="margin-top: var(--skin-space-md);">
                 <h3 class="section-title">
                     <span class="material-symbols-outlined">tune</span>
                     Agent knobs (IQ)
@@ -1128,7 +1140,7 @@ export class SomaSettings extends LitElement {
                                   <settings-form
                                       entity=${e.entity}
                                       .permissions=${this._permissions}
-                                      style="margin: 16px 0 24px;"
+                                      style="margin: var(--skin-space-md) 0 var(--skin-space-lg);"
                                   ></settings-form>
                               `
                           )}
@@ -1244,7 +1256,7 @@ export class SomaSettings extends LitElement {
                     data-control="export-config"
                     @click=${this._exportConfig}
                 >
-                    <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle; margin-right: 4px;">download</span>
+                    <span class="material-symbols-outlined" style="font-size: var(--skin-text-base); vertical-align: middle; margin-right: var(--skin-space-xs);">download</span>
                     Export Config
                 </button>
             </div>

@@ -17,6 +17,8 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
+import { glassCard } from '../styles/glass.js';
+import { moduleBase } from '../styles/module-base.js';
 
 import '../components/soma-toggle.js';
 import '../components/soma-password-modal.js';
@@ -55,12 +57,15 @@ const GATED_NO_SESSION_LIST =
 
 @customElement('soma-personal-profile')
 export class SomaPersonalProfile extends LitElement {
-    static styles = css`
+    static styles = [
+        glassCard,
+        moduleBase,
+        css`
         .material-symbols-outlined {
             font-family: 'Material Symbols Outlined';
             font-weight: normal;
             font-style: normal;
-            font-size: 20px;
+            font-size: calc(var(--skin-space-md) + var(--skin-space-xs));
             line-height: 1;
             letter-spacing: normal;
             text-transform: none;
@@ -75,105 +80,105 @@ export class SomaPersonalProfile extends LitElement {
         :host {
             display: block;
             min-height: 100vh;
-            background: var(--skin-color-bg-void, #f5f5f5);
-            padding: var(--skin-space-xl, 32px);
-            color: var(--skin-color-text-primary, #1a1a1a);
-            font-family: var(--skin-font-sans, system-ui, sans-serif);
+            background: var(--skin-color-bg-void);
+            padding: var(--skin-space-xl);
+            color: var(--skin-color-text-primary);
+            font-family: var(--skin-font-sans);
         }
 
         .profile-page {
-            max-width: 700px;
+            max-width: calc(var(--skin-space-md) * 43.75);
             margin: 0 auto;
         }
 
         .page-header {
-            margin-bottom: var(--skin-space-lg, 24px);
+            margin-bottom: var(--skin-space-lg);
         }
 
         .page-title {
-            font-size: var(--skin-text-2xl, 24px);
-            font-weight: var(--skin-weight-bold, 700);
-            color: var(--skin-color-text-primary, #1a1a1a);
+            font-size: var(--skin-text-2xl);
+            font-weight: var(--skin-weight-bold);
+            color: var(--skin-color-text-primary);
             margin: 0;
         }
 
         /* Tabs (CM-11 sections as tab panes) */
         .tabs {
             display: flex;
-            border-bottom: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
-            margin-bottom: var(--skin-space-lg, 24px);
-            gap: var(--skin-space-xs, 4px);
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border);
+            margin-bottom: var(--skin-space-lg);
+            gap: var(--skin-space-xs);
         }
 
         .tab {
-            padding: var(--skin-space-md, 16px) var(--skin-space-lg, 24px);
-            font-size: var(--skin-text-sm, 13px);
-            font-weight: var(--skin-weight-medium, 500);
-            color: var(--skin-color-text-secondary, #666666);
+            padding: var(--skin-space-md) var(--skin-space-lg);
+            font-size: var(--skin-text-sm);
+            font-weight: var(--skin-weight-medium);
+            color: var(--skin-color-text-secondary);
             background: none;
             border: none;
-            border-bottom: 2px solid transparent;
+            border-bottom: calc(var(--skin-space-xs) / 2) solid transparent;
             cursor: pointer;
-            transition: color var(--skin-motion-fast, 120ms) var(--skin-motion-ease, ease),
-                border-color var(--skin-motion-fast, 120ms) var(--skin-motion-ease, ease);
+            transition: color var(--skin-motion-fast) var(--skin-motion-ease),
+                border-color var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .tab:hover {
-            color: var(--skin-color-text-primary, #1a1a1a);
+            color: var(--skin-color-text-primary);
         }
 
         .tab:focus-visible {
-            outline: var(--skin-focus-ring-width, 2px) solid var(--skin-focus-ring, #1a1a1a);
-            outline-offset: var(--skin-focus-ring-offset, 2px);
+            outline: var(--skin-focus-ring-width) solid var(--skin-focus-ring);
+            outline-offset: var(--skin-focus-ring-offset);
         }
 
         .tab.active {
-            color: var(--skin-color-accent, #1a1a1a);
-            border-bottom-color: var(--skin-color-accent, #1a1a1a);
+            color: var(--skin-color-accent);
+            border-bottom-color: var(--skin-color-accent);
         }
 
         .section {
-            background: var(--skin-color-bg-card, #ffffff);
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
-            border-radius: var(--skin-radius-lg, 12px);
-            margin-bottom: var(--skin-space-lg, 24px);
+            background: var(--skin-color-bg-card);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-lg);
+            margin-bottom: var(--skin-space-lg);
         }
 
         .section-header {
-            padding: var(--skin-space-md, 16px) var(--skin-space-lg, 24px);
-            border-bottom: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
-            font-size: var(--skin-text-base, 14px);
-            font-weight: var(--skin-weight-semibold, 600);
-            color: var(--skin-color-text-primary, #1a1a1a);
+            padding: var(--skin-space-md) var(--skin-space-lg);
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border);
+            font-size: var(--skin-text-base);
+            font-weight: var(--skin-weight-semibold);
+            color: var(--skin-color-text-primary);
             display: flex;
             align-items: center;
-            gap: var(--skin-space-sm, 8px);
+            gap: var(--skin-space-sm);
         }
 
         .section-content {
-            padding: var(--skin-space-lg, 24px);
+            padding: var(--skin-space-lg);
         }
 
         /* Avatar Section — AC-01 / AC-02 */
         .avatar-section {
             display: flex;
             align-items: center;
-            gap: var(--skin-space-lg, 24px);
-            margin-bottom: var(--skin-space-lg, 24px);
+            gap: var(--skin-space-lg);
+            margin-bottom: var(--skin-space-lg);
         }
 
         .avatar {
-            width: 96px;
-            height: 96px;
-            border-radius: var(--skin-radius-full, 9999px);
-            background: var(--skin-color-bg-base, #ffffff);
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
+            width: calc(var(--skin-space-md) * 6);
+            height: calc(var(--skin-space-md) * 6);
+            border-radius: var(--skin-radius-full);
+            background: var(--skin-color-bg-base);
+            border: var(--skin-border-width) solid var(--skin-color-border);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 40px;
-            font-weight: var(--skin-weight-semibold, 600);
-            color: var(--skin-color-text-muted, #666666);
+            font-size: calc(var(--skin-space-xl) + var(--skin-space-sm));
+            font-weight: var(--skin-weight-semibold);
+            color: var(--skin-color-text-muted);
             overflow: hidden;
             flex-shrink: 0;
         }
@@ -187,66 +192,66 @@ export class SomaPersonalProfile extends LitElement {
         .avatar-actions {
             display: flex;
             flex-direction: column;
-            gap: var(--skin-space-sm, 8px);
+            gap: var(--skin-space-sm);
         }
 
         .muted {
-            font-size: var(--skin-text-xs, 11px);
-            color: var(--skin-color-text-muted, #666666);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-muted);
         }
 
         .gated-note {
             display: inline-flex;
             align-items: center;
-            gap: var(--skin-space-xs, 4px);
-            padding: 4px 10px;
-            border-radius: var(--skin-radius-md, 8px);
-            border: 1px solid var(--skin-color-warning, #eab308);
-            background: color-mix(in srgb, var(--skin-color-warning, #eab308) 12%, transparent);
-            font-size: var(--skin-text-xs, 11px);
-            color: var(--skin-color-text-primary, #1a1a1a);
+            gap: var(--skin-space-xs);
+            padding: var(--skin-space-xs) calc(var(--skin-space-sm) + var(--skin-space-xs) / 2);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-warning);
+            background: color-mix(in srgb, var(--skin-color-warning) 12%, transparent);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-primary);
         }
 
         /* Form */
         .form-group {
-            margin-bottom: var(--skin-space-md, 16px);
+            margin-bottom: var(--skin-space-md);
         }
 
         .form-label {
             display: block;
-            font-size: var(--skin-text-sm, 13px);
-            font-weight: var(--skin-weight-medium, 500);
-            color: var(--skin-color-text-primary, #1a1a1a);
-            margin-bottom: 4px;
+            font-size: var(--skin-text-sm);
+            font-weight: var(--skin-weight-medium);
+            color: var(--skin-color-text-primary);
+            margin-bottom: var(--skin-space-xs);
         }
 
         .form-input {
             width: 100%;
-            padding: 10px 12px;
-            background: var(--skin-color-bg-base, #ffffff);
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
-            border-radius: var(--skin-radius-md, 8px);
-            font-size: var(--skin-text-base, 14px);
-            color: var(--skin-color-text-primary, #1a1a1a);
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2) calc(var(--skin-space-sm) + var(--skin-space-xs));
+            background: var(--skin-color-bg-base);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-md);
+            font-size: var(--skin-text-base);
+            color: var(--skin-color-text-primary);
             box-sizing: border-box;
         }
 
         .form-input:focus {
             outline: none;
-            border-color: var(--skin-color-accent, #1a1a1a);
-            box-shadow: 0 0 0 var(--skin-focus-ring-width, 2px) var(--skin-focus-ring, #1a1a1a);
+            border-color: var(--skin-color-accent);
+            box-shadow: 0 0 0 var(--skin-focus-ring-width) var(--skin-focus-ring);
         }
 
         .form-input:disabled {
             opacity: 0.65;
             cursor: not-allowed;
-            background: var(--skin-color-bg-hover, #fafafa);
+            background: var(--skin-color-bg-hover);
         }
 
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: var(--skin-space-md, 16px);
+            gap: var(--skin-space-md);
         }
 
         /* Security Row — SC-01…SC-07 */
@@ -254,9 +259,9 @@ export class SomaPersonalProfile extends LitElement {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: var(--skin-space-md, 16px) 0;
-            border-bottom: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
-            gap: var(--skin-space-md, 16px);
+            padding: var(--skin-space-md) 0;
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border);
+            gap: var(--skin-space-md);
         }
 
         .security-row:last-child {
@@ -266,17 +271,17 @@ export class SomaPersonalProfile extends LitElement {
         .security-info {
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: calc(var(--skin-space-xs) / 2);
         }
 
         .security-label {
-            font-size: var(--skin-text-base, 14px);
-            color: var(--skin-color-text-primary, #1a1a1a);
+            font-size: var(--skin-text-base);
+            color: var(--skin-color-text-primary);
         }
 
         .security-value {
-            font-size: var(--skin-text-xs, 11px);
-            color: var(--skin-color-text-muted, #666666);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-muted);
         }
 
         /* Toggle Row — NT-01…NT-03 */
@@ -284,12 +289,12 @@ export class SomaPersonalProfile extends LitElement {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: var(--skin-space-sm, 8px) 0;
+            padding: var(--skin-space-sm) 0;
         }
 
         .toggle-label {
-            font-size: var(--skin-text-base, 14px);
-            color: var(--skin-color-text-primary, #1a1a1a);
+            font-size: var(--skin-text-base);
+            color: var(--skin-color-text-primary);
         }
 
         /* Sessions — SS-01…SS-07 */
@@ -297,38 +302,38 @@ export class SomaPersonalProfile extends LitElement {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: var(--skin-space-md, 16px);
-            padding: var(--skin-space-md, 16px) 0;
+            gap: var(--skin-space-md);
+            padding: var(--skin-space-md) 0;
         }
 
         .stat-value {
-            font-size: var(--skin-text-2xl, 24px);
-            font-weight: var(--skin-weight-bold, 700);
+            font-size: var(--skin-text-2xl);
+            font-weight: var(--skin-weight-bold);
             font-variant-numeric: tabular-nums;
         }
 
         .empty-state {
-            padding: var(--skin-space-lg, 24px);
+            padding: var(--skin-space-lg);
             text-align: center;
-            color: var(--skin-color-text-muted, #666666);
-            font-size: var(--skin-text-sm, 13px);
+            color: var(--skin-color-text-muted);
+            font-size: var(--skin-text-sm);
         }
 
         /* Buttons */
         .btn {
-            padding: 8px 16px;
-            border-radius: var(--skin-radius-md, 8px);
-            font-size: var(--skin-text-sm, 13px);
-            font-weight: var(--skin-weight-medium, 500);
+            padding: var(--skin-space-sm) var(--skin-space-md);
+            border-radius: var(--skin-radius-md);
+            font-size: var(--skin-text-sm);
+            font-weight: var(--skin-weight-medium);
             cursor: pointer;
-            transition: background var(--skin-motion-fast, 120ms) var(--skin-motion-ease, ease);
-            border: 1px solid transparent;
+            transition: background var(--skin-motion-fast) var(--skin-motion-ease);
+            border: var(--skin-border-width) solid transparent;
             white-space: nowrap;
         }
 
         .btn:focus-visible {
-            outline: var(--skin-focus-ring-width, 2px) solid var(--skin-focus-ring, #1a1a1a);
-            outline-offset: var(--skin-focus-ring-offset, 2px);
+            outline: var(--skin-focus-ring-width) solid var(--skin-focus-ring);
+            outline-offset: var(--skin-focus-ring-offset);
         }
 
         .btn:disabled {
@@ -337,61 +342,62 @@ export class SomaPersonalProfile extends LitElement {
         }
 
         .btn-primary {
-            background: var(--skin-color-accent, #1a1a1a);
-            color: var(--skin-color-accent-text, #ffffff);
+            background: var(--skin-color-accent);
+            color: var(--skin-color-accent-text);
             border: none;
         }
 
         .btn-primary:hover:not(:disabled) {
-            background: var(--skin-color-accent-hover, #333333);
+            background: var(--skin-color-accent-hover);
         }
 
         .btn-secondary {
-            background: var(--skin-color-bg-base, #ffffff);
-            color: var(--skin-color-text-primary, #1a1a1a);
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
+            background: var(--skin-color-bg-base);
+            color: var(--skin-color-text-primary);
+            border: var(--skin-border-width) solid var(--skin-color-border);
         }
 
         .btn-secondary:hover:not(:disabled) {
-            background: var(--skin-color-bg-hover, #fafafa);
+            background: var(--skin-color-bg-hover);
         }
 
         .btn-danger {
-            color: var(--skin-color-danger, #ef4444);
-            border: 1px solid var(--skin-color-danger, #ef4444);
+            color: var(--skin-color-danger);
+            border: var(--skin-border-width) solid var(--skin-color-danger);
             background: transparent;
         }
 
         .btn-danger:hover:not(:disabled) {
-            background: var(--skin-color-danger, #ef4444);
-            color: var(--skin-color-danger-text, #ffffff);
+            background: var(--skin-color-danger);
+            color: var(--skin-color-danger-text);
         }
 
         /* Save Bar — PG-03 / PG-04 */
         .save-bar {
             display: flex;
             justify-content: flex-end;
-            padding: var(--skin-space-md, 16px) 0;
+            padding: var(--skin-space-md) 0;
         }
 
         .error-banner {
-            padding: 12px 16px;
-            margin-bottom: var(--skin-space-lg, 24px);
-            background: color-mix(in srgb, var(--skin-color-danger, #ef4444) 12%, transparent);
-            color: var(--skin-color-danger, #ef4444);
-            border: 1px solid var(--skin-color-danger, #ef4444);
-            border-radius: var(--skin-radius-md, 8px);
-            font-size: var(--skin-text-sm, 13px);
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) var(--skin-space-md);
+            margin-bottom: var(--skin-space-lg);
+            background: color-mix(in srgb, var(--skin-color-danger) 12%, transparent);
+            color: var(--skin-color-danger);
+            border: var(--skin-border-width) solid var(--skin-color-danger);
+            border-radius: var(--skin-radius-md);
+            font-size: var(--skin-text-sm);
         }
 
         .loading {
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: var(--skin-space-2xl, 48px);
-            color: var(--skin-color-text-muted, #666666);
+            padding: var(--skin-space-2xl);
+            color: var(--skin-color-text-muted);
         }
-    `;
+    `,
+    ];
 
     @state() private profile: UserProfile | null = null;
     @state() private loading = true;
@@ -862,7 +868,7 @@ export class SomaPersonalProfile extends LitElement {
                         <span class="gated-note" data-control="SS-07"
                             >${GATED_NO_SESSION_LIST}</span
                         >
-                        <p class="muted" style="margin-top: 8px">
+                        <p class="muted" style="margin-top: var(--skin-space-sm)">
                             Session rows (device · ip · last seen · current) require
                             GET /api/v2/auth/sessions. Count above is live; rows are not.
                         </p>

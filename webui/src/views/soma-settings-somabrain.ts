@@ -17,6 +17,9 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
+import { glassCard } from '../styles/glass.js';
+import { moduleBase } from '../styles/module-base.js';
+import '../components/soma-brain-manager.js';
 
 interface SomabrainSettingsValues {
     url: string;
@@ -51,11 +54,14 @@ const CONNECTOR_PATH = '/core/brain-connector';
 
 @customElement('soma-settings-somabrain')
 export class SomaSettingsSomaBrain extends LitElement {
-    static styles = css`
+    static styles = [
+        glassCard,
+        moduleBase,
+        css`
         :host {
             display: block;
-            color: var(--soma-text-primary, #1a1a1a);
-            font-family: var(--soma-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+            color: var(--skin-color-text-primary);
+            font-family: var(--skin-font-sans);
         }
 
         * {
@@ -66,41 +72,41 @@ export class SomaSettingsSomaBrain extends LitElement {
             font-family: 'Material Symbols Outlined';
             font-weight: normal;
             font-style: normal;
-            font-size: 20px;
+            font-size: calc(var(--skin-space-md) + var(--skin-space-xs));
             line-height: 1;
             display: inline-block;
             -webkit-font-smoothing: antialiased;
         }
 
         .section {
-            background: var(--soma-bg-card, #ffffff);
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 20px;
+            background: var(--skin-color-bg-card);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-lg);
+            padding: var(--skin-space-lg);
+            margin-bottom: calc(var(--skin-space-md) + var(--skin-space-xs));
         }
 
         .section-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin: 0 0 8px 0;
+            font-size: var(--skin-text-lg);
+            font-weight: var(--skin-weight-semibold);
+            margin: 0 0 var(--skin-space-sm) 0;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2);
         }
 
         .section-title .material-symbols-outlined {
-            color: var(--soma-text-secondary, #666);
+            color: var(--skin-color-text-secondary);
         }
 
         .section-desc {
-            font-size: 13px;
-            color: var(--soma-text-secondary, #666);
-            margin: 0 0 20px 0;
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-secondary);
+            margin: 0 0 calc(var(--skin-space-md) + var(--skin-space-xs)) 0;
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: calc(var(--skin-space-md) + var(--skin-space-xs));
         }
 
         .form-group:last-child {
@@ -109,62 +115,62 @@ export class SomaSettingsSomaBrain extends LitElement {
 
         .form-label {
             display: block;
-            font-size: 13px;
-            font-weight: 500;
-            margin-bottom: 8px;
-            color: var(--soma-text-primary, #1a1a1a);
+            font-size: var(--skin-text-sm);
+            font-weight: var(--skin-weight-medium);
+            margin-bottom: var(--skin-space-sm);
+            color: var(--skin-color-text-primary);
         }
 
         .form-input {
             width: 100%;
-            padding: 10px 14px;
-            border-radius: 8px;
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            font-size: 14px;
-            background: var(--soma-bg-card, #ffffff);
-            color: var(--soma-text-primary, #1a1a1a);
-            transition: border-color 0.15s ease;
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2) calc(var(--skin-space-md) - var(--skin-space-xs) / 2);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            font-size: var(--skin-text-base);
+            background: var(--skin-color-bg-card);
+            color: var(--skin-color-text-primary);
+            transition: border-color var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .form-input:focus {
             outline: none;
-            border-color: var(--soma-text-primary, #1a1a1a);
+            border-color: var(--skin-color-text-primary);
         }
 
         .form-input:disabled {
-            background: var(--soma-bg-hover, #fafafa);
+            background: var(--skin-color-bg-hover);
             cursor: not-allowed;
         }
 
         .form-hint {
-            font-size: 12px;
-            color: var(--soma-text-muted, #999);
-            margin-top: 6px;
+            font-size: calc(var(--skin-text-xs) + var(--skin-text-xs) / 11);
+            color: var(--skin-color-text-muted);
+            margin-top: calc(var(--skin-space-xs) * 1.5);
         }
 
         .toggle-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 12px 0;
-            border-top: 1px solid var(--soma-border-light, #e0e0e0);
-            margin-top: 4px;
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) 0;
+            border-top: var(--skin-border-width) solid var(--skin-color-border);
+            margin-top: var(--skin-space-xs);
         }
 
         .toggle-label {
-            font-size: 14px;
+            font-size: var(--skin-text-base);
         }
 
         .toggle-desc {
-            font-size: 12px;
-            color: var(--soma-text-secondary, #666);
-            margin-top: 4px;
+            font-size: calc(var(--skin-text-xs) + var(--skin-text-xs) / 11);
+            color: var(--skin-color-text-secondary);
+            margin-top: var(--skin-space-xs);
         }
 
         .toggle-switch {
             position: relative;
-            width: 44px;
-            height: 24px;
+            width: calc(var(--skin-space-2xl) - var(--skin-space-xs));
+            height: var(--skin-space-lg);
         }
 
         .toggle-switch input {
@@ -177,29 +183,29 @@ export class SomaSettingsSomaBrain extends LitElement {
             position: absolute;
             cursor: pointer;
             inset: 0;
-            background-color: var(--soma-border-light, #e0e0e0);
-            transition: 0.2s;
-            border-radius: 24px;
+            background-color: var(--skin-color-border);
+            transition: var(--skin-motion-normal);
+            border-radius: var(--skin-space-lg);
         }
 
         .toggle-slider:before {
             position: absolute;
             content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: 0.2s;
+            height: calc(var(--skin-space-md) + var(--skin-space-xs) / 2);
+            width: calc(var(--skin-space-md) + var(--skin-space-xs) / 2);
+            left: calc(var(--skin-space-xs) * 0.75);
+            bottom: calc(var(--skin-space-xs) * 0.75);
+            background-color: var(--skin-color-bg-card);
+            transition: var(--skin-motion-normal);
             border-radius: 50%;
         }
 
         .toggle-switch input:checked + .toggle-slider {
-            background-color: #1a1a1a;
+            background-color: var(--skin-color-accent);
         }
 
         .toggle-switch input:checked + .toggle-slider:before {
-            transform: translateX(20px);
+            transform: translateX(calc(var(--skin-space-md) + var(--skin-space-xs)));
         }
 
         .toggle-switch input:disabled + .toggle-slider {
@@ -212,123 +218,124 @@ export class SomaSettingsSomaBrain extends LitElement {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 12px 20px;
-            padding: 14px 16px;
-            border-radius: 8px;
-            background: var(--soma-bg-hover, #fafafa);
-            border: 1px solid var(--soma-border-light, #e0e0e0);
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs)) calc(var(--skin-space-md) + var(--skin-space-xs));
+            padding: calc(var(--skin-space-md) - var(--skin-space-xs) / 2) var(--skin-space-md);
+            border-radius: var(--skin-radius-md);
+            background: var(--skin-color-bg-hover);
+            border: var(--skin-border-width) solid var(--skin-color-border);
         }
 
         .status-item {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 13px;
+            gap: var(--skin-space-sm);
+            font-size: var(--skin-text-sm);
         }
 
         .status-label {
-            color: var(--soma-text-secondary, #666);
+            color: var(--skin-color-text-secondary);
         }
 
         .status-value {
-            font-weight: 500;
+            font-weight: var(--skin-weight-medium);
         }
 
         .status-dot {
-            width: 10px;
-            height: 10px;
+            width: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2);
+            height: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2);
             border-radius: 50%;
             flex-shrink: 0;
         }
 
         .status-dot.ok {
-            background: #047857;
+            background: var(--skin-color-success);
         }
 
         .status-dot.degraded {
-            background: #d97706;
+            background: var(--skin-color-warning);
         }
 
         .status-dot.unavailable {
-            background: #b91c1c;
+            background: var(--skin-color-danger);
         }
 
         .status-dot.unknown {
-            background: #9ca3af;
+            background: var(--skin-color-text-muted);
         }
 
         .status-error {
             width: 100%;
-            font-size: 12px;
-            color: var(--soma-status-danger, #b91c1c);
+            font-size: calc(var(--skin-text-xs) + var(--skin-text-xs) / 11);
+            color: var(--skin-color-danger);
             margin: 0;
         }
 
         .link-row {
             display: flex;
             flex-wrap: wrap;
-            gap: 12px;
-            margin-top: 16px;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs));
+            margin-top: var(--skin-space-md);
         }
 
         .link-btn {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            padding: 10px 16px;
-            border-radius: 8px;
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            background: var(--soma-bg-card, #ffffff);
-            color: var(--soma-text-primary, #1a1a1a);
-            font-size: 13px;
-            font-weight: 500;
+            gap: var(--skin-space-sm);
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs) / 2) var(--skin-space-md);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            background: var(--skin-color-bg-card);
+            color: var(--skin-color-text-primary);
+            font-size: var(--skin-text-sm);
+            font-weight: var(--skin-weight-medium);
             cursor: pointer;
-            transition: all 0.1s ease;
+            transition: all calc(var(--skin-motion-fast) * 2 / 3) var(--skin-motion-ease);
         }
 
         .link-btn:hover {
-            background: var(--soma-bg-hover, #fafafa);
+            background: var(--skin-color-bg-hover);
         }
 
         .link-btn .material-symbols-outlined {
-            font-size: 16px;
+            font-size: var(--skin-text-lg);
         }
 
         .honest-note {
-            font-size: 13px;
-            color: var(--soma-text-secondary, #666);
-            margin: 16px 0 0 0;
-            line-height: 1.5;
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-secondary);
+            margin: var(--skin-space-md) 0 0 0;
+            line-height: var(--skin-leading-normal);
         }
 
         .disabled-reason {
-            font-size: 12px;
-            color: var(--soma-status-danger, #b91c1c);
-            margin: 12px 0 0 0;
+            font-size: calc(var(--skin-text-xs) + var(--skin-text-xs) / 11);
+            color: var(--skin-color-danger);
+            margin: calc(var(--skin-space-sm) + var(--skin-space-xs)) 0 0 0;
         }
 
         .loading {
-            padding: 24px;
-            color: var(--soma-text-muted, #999);
-            font-size: 13px;
+            padding: var(--skin-space-lg);
+            color: var(--skin-color-text-muted);
+            font-size: var(--skin-text-sm);
         }
 
         .error-banner {
-            padding: 12px 16px;
-            border-radius: 8px;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            color: #b91c1c;
-            font-size: 13px;
-            margin-bottom: 16px;
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) var(--skin-space-md);
+            border-radius: var(--skin-radius-md);
+            background: color-mix(in srgb, var(--skin-color-danger) 10%, transparent);
+            border: var(--skin-border-width) solid color-mix(in srgb, var(--skin-color-danger) 30%, transparent);
+            color: var(--skin-color-danger);
+            font-size: var(--skin-text-sm);
+            margin-bottom: var(--skin-space-md);
         }
 
         .meta-line {
-            font-size: 12px;
-            color: var(--soma-text-muted, #999);
-            margin-top: 12px;
+            font-size: calc(var(--skin-text-xs) + var(--skin-text-xs) / 11);
+            color: var(--skin-color-text-muted);
+            margin-top: calc(var(--skin-space-sm) + var(--skin-space-xs));
         }
-    `;
+    `,
+    ];
 
     /** Caller may edit platform settings (system:configure / settings:edit). */
     @property({ type: Boolean }) canEdit = false;
@@ -739,6 +746,20 @@ export class SomaSettingsSomaBrain extends LitElement {
                     Kafka reward topic, SFM URL (memory entity), and OPA policy
                     editor are not on this screen.
                 </p>
+            </div>
+
+            <!-- Brain manager (embedded live surface) -->
+            <div class="section" data-section="brain-manager">
+                <h3 class="section-title">
+                    <span class="material-symbols-outlined">neurology</span>
+                    Brain
+                </h3>
+                <p class="section-desc">
+                    Live Brain manager — modulators, mode, IQ knobs, sleep, and
+                    diagnostics. Connection knobs above stay the operator write
+                    path.
+                </p>
+                <soma-brain-manager></soma-brain-manager>
             </div>
         `;
     }
