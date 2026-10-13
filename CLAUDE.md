@@ -4,6 +4,7 @@
 |---|---|
 | Primary standard | `docs/standards/SOMA-STD-TRIAD-001.md` (shared with somabrain + somafractalmemory) |
 | Coding law | `docs/standards/SOMA-STD-CODING-001.md` (VIBE) |
+| UI/UX law | `docs/standards/SOMA-STD-UIUX-001.md` (webui: skins · I18N · GATED honesty · A0 · acceptance) |
 | Rapid plan | `docs/standards/SOMA-RAPID-DEVELOPMENT-001.md` |
 | Status report | `docs/reports/SOMA-RPT-STATUS-001.md` |
 | A2A | `docs/plans/a2a/` — claim before large edits; log commits |

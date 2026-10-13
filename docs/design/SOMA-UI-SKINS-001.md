@@ -801,3 +801,105 @@ This document is registered in `docs/iso/DOCUMENT-REGISTER.md` and listed in `SO
 | Capsule Skins — Theming Framework Specification | SOMA-UI-SKINS-001 | ISO 9001:2015 clause 7.5 | Feature specification for Capsule-owned theming |
 
 End of Document
+
+---
+
+## 13A. Architecture — Skin owns all module styles (2026-10-13)
+
+> **Working standard:** the followable UI/UX law for every agent is
+> `docs/standards/SOMA-STD-UIUX-001.md` (AgentSkin rules HR-18…HR-22, module CSS
+> contract §4, `scripts/check-skin-literals.mjs` gate §4.3). This section is the
+> architecture source; the standard is what agents execute.
+
+### 13.1 Principle
+
+**One skin owns every visual decision. Modules own structure and behaviour only.**
+
+```
+Skin JSON (tokens + surfaces)
+        │ SkinApplier.setProperty
+        ▼
+--skin-* (+ --platform-* / --soma-* aliases)
+        │ inherit into Lit shadow roots
+        ├──────────────┬──────────────┐
+        ▼              ▼              ▼
+  module-base.ts   glass.ts     density.ts
+  (.mb-btn/input)  (.glass-*)   (SPACE/RADIUS)
+        └──────────────┴──────────────┘
+                       ▼
+              Lit modules (structure + API)
+```
+
+### 13.2 Layer law
+
+| Layer | Owns | Forbidden |
+|---|---|---|
+| Skin pack | colour · type · space · radius · shadow · motion | layout · DOM · logic |
+| `webui/src/styles/*` | reusable classes bound to `--skin-*` | hex · magic px · hosts |
+| `soma-*` modules | structure · events · REST/WS | private design systems · literals |
+| `t()` I18N | copy | (orthogonal to skin) |
+
+### 13.3 Module CSS contract
+
+1. `static styles = [glassCard, moduleBase, css\`…\`]`  
+2. All declarations `var(--skin-*)` or `.mb-*` / `.glass-*`  
+3. CI/lint fails on colour/length literals in `webui/src/components`  
+4. Skin apply restyles **every** module via aliases (no per-module recompile)
+
+### 13.4 Implementation plan (code after operator GO)
+
+| Phase | Work | Exit |
+|---|---|---|
+| A | Freeze tokens + module-base + glass | lint green |
+| B | Migrate L0–L4 modules to shared classes | zero hex |
+| C | Surface overrides + gallery (live) | AC-01/02 |
+| D | I18N catalogs | en/es parity |
+| E | Profile full-screen · Files modal · Tools marketplace (wireframes §12) | Playwright |
+| F | A11y + dead-code + evidence | Done = live session |
+
+### 13.5 Related wireframes
+
+`SOMA-UI-PROFILE-001.md` · `SOMA-UI-TOOLS-MARKETPLACE-001.md` · `SOMA-UI-I18N-001.md` · `SOMA-UI-CONTROL-MAPS-001.md`.
+
+**No product code until operator approves this architecture.**
+
+### 13.6 Modular skin architecture (every UI file standardized)
+
+**Law:** There is no second design system. Every file under `webui/src/**` is a
+**skin client**. The skin is **modular** — one concern per skin module — and UI
+modules bind only to those skin modules.
+
+```
+AgentSkin (modular)
+├── skin.color        colour ramps · text · accent · semantic · border · focus
+├── skin.type         family · scale · weight · leading
+├── skin.space        xs…2xl
+├── skin.radius       sm…full
+├── skin.elevation    shadow-sm…overlay
+├── skin.motion       fast/normal/slow/ease
+├── skin.surface      glass card · modal · row · chip (module-base)
+└── skin.z            dropdown · modal · overlay · toast
+
+webui/src/** (standardized skin clients)
+├── styles/tokens.css      skin module declaration
+├── styles/module-base.ts  .mb-*  (buttons, inputs, rows, status)
+├── styles/glass.ts        .glass-* (cards, modals)
+├── styles/density.ts      named bindings to skin.space/radius/type
+├── skin-sdk/              packs · validate · resolve · aliases
+└── components|views/*     structure + API only; styles = [glass, moduleBase, …]
+```
+
+| Skin module | Consumed by | Example |
+|---|---|---|
+| skin.color | every module | `var(--skin-color-accent)` |
+| skin.type | headings, labels | `var(--skin-text-sm)` |
+| skin.surface | profile, files, tools, chat cards | `.glass-card` `.mb-btn` |
+| skin.motion | hover, modal | `var(--skin-motion-fast)` |
+| skin.z | overlays | `var(--skin-z-modal)` |
+
+**Enforcement:** lint fails any `#hex`, magic `px`, or `font-family:` literal in
+`components/**` and `views/**` outside `styles/` and `skin-sdk/`.
+
+**Modularity:** adding a new UI file = compose existing skin modules; never
+invent colours or spacing. Adding a new skin pack = change values only; zero
+component edits (AC-01/02).
