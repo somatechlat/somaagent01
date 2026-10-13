@@ -647,12 +647,6 @@ export class SomaChat extends LitElement {
             color: #FF4D00;
         }
 
-        .wq-glow {
-            box-shadow:
-                0 0 0 1px rgba(16, 185, 129, 0.35),
-                0 0 24px rgba(16, 185, 129, 0.18);
-        }
-
         .wq-label {
             font-size: 13px;
             font-weight: 500;
@@ -3145,7 +3139,7 @@ export class SomaChat extends LitElement {
         return html`
             <div class="welcome">
                 <div class="welcome-hero">
-                    <h2>Hello! I'm Soma</h2>
+                    <h2>Hello! I'm YACHAQ</h2>
                     <p>How can I help you today?</p>
                 </div>
 
@@ -3262,7 +3256,7 @@ export class SomaChat extends LitElement {
                       `
                     : nothing}
 
-                <div class="welcome-footer">SomaTech · Cognitive AI Agent</div>
+                <div class="welcome-footer">YACHAQ.AI · Cognitive AI Agent</div>
             </div>
         `;
     }

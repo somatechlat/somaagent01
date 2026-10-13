@@ -308,7 +308,7 @@ export class SomaSidebar extends LitElement {
     @property({ type: Boolean }) collapsed = false;
     @property({ type: String }) userName = '';
     @property({ type: String }) userRole = '';
-    @property({ type: String }) logoText = 'SomaAgent';
+    @property({ type: String }) logoText = 'YACHAQ';
 
     render() {
         return html`

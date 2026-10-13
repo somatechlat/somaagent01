@@ -239,6 +239,10 @@ export class SomaLogin extends LitElement {
         .form-label a { color: var(--skin-color-text-primary); text-decoration: none; font-weight: var(--skin-weight-normal); }
 
         .form-input {
+            /* Typed characters must always be visible on the card. */
+            color: var(--skin-color-text-primary);
+            -webkit-text-fill-color: var(--skin-color-text-primary);
+            caret-color: var(--skin-color-text-primary);
             width: 100%;
             padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) calc(var(--skin-space-md) - var(--skin-space-xs) * 0.5);
             border-radius: var(--skin-radius-md);
@@ -249,6 +253,24 @@ export class SomaLogin extends LitElement {
             font-family: var(--skin-font-sans);
         }
         .form-input:focus { outline: none; border-color: var(--skin-color-accent); }
+
+        /* Kill browser autofill green/yellow wash — paint with skin tokens. */
+        .form-input:-webkit-autofill,
+        .form-input:-webkit-autofill:hover,
+        .form-input:-webkit-autofill:focus,
+        .form-input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 1000px var(--skin-color-bg-base) inset;
+            -webkit-text-fill-color: var(--skin-color-text-primary);
+            caret-color: var(--skin-color-text-primary);
+            transition: background-color 5000s ease-in-out 0s;
+        }
+        .form-input:autofill,
+        .form-input:autofill:hover,
+        .form-input:autofill:focus {
+            box-shadow: 0 0 0 1000px var(--skin-color-bg-base) inset;
+            -webkit-text-fill-color: var(--skin-color-text-primary);
+            caret-color: var(--skin-color-text-primary);
+        }
         .password-wrapper { position: relative; display: flex; align-items: center; }
         .password-wrapper .form-input { padding-right: calc(var(--skin-space-xl) + var(--skin-space-sm) + var(--skin-space-xs)); }
         .toggle-password {
@@ -339,12 +361,13 @@ export class SomaLogin extends LitElement {
 
         .sso-modal {
             background: var(--skin-color-bg-base);
+            color: var(--skin-color-text-primary);
+            -webkit-text-fill-color: var(--skin-color-text-primary);
             backdrop-filter: var(--skin-glass-backdrop);
             -webkit-backdrop-filter: var(--skin-glass-backdrop);
             border: none;
             border-radius: 0;
             box-shadow: none;
-                0 0 0 var(--skin-focus-ring-width) color-mix(in srgb, var(--skin-color-accent-text) 50%, transparent) inset;
             width: 100vw;
             max-width: 100vw;
             height: 100vh;
@@ -660,7 +683,7 @@ export class SomaLogin extends LitElement {
                                 height="40"
                             />
                         </div>
-                        <span class="brand-name">SomaAgent Soma</span>
+                        <span class="brand-name">YACHAQ.AI</span>
                     </div>
 
                     <!-- Header -->
@@ -738,7 +761,7 @@ export class SomaLogin extends LitElement {
 
 
                     <div class="footer">
-                        <p class="footer-text">Powered by SomaTech LAT</p>
+                        <p class="footer-text">Powered by YACHAQ.AI</p>
                     </div>
                 </div>
             </div>

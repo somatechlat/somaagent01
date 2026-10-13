@@ -181,7 +181,7 @@ export class SomaForgotPassword extends LitElement {
                                 <rect x="3" y="14" width="7" height="7" rx="1"/>
                             </svg>
                         </div>
-                        <span class="brand-name">SomaAgent Soma</span>
+                        <span class="brand-name">YACHAQ.AI</span>
                     </div>
 
                     <div class="form-header">
@@ -220,7 +220,7 @@ export class SomaForgotPassword extends LitElement {
                     </a>
 
                     <div class="footer">
-                        <p class="footer-text">Powered by SomaTech LAT</p>
+                        <p class="footer-text">Powered by YACHAQ.AI</p>
                     </div>
                 </div>
             </div>

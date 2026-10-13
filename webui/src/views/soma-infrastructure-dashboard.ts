@@ -439,7 +439,7 @@ export class SomaInfrastructureDashboard extends LitElement {
             <div class="logo-icon">
               <span class="material-symbols-outlined">visibility</span>
             </div>
-            <span class="logo-text">SomaAgent<span class="logo-badge">God</span></span>
+            <span class="logo-text">YACHAQ<span class="logo-badge">.AI</span></span>
           </div>
         </div>
 

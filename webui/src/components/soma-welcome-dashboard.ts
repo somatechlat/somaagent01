@@ -1,5 +1,5 @@
 /**
- * SomaAgent01 — Welcome Dashboard
+ * YACHAQ.AI — Welcome Dashboard
  * Shown when no chat is active
  */
 
@@ -173,7 +173,7 @@ export class SomaWelcomeDashboard extends LitElement {
     render() {
         return html`
             <div class="welcome">
-                <div class="welcome-title">SomaAgent01</div>
+                <div class="welcome-title">YACHAQ.AI</div>
                 <div class="welcome-subtitle">Autonomous AI Agent Workspace</div>
             </div>
 

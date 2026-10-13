@@ -83,6 +83,22 @@ export const moduleBase: CSSResult = css`
         outline-offset: var(--skin-focus-ring-offset);
     }
 
+    /* Browser autofill must not paint green/yellow over the skin. */
+    .mb-input:-webkit-autofill,
+    .mb-input:-webkit-autofill:hover,
+    .mb-input:-webkit-autofill:focus,
+    .mb-input:-webkit-autofill:active {
+        -webkit-box-shadow: 0 0 0 1000px var(--skin-color-bg-base) inset;
+        -webkit-text-fill-color: var(--skin-color-text-primary);
+        caret-color: var(--skin-color-text-primary);
+        transition: background-color 5000s ease-in-out 0s;
+    }
+    .mb-input:autofill {
+        box-shadow: 0 0 0 1000px var(--skin-color-bg-base) inset;
+        -webkit-text-fill-color: var(--skin-color-text-primary);
+        caret-color: var(--skin-color-text-primary);
+    }
+
     .mb-label {
         display: block;
         margin: var(--skin-space-sm) 0 var(--skin-space-xs);
