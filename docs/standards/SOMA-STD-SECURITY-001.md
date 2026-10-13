@@ -19,7 +19,7 @@
 | Supersedes | any T0 0777/0644 workaround, shared-root-token T0 handoff, `/run/secrets/*` password files, `SOMABRAIN_VAULT_TOKEN_FILE` / `SOMA_VAULT_TOKEN_FILE` aliases, `VAULT_TOKEN` as steady-state ENV |
 | Governing law | VIBE 164 (Vault-only), VIBE 91 (fail-closed), Operator LAW 2026-10-11 |
 
-**Operator LAW (verbatim constraints this pattern satisfies):** no secret files · no secrets in ENV steady-state · all secrets only in Vault · Channel ENV for third-party passwords · `VAULT_TOKEN_FILE` + T0 tmpfs 0700/0600 for scoped TTL tokens only · root in process RAM only, never a shared volume · never log secrets · never weaken fail-closed checks · no 0777 T0.
+**Operator LAW (verbatim constraints this pattern satisfies):** no secret files · no secrets in ENV steady-state · all secrets only in Vault · Channel ENV for third-party passwords · `VAULT_TOKEN_FILE` + T0 0700/0600 for scoped TTL tokens only · root in process RAM only, **never any volume, never disk** · **orphan service tokens only** (`no_parent: True`) · never log secrets · never weaken fail-closed checks · no 0777 T0. **Code is the only source of truth.**
 
 ---
 
@@ -32,6 +32,7 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-10-11 | security-reviewer (somaAgent01) | Initial issue. Vault-only secret custody, KV v2 merge-write lifecycle, channel delivery. Document Control brought to house style (SOMA-01-DOCS-001). |
+| 1.1.0 | 2026-10-13 | security-reviewer (somaAgent01) | **Errata — match live code + validated ceremony** (SOMA-RPT-SEC-VAULT-001). T0 as-built = named volume `standalone_t0_agent` **ext4**, not tmpfs (§2.1a exception). **Orphan service tokens mandatory** (`no_parent: True`) — root `revoke-self` without orphan killed all children (outage root cause). Operator TTL **720h**. Root never on disk; revoke always. Policy table corrected to live `agent-runtime.hcl` / `brain-runtime.hcl`. |
 
 ---
 
@@ -56,9 +57,9 @@ Implemented by `infra/standalone/bootstrap_exec.py` (`kv2_write_merge` :102-123 
 
 | Material | Local / T-8 | Staging | Production | NEVER |
 |---|---|---|---|---|
-| Unseal key | OS keychain (`soma-vault-t0/vault_unseal_key`) or operator `VAULT_UNSEAL_KEY` **in ceremony process ENV only** | 3-of-5 shamir, dual control | Cloud KMS auto-unseal | T0 shared volume · repo · `.env` |
-| Root token | **Process RAM of the Ceremonial Seeder only**; mint-and-revoke preferred | Dual-control, time-boxed | Never persisted; break-glass `generate-root` | Any T0 · any running app · any file |
-| Scoped service token | Per-consumer private T0 file (see 1.4) | same | Vault Agent / K8s auth | Shared T0 · ENV value · repo |
+| Unseal key | OS keychain (`soma-vault-t0/vault_unseal_key`), operator `VAULT_UNSEAL_KEY` **in ceremony process ENV only**, or T0 account `vault_unseal_key` on tmpfs **or** §2.1a named volume | 3-of-5 shamir, dual control | Cloud KMS auto-unseal | Repo · `.env` · compose env · next to ciphertext without a distinct custodian story |
+| Root token | **Process RAM of the Ceremonial Seeder only**; mint-orphan-**then-revoke** (mandatory) | Dual-control, time-boxed | Never persisted; break-glass `generate-root` in RAM → `revoke-self` | **Any T0 · any running app · any file · any disk** |
+| Scoped service token | Per-consumer private T0 file (see 1.4), **orphan** (`no_parent: True`) | same | Vault Agent / K8s auth | Shared T0 · ENV value · repo · non-orphan mint |
 | AppRole `secret_id` | **Not used in this generation** (see §2) | — | KMS / orchestrator delivery | File |
 
 ### 1.3 Token environment names (ONE name, whole TRIAD)
@@ -76,40 +77,60 @@ Implemented by `infra/standalone/bootstrap_exec.py` (`kv2_write_merge` :102-123 
 
 ### 1.4 T0 layout — PER CONSUMER (fixes multi-uid PermissionError)
 
-The live defect: one shared `t0_ram` volume (`docker-compose.yml:59-64`) is mounted rw into every service (:150, :242, :270, :304, :331, :366, :439, :503). Root writes `vault_root_token` 0600 → appuser hits `PermissionError`. **0777/0644 is banned** (world-readable root/unseal = full compromise).
+**AS-BUILT 2026-10-13 (do not call this tmpfs):** this deploy mounts Docker named volume
+**`standalone_t0_agent`** (`t0_agent` in compose) at `/run/t0` — filesystem **ext4**, not
+tmpfs. That is the BOOTSTRAP-001 **§2.1a** dedicated-volume exception (unseal key must survive
+container recreate; no OS keychain in Linux containers). Directory 0700, files 0600, consumer
+UID. Accounts: `vault_unseal_key`, `agent_runtime_token`, `brain_runtime_token`. **`vault_root_token` is forbidden (absolute).**
+
+The earlier defect (one shared `t0_ram` mounted rw everywhere → root 0600 → appuser
+`PermissionError`) is fixed by per-consumer accounts and by never writing root to T0.
+**0777/0644 is banned** (world-readable root/unseal = full compromise).
 
 **Normative T0 model:**
 
 ```
-Each consumer gets its OWN tmpfs, mode 0700, owned by that container's UID,
-mounted at /run/t0 in that container ONLY.
+Each consumer gets its OWN T0 directory (tmpfs preferred, OR §2.1a named volume),
+mode 0700, owned by that container's UID, mounted at /run/t0 in that consumer.
 
   /run/t0/agent_runtime_token   → somaagent_standalone  (0600, that UID)
   /run/t0/brain_runtime_token   → somabrain app         (0600, that UID)
   /run/t0/sfm_runtime_token     → SFM worker (if any)   (0600, that UID)
 
-Compose shape (per service, NOT one named volume):
+Preferred compose shape (tmpfs):
   tmpfs:
     - /run/t0:mode=0700,uid=<svc-uid>,size=1m
+
+Local-standalone exception (this deploy):
+  volumes:
+    - t0_agent:/run/t0:rw     # named volume standalone_t0_agent (ext4)
 ```
 
 Rules:
-1. **Root token and unseal key NEVER enter any consumer T0.** Root lives only in the Ceremonial Seeder's process RAM (`bootstrap_exec.py:137` must drop `t0_read(ROOT_ACCOUNT)`; :155 must not write unseal to a volume shared with appusers — keychain or ceremony-only).
-2. Exactly one file per T0: that consumer's scoped token. Mode 0600. Owner = consumer UID.
-3. Seeder writes the token **as the consumer UID** (seteuid) or via a 0-byte pipe the consumer reads once. Never chmod 0777.
-4. T0 is tmpfs with swap disabled. If swap is present, refuse (F-19).
+1. **Root token NEVER enters any T0 or any disk.** Root lives only in the Ceremonial Seeder's
+   process RAM and is **revoked** (`revoke-self`) at the end of mint. Guards refuse
+   `vault_root_token` writes (`vault_scoped_tokens.py`, `vault_unseal.py`, `bootstrap_exec.py`).
+2. Scoped token files only (plus `vault_unseal_key` where the unseal custodian is T0). Mode
+   0600. Owner = consumer UID.
+3. Seeder writes the token **as the consumer UID** (seteuid / chown). Never chmod 0777.
+4. T0 is tmpfs (swap off) **or** the §2.1a dedicated named volume. Ordinary directories refused.
 5. App runtime reads **only** `VAULT_TOKEN_FILE` of its own T0. Fail-closed if unreadable.
 
-### 1.5 Policies (`infra/standalone/vault-policies/*.hcl`)
+### 1.5 Policies (`infra/standalone/vault-policies/*.hcl`) — LIVE as-built
 
-| Policy | Grants | Denies |
+| Policy | Grants (live `.hcl`) | Denies |
 |---|---|---|
-| `agent-runtime` | read `secret/data/agent/*`, renew/lookup-self | `sys/*`, write, `auth/token/create` |
-| `brain-runtime` | read `secret/data/somabrain/*` + **named shared keys** only (see 1.7), renew/lookup-self | same |
-| `sfm-runtime` | read `secret/data/somafractalmemory/*`, renew/lookup-self | same |
-| `ceremony` (seeder-only, root or short-lived) | all of the above + write KV + `auth/token/create` + policy install | never issued to a long-running app |
+| `agent-runtime` | **read only:** `secret/data/agent/credentials`, `secret/data/agent/api_keys` (+ `api_keys/*`), matching `secret/metadata/…` read; `auth/token/renew-self` + `lookup-self` | **no write**, no `sys/*`, no `auth/token/create`, no other mounts |
+| `brain-runtime` | read `secret/data/agent/credentials` (shared doc); **own mount only:** `somabrain/data/*` CRUD, `somabrain/metadata/*` read/list/delete; `renew-self` + `lookup-self` | `sys/*`, `auth/token/create`, `secret/data/agent/api_keys`, every other mount |
+| `sfm-runtime` (planned) | read `secret/data/somafractalmemory/*`, renew/lookup-self | same |
+| `ceremony` (seeder-only, root or short-lived) | policy install + `auth/token/create` + KV seed | never issued to a long-running app |
 
-KV v2 is document-granular: `brain-runtime.hcl:14-16` reading the whole `agent/credentials` doc is **accepted and documented** OR shared keys are split to `secret/data/shared/*`. Pick one in the ACK; do not leave the comment lying.
+Operator law (agent seat): **read `secret/data/agent/credentials` + `api_keys` only. No write.
+No `sys/`.** Matches `agent-runtime.hcl` exactly.
+
+KV v2 is document-granular: `brain-runtime.hcl` reading the whole `agent/credentials` doc is
+**accepted and documented** (shared keys live in that map). Split to `secret/data/shared/*`
+only with a deliberate ADR; do not leave comments lying.
 
 ### 1.6 First-boot identity material (`identity_password_pepper`)
 
@@ -176,19 +197,34 @@ Rationale against the operator's axes:
 - **Speed / millions of txns:** Vault is not on the txn hot path (SCRAM sessions + cached KV). Ceremony is O(services) per deploy/restart-window, not per txn. Tokens are renewable (`auth/token/renew-self`).
 - **Thin:** one seeder binary (`bootstrap_exec.py`), one policy set, one T0 contract. No AppRole role/secret_id/rotation machinery until an orchestrator can deliver secrets without files.
 
-Sequencing (normative):
+Sequencing (normative — **AMENDED 2026-10-13**):
 
 ```
 1. Operator starts VAULT (sealed).
-2. ONE Ceremonial Seeder (bootstrap_exec.py) runs with root-in-RAM
-   (sys/init if first boot → else VAULT_TOKEN one-shot ENV from operator).
-3. Seeder: unseal → install policies → seed credentials (incl. pepper)
-   → mint agent/brain/sfm scoped tokens into EACH consumer's private T0
-   → revoke root (prod) / drop from RAM (local) → exit OR execve agent target.
-4. Other consumers start AFTER step 3; they only read their own T0.
+2. Unseal if needed (vault_unseal.py --unseal-only). No root yet.
+3. Root in process RAM ONLY:
+     vault operator generate-root   (unseal key + OTP)  — or sys/init response
+   NEVER written to T0 / disk / compose env.
+4. Mint (vault_scoped_tokens.py is mint path of record):
+     install vault-policies/*.hcl
+     auth/token/create with:
+       no_parent: True            ← ORPHAN (MANDATORY)
+       no_default_policy: True
+       ttl: VAULT_TOKEN_TTL_HOURS (required; this deploy 720h)
+     → T0 accounts agent_runtime_token, brain_runtime_token only
+5. Seed credentials if needed (init_vault / bootstrap_exec seed) — RAM → KV v2 → read-back.
+6. ROOT REVOKE — ALWAYS. auth/token/revoke-self.
+   Safe ONLY because step 4 minted orphans. Non-orphan mint + revoke-self
+   revokes every child service token (2026-10-13 outage root cause).
+7. Consumers start AFTER step 4/6; each reads only its own T0 token.
 ```
 
-For the agent container, seeder + target are the same PID1 (`bootstrap_exec.py --target /app/start.sh`). Brain/SFM run the same seeder shape **or** receive tokens from a brain-side ceremony — but **never** from the agent's T0.
+**Mint path of record:** `infra/standalone/vault_scoped_tokens.py` (orphan + revoke-self).
+`bootstrap_exec.py` `mint_scoped` does **not** yet set `no_parent` and does **not** revoke-self —
+do not pair that mint with root revoke until it matches (SOMA-RPT-SEC-VAULT-001 Δ-06).
+
+For the agent container, seeder + target may share PID1 (`bootstrap_exec.py --target /app/start.sh`).
+Brain/SFM receive tokens from the ceremony — **never** from another consumer's T0.
 
 ---
 
@@ -246,6 +282,9 @@ For the agent container, seeder + target are the same PID1 (`bootstrap_exec.py -
 | R-7 | KV merge race two seeders | MED | single ceremonial seeder invariant (F-20) |
 | R-8 | AppRole deferred — restart without ceremony depends on TTL window | LOW | tokens renewable; F-10 fail-closed; AppRole/K8s auth is the named upgrade |
 | R-9 | pg_hba unix-socket trust inside postgres container | LOW | documented image limitation; host/TCP always scram |
+| R-10 | Named-volume T0 (`standalone_t0_agent`, ext4) is durable storage | MED | §2.1a exception, local-only; 0600/0700; never root; prod KMS + tmpfs/FD |
+| R-11 | Non-orphan mint in `bootstrap_exec.py` (Δ-06) | HIGH | Mint path of record = `vault_scoped_tokens.py` (orphan). Align bootstrap mint before any revoke-self pairing. |
+| R-12 | 720h service lease long if token leaks | MED | Read-mostly policy; renew-self only; re-mint on suspicion; F-10 stop-not-widen |
 
 ---
 
@@ -256,12 +295,30 @@ For the agent container, seeder + target are the same PID1 (`bootstrap_exec.py -
 find . -name 'vault-token' -o -path '*/secrets/*' -o -name '*_PASSWORD_FILE*'
 # no shared-mode T0
 grep -RInE '0o777|0o644|chmod 777|mode=0?777' infra/
-# no root on T0
-grep -RInE 'ROOT_ACCOUNT|vault_root_token' infra/standalone/*.py   # must be RAM-only comments
+# no root on T0 — guards must refuse, never write
+grep -RInE 'ROOT_ACCOUNT|vault_root_token' infra/standalone/*.py
+# orphan mandatory on mint
+grep -n 'no_parent' infra/standalone/vault_scoped_tokens.py   # must be True
 # no token ENV aliases
 grep -RInE 'SOMABRAIN_VAULT_TOKEN|SOMA_VAULT_TOKEN' .
 # scram proof (live): TCP login with Vault password = success; wrong password = fail
+# T0 as-built: docker volume inspect standalone_t0_agent — named volume, not tmpfs
 ```
+
+---
+
+## Errata — 2026-10-13 (binding)
+
+Full narrative: `docs/reports/SOMA-RPT-SEC-VAULT-001.md`.
+
+1. **T0 = `standalone_t0_agent` (ext4 named volume)** in this deploy, not tmpfs. §2.1a exception.
+2. **Orphan tokens only** (`no_parent: True`). Root `revoke-self` without orphan killed all
+   service tokens — outage root cause.
+3. **TTL 720h** operator policy for runtime tokens (required env, no default).
+4. **Root never on disk; revoke-self always.** Break-glass = `generate-root` in RAM → revoke.
+5. **Policy table** above now matches live `agent-runtime.hcl` / `brain-runtime.hcl`.
+6. **Code is the only source of truth.** Where docs disagree with `infra/standalone/*.py`,
+   code wins.
 
 ---
 

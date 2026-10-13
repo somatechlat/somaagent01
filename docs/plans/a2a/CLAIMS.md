@@ -218,7 +218,7 @@
 |---|---|---|---|---|
 | webui/src/components/soma-message.ts webui/src/components/soma-composer.ts webui/src/components/soma-tool-timeline.ts webui/src/components/soma-chat-topbar.ts | soma-ui-engineer | AgentSkin CSS migration (--skin-* only): static styles = glassCard/moduleBase/css; replace hex+px literals with skin tokens; behavior identical. Merge-additive with MiMoCode-soma-chat-uiux / UI-peer-seat-B. | 2026-10-14T12:00:00Z | ACTIVE |
 
-| webui/src/views/soma-memory-view.ts webui/src/components/soma-brain-manager.ts webui/src/views/soma-login.ts webui/src/views/soma-cognitive-panel.ts | soma-ui-engineer | CSS migrate to --skin-* tokens + glassCard/moduleBase | 2026-10-10T00:00:00Z | ACTIVE |
+| webui/src/views/soma-memory-view.ts webui/src/components/soma-brain-manager.ts webui/src/views/soma-login.ts webui/src/views/soma-cognitive-panel.ts | soma-ui-engineer | CSS migrate to --skin-* tokens + glassCard/moduleBase | 2026-10-10T00:00:00Z | DONE — glassCard+moduleBase composed; hex/px/--soma-* zeroed in static styles; tsc clean |
 
 | path/prefix | agent | task | started_at | status |
 |---|---|---|---|---|
@@ -230,3 +230,14 @@
 | path/prefix | agent | task | started_at | status |
 |---|---|---|---|---|
 | tests/e2e/profile-window.spec.ts tests/e2e/files-modal.spec.ts tests/e2e/skins-gallery.spec.ts tests/e2e/chat-display.spec.ts | soma-e2e-prover | Human-like Playwright live UI suite (Profile/Files/Skins/Display) against :20080 — real clicks only, no network mocks, honest GATED assertions | 2026-10-14T20:15:00Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| tests/e2e/ (run evidence only; no product edits) | soma-e2e-prover | Live Playwright run: profile modal · Files modal · skins gallery against Docker UI :20080 — screenshots tmp/soma-e2e ( /tmp/soma-e2e blocked by sandbox external_directory policy ) | 2026-10-13T20:27:53Z | DONE — 8/8 FAIL at live login (Vault service token expired → identity pepper unreadable → 503 Identity service is not configured). Honest fail-closed. Evidence tmp/soma-e2e/run-20261013T202818Z.log |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| docs/reports/SOMA-RPT-SEC-VAULT-001.md docs/standards/SOMA-STD-BOOTSTRAP-001.md docs/standards/SOMA-STD-SECURITY-001.md docs/standards/SOMA-LAW-SECURITY-001.md CLAUDE.md docs/iso/DOCUMENT-REGISTER.md docs/plans/a2a/ | security-reviewer | Vault token expiry outage: DOC sync to live code + validated ceremony (orphan no_parent, 720h, T0 named-volume ext4, never root on disk). Docs-only turn. | 2026-10-13T20:50:00Z | DONE — report+errata issued; residual Δ-06 bootstrap_exec non-orphan mint logged for code turn |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| docs/reports/SOMA-RPT-VAULT-AUTHORITY-001.md | soma-vault-authority | Vault-authority static code-truth audit: skill-claim vs code (single credential, KV merge-safe, read-back, *_FILE, fail-closed, orphan 720h). Docs only; no secret values. | 2026-10-13T21:19:40Z | ACTIVE |

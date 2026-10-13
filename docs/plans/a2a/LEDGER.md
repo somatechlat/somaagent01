@@ -386,3 +386,49 @@ Fix: stability window raised to 3000 ms in both `test_memory_human_name.spec.js`
 
 **No commits (operator order).**
 | 2026-10-13T01:20:00Z | MiMoCode-AgentSkin-SDK | PUSH | AgentSkin-SDK → origin (5e2b3151 SDK + 01663585 gallery + 1fb791bc alias bridge). Installable skin packs, Settings gallery, live-UI alias bridge. 21 tests green, tsc clean. No mocks/fakes — localStorage is real standalone store; API sync documented gap not stubbed. |
+| 2026-10-13T17:19:52Z | MiMoCode-UI-orchestrator | WAVE | Operator: coordinator + 6+ parallel UI lanes. Soma law on every agent. Branch AgentSkin-SDK. Peers merge-additive. No mocks. |
+
+## 2026-10-13T17:20:28Z — soma-ui-engineer — UI/UX A2A coordination (docs only)
+
+**Scope:** A2A CLAIMS/OUTBOX appends + peer brief `docs/design/SOMA-UI-PEER-BRIEF-001.md` + webui/src collision inventory. No product code.
+
+**Split:** Seat A (this) = skin-sdk / tokens / design+control-map docs. Seat B (peer session) = component/view implementation per MODULE-CATALOG + CM-*. Merge-additive both ways. Shared: main.ts routes, index.ts exports, A2A files.
+
+**Peer brief contracts:** shell · toast+tray+bell · Profile+password · Agent package export/import + Hands tools install · File Manager · Chat settings (CoT) · naming law (Agent/Hands/Brain/Memory — never "Capsule" in UI).
+
+**Collision inventory (see brief §9):** HIGH = `soma-chat.ts` (137KB), `main.ts`, `soma-right-panel.ts`, `soma-settings.ts`, both `index.ts`. MED = sidebar/composer/message/personal-profile. Skin-sdk + tokens.css claimed by this seat. Chat components claimed by soma-chat-uiux. Several views claimed by wave6-webui-roles.
+
+**No commits (operator: DOCS ONLY this turn).**
+| 2026-10-13T17:27:41Z | MiMoCode-UI-orchestrator | WAVE | Respawn 8 lanes with Soma law card: L0 glass, toast/bell/tray, profile+password, agent hands/package, file-manager+artifacts, brain-manager, chat-settings+CoT, barrel+brand. Parallel. Branch AgentSkin-SDK. YACHAQ logo at webui/public/brand/. |
+
+| 2026-10-13T17:45:00Z | MiMoCode-AgentSkin-SDK | LAND | L0 glass+density freeze: styles/glass.ts (.glass-card/modal/row/chip, --skin-* only) + styles/density.ts (SPACE/RADIUS/TYPE/Z/MOTION) + tokens.css additive --skin-* structural + vocabulary fallbacks. Alias proof: 25/25 --skin-color-* sources, 70/70 used colour-backed legacy names expand. tsc clean (bun node_modules/typescript/bin/tsc --noEmit). skin-sdk tests 21/21. |
+
+## 2026-10-13T19:15:00Z — soma-ui-engineer — chat/file UI enterprise polish
+- Zero emojis in user-facing UI (Material Symbols only): integrations header/status, models Vault chips, memory filter chip, tool chevrons, WS frame dir arrows, AgentIQ knob help, chat-settings Reset.
+- Product names: Capsule → Agent in UI labels (right-panel surface UI-X-06, agent-header, capsule-editor chrome, settings defaults, channels modules, chat AgentIQ tips, right-panel tools empty). API field names keep capsule.
+- File Manager M-024: standardized workroot/inbox tree chrome (honest gate), file-type Material icons in rows, move/rename/delete/new-folder UX with named-API gates (PATCH filesv2, POST workroot/move, POST workroot/mkdir), upload tray, clear list.
+- Chat attachment cards: Material file-type icons via attachmentIcon(), honest not-uploaded/preview-unavailable states, dead media-pending spinner CSS removed, attachment styles → --skin-* tokens.
+- --skin-* tokens only in touched chat/file surfaces (message, composer, file-manager, file-preview, tool-timeline, right-panel, capsule-editor, agent-header).
+- ISO control maps: CM-01 v1.1.0 (C-30/C-67/C-67a/C-67b as-built attachment display + no-emoji/product-name honesty notes), CM-02 v1.1.0 (FM-00..FM-55 as-built/gated, FM-21g Move, Material icon law, source map).
+- Gates: webui tsc --noEmit exit 0; vite build ✓. No commits.
+
+## 2026-10-13T19:35:00Z — soma-ui-engineer — SOMA-UI-I18N-001 first domains
+- webui/src/i18n/index.ts: t() / setLocale() / getLocale() / onLocaleChange(). Persists soma_locale (migrates soma_interface.language once). Sets <html lang> (I18N-05). Missing key: key in dev, en fallback + log in prod (I18N-10). Live switch, no reload.
+- webui/src/i18n/en.json + es.json: 108 keys each, full parity. Domains common.* / profile.* / files.* / chat.*. Zero emojis (I18N-08).
+- Wired t() into soma-profile-modal.ts (all chrome, tabs, forms, status keys with error flag) and soma-file-manager-modal.ts (title, aria-labels). Both subscribe onLocaleChange → requestUpdate.
+- soma-settings.ts minimal touch: language select .value=getLocale(); _setInterface('language') → setLocale().
+- Gates: webui tsc --noEmit exit 0; vite build ✓; en/es parity script ALL_REQUIRED_PRESENT. No commits.
+
+## 2026-10-13T21:40:00Z — security-reviewer — Vault ceremony DOC sync (docs only)
+
+**Scope:** docs only (operator order). No product code. No secrets printed.
+
+**Issued:**
+- `docs/reports/SOMA-RPT-SEC-VAULT-001.md` — ISO report: I-1 token expiry (fail-closed correct), I-2 root-on-disk R-SEC-01 violation (removed+revoked), I-3 **outage root cause** = `revoke-self` without `no_parent` killed child service tokens. Ceremony as-built (generate-root → mint orphans → revoke-self). T0 truth: `standalone_t0_agent` **ext4 named volume, NOT tmpfs** (§2.1a). Policy grants as live `.hcl`. Δ-01…Δ-10 doc-vs-code register.
+- `SOMA-STD-BOOTSTRAP-001` v1.1.0 errata: §2.1a named-volume exception + as-built table; §3.4 orphan mandatory + root revoke always (withdraws "local may skip revoke"); 720h TTL; X-G/X-H/X-I supersession.
+- `SOMA-STD-SECURITY-001` v1.1.0 errata: T0 as-built ext4 volume; orphan law; policy table matches live `agent-runtime.hcl`/`brain-runtime.hcl`; mint path of record = `vault_scoped_tokens.py`.
+- `SOMA-LAW-SECURITY-001` aligned (mint writes scoped tokens direct to T0; no tmpfs-then-copy fiction).
+- `CLAUDE.md` SOMA LAW security block (no root on disk · orphan tokens · no secrets in env · code=truth).
+- `DOCUMENT-REGISTER.md` regenerated (224 rows). `check_docs.py` RESULT: PASS.
+
+**Residual (code, later turn):** `bootstrap_exec.py` `mint_scoped` still mints **without** `no_parent` (Δ-06). Do not pair with root revoke. Mint path of record remains `vault_scoped_tokens.py`.

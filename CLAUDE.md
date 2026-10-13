@@ -17,6 +17,19 @@
 A shim is a bypass. A mock is a lie. A fake is a defect.
 Acceptance = live real services (T-8/VIBE). If a dependency is missing, integrate the **real** library/API or do not ship the feature.
 
+**Code is the ONLY source of truth.** Docs yield to live code. Never print secrets. Never write root to disk. Fail-closed.
+
+## SECURITY / VAULT LAW (operator, 2026-10-13 — after token outage)
+
+1. **NEVER root on disk.** No `vault_root_token` in T0, `/tmp`, repo, compose env, or any file. Root = one-shot process RAM → `auth/token/revoke-self` immediately after mint.
+2. **Orphan service tokens only.** Every runtime `auth/token/create` uses `no_parent: True`. Root revoke without orphan kills all children (outage root cause).
+3. **No secrets in ENV steady-state.** `VAULT_TOKEN` / `VAULT_UNSEAL_KEY` are one-shot only, stripped before exec. Services read `VAULT_TOKEN_FILE` from their private T0.
+4. **T0 custodian:** tmpfs preferred; this deploy uses named volume `standalone_t0_agent` (**ext4**, not tmpfs — documented §2.1a exception). Scoped tokens + unseal key only. Never root. 0700/0600.
+5. **TTL is operator config** (`VAULT_TOKEN_TTL_HOURS`; this deploy **720h**). No coded default (Rule 91). Expired token = fail-closed, never widen policy.
+6. **Policies least privilege.** `agent-runtime`: read `secret/data/agent/credentials` + `api_keys` only. No write. No `sys/`. Mint path of record: `infra/standalone/vault_scoped_tokens.py`.
+
+Truth document: `docs/reports/SOMA-RPT-SEC-VAULT-001.md`. Law: `SOMA-LAW-SECURITY-001` · `SOMA-STD-BOOTSTRAP-001` §2.1a/§3.4 · `SOMA-STD-SECURITY-001`.
+
 **Always feed these rules to every agent you spawn.**
 
 ## SECURITY / VAULT LAW (code = truth · 2026-10-13)

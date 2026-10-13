@@ -221,6 +221,7 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-RPT-INVENTORY-001 | docs/reports/SOMA-RPT-INVENTORY-001.md | System Inventory | 1.1.0 | Draft | — | 2027-01-03 | Compliant |
 | SOMA-RPT-REPO-001 | docs/reports/SOMA-RPT-REPO-001.md | SomaAgent01 Deep Repo Analysis | 1.1.0 | Obsolete | — | 2027-01-03 | Compliant |
 | — | docs/reports/SOMA-RPT-SEC-REVIEW-2026-10-13.md | Enterprise Security Review | — | — | — | MISSING | Non-compliant |
+| SOMA-RPT-SEC-VAULT-001 | docs/reports/SOMA-RPT-SEC-VAULT-001.md | Vault token custody, orphan-lease incident & ceremony as-built | 1.0.0 | Draft | — | 2027-01-13 | Non-compliant |
 | SOMA-RPT-STATUS-001 | docs/reports/SOMA-RPT-STATUS-001.md | Full code review, wiring status & UI/UX continuation plan | 1.0.0 | Draft | — | 2027-01-08 | Compliant |
 | — | docs/reports/SOMA-RPT-TRIAD-PROOF-001.md | somaAgent01 → SomaBrain → SomaFractalMemory live proof | — | — | — | MISSING | Non-compliant |
 | SOMA-RPT-UI-CONTROLS-SCORE-001 | docs/reports/SOMA-RPT-UI-CONTROLS-SCORE-001.md | WebUI interactive controls inventory and score | 1.0.0 | Draft | — | MISSING | Non-compliant |
@@ -268,9 +269,9 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 
 | Metric | Count |
 |---|---|
-| Registered documents | 223 |
+| Registered documents | 224 |
 | Compliant | 117 |
-| Non-compliant (tracked gaps) | 39 |
+| Non-compliant (tracked gaps) | 40 |
 | Annexes (design artefacts) | 67 |
 
 ## 4. Tracked remediation

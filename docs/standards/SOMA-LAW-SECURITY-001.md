@@ -15,7 +15,7 @@
 | ISO Reference | ISO 9001:2015 · ISO 27001 controls (A.5–A.8) |
 | Next Review | 2027-01-13 |
 | Source of truth | `infra/standalone/vault_scoped_tokens.py` · `vault-policies/*.hcl` · `vault_unseal.py` · `services/common/vault_secrets.py` · `docker-compose.yml` |
-| Related | `SOMA-STD-BOOTSTRAP-001` · `SOMA-STD-SECURITY-001` · `CLAUDE.md` |
+| Related | `SOMA-STD-BOOTSTRAP-001` · `SOMA-STD-SECURITY-001` · `SOMA-RPT-SEC-VAULT-001` · `CLAUDE.md` |
 | Audience | **Every Soma agent** — spawn with this law |
 
 ## Revision History
@@ -57,25 +57,32 @@
 
 | Source | Claim |
 |---|---|
-| `SOMA-STD-BOOTSTRAP-001` | T0 = RAM tmpfs only |
-| `vault_scoped_tokens.py` | Refuses non-tmpfs write (`_t0_set`) |
+| older `SOMA-STD-BOOTSTRAP-001` prose | T0 = RAM tmpfs only |
+| live `vault_scoped_tokens.py` / `vault_unseal.py` | Allow **tmpfs OR dedicated named-volume mount** (BOOTSTRAP-001 **§2.1a**). Refuse root writes. Refuse overlay/root-fs. |
 | `docker-compose.yml` | `t0_agent:/run/t0` **named volume** so unseal key survives recreate |
 
-**Truth for this deploy:** durable volume is intentional for unseal continuity. Minting uses a **tmpfs** (`/dev/shm` or `--tmpfs`) then copies **service** tokens to `/run/t0`. That copy is the designed runtime channel. Do not weaken policy. Do not copy root.
+**Truth for this deploy:** Docker volume **`standalone_t0_agent` (ext4)** at `/run/t0` is intentional for unseal continuity (§2.1a). Mint writes **scoped** tokens directly into that custodian (`_t0_custodian_allows`). Never root. Never chmod 0777. Do not weaken policy. Full narrative: `docs/reports/SOMA-RPT-SEC-VAULT-001.md`.
 
 ## 3. Correct ceremony (operators / bots)
 
 ```
+MINT PATH OF RECORD: infra/standalone/vault_scoped_tokens.py (orphan + revoke-self).
+Do NOT pair bootstrap_exec.py mint_scoped with root revoke until it sets no_parent.
+
 1. vault operator generate-root -generate-otp
 2. generate-root -init -otp=…  → nonce
 3. unseal key from T0 (custodian) | generate-root -nonce=…
 4. generate-root -decode -otp=… → root (memory only)
-5. PUT sys/policies/acl/agent-runtime + brain-runtime
-6. POST auth/token/create {policies:[…], ttl:720h, no_parent:true, no_default_policy:true}
-7. Write hvs tokens to /run/t0 as appuser:appuser 0600
-8. auth/token/revoke-self on root  (orphans survive)
-9. delete any root file if created by mistake; verify test ! -f vault_root_token
-10. restart somaagent_standalone; POST /api/v2/auth/login must be 200
+5. export VAULT_TOKEN=<root>   # THIS one-shot process env only
+6. T0_DIR=/run/t0 VAULT_ADDR=… VAULT_TOKEN_TTL_HOURS=720 \
+     python3 vault_scoped_tokens.py
+   # installs policies
+   # auth/token/create {policies:[…], ttl:720h, no_parent:true, no_default_policy:true}
+   # writes agent_runtime_token + brain_runtime_token to T0 (0600, consumer UID)
+   # refuses vault_root_token (R-SEC-01)
+   # auth/token/revoke-self on root  (orphans survive)
+7. verify: test ! -f /run/t0/vault_root_token
+8. restart somaagent_standalone; POST /api/v2/auth/login must be 200
 ```
 
 ## 4. Incident that defined this (2026-10-13)

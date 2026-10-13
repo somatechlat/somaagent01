@@ -28,6 +28,7 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-10-10 | SomaTech Engineering | Initial issue. Resolves the three-generation secret-delivery split-brain. Establishes Vault-only custody, FD-channel delivery, and the sealed-bootstrap ceremony. |
+| 1.1.0 | 2026-10-13 | security-reviewer (somaAgent01) | **Errata to match live code + validated ceremony** (SOMA-RPT-SEC-VAULT-001). Adds §2.1a T0 named-volume exception (this deploy = `standalone_t0_agent` ext4, **not** tmpfs). Mandates **orphan** service tokens (`no_parent: True`) so root `revoke-self` cannot kill children (outage root cause). Operator TTL 720h. Root never on disk; root revoke is mandatory. Corrects false claim that `vault_scoped_tokens.py` requires `VAULT_TOKEN_FILE`/`SECRETS_DIR`. |
 
 ---
 
@@ -50,13 +51,13 @@ The TRIAD currently runs **three incompatible generations of secret delivery at 
 | **Gen 1** | host directory of secret files, `*_FILE` paths, bind-mounted into containers | **GONE** (F-05 / R-SEC-01, 2026-10-10). `secrets: file: ./secrets/*` and `SOMA_T0_SECRETS_DIR` binds removed from all three compose files. The `infra/standalone/secrets/` directory is deleted. | **BANNED.** The secret is a host file. Gitignored is not the same as not-on-disk. |
 | **Gen 2** | OS keychain + in-memory generation | `somaAgent01/infra/standalone/vault_unseal.py`, `init_vault.py` — **now the live path**. Compose has no `secrets: file:` block; credentials are generated in process memory and written to Vault only; unseal custodian is OS keychain or T0_DIR RAM tmpfs. | **CORRECT SHAPE, LIVE.** This standard is the contract that closed the split-brain. |
 
-**Gen 2 is currently an island.** `init_vault.py` and `vault_unseal.py` say "there is no
-`VAULT_TOKEN_FILE`, there is no `SECRETS_DIR`", while `services/common/vault_secrets.py:42`,
-`somabrain/somabrain/core/security/vault_client.py:48` and
-`somafractalmemory/somafractalmemory/admin/core/security/vault_client.py:25` all still
-*require* `VAULT_TOKEN_FILE` and explicitly refuse an env token. `vault_scoped_tokens.py:36-37`
-still requires `VAULT_TOKEN_FILE` **and** `SECRETS_DIR`. This standard is the contract that
-ends that contradiction.
+**Gen 2 is live in somaAgent01 standalone.** `vault_scoped_tokens.py` (live) takes root from
+one-shot `VAULT_TOKEN` env or the OS keychain — **not** from a repo file, **not** from T0, and it
+does **not** require `SECRETS_DIR`. Issued service tokens are delivered to the T0 custodian
+(§2.1a) under `agent_runtime_token` / `brain_runtime_token` only. Older text claiming
+`vault_scoped_tokens.py` still requires `VAULT_TOKEN_FILE` + `SECRETS_DIR` is **superseded**
+(errata 1.1.0). Token delivery to first-party apps remains `VAULT_TOKEN_FILE` → private T0
+path (Channel T0), with Channel FD as the target state.
 
 ---
 
@@ -134,6 +135,35 @@ shell history entry, a CI log, a `docker inspect` field.
 | Database **catalog verifiers** (`pg_authid` SCRAM-SHA-256, Keycloak password hash, MinIO credential hash) | One-way salted hashes inside the datastore that owns that auth. Inherent to the datastore. Plaintext is not written. |
 | **procfs** `/proc/<pid>/environ` and `/proc/<pid>/fd/*` | RAM-resident kernel objects, not durable storage. Mitigated in §2.5. |
 | **tmpfs** mounts | RAM-only, never paged to durable storage **iff swap is disabled**. Permitted as a last resort for an upstream image that hard-requires a path. Prefer the FD channel. |
+
+### 2.1a T0 custodian filesystem (normative — matches live code)
+
+Live enforcement: `vault_scoped_tokens.py` `_t0_custodian_allows`, `vault_unseal.py` `t0_set`. The custodian directory (`T0_DIR`, typically `/run/t0`) must sit on **one of exactly two** shapes:
+
+| Shape | Status | Notes |
+|---|---|---|
+| **tmpfs / ramfs** | **Preferred.** RAM-only. | Swap must be off (F-19). |
+| **Dedicated named-volume mount** | **Allowed local-standalone exception.** Own `/proc/mounts` entry (not `/`, not overlay). | The 1-of-1 unseal key must survive container recreate or Vault is permanently un-unsealable. Linux containers have no OS keychain. Volume is container-native — not the repo, not a host bind. **Production replaces this with KMS auto-unseal; the exception disappears.** |
+
+**Refused:** ordinary directory, repo path, host bind, container root fs / overlay, `/tmp` on the root filesystem.
+
+#### As-built (this deploy, 2026-10-13) — do not call this tmpfs
+
+| Property | Value |
+|---|---|
+| Compose volume | `t0_agent` |
+| Docker volume name | **`standalone_t0_agent`** |
+| Filesystem | **ext4** (named volume on Docker host disk) — **NOT tmpfs** |
+| Mount | `/run/t0` (also `t0_postgres` → `/run/t0_pg`) |
+| Mode | dir 0700 · files 0600 · consumer UID |
+| Allowed accounts | `vault_unseal_key`, `agent_runtime_token`, `brain_runtime_token` |
+| **Forbidden** | **`vault_root_token` (absolute — R-SEC-01)** |
+
+Comments that say "RAM tmpfs custodian" while the service mounts `t0_agent` are **stale**. Code and this subsection are the source of truth.
+
+#### Root is never a custodian account (absolute)
+
+`vault_root_token` is **never** written to T0, key file, repo, `/tmp`, or compose env. Root exists only as process RAM of a one-shot (`generate-root` or `sys/init` response) and is **revoked** at the end of the ceremony (§3.4). Guards live in `vault_scoped_tokens.py:150-155`, `vault_unseal.py:117-121`, `bootstrap_exec.py` `t0_write`.
 
 ### 2.2 Canonical flow
 
@@ -495,32 +525,44 @@ Services **never** hold root. `vault_scoped_tokens.py`'s docstring
 
 ### 3.4 Sealed-bootstrap ceremony + dual-control root + break-glass
 
-```
-CEREMONY (each step is an auditable, dual-control action in prod)
-  1. Operator A authenticates to the custodian (keychain unlock / KMS IAM).
-  2. vault_unseal.py runs as a one-shot (NOT a compose service).
-       local:  init if needed (1-of-1) → unseal
-       prod:   KMS auto-unseal (no human step) OR m-of-n operator unseal
-  3. Root token exists in THIS process's memory only.
-  4. vault_scoped_tokens.py (same process group, root in env of the one-shot):
-       - writes vault-policies/*.hcl
-       - mints per-service tokens (TTL-bound)
-  5. init_vault.py (same process group):
-       - seeds credentials (generate-in-memory → KV v2 → read-back)
-  6. ROOT REVOKE. The one-shot calls auth/token/revoke-self on the root token.
-     Local may skip step 6 and instead leave root ONLY in the OS keychain as a
-     break-glass item; prod MUST revoke.
-  7. compose up. No container ever sees root.
+**AMENDED 2026-10-13 (SOMA-RPT-SEC-VAULT-001).** Root revoke is **mandatory** in every
+environment. Service tokens **must** be minted as **orphans**. The prior "local may skip
+step 6" text is **withdrawn** — skipping revoke left standing root; revoking without orphan
+killed every child service token (outage root cause I-3).
 
-BREAK-GLASS (prod)
-  - Recovery key: vault operator generate-root  (requires unseal/KMS authority)
-  - Dual control: two distinct humans, two distinct IAM principals, both
-    actions alert (CloudTrail / KMS key policy / Vault audit device).
-  - The recovered root is time-boxed (e.g. 15 min) and revoked in the same
-    session. Any use is a page.
-  - The break-glass procedure is documented, drilled quarterly, and its
-    execution is itself audited.
 ```
+CEREMONY (validated 2026-10-13 — this is the as-built process)
+  1. Operator authenticates to the custodian (unseal key from T0 / keychain).
+  2. Unseal if sealed (vault_unseal.py --unseal-only). Never init here if a
+     ceremonial seeder owns sys/init.
+  3. Root in THIS process's memory only:
+       vault operator generate-root   (unseal key + OTP)   — or sys/init response
+     ABSOLUTE: root is never written to T0, /tmp, repo, or compose env.
+  4. vault_scoped_tokens.py (root in one-shot process env):
+       - writes vault-policies/*.hcl
+       - mints per-service tokens with ALL of:
+           no_parent: True            ← ORPHAN (mandatory)
+           no_default_policy: True
+           ttl: VAULT_TOKEN_TTL_HOURS (required; this deploy = 720h)
+       - accounts: agent_runtime_token, brain_runtime_token only
+  5. (If needed) init_vault.py: seed credentials in RAM → KV v2 → read-back.
+  6. ROOT REVOKE — ALWAYS. auth/token/revoke-self on the root token.
+     Safe ONLY because step 4 used no_parent. Root revoke without orphan
+     revokes the entire child tree (Vault behaviour) = outage.
+  7. No container ever sees root. No root file remains anywhere.
+
+BREAK-GLASS (prod and local)
+  - Recovery: vault operator generate-root (unseal/KMS authority)
+  - Use in RAM only; revoke-self in the SAME session; never park root.
+  - Dual control in prod: two humans, two IAM principals, alert on use.
+  - Drill quarterly; execution is itself audited.
+```
+
+**Orphan rule (normative).** Every runtime service token is created with `no_parent: True`.
+A non-orphan service token is a defect: the next root `revoke-self` will kill it.
+
+**TTL rule (normative).** `VAULT_TOKEN_TTL_HOURS` is required operator config. This deploy
+uses **720h (30d)** (`infra/standalone/.env`). There is no coded default (Rule 91).
 
 **Dual control for root in prod is mandatory.** No single human, no single
 laptop, no single CI job can both mint and use root.
@@ -537,8 +579,9 @@ laptop, no single CI job can both mint and use root.
 ### 3.6 Zero-trust boot checklist
 
 - [ ] Vault starts sealed in every non-dev environment (and dev mode is absent).
-- [ ] Unseal key is in a custodian outside the Vault host's disk.
-- [ ] Root exists only during the ceremony and is revoked (or keychain-only locally).
+- [ ] Unseal key is in a custodian outside the repo (tmpfs OR §2.1a named-volume exception).
+- [ ] Root exists only during the ceremony and is **always** revoked (`revoke-self`). **Never root on disk.**
+- [ ] Every runtime service token is **orphan** (`no_parent: True`) before root is revoked.
 - [ ] Every running service holds a TTL-scoped, policy-bound token — or none.
 - [ ] No compose service has a `secrets:` block sourced from a host file.
 - [ ] No compose service has a secret in `environment:`.
@@ -698,6 +741,10 @@ following are recorded so the next reader does not re-litigate them:
 | X-E | "The token is a credential and is delivered as a file" | `vault_secrets.py:67-72` (current error text) | Rejected. A file is a durable plaintext copy. Delivery is FD or AppRole. | §2.5 |
 | X-F | Unseal key "held in `./secrets/`" | `vault.hcl:9`, `docker-compose.yml:27` | Unseal key is held by an OS keychain (local) or a cloud KMS (prod). | §2.1, §2.3 |
 
+| X-G | "Local may skip root revoke" | §3.4 v1.0.0 | **Withdrawn.** Root revoke is mandatory everywhere. Service tokens are orphans so revoke is safe. Standing root is banned. | §3.4 errata 2026-10-13 |
+| X-H | T0 custodian is "RAM tmpfs" only | multiple comments / v1.0.0 prose | tmpfs **or** §2.1a dedicated named-volume. This deploy: `standalone_t0_agent` ext4. | §2.1a |
+| X-I | Service tokens may be children of root | implied by any mint without `no_parent` | **Banned.** Orphan only (`no_parent: True`). Non-orphan + revoke-self = outage. | §3.4, SOMA-RPT-SEC-VAULT-001 |
+
 **One rule that did not change and is not up for negotiation:**
 Rule 164 (Vault is the only system of record) and Rule 91 (fail-closed, no
 defaults) remain exactly as written. This standard *implements* them; it does
@@ -755,15 +802,33 @@ BANNED, forever
 REQUIRED, always
   Vault KV v2                   only system of record
   generate in RAM → Vault       credential birth
-  OS keychain / KMS             custodian for unseal key (+ root if kept)
-  Channel FD                    delivery to first-party processes
+  OS keychain / KMS / T0 §2.1a  custodian for unseal key ONLY
+  orphan service tokens         no_parent: True — survives root revoke
+  root revoke-self              ALWAYS after mint — never root on disk
+  Channel FD                    delivery to first-party processes (target)
   Channel ENV                   delivery to third-party images only
+  Channel T0 token file         blessed interim: VAULT_TOKEN_FILE → private T0
   TTL-scoped policy-bound
-    tokens                      what a running service holds
+    tokens                      what a running service holds (720h this deploy)
   read-back assert              after every write
   fail-closed (Rule 91)         absence is a refusal, never a default
   audit device (HMAC'd)         forensics
 ```
+
+---
+
+## Errata — 2026-10-13 (binding)
+
+Authoritative narrative: `docs/reports/SOMA-RPT-SEC-VAULT-001.md`. Summary of what changed
+relative to v1.0.0 prose:
+
+1. **T0 filesystem:** this deploy is Docker volume `standalone_t0_agent` (**ext4**), **not**
+   tmpfs. §2.1a is the normative exception. Do not describe it as RAM tmpfs.
+2. **Orphan tokens:** `no_parent: True` is mandatory. Root `revoke-self` without orphan killed
+   all service tokens (children) — that was the outage root cause.
+3. **TTL:** operator value **720h** (30d) for `agent_runtime_token` / `brain_runtime_token`.
+4. **Root:** never on disk; revoke-self always; break-glass = `generate-root` in RAM only.
+5. **`vault_scoped_tokens.py`** does not use `SECRETS_DIR` / T0 root. Mint path of record.
 
 ---
 
