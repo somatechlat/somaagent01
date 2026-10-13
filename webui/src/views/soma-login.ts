@@ -163,9 +163,10 @@ export class SomaLogin extends LitElement {
 
         .login-card {
             background: var(--skin-color-bg-card);
+            color: var(--skin-color-text-primary);
             border: var(--skin-border-width) solid var(--skin-color-border);
             border-radius: var(--skin-radius-lg);
-            box-shadow: var(--skin-shadow-md));
+            box-shadow: var(--skin-shadow-md);
             width: 100%;
             max-width: calc(var(--skin-space-2xl) * 8 + var(--skin-space-md));
             padding: calc(var(--skin-space-xl) + var(--skin-space-sm));
@@ -208,8 +209,9 @@ export class SomaLogin extends LitElement {
             width: 100%;
             padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) var(--skin-space-md);
             border-radius: var(--skin-radius-md);
-            border: var(--skin-border-width) solid var(--skin-color-border);
+            border: var(--skin-border-width) solid var(--skin-color-border-strong);
             background: var(--skin-color-bg-base);
+            color: var(--skin-color-text-primary);
             font-size: var(--skin-text-base);
             font-weight: var(--skin-weight-medium);
             cursor: pointer;
@@ -222,6 +224,7 @@ export class SomaLogin extends LitElement {
         }
 
         .oauth-btn:hover { background: var(--skin-color-bg-hover); border-color: var(--skin-color-border-strong); }
+        .oauth-btn:focus-visible { outline: 2px solid var(--skin-focus-ring); outline-offset: 2px; }
         .oauth-btn svg { width: calc(var(--skin-space-md) + var(--skin-space-xs) * 0.5); height: calc(var(--skin-space-md) + var(--skin-space-xs) * 0.5); }
 
         .divider {
@@ -286,7 +289,8 @@ export class SomaLogin extends LitElement {
             width: 100%;
             padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) var(--skin-space-md);
             border-radius: var(--skin-radius-md);
-            background: var(--skin-color-accent);
+            /* High-contrast CTA: always light text on darkened accent. */
+            background: color-mix(in srgb, var(--skin-color-accent) 82%, black);
             color: var(--skin-color-accent-text);
             font-size: var(--skin-text-base);
             font-weight: var(--skin-weight-semibold);
@@ -295,7 +299,10 @@ export class SomaLogin extends LitElement {
             transition: background var(--skin-motion-fast) var(--skin-motion-ease);
             font-family: var(--skin-font-sans);
         }
-        .submit-btn:hover:not(:disabled) { background: var(--skin-color-accent-hover); }
+        .submit-btn:hover:not(:disabled) {
+            background: color-mix(in srgb, var(--skin-color-accent-hover) 85%, black);
+        }
+        .submit-btn:focus-visible { outline: 2px solid var(--skin-focus-ring); outline-offset: 2px; }
         .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .spinner {
@@ -385,6 +392,7 @@ export class SomaLogin extends LitElement {
 
         .sso-title-block { }
 
+        .sso-modal input, .sso-modal select, .sso-modal textarea { color: var(--skin-color-text-primary); -webkit-text-fill-color: var(--skin-color-text-primary); }
         .sso-title {
             font-size: var(--skin-text-2xl);
             font-weight: var(--skin-weight-bold);

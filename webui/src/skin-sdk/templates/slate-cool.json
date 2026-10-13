@@ -44,7 +44,7 @@
       "--skin-color-text-link": "#7cb7ff",
       "--skin-color-accent": "#3d7eff",
       "--skin-color-accent-hover": "#5b92ff",
-      "--skin-color-accent-text": "#0f1419",
+      "--skin-color-accent-text": "#ffffff",
       "--skin-color-success": "#22c55e",
       "--skin-color-success-text": "#052e16",
       "--skin-color-warning": "#eab308",
