@@ -860,7 +860,13 @@ export class SomaLogin extends LitElement {
 
             if (!response.ok) {
                 const data = await response.json().catch(() => ({}));
-                throw new Error(data.detail || 'Invalid credentials');
+                // API returns {error:{message}} — not top-level detail
+                const msg =
+                    data?.error?.message ||
+                    data?.detail ||
+                    data?.message ||
+                    'Invalid credentials';
+                throw new Error(msg);
             }
 
             const result = await response.json();

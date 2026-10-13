@@ -20,6 +20,7 @@ import './styles/material-symbols.css';
 
 // Theme: light default + dark toggle (localStorage)
 import './services/theme-boot.js';
+import './services/skin-boot.js';
 import { apiClient } from './services/api-client.js';
 
 // Routing logic

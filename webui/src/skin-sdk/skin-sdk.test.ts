@@ -3,7 +3,8 @@
  * Run: bun test src/skin-sdk/skin-sdk.test.ts
  */
 
-import { describe, expect, test } from 'bun:test';
+import { describe, test } from 'node:test';
+import assert from 'node:assert/strict';
 import { sanitiseSkin, sanitiseTemplate } from './validate.js';
 import { resolveSkin } from './resolve.js';
 import { BUNDLED_PACKS } from './templates/index.js';
@@ -73,22 +74,22 @@ function doc(overrides: Partial<SkinDocument> = {}): unknown {
 describe('sanitiseSkin', () => {
   test('accepts a complete valid document', () => {
     const result = sanitiseSkin(doc());
-    expect(result.ok).toBe(true);
+    assert.equal(result.ok, true);
   });
 
   test('rejects wrong schema_version (X-1)', () => {
     const result = sanitiseSkin(doc({ schema_version: '2' }));
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
     if (!result.ok) {
-      expect(result.findings.some((f) => f.rule === 'X-1')).toBe(true);
+      assert.equal(result.findings.some((f) => f.rule === 'X-1'), true);
     }
   });
 
   test('rejects unknown top-level keys (X-2)', () => {
     const result = sanitiseSkin({ ...doc(), evil: true });
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
     if (!result.ok) {
-      expect(result.findings.some((f) => f.rule === 'X-2')).toBe(true);
+      assert.equal(result.findings.some((f) => f.rule === 'X-2'), true);
     }
   });
 
@@ -96,9 +97,9 @@ describe('sanitiseSkin', () => {
     const result = sanitiseSkin(
       doc({ tokens: fullTokens({ '--skin-color-evil': 'red' }) }),
     );
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
     if (!result.ok) {
-      expect(result.findings.some((f) => f.rule === 'X-3')).toBe(true);
+      assert.equal(result.findings.some((f) => f.rule === 'X-3'), true);
     }
   });
 
@@ -110,9 +111,9 @@ describe('sanitiseSkin', () => {
         }),
       }),
     );
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
     if (!result.ok) {
-      expect(result.findings.some((f) => f.rule === 'X-6' || f.rule === 'X-5')).toBe(true);
+      assert.equal(result.findings.some((f) => f.rule === 'X-6' || f.rule === 'X-5'), true);
     }
   });
 
@@ -124,7 +125,7 @@ describe('sanitiseSkin', () => {
         }),
       }),
     );
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
   });
 
   test('rejects var() in values (X-7)', () => {
@@ -135,9 +136,9 @@ describe('sanitiseSkin', () => {
         }),
       }),
     );
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
     if (!result.ok) {
-      expect(result.findings.some((f) => f.rule === 'X-7')).toBe(true);
+      assert.equal(result.findings.some((f) => f.rule === 'X-7'), true);
     }
   });
 
@@ -145,9 +146,9 @@ describe('sanitiseSkin', () => {
     const tokens = fullTokens();
     delete tokens['--skin-color-accent'];
     const result = sanitiseSkin(doc({ tokens }));
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
     if (!result.ok) {
-      expect(result.findings.some((f) => f.rule === 'T-2')).toBe(true);
+      assert.equal(result.findings.some((f) => f.rule === 'T-2'), true);
     }
   });
 
@@ -157,7 +158,7 @@ describe('sanitiseSkin', () => {
         surfaces: { nope: { '--skin-color-accent': '#ff0000' } },
       } as Partial<SkinDocument>),
     );
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
   });
 
   test('rejects low-contrast text pair (A11Y-1)', () => {
@@ -169,9 +170,9 @@ describe('sanitiseSkin', () => {
         }),
       }),
     );
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
     if (!result.ok) {
-      expect(result.findings.some((f) => f.rule === 'A11Y-1' || f.rule === 'A11Y-2')).toBe(true);
+      assert.equal(result.findings.some((f) => f.rule === 'A11Y-1' || f.rule === 'A11Y-2'), true);
     }
   });
 
@@ -183,18 +184,18 @@ describe('sanitiseSkin', () => {
         }),
       }),
     );
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
   });
 });
 
 describe('bundled installable packs', () => {
   test('ships at least 6 packs', () => {
-    expect(BUNDLED_PACKS.length).toBeGreaterThanOrEqual(6);
+    assert.ok(BUNDLED_PACKS.length >= 6);
   });
 
   test('every bundled pack is a valid pack manifest', () => {
     for (const pack of BUNDLED_PACKS) {
-      expect(isSkinPackManifest(pack)).toBe(true);
+      assert.equal(isSkinPackManifest(pack), true);
     }
   });
 
@@ -206,7 +207,7 @@ describe('bundled installable packs', () => {
           `${pack.pack_id} failed: ${JSON.stringify(result.findings)}`,
         );
       }
-      expect(result.ok).toBe(true);
+      assert.equal(result.ok, true);
     }
   });
 
@@ -214,7 +215,7 @@ describe('bundled installable packs', () => {
     for (const pack of BUNDLED_PACKS) {
       const surfaces = pack.skin.surfaces ?? {};
       for (const key of Object.keys(surfaces)) {
-        expect(SURFACE_KEYS as readonly string[]).toContain(key);
+        assert.ok((SURFACE_KEYS as readonly string[]).includes(key));
       }
     }
   });
@@ -229,7 +230,7 @@ describe('sanitiseTemplate', () => {
         },
       } as Partial<SkinDocument>),
     );
-    expect(result.ok).toBe(false);
+    assert.equal(result.ok, false);
   });
 });
 
@@ -250,8 +251,8 @@ describe('resolveSkin', () => {
       platform,
     });
 
-    expect(resolved.tokens['--skin-color-accent']).toBe('#ff0000');
-    expect(resolved.provenance['--skin-color-accent']).toBe('capsule');
+    assert.equal(resolved.tokens['--skin-color-accent'], '#ff0000');
+    assert.equal(resolved.provenance['--skin-color-accent'], 'capsule');
   });
 
   test('falls through per token when capsule is partial', () => {
@@ -263,9 +264,9 @@ describe('resolveSkin', () => {
     } as unknown as SkinDocument;
 
     const resolved = resolveSkin({ capsule, platform });
-    expect(resolved.tokens['--skin-color-accent']).toBe('#ff0000');
-    expect(resolved.tokens['--skin-color-bg-void']).toBe('#f5f5f5');
-    expect(resolved.provenance['--skin-color-bg-void']).toBe('platform');
+    assert.equal(resolved.tokens['--skin-color-accent'], '#ff0000');
+    assert.equal(resolved.tokens['--skin-color-bg-void'], '#f5f5f5');
+    assert.equal(resolved.provenance['--skin-color-bg-void'], 'platform');
   });
 
   test('surface overrides merge across layers', () => {
@@ -280,7 +281,7 @@ describe('resolveSkin', () => {
     } as unknown as SkinDocument;
 
     const resolved = resolveSkin({ capsule, platform });
-    expect(resolved.surfaces.chat?.['--skin-color-bg-card']).toBe('#111111');
+    assert.equal(resolved.surfaces.chat?.['--skin-color-bg-card'], '#111111');
   });
 });
 
@@ -290,11 +291,11 @@ describe('alias bridge', () => {
       '--skin-color-accent': '#FF4D00',
       '--skin-color-bg-void': '#050505',
     });
-    expect(expanded['--platform-accent']).toBe('#FF4D00');
-    expect(expanded['--soma-accent']).toBe('#FF4D00');
-    expect(expanded['--soma-primary']).toBe('#FF4D00');
-    expect(expanded['--platform-bg-void']).toBe('#050505');
-    expect(expanded['--soma-bg-void']).toBe('#050505');
+    assert.equal(expanded['--platform-accent'], '#FF4D00');
+    assert.equal(expanded['--soma-accent'], '#FF4D00');
+    assert.equal(expanded['--soma-primary'], '#FF4D00');
+    assert.equal(expanded['--platform-bg-void'], '#050505');
+    assert.equal(expanded['--soma-bg-void'], '#050505');
   });
 
   test('alias values never override an explicit legacy key', () => {
@@ -302,7 +303,7 @@ describe('alias bridge', () => {
       '--skin-color-accent': '#FF4D00',
       '--platform-accent': '#000000',
     });
-    expect(expanded['--platform-accent']).toBe('#000000');
-    expect(expanded['--soma-accent']).toBe('#FF4D00');
+    assert.equal(expanded['--platform-accent'], '#000000');
+    assert.equal(expanded['--soma-accent'], '#FF4D00');
   });
 });
