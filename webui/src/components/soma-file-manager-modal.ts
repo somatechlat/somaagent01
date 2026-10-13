@@ -5,6 +5,7 @@
  */
 import { LitElement, css, html, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { t, onLocaleChange } from '../i18n/index.js';
 import './soma-file-manager.js';
 
 @customElement('soma-file-manager-modal')
@@ -33,13 +34,13 @@ export class SomaFileManagerModal extends LitElement {
             inset: 16px;
             display: flex;
             flex-direction: column;
-            background: var(--skin-color-bg-base, #fff);
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.1));
+            background: var(--skin-color-bg-base, var(--platform-bg-base, #ffffff));
+            color: var(--skin-color-text-primary, var(--platform-text-main, #1a1a1a));
+            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.12));
             border-radius: var(--skin-radius-xl, 16px);
             box-shadow: var(--skin-shadow-overlay, 0 16px 48px rgba(0, 0, 0, 0.25));
             overflow: hidden;
             font-family: var(--skin-font-sans, system-ui, sans-serif);
-            color: var(--skin-color-text-primary, #1a1a1a);
         }
         .bar {
             display: flex;
@@ -108,6 +109,18 @@ export class SomaFileManagerModal extends LitElement {
     `;
 
     private _dragging = false;
+    private _unsubLocale: (() => void) | null = null;
+
+    override connectedCallback(): void {
+        super.connectedCallback();
+        this._unsubLocale = onLocaleChange(() => this.requestUpdate());
+    }
+
+    override disconnectedCallback(): void {
+        this._unsubLocale?.();
+        this._unsubLocale = null;
+        super.disconnectedCallback();
+    }
 
     private _close(): void {
         this.open = false;
@@ -122,7 +135,7 @@ export class SomaFileManagerModal extends LitElement {
                 class="sheet"
                 role="dialog"
                 aria-modal="true"
-                aria-label="File manager"
+                aria-label=${t('files.manager')}
                 @dragover=${(e: DragEvent) => {
                     e.preventDefault();
                     this._dragging = true;
@@ -152,10 +165,14 @@ export class SomaFileManagerModal extends LitElement {
                 <div class="bar">
                     <h2>
                         <span class="material-symbols-outlined">folder_open</span>
-                        Files
+                        ${t('files.title')}
                     </h2>
                     <div class="spacer"></div>
-                    <button class="close" aria-label="Close file manager" @click=${() => this._close()}>
+                    <button
+                        class="close"
+                        aria-label=${t('files.closeManager')}
+                        @click=${() => this._close()}
+                    >
                         <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>

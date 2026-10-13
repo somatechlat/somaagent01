@@ -465,6 +465,9 @@ h6 {
     --skin-glass-blur: var(--platform-glass-blur);
     --skin-glass-backdrop: var(--platform-glass-backdrop);
 
+    /* Native controls follow polarity — form fields stay legible. */
+    color-scheme: light dark;
+
     /* Hairline */
     --skin-border-width: 1px;
 

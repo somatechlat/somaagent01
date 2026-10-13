@@ -6,6 +6,7 @@
 import { LitElement, css, html, nothing, TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
+import { t, onLocaleChange } from '../i18n/index.js';
 import './soma-password-modal.js';
 import './soma-chat-settings.js';
 
@@ -34,7 +35,9 @@ export class SomaProfileModal extends LitElement {
     @state() private _chatOpen = false;
     @state() private _dirty = false;
     @state() private _saving = false;
-    @state() private _status = '';
+    /** Catalog key + error flag so status survives locale switches (I18N-06). */
+    @state() private _statusKey = '';
+    @state() private _statusError = false;
     @state() private _emails: ChannelRow[] = [];
     @state() private _phones: ChannelRow[] = [];
     @state() private _newEmail = '';
@@ -66,15 +69,14 @@ export class SomaProfileModal extends LitElement {
             max-height: min(720px, 92vh);
             display: flex;
             flex-direction: column;
-            background: color-mix(in srgb, var(--skin-color-bg-card, #fff) 90%, transparent);
-            backdrop-filter: blur(24px) saturate(140%);
-            -webkit-backdrop-filter: blur(24px) saturate(140%);
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.1));
+            /* Solid card fill — text must stay AA against this surface. */
+            background: var(--skin-color-bg-card, var(--platform-bg-card, #ffffff));
+            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.12));
             border-radius: var(--skin-radius-xl, 16px);
             box-shadow: var(--skin-shadow-overlay, 0 16px 48px rgba(0, 0, 0, 0.25));
             overflow: hidden;
             font-family: var(--skin-font-sans, system-ui, sans-serif);
-            color: var(--skin-color-text-primary, #1a1a1a);
+            color: var(--skin-color-text-primary, var(--platform-text-main, #1a1a1a));
         }
         .head {
             display: flex;
@@ -317,9 +319,40 @@ export class SomaProfileModal extends LitElement {
         }
     `;
 
+    private _unsubLocale: (() => void) | null = null;
+
     override connectedCallback(): void {
         super.connectedCallback();
+        this._unsubLocale = onLocaleChange(() => this.requestUpdate());
         if (this.open) void this._load();
+    }
+
+    override disconnectedCallback(): void {
+        this._unsubLocale?.();
+        this._unsubLocale = null;
+        super.disconnectedCallback();
+    }
+
+    private _setStatus(key: string, error = false): void {
+        this._statusKey = key;
+        this._statusError = error;
+    }
+
+    /** Translate known channel labels; pass through any custom label. */
+    private _channelLabel(label: string): string {
+        switch (label) {
+            case 'Primary':
+            case 'profile.channelPrimary':
+                return t('profile.channelPrimary');
+            case 'Work':
+            case 'profile.channelWork':
+                return t('profile.channelWork');
+            case 'WhatsApp':
+            case 'profile.channelWhatsapp':
+                return t('profile.channelWhatsapp');
+            default:
+                return label;
+        }
     }
 
     override updated(changed: Map<string, unknown>): void {
@@ -343,13 +376,13 @@ export class SomaProfileModal extends LitElement {
                 avatar_url?: string;
             }>('/auth/me');
             this._email = me.email || '';
-            this._name = me.name || me.username || me.email || 'User';
+            this._name = me.name || me.username || me.email || t('profile.defaultName');
             this._role = me.role || me.roles?.[0] || '';
             this._avatarUrl = me.avatar_url || '';
             const parts = this._name.split(/[\s@.]+/).filter(Boolean);
             this._initials = ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || 'U';
         } catch {
-            this._name = this._name || 'User';
+            this._name = this._name || t('profile.defaultName');
             this._initials = 'U';
         }
         // Channels: local profile store until a server contact API is mounted.
@@ -362,7 +395,12 @@ export class SomaProfileModal extends LitElement {
             }
             if (this._email && !this._emails.some((e) => e.value === this._email)) {
                 this._emails = [
-                    { id: 'primary', value: this._email, label: 'Primary', verified: true },
+                    {
+                        id: 'primary',
+                        value: this._email,
+                        label: 'profile.channelPrimary',
+                        verified: true,
+                    },
                     ...this._emails,
                 ];
             }
@@ -376,7 +414,7 @@ export class SomaProfileModal extends LitElement {
             'soma_profile_channels',
             JSON.stringify({ emails: this._emails, phones: this._phones }),
         );
-        this._status = 'Channels saved on this device.';
+        this._setStatus('profile.channelsSaved');
         this._dirty = false;
     }
 
@@ -384,12 +422,12 @@ export class SomaProfileModal extends LitElement {
         const v = this._newEmail.trim();
         if (!v) return;
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) {
-            this._status = 'Enter a valid email address.';
+            this._setStatus('profile.invalidEmail', true);
             return;
         }
         this._emails = [
             ...this._emails,
-            { id: `e-${Date.now()}`, value: v, label: 'Work', verified: false },
+            { id: `e-${Date.now()}`, value: v, label: 'profile.channelWork', verified: false },
         ];
         this._newEmail = '';
         this._dirty = true;
@@ -399,12 +437,12 @@ export class SomaProfileModal extends LitElement {
         const v = this._newPhone.trim();
         if (!v) return;
         if (!/^\+?[\d\s()-]{8,}$/.test(v)) {
-            this._status = 'Enter a valid phone number.';
+            this._setStatus('profile.invalidPhone', true);
             return;
         }
         this._phones = [
             ...this._phones,
-            { id: `p-${Date.now()}`, value: v, label: 'WhatsApp', verified: false },
+            { id: `p-${Date.now()}`, value: v, label: 'profile.channelWhatsapp', verified: false },
         ];
         this._newPhone = '';
         this._dirty = true;
@@ -415,7 +453,7 @@ export class SomaProfileModal extends LitElement {
         const file = input.files?.[0];
         if (!file) return;
         if (!file.type.startsWith('image/')) {
-            this._status = 'Choose an image file.';
+            this._setStatus('profile.imageOnly', true);
             return;
         }
         const reader = new FileReader();
@@ -427,7 +465,7 @@ export class SomaProfileModal extends LitElement {
                 /* quota — avatar stays session-only */
             }
             this._dirty = true;
-            this._status = 'Photo updated on this device (server upload when profile API mounts).';
+            this._setStatus('profile.photoUpdated');
         };
         reader.readAsDataURL(file);
         input.value = '';
@@ -457,7 +495,7 @@ export class SomaProfileModal extends LitElement {
 
     private _renderAccount(): TemplateResult {
         return html`
-            <label for="pf-name">Display name</label>
+            <label for="pf-name">${t('profile.displayName')}</label>
             <input
                 id="pf-name"
                 .value=${this._name}
@@ -466,10 +504,10 @@ export class SomaProfileModal extends LitElement {
                     this._dirty = true;
                 }}
             />
-            <label for="pf-email">Primary email</label>
+            <label for="pf-email">${t('profile.primaryEmail')}</label>
             <input id="pf-email" .value=${this._email} readonly />
-            <div class="hint">Sign-in email is locked. Extra emails live under Channels.</div>
-            <label for="pf-role">Role</label>
+            <div class="hint">${t('profile.emailLockedHint')}</div>
+            <label for="pf-role">${t('profile.role')}</label>
             <input id="pf-role" .value=${this._role} readonly />
             <button
                 class="btn primary"
@@ -482,35 +520,39 @@ export class SomaProfileModal extends LitElement {
                             'soma_profile_identity',
                             JSON.stringify({ name: this._name }),
                         );
-                        this._status = 'Profile saved.';
+                        this._setStatus('profile.saved');
                         this._dirty = false;
                     } catch {
-                        this._status = 'Could not save profile.';
+                        this._setStatus('profile.saveFailed', true);
                     } finally {
                         this._saving = false;
                     }
                 }}
             >
-                ${this._saving ? 'Saving…' : 'Save profile'}
+                ${this._saving ? t('profile.saving') : t('profile.saveProfile')}
             </button>
         `;
     }
 
     private _renderChannels(): TemplateResult {
         return html`
-            <div class="hint">Email and WhatsApp for later module wiring (mail, chat bridges).</div>
-            <label>Email accounts</label>
+            <div class="hint">${t('profile.channelsHint')}</div>
+            <label>${t('profile.emailAccounts')}</label>
             ${this._emails.map(
                 (r) => html`
                     <div class="row-card">
                         <span class="material-symbols-outlined">mail</span>
                         <div>
                             <div class="v">${r.value}</div>
-                            <div class="t">${r.label}${r.verified ? ' · verified' : ''}</div>
+                            <div class="t">
+                                ${this._channelLabel(r.label)}${r.verified
+                                    ? ` · ${t('profile.verified')}`
+                                    : ''}
+                            </div>
                         </div>
                         <button
                             class="btn"
-                            aria-label=${`Remove ${r.value}`}
+                            aria-label=${t('profile.removeChannel', { value: r.value })}
                             @click=${() => {
                                 this._emails = this._emails.filter((x) => x.id !== r.id);
                                 this._dirty = true;
@@ -532,21 +574,23 @@ export class SomaProfileModal extends LitElement {
                         if (e.key === 'Enter') this._addEmail();
                     }}
                 />
-                <button class="btn" @click=${() => this._addEmail()}>Add email</button>
+                <button class="btn" @click=${() => this._addEmail()}>
+                    ${t('profile.addEmail')}
+                </button>
             </div>
 
-            <label>WhatsApp / phone</label>
+            <label>${t('profile.whatsappPhone')}</label>
             ${this._phones.map(
                 (r) => html`
                     <div class="row-card">
                         <span class="material-symbols-outlined">chat</span>
                         <div>
                             <div class="v">${r.value}</div>
-                            <div class="t">${r.label}</div>
+                            <div class="t">${this._channelLabel(r.label)}</div>
                         </div>
                         <button
                             class="btn"
-                            aria-label=${`Remove ${r.value}`}
+                            aria-label=${t('profile.removeChannel', { value: r.value })}
                             @click=${() => {
                                 this._phones = this._phones.filter((x) => x.id !== r.id);
                                 this._dirty = true;
@@ -568,7 +612,9 @@ export class SomaProfileModal extends LitElement {
                         if (e.key === 'Enter') this._addPhone();
                     }}
                 />
-                <button class="btn" @click=${() => this._addPhone()}>Add WhatsApp</button>
+                <button class="btn" @click=${() => this._addPhone()}>
+                    ${t('profile.addWhatsapp')}
+                </button>
             </div>
             <button
                 class="btn primary"
@@ -576,7 +622,7 @@ export class SomaProfileModal extends LitElement {
                 ?disabled=${!this._dirty}
                 @click=${() => this._saveChannels()}
             >
-                Save channels
+                ${t('profile.saveChannels')}
             </button>
         `;
     }
@@ -590,8 +636,8 @@ export class SomaProfileModal extends LitElement {
             >
                 <span class="material-symbols-outlined">tune</span>
                 <span>
-                    <strong>Chat settings</strong>
-                    <span class="sub">Tools · chain of thought · timestamps · memory chips</span>
+                    <strong>${t('profile.chatSettings')}</strong>
+                    <span class="sub">${t('profile.chatSettingsSub')}</span>
                 </span>
             </button>
             <button
@@ -605,8 +651,8 @@ export class SomaProfileModal extends LitElement {
             >
                 <span class="material-symbols-outlined">open_in_new</span>
                 <span>
-                    <strong>Open full profile page</strong>
-                    <span class="sub">Advanced account settings</span>
+                    <strong>${t('profile.openFullProfile')}</strong>
+                    <span class="sub">${t('profile.advancedAccount')}</span>
                 </span>
             </button>
         `;
@@ -617,15 +663,15 @@ export class SomaProfileModal extends LitElement {
             <button class="panel-action" @click=${() => (this._passwordOpen = true)}>
                 <span class="material-symbols-outlined">lock</span>
                 <span>
-                    <strong>Change password</strong>
-                    <span class="sub">Minimum 14 characters</span>
+                    <strong>${t('profile.changePassword')}</strong>
+                    <span class="sub">${t('profile.passwordMin')}</span>
                 </span>
             </button>
             <button class="panel-action" style="margin-top:10px" @click=${() => this._logout()}>
                 <span class="material-symbols-outlined">logout</span>
                 <span>
-                    <strong>Sign out</strong>
-                    <span class="sub">End this session</span>
+                    <strong>${t('profile.signOut')}</strong>
+                    <span class="sub">${t('profile.signOutSub')}</span>
                 </span>
             </button>
         `;
@@ -635,7 +681,7 @@ export class SomaProfileModal extends LitElement {
         if (!this.open) return nothing;
         return html`
             <div class="scrim" @click=${() => this._close()}></div>
-            <div class="dialog" role="dialog" aria-modal="true" aria-label="Profile">
+            <div class="dialog" role="dialog" aria-modal="true" aria-label=${t('profile.title')}>
                 <div class="head">
                     <div class="avatar-wrap">
                         <div class="avatar">
@@ -643,7 +689,7 @@ export class SomaProfileModal extends LitElement {
                                 ? html`<img src=${this._avatarUrl} alt="" />`
                                 : this._initials}
                         </div>
-                        <label class="cam" title="Upload photo">
+                        <label class="cam" title=${t('profile.uploadPhoto')}>
                             <span class="material-symbols-outlined">photo_camera</span>
                             <input
                                 type="file"
@@ -658,15 +704,19 @@ export class SomaProfileModal extends LitElement {
                         <div class="email">${this._email}</div>
                         <span class="role">${this._role}</span>
                     </div>
-                    <button class="close" aria-label="Close" @click=${() => this._close()}>
+                    <button
+                        class="close"
+                        aria-label=${t('common.close')}
+                        @click=${() => this._close()}
+                    >
                         <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>
                 <div class="tabs" role="tablist">
-                    ${this._tabBtn('account', 'Account')}
-                    ${this._tabBtn('channels', 'Channels')}
-                    ${this._tabBtn('display', 'Display')}
-                    ${this._tabBtn('security', 'Security')}
+                    ${this._tabBtn('account', t('profile.account'))}
+                    ${this._tabBtn('channels', t('profile.channels'))}
+                    ${this._tabBtn('display', t('profile.display'))}
+                    ${this._tabBtn('security', t('profile.security'))}
                 </div>
                 <div class="body">
                     ${this._tab === 'account'
@@ -676,19 +726,23 @@ export class SomaProfileModal extends LitElement {
                           : this._tab === 'display'
                             ? this._renderDisplay()
                             : this._renderSecurity()}
-                    ${this._status
+                    ${this._statusKey
                         ? html`<div
-                              class="status ${this._status.includes('Could') || this._status.includes('valid') ? 'error' : ''}"
+                              class="status ${this._statusError ? 'error' : ''}"
                               role="status"
                           >
-                              ${this._status}
+                              ${t(this._statusKey)}
                           </div>`
                         : nothing}
                 </div>
                 <div class="foot">
-                    <button class="btn danger" @click=${() => this._logout()}>Sign out</button>
+                    <button class="btn danger" @click=${() => this._logout()}>
+                        ${t('profile.signOut')}
+                    </button>
                     <div class="foot-right">
-                        <button class="btn" @click=${() => this._close()}>Close</button>
+                        <button class="btn" @click=${() => this._close()}>
+                            ${t('common.close')}
+                        </button>
                     </div>
                 </div>
             </div>

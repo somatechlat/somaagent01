@@ -209,81 +209,141 @@ All marketplace strings via `t('tools.*')` · `t('connectors.*')` · `t('common.
 | AC-TM-06 | No emoji · locale switch works |
 | AC-TM-07 | Soma law: zero mock rows |
 
-## 12. REAL WIREFRAMES — fields + realistic data (no mocks; live schema)
+## 12. REAL WIREFRAMES — marketplace style (glass cards · simple · creative)
 
-### 12.1 Tools catalog (real `ToolCatalogItem` + `ToolInfo`)
+Design law: **CSS glass cards · grid · chips · one modal**. Skin tokens only (`--skin-*`). No dense admin tables on the marketplace face — tables live under **Permissions**. No emojis — Material icons.
+
+### 12.1 Marketplace hero (catalog face)
 
 ```
-┌ Tools · Catalog ─────────────────────────────────────────────────────────┐
-│ 🔍 Search tools…          category [All|core|connector|document ▾]       │
+┌──────────────────────────────────────────────────────────────────────────┐
+│  Tools                                                           [×]     │
+│  Install capabilities for your agent                                     │
+│  ╭────────────────────────────────────────────────────────────────────╮  │
+│  │ 🔍 Search Drive, mail, web…                    [All ▾] [tier ▾]    │  │
+│  ╰────────────────────────────────────────────────────────────────────╯  │
 │                                                                          │
-│ name              tier  category    enabled  used-by  actions            │
-│ web_search        2     core        ●        3        [Install][Policy]  │
-│ file_read         1     core        ●        5        [Installed][Policy]│
-│ google_drive      2     connector   ○        0        [Connect][Install] │
-│ gmail             2     connector   ○        0        [Connect][Install] │
-│ document_index    2     document    ●        2        [Installed][Policy]│
-│ packages_ensure   3     core        ●        1        [Installed][Policy]│
+│  Featured                                                                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                    │
+│  │ ▣ google     │  │ ▣ gmail      │  │ ▣ photos     │   glass card       │
+│  │   Drive      │  │   Mail       │  │   Library    │   radius-lg        │
+│  │ Files in &   │  │ Read & send  │  │ Search your  │                    │
+│  │ out of work  │  │ email        │  │ pictures     │                    │
+│  │              │  │              │  │              │                    │
+│  │ connector    │  │ connector    │  │ connector    │                    │
+│  │ [Install]    │  │ [Install]    │  │ [Install]    │                    │
+│  └──────────────┘  └──────────────┘  └──────────────┘                    │
+│                                                                          │
+│  Core tools                                            See all 24  ›    │
+│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐                │
+│  │ 🔎     │ │ 📂     │ │ 🧠     │ │ 🌐     │ │ 📊     │  icon + name    │
+│  │ search │ │ files  │ │ memory │ │ web    │ │ docs   │  [Add]          │
+│  │ ✓ on   │ │ ✓ on   │ │ ✓ on   │ │ + add  │ │ + add  │                │
+│  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘                │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-| Field | Source (real) | Example |
-|---|---|---|
-| name | `GET /api/v2/tools` `ToolInfo.name` | `web_search` |
-| description | `ToolInfo.description` | Search via configured SearxNG |
-| tier | tool class `tier` | 1 / 2 / 3 |
-| category | `GET /tools/catalog` `category` | core / connector |
-| enabled | `ToolCatalogItem.enabled` | true / false |
+*(Icons are Material Symbols: `cloud` `mail` `photo_library` `search` `folder` `psychology` `language` `description`.)*
 
-### 12.2 Install modal (real policy keys)
+### 12.2 Tool card — states (same card, four skins)
 
 ```
-┌ Install tool → Default Agent ────────────────────────────────────────────┐
-│ tool     web_search · tier 2 · egress · approval                         │
-│ policy   auto_execute [ ]   approval_required [✓]   deny [ ]             │
-│          (Capsule.tool_policy JSON keys — live PATCH)                    │
-│ scope    network (IQ egress gate)                                        │
-│ [Cancel]  [Install & enable]                                             │
-└──────────────────────────────────────────────────────────────────────────┘
+  ┌─────────────────────┐   ┌─────────────────────┐
+  │ ▣  Google Drive     │   │ ▣  web_search       │
+  │    Files in & out   │   │    Live web via     │
+  │    of workspace     │   │    SearxNG          │
+  │                     │   │                     │
+  │  [connector]        │   │  [core] [tier 2]    │
+  │  ─────────────────  │   │  ─────────────────  │
+  │  [ Install ]        │   │  ✓ Installed        │
+  └─────────────────────┘   │  [ Policy ⋯ ]       │
+                            └─────────────────────┘
+  ┌─────────────────────┐   ┌─────────────────────┐
+  │ ▣  Gmail            │   │ ▣  github           │
+  │    Connect account  │   │    Needs account    │
+  │  [connector]        │   │  [connector]        │
+  │  ─────────────────  │   │  ─────────────────  │
+  │  [ Connect ▸ ]      │   │  ┌─ GATED ────────┐ │
+  │  then Install       │   │  │ Connect GitHub │ │
+  └─────────────────────┘   │  │ account first  │ │
+                            │  └────────────────┘ │
+                            └─────────────────────┘
 ```
 
-### 12.3 Connector (real Vault + OAuth shapes)
+### 12.3 Install sheet (one modal, not a wizard)
 
 ```
-┌ Connect Gmail ───────────────────────────────────────────────────────────┐
-│ provider_id   gmail                                                   │
-│ account       adrian@somatech.lat                                       │
-│ scopes        gmail.readonly · gmail.send                               │
-│ credential    → Vault secret/agent/api_keys/gmail_api_key (write-only) │
-│ status        not connected                                             │
-│ [Test connection]  [Connect]  [Cancel]                                  │
-└──────────────────────────────────────────────────────────────────────────┘
+     ╭──────────────────────────────────────────────╮
+     │  ▣  Google Drive                        [×]  │
+     │  Files · connector · tier 2                  │
+     │                                              │
+     │  What it can do                              │
+     │  ✓ list files   ✓ read file                  │
+     │  ✓ write file   ✗ delete (not in this tool)  │
+     │                                              │
+     │  When it may act                             │
+     │  ( ) run automatically                       │
+     │  (•) ask me first          ← HITL            │
+     │  ( ) never                                   │
+     │                                              │
+     │  Account                                     │
+     │  [ Connect Google ]  status: not connected   │
+     │                                              │
+     │              [ Cancel ]  [ Install ]         │
+     ╰──────────────────────────────────────────────╯
 ```
 
-### 12.4 Profile window (real `/auth/me` + channels)
+### 12.4 Connectors tab (account cards)
 
 ```
-┌ Profile ─────────────────────────────────────────────────────────────────┐
-│ (photo)  Adrian Daniel          [×]                                     │
-│          test@soma.dev                                                  │
-│          [sysadmin]                                                     │
-├ Account │ Channels │ Display │ Security ────────────────────────────────┤
-│ Display name [Adrian Daniel_________]  email [test@soma.dev] (ro)       │
-│ WhatsApp     [+593 99 123 4567_____] [Add]                             │
-│ Email extra  [adrian@somatech.lat____] [Add]                            │
-│ [Chat settings]  [Save profile]  [Sign out]                             │
-└──────────────────────────────────────────────────────────────────────────┘
+  Connected
+  ┌─ Gmail ─────────────────────────────────────────┐
+  │  adrian@somatech.lat            ● connected      │
+  │  scopes: read · send            [Disconnect]     │
+  └──────────────────────────────────────────────────┘
+
+  Available
+  ┌─ Drive ──────┐ ┌─ Photos ─────┐ ┌─ WhatsApp ────┐
+  │ [Connect]    │ │ [Connect]    │ │ [Connect]      │
+  └──────────────┘ └──────────────┘ └────────────────┘
 ```
 
-### 12.5 Files modal (real filesv2 fields)
+### 12.5 My tools (installed grid)
 
 ```
-name                         mime           size_bytes  created_at
-Photo on 11-10-26 at 13.53.jpg  image/jpeg   549953      2026-10-13T18:32:38Z
-soma-test-upload.txt           text/plain        24      2026-10-13T18:11:03Z
+  ┌─ web_search ──┐ ┌─ file_read ──┐ ┌─ memory_* ───┐
+  │ ✓ on          │ │ ✓ on         │ │ ✓ always on  │
+  │ [Policy] [−]  │ │ [Policy] [−] │ │ [View]       │
+  └───────────────┘ └──────────────┘ └──────────────┘
 ```
 
-**Field law:** every column maps to a live API property (never invented). Synthetic **values** in diagrams are realistic; **schemas** are real.
+### 12.6 Profile window (same card language)
+
+```
+     ╭──────────────────────────────────────────────╮
+     │  (◉ photo)   Adrian Daniel             [×]   │
+     │              test@soma.dev  [sysadmin]       │
+     │  Account │ Channels │ Display │ Security     │
+     │  ┌────────────────────────────────────────┐  │
+     │  │ Display name  [Adrian Daniel        ]  │  │
+     │  │ WhatsApp      [+593 99 123 4567  +]   │  │
+     │  │ Email         [adrian@somatech.lat +]  │  │
+     │  │ [Chat settings]        [Save]          │  │
+     │  └────────────────────────────────────────┘  │
+     ╰──────────────────────────────────────────────╯
+```
+
+### 12.7 Files full-window (simple)
+
+```
+  ┌ Files ─────────────────────────────── [Upload] [×] ┐
+  │ 📁 inbox     │  photo.jpg     537 KB   [Preview ⬇] │
+  │ 📁 docs      │  report.pdf    210 KB   [Preview ⬇] │
+  │ 📁 out       │  …                                  │
+  └──────────────┴──────────────────────────────────────┘
+```
+
+**Field law:** labels match live schema (`name`, `category`, `tier`, `enabled`, `tool_policy`, filesv2 `size_bytes`) — values in diagrams are realistic samples, not fake APIs.
 
 ---
 
