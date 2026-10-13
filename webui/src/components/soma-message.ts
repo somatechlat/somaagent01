@@ -19,6 +19,12 @@ import type { ToolCallStep } from './soma-tool-timeline.js';
 import { renderMarkdown, renderCodeBlock, bindCodeCopy, formatTime, formatBytes } from '../utils/markdown.js';
 import { apiClient } from '../services/api-client.js';
 import { attachmentIcon } from '../utils/file-icons.js';
+import {
+    CHAT_PREFS_EVENT,
+    getChatPrefs,
+    type ChatPrefs,
+    type ToolIconKey,
+} from '../services/chat-prefs.js';
 import './soma-tool-timeline.js';
 
 /** Material icon for a file attachment — delegated to shared util (no emojis). */
@@ -84,6 +90,8 @@ export class SomaMessage extends LitElement {
     @state() private _copied = false;
     @state() private _toolsExpanded = true;
     @state() private _media: Record<string, AttachmentMedia> = {};
+    @state() private _prefs: ChatPrefs = getChatPrefs();
+    private _prefsOff?: () => void;
 
     private _renderedHtml = '';
     private _mediaRequested = new Set<string>();
@@ -918,12 +926,37 @@ export class SomaMessage extends LitElement {
         // Delegated copy: markdown HTML is injected via unsafeHTML, so the
         // button cannot carry a Lit listener. Bind one handler on the host.
         this._unbindCodeCopy = bindCodeCopy(this);
+        this._prefs = getChatPrefs();
+        this._prefsOff = (() => {
+            const on = () => {
+                this._prefs = getChatPrefs();
+            };
+            window.addEventListener(CHAT_PREFS_EVENT, on);
+            return () => window.removeEventListener(CHAT_PREFS_EVENT, on);
+        })();
     }
 
     override disconnectedCallback() {
         this._unbindCodeCopy?.();
         this._unbindCodeCopy = null;
+        this._prefsOff?.();
+        this._prefsOff = undefined;
         super.disconnectedCallback();
+    }
+
+    /** Tool steps the user allowed in Chat settings (CS-13..20). */
+    private _visibleTools(): ToolCallStep[] {
+        const tools = this.tools ?? [];
+        const icons = this._prefs.toolIcons;
+        return tools.filter((t) => {
+            const name = (t.name || '').toLowerCase();
+            for (const key of Object.keys(icons) as ToolIconKey[]) {
+                if (!icons[key]) continue;
+                if (name.includes(key) || key.includes(name)) return true;
+            }
+            // Unknown tool names still show when any tool icon is enabled.
+            return Object.values(icons).some(Boolean);
+        });
     }
 
     /**
@@ -1000,12 +1033,15 @@ export class SomaMessage extends LitElement {
         return 'ctx-ok';
     }
 
-    /** Beautiful chip row for turn_meta — only fields the server sent. */
+    /** Beautiful chip row for turn_meta — only fields the server sent + prefs. */
     private _renderTurnChips() {
         const meta = this.turnMeta;
         if (!meta) return nothing;
+        const p = this._prefs;
         const hasAnything =
-            meta.model || (meta.memoryHits && meta.memoryHits.length > 0) || meta.contextTokens;
+            (p.showModelChip && meta.model) ||
+            (meta.memoryHits && meta.memoryHits.length > 0) ||
+            (p.showTokenUsage && meta.contextTokens);
         if (!hasAnything) return nothing;
 
         const hits = meta.memoryHits ?? [];
@@ -1017,19 +1053,19 @@ export class SomaMessage extends LitElement {
 
         return html`
             <div class="turn-chips" role="group" aria-label="Turn metadata">
-                ${meta.model
+                ${p.showModelChip && meta.model
                     ? html`<span class="chip model" title="Model serving this turn">
                           <span class="material-symbols-outlined">memory</span>
                           ${meta.model}
                       </span>`
                     : nothing}
-                ${hits.length > 0
+                ${hits.length > 0 && p.toolIcons.memory
                     ? html`<span class="chip recall" title="Memory hits recalled this turn">
                           <span class="material-symbols-outlined">psychology</span>
                           recall ${hits.length}
                       </span>`
                     : nothing}
-                ${ctxPct != null && meta.contextTokens && meta.contextWindow
+                ${p.showTokenUsage && ctxPct != null && meta.contextTokens && meta.contextWindow
                     ? html`<span
                           class="chip ${this._ctxClass(meta)}"
                           title="Context fill — ${meta.contextTokens} of ${meta.contextWindow} tokens"
@@ -1037,14 +1073,14 @@ export class SomaMessage extends LitElement {
                           <span class="material-symbols-outlined">data_object</span>
                           CTX ${ctxPct}%
                       </span>`
-                    : meta.contextTokens
+                    : p.showTokenUsage && meta.contextTokens
                       ? html`<span class="chip" title="Context tokens (model window unknown)">
                             <span class="material-symbols-outlined">data_object</span>
                             ${meta.contextTokens} tok
                         </span>`
                       : nothing}
             </div>
-            ${top && top.text
+            ${top && top.text && p.toolIcons.memory
                 ? html`<div class="turn-chips">
                       <span class="chip-hit" title="Top memory hit this turn">
                           <span class="score"
@@ -1134,7 +1170,8 @@ export class SomaMessage extends LitElement {
     }
 
     render() {
-        const hasTools = this.tools && this.tools.length > 0;
+        const visibleTools = this._visibleTools();
+        const hasTools = visibleTools.length > 0;
         const hasAttachments = this.attachments && this.attachments.length > 0;
         const showFooter =
             !!this.timestamp ||
@@ -1156,10 +1193,10 @@ export class SomaMessage extends LitElement {
                             title=${this._toolsExpanded ? 'Collapse tool activity' : 'Expand tool activity'}
                         >
                             <span class="chev ${this._toolsExpanded ? 'open' : ''}">▶</span>
-                            <span>${this.tools.length} tool${this.tools.length === 1 ? '' : 's'}</span>
+                            <span>${visibleTools.length} tool${visibleTools.length === 1 ? '' : 's'}</span>
                         </button>
                         ${this._toolsExpanded ? html`
-                            <soma-tool-timeline .steps=${this.tools}></soma-tool-timeline>
+                            <soma-tool-timeline .steps=${visibleTools}></soma-tool-timeline>
                         ` : nothing}
                     </div>
                 ` : nothing}
@@ -1193,9 +1230,9 @@ export class SomaMessage extends LitElement {
 
                 ${showFooter ? html`
                     <div class="footer">
-                        ${this.timestamp ? html`<span class="time">${this._formatTime(this.timestamp)}</span>` : nothing}
+                        ${this.timestamp && this._prefs.showTimestamps ? html`<span class="time">${this._formatTime(this.timestamp)}</span>` : nothing}
                         ${this.stopped ? html`<span class="stopped-badge">stopped</span>` : nothing}
-                        ${this.confidence != null ? html`
+                        ${this.confidence != null && this._prefs.showConfidence ? html`
                             <span class="confidence-wrap" title="Response confidence">
                                 <span class="confidence-bar">
                                     <span class="confidence-fill" style="width:${Math.round(this.confidence * 100)}%"></span>

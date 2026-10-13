@@ -20,6 +20,7 @@ import { apiClient } from '../services/api-client.js';
 
 import '../components/soma-toggle.js';
 import '../components/soma-password-modal.js';
+import '../components/soma-chat-settings.js';
 
 interface UserProfile {
     id: string;
@@ -399,6 +400,7 @@ export class SomaPersonalProfile extends LitElement {
     @state() private error = '';
     @state() private activeTab: ProfileTab = 'account';
     @state() private passwordModalOpen = false;
+    @state() private chatSettingsOpen = false;
 
     connectedCallback() {
         super.connectedCallback();
@@ -764,6 +766,27 @@ export class SomaPersonalProfile extends LitElement {
                             </button>
                         </div>
                     </div>
+
+                    <div class="security-row" data-control="SC-08">
+                        <div class="security-info">
+                            <span class="security-label">Chat display</span>
+                            <span class="security-value">
+                                Tools · chain of thought · timestamps · memory chips
+                            </span>
+                        </div>
+                        <div class="avatar-actions">
+                            <button
+                                class="btn"
+                                data-control="SC-08-open"
+                                @click=${() => {
+                                    this.chatSettingsOpen = true;
+                                }}
+                                title="Choose which chat data to show"
+                            >
+                                Chat settings
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -936,6 +959,13 @@ export class SomaPersonalProfile extends LitElement {
                 .userName=${this.profile.displayName}
                 @soma-password-modal-close=${() => (this.passwordModalOpen = false)}
             ></soma-password-modal>
+            ${this.chatSettingsOpen
+                ? html`<soma-chat-settings
+                      open
+                      @close=${() => (this.chatSettingsOpen = false)}
+                      @soma-chat-settings-close=${() => (this.chatSettingsOpen = false)}
+                  ></soma-chat-settings>`
+                : nothing}
         `;
     }
 }
