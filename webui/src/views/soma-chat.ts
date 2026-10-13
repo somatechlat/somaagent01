@@ -20,6 +20,7 @@ import type { ToolCallStep, ToolStepStatus } from '../components/soma-tool-timel
 import { iqStore } from '../stores/iq-store.js';
 import { uploadAttachments } from '../services/file-upload.js';
 import type { ComposerSendDetail } from '../components/soma-composer.js';
+import type { MessageActionDetail } from '../components/soma-message.js';
 import type { ChatControlAction, ConnectionStatus } from '../components/soma-chat-topbar.js';
 import { formatRelative } from '../utils/markdown.js';
 import '../components/soma-message.js';
@@ -2386,6 +2387,37 @@ export class SomaChat extends LitElement {
             return;
         }
 
+        // Attachments go to filesv2 BEFORE the wire send so the message
+        // metadata can carry a real file_id per attachment
+        // (admin/filesv2/api.py: POST /filesv2/upload → presigned PUT or the
+        // upload-local fallback). Upload failure never blocks the text turn.
+        let sentAttachments: NonNullable<ChatMessage['attachments']> = [];
+        let failureText = '';
+        if (detail.attachments && detail.attachments.length > 0) {
+            const { results, failures } = await uploadAttachments(detail.attachments);
+            sentAttachments = results;
+            failureText =
+                failures.length > 0
+                    ? `Attachment upload failed: ${failures.map((f) => `${f.name} — ${f.reason}`).join(' · ')}`
+                    : '';
+        }
+
+        await this._startTurn({ text: content, sentAttachments, error: failureText });
+    }
+
+    /**
+     * One live turn: ensure WS, ensure conversation, push the user row, send
+     * `chat.message`. Shared by composer send, Retry, and Edit so every path
+     * is a real handler on the same wire (no second send implementation).
+     */
+    private async _startTurn(opts: {
+        text: string;
+        sentAttachments: NonNullable<ChatMessage['attachments']>;
+        error?: string;
+    }): Promise<void> {
+        const content = opts.text.trim();
+        const sentAttachments = opts.sentAttachments ?? [];
+
         const wsReady = await this._ensureWebSocket();
         if (!wsReady) {
             this._isStreaming = false;
@@ -2418,8 +2450,8 @@ export class SomaChat extends LitElement {
             // Client send-time is not the server message time. History rows
             // carry created_at; a live bubble shows no clock instead of one.
             timestamp: '',
-            attachments:
-                detail.attachments?.map((f) => ({ name: f.name, type: f.type, size: f.size })) ?? [],
+            attachments: sentAttachments,
+            error: opts.error || '',
         };
         this._messages = [...this._messages, userMessage];
         this._turnStopped = false;
@@ -2431,35 +2463,6 @@ export class SomaChat extends LitElement {
         this._lastErrorMessage = '';
 
         this.updateComplete.then(() => this._scrollToBottom());
-
-        // Attachments go to filesv2 BEFORE the wire send so the message
-        // metadata can carry a real file_id per attachment
-        // (admin/filesv2/api.py: POST /filesv2/upload → presigned PUT or the
-        // upload-local fallback). Upload failure never blocks the text turn:
-        // the reason is attached to this user message, and a file that did
-        // not upload keeps name/type/size with no file_id.
-        let sentAttachments = userMessage.attachments;
-        if (detail.attachments && detail.attachments.length > 0) {
-            const { results, failures } = await uploadAttachments(detail.attachments);
-            sentAttachments = results;
-            const failureText =
-                failures.length > 0
-                    ? `Attachment upload failed: ${failures.map((f) => `${f.name} — ${f.reason}`).join(' · ')}`
-                    : '';
-            this._messages = this._messages.map((m) =>
-                m.id === userMessage.id
-                    ? {
-                          ...m,
-                          attachments: results,
-                          error: failureText
-                              ? m.error
-                                  ? `${m.error} · ${failureText}`
-                                  : failureText
-                              : m.error,
-                      }
-                    : m,
-            );
-        }
 
         try {
             this._wsClient?.send({
@@ -2950,7 +2953,14 @@ export class SomaChat extends LitElement {
     private _renderMain() {
         return html`
             <main class="main">
-                <div class="messages" @tool-approval=${this._onToolApproval} role="log" aria-live="polite" aria-relevant="additions text">
+                <div
+                    class="messages"
+                    @tool-approval=${this._onToolApproval}
+                    @soma-message-action=${this._onMessageAction}
+                    role="log"
+                    aria-live="polite"
+                    aria-relevant="additions text"
+                >
                     ${this._messagesLoading
                         ? html`
                               <div class="msg-skeleton" aria-hidden="true">
@@ -3318,6 +3328,7 @@ export class SomaChat extends LitElement {
         return html`
             <soma-message
                 message-role=${msg.role}
+                message-id=${msg.id}
                 .text=${msg.content}
                 .timestamp=${msg.timestamp}
                 .tools=${msg.tools ?? []}
@@ -3328,6 +3339,69 @@ export class SomaChat extends LitElement {
                 .turnMeta=${msg.turnMeta}
             ></soma-message>
         `;
+    }
+
+    /**
+     * Bubble actions (CH-11 / CH-35). Real handlers only:
+     * - edit  → rewrite the user row and re-send over live WS `chat.message`
+     * - retry → re-send the preceding user row over live WS `chat.message`
+     * No regenerate endpoint is invented (control map CH-35 stays honest).
+     */
+    private _onMessageAction(e: Event) {
+        const detail = (e as CustomEvent<MessageActionDetail>).detail;
+        if (!detail) return;
+        if (detail.action === 'edit') {
+            void this._handleEditAction(detail);
+            return;
+        }
+        if (detail.action === 'retry') {
+            void this._handleRetryAction(detail);
+        }
+    }
+
+    private async _handleEditAction(detail: MessageActionDetail) {
+        const next = (detail.text ?? '').trim();
+        if (!next) return;
+        const idx = this._messages.findIndex((m) => m.id === detail.messageId);
+        if (idx < 0) return;
+        if (this._isStreaming) {
+            this._pushInlineError('Still finishing the previous turn — edit not sent');
+            return;
+        }
+        this._messages = this._messages.map((m, i) =>
+            i === idx ? { ...m, content: next, error: '' } : m,
+        );
+        this._isStreaming = true;
+        await this._startTurn({ text: next, sentAttachments: [] });
+    }
+
+    private async _handleRetryAction(detail: MessageActionDetail) {
+        if (this._isStreaming) {
+            this._pushInlineError('Still finishing the previous turn — retry not sent');
+            return;
+        }
+        const idx = this._messages.findIndex((m) => m.id === detail.messageId);
+        if (idx < 0) return;
+        // Walk back to the user turn that produced this assistant row.
+        let userMsg: ChatMessage | undefined;
+        for (let i = idx - 1; i >= 0; i -= 1) {
+            const m = this._messages[i];
+            if (m.role === 'user') {
+                userMsg = m;
+                break;
+            }
+        }
+        if (!userMsg || !userMsg.content?.trim()) {
+            this._pushInlineError('No user message to re-send for this reply');
+            return;
+        }
+        this._isStreaming = true;
+        // Attachments were already uploaded on the original send — pass their
+        // filesv2 metadata through, never re-upload (File objects are gone).
+        await this._startTurn({
+            text: userMsg.content,
+            sentAttachments: userMsg.attachments ?? [],
+        });
     }
 
     /* ---------- RIGHT RAIL (UI-X-01…08) ---------- */

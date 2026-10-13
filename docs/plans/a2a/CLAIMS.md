@@ -253,3 +253,11 @@
 | path/prefix | agent | task | started_at | status |
 |---|---|---|---|---|
 | docs/reports/SOMA-RPT-PROD-HARDENING-001.md .mimocode/agent/soma-prod-hardening.md docs/plans/a2a/ | soma-prod-hardening | Skill-vs-code alignment (authz.py, gateway settings, middleware, rate limits, SSRF) + report v1.1.0 refresh. Docs/skill-text only. No secrets. No runtime config. | 2026-10-14T00:00:00Z | DONE — skill anchors+SSL-exception+authz rule; report v1.1.0 matrix A0-A21; P0-1/P1-2..P1-6/P2-* remain for code turn |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| webui/src/views/soma-chat.ts webui/src/styles/ webui/src/skin-sdk/ webui/src/components/ | soma-ui-engineer | W-UIUX-2026-10-13 chat bubble contrast/icons/actions + skin modularization + file browser + brain admin cleanup | 2026-10-13T00:00:00Z | ACTIVE |
+| docs/reports/SOMA-RPT-UIUX-FULL-AUDIT-001.md docs/plans/SOMA-PLAN-UIUX-P0-P3-001.md | soma-ui-engineer | W-UIUX-2026-10-13 full audit + P0-P3 plan | 2026-10-13T00:00:00Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| webui/src/components/soma-file-manager.ts webui/src/components/soma-file-manager-modal.ts webui/src/components/soma-file-preview.ts webui/src/components/soma-right-panel.ts | soma-ui-engineer | File browser repair: list-all, /content preview+download, upload+refresh, drop wiring, honest rename/move/new-folder/tree gates | 2026-10-14T22:30:00Z | ACTIVE |

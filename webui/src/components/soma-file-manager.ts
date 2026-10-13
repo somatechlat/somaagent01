@@ -2,8 +2,9 @@
  * soma-file-manager — M-024 File Manager (CM-02 control map).
  *
  * Real bindings (no mocks):
- *   GET    /api/v2/filesv2/?page=&per_page=   list (LIVE)
- *   GET    /api/v2/filesv2/{id}/download-url  signed GET (S3-backed)
+ *   GET    /api/v2/filesv2/?page=&per_page=   list — every page until total (LIVE)
+ *   GET    /api/v2/filesv2/{id}/content       local stream body (preview + download)
+ *   GET    /api/v2/filesv2/{id}/download-url  signed GET fallback (S3-backed)
  *   POST   /api/v2/filesv2/upload             presigned PUT or upload-local (LIVE)
  *   DELETE /api/v2/filesv2/{id}               soft delete (LIVE)
  *
@@ -26,6 +27,7 @@ import { apiClient, ApiError } from '../services/api-client.js';
 import { uploadAttachment, type AttachmentMeta } from '../services/file-upload.js';
 import { formatBytes } from '../utils/markdown.js';
 import { attachmentIcon } from '../utils/file-icons.js';
+import { t } from '../i18n/index.js';
 import './soma-file-preview.js';
 import './soma-glass-modal.js';
 import type { SomaGlassModal } from './soma-glass-modal.js';
@@ -99,6 +101,9 @@ const MOVE_DISABLED_REASON =
 
 const INBOX_PATH = 'inbox';
 const WORKROOT_ROOT = 'workroot';
+
+/** Hard ceiling on list pages so a pathological total cannot hang the UI. */
+const LIST_MAX_PAGES = 20;
 
 function reasonOf(err: unknown): string {
     if (err instanceof ApiError) {
@@ -651,6 +656,7 @@ export class SomaFileManager extends LitElement {
     @state() private _filesTotal = 0;
     @state() private _filesStatus: LoadStatus = 'idle';
     @state() private _filesError = '';
+    @state() private _filesTruncated = '';
     @state() private _query = '';
 
     /** Tree gate: never a fabricated tree when GET /api/v2/workroot/tree is absent. */
@@ -715,18 +721,40 @@ export class SomaFileManager extends LitElement {
 
     // -- Files (LIVE) -------------------------------------------------------
 
+    /**
+     * List every uploaded file: page through GET /api/v2/filesv2/ until the
+     * server `total` is covered (or LIST_MAX_PAGES safety ceiling).
+     */
     private async _loadFiles(): Promise<void> {
         if (this._filesStatus === 'loading') return;
         this._filesStatus = 'loading';
         this._filesError = '';
+        this._filesTruncated = '';
         try {
-            const raw = await apiClient.get<FileListResponseEnvelope>(
-                `/filesv2/?page=1&per_page=${Math.max(1, this.pageSize)}`,
-            );
-            const { files, total } = normalizeFileList(raw);
-            this._files = files;
-            this._filesTotal = total;
-            this._filesStatus = files.length === 0 ? 'empty' : 'ready';
+            const perPage = Math.max(1, this.pageSize);
+            const collected: FileOut[] = [];
+            let total = 0;
+            let page = 1;
+            for (;;) {
+                const raw = await apiClient.get<FileListResponseEnvelope>(
+                    `/filesv2/?page=${page}&per_page=${perPage}`,
+                );
+                const { files, total: reported } = normalizeFileList(raw);
+                if (page === 1) total = reported;
+                collected.push(...files);
+                if (files.length === 0) break;
+                if (collected.length >= total) break;
+                if (page >= LIST_MAX_PAGES) {
+                    this._filesTruncated =
+                        `Showing the first ${collected.length} of ${total} files ` +
+                        `(list ceiling ${LIST_MAX_PAGES} pages × ${perPage}).`;
+                    break;
+                }
+                page += 1;
+            }
+            this._files = collected;
+            this._filesTotal = Math.max(total, collected.length);
+            this._filesStatus = collected.length === 0 ? 'empty' : 'ready';
         } catch (err) {
             if (err instanceof ApiError && err.status === 403) {
                 this._filesStatus = 'denied';
@@ -791,7 +819,7 @@ export class SomaFileManager extends LitElement {
             this._fileInput.addEventListener('change', () => {
                 const files = this._fileInput?.files ? Array.from(this._fileInput.files) : [];
                 if (this._fileInput) this._fileInput.value = '';
-                void this._uploadFiles(files);
+                void this.uploadFiles(files);
             });
             // Detached picker — fired once per user gesture.
             this._fileInput.hidden = true;
@@ -800,7 +828,12 @@ export class SomaFileManager extends LitElement {
         this._fileInput.click();
     }
 
-    private async _uploadFiles(files: File[]): Promise<void> {
+    /**
+     * Upload files through the real filesv2 pipeline (uploadAttachment) and
+     * refresh the list when every file has reached a terminal tray state.
+     * Public so hosts (file-manager-modal drop zone) can hand files over.
+     */
+    async uploadFiles(files: File[]): Promise<void> {
         if (files.length === 0) return;
 
         const started = files.map((f, i) => ({
@@ -861,11 +894,18 @@ export class SomaFileManager extends LitElement {
             }
         }
 
+        // Always refresh after a batch — success or honest failure — so the
+        // list matches the server, never a stale client cache.
         void this._loadFiles();
     }
 
     // -- Download / open ---------------------------------------------------
 
+    /**
+     * Download real bytes. Primary: GET /filesv2/{id}/content (local stream).
+     * Fallback: signed download_url when content has no bytes (S3-only).
+     * Blob download keeps auth cookies off the navigation path.
+     */
     private async _download(file: FileOut): Promise<void> {
         this.dispatchEvent(
             new CustomEvent<{ fileId: string; name: string }>('soma-file-download', {
@@ -874,6 +914,33 @@ export class SomaFileManager extends LitElement {
                 composed: true,
             }),
         );
+        const name = fileName(file);
+        const contentUrl = `/api/v2/filesv2/${encodeURIComponent(file.id)}/content`;
+
+        const saveBlob = (blob: Blob): void => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.rel = 'noopener';
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        };
+
+        // 1) Local stream.
+        try {
+            const res = await fetch(contentUrl, { credentials: 'include' });
+            if (res.ok) {
+                saveBlob(await res.blob());
+                return;
+            }
+        } catch {
+            /* fall through to signed URL */
+        }
+
+        // 2) Signed URL (S3) — navigates to an authorized GET.
         try {
             const signed = await apiClient.get<DownloadUrlOut>(
                 `/filesv2/${encodeURIComponent(file.id)}/download-url`,
@@ -881,15 +948,34 @@ export class SomaFileManager extends LitElement {
             if (!signed?.download_url) {
                 throw new Error('download-url response had no download_url');
             }
-            const a = document.createElement('a');
-            a.href = signed.download_url;
-            a.rel = 'noopener';
-            a.download = fileName(file);
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
+            if (/^https?:\/\//i.test(signed.download_url)) {
+                const a = document.createElement('a');
+                a.href = signed.download_url;
+                a.rel = 'noopener';
+                a.download = name;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                return;
+            }
+            // Relative signed URL: same content route — one more blob attempt.
+            const res = await fetch(signed.download_url, { credentials: 'include' });
+            if (!res.ok) {
+                throw new Error(`GET ${signed.download_url} refused (HTTP ${res.status})`);
+            }
+            saveBlob(await res.blob());
         } catch (err) {
             this._filesError = `Download unavailable — ${reasonOf(err)}`;
+            this.dispatchEvent(
+                new CustomEvent<{ fileId: string; name: string; error: string }>(
+                    'soma-file-download-error',
+                    {
+                        detail: { fileId: file.id, name, error: this._filesError },
+                        bubbles: true,
+                        composed: true,
+                    },
+                ),
+            );
         }
     }
 
@@ -1084,8 +1170,9 @@ export class SomaFileManager extends LitElement {
                     class="search"
                     type="search"
                     role="searchbox"
-                    aria-label="Search files"
-                    placeholder="Search files…"
+                    aria-label=${t('files.searchFiles')}
+                    placeholder=${t('files.searchPlaceholder')}
+                    title=${t('files.searchLoadedOnly')}
                     .value=${this._query}
                     @input=${(e: Event) => {
                         this._query = (e.target as HTMLInputElement).value;
@@ -1097,8 +1184,8 @@ export class SomaFileManager extends LitElement {
                     ? html`
                           <button
                               class="icon-btn"
-                              aria-label="Refresh"
-                              title="Refresh"
+                              aria-label=${t('files.refresh')}
+                              title=${t('files.refresh')}
                               @click=${() => void this.refresh()}
                           >
                               <span class="material-symbols-outlined">refresh</span>
@@ -1107,11 +1194,11 @@ export class SomaFileManager extends LitElement {
                               ? html`
                                     <button
                                         class="btn"
-                                        aria-label="Upload files"
+                                        aria-label=${t('files.uploadFiles')}
                                         @click=${this._openUploadPicker}
                                     >
                                         <span class="material-symbols-outlined">upload</span>
-                                        Upload
+                                        ${t('files.uploadFiles')}
                                     </button>
                                 `
                               : nothing}
@@ -1120,10 +1207,10 @@ export class SomaFileManager extends LitElement {
                               disabled
                               title=${NEW_FOLDER_DISABLED_REASON}
                               aria-disabled="true"
-                              aria-label="New folder (disabled)"
+                              aria-label=${t('files.newFolderDisabled')}
                           >
                               <span class="material-symbols-outlined">create_new_folder</span>
-                              New folder
+                              ${t('files.newFolder')}
                           </button>
                       `
                     : nothing}
@@ -1145,6 +1232,9 @@ export class SomaFileManager extends LitElement {
 
             ${this._treePartial
                 ? html`<div class="banner" role="alert">${this._treePartial}</div>`
+                : nothing}
+            ${this._filesTruncated
+                ? html`<div class="banner" role="status">${this._filesTruncated}</div>`
                 : nothing}
 
             <div class="layout ${treeClass} ${previewClass}">
@@ -1192,7 +1282,7 @@ export class SomaFileManager extends LitElement {
                 <span title=${EDITOR_SAVE_DISABLED_REASON}>${EDITOR_SAVE_DISABLED_REASON}</span>
                 ${this._uploads.length > 0
                     ? html`
-                          <div class="tray" aria-label="Upload tray">
+                          <div class="tray" aria-label=${t('files.uploadTray')}>
                               ${this._uploads.slice(0, 6).map(
                                   u => html`
                                       <div class="tray-item ${u.state}">
@@ -1205,9 +1295,9 @@ export class SomaFileManager extends LitElement {
                               <button
                                   class="btn"
                                   @click=${() => (this._uploads = [])}
-                                  aria-label="Clear upload tray"
+                                  aria-label=${t('files.clearTray')}
                               >
-                                  Clear tray
+                                  ${t('files.clearTray')}
                               </button>
                           </div>
                       `
@@ -1225,7 +1315,7 @@ export class SomaFileManager extends LitElement {
         }
         const segments = (this.path || '/').split('/').filter(Boolean);
         return html`
-            <nav class="crumb" aria-label="Breadcrumb">
+            <nav class="crumb" aria-label=${t('files.breadcrumb')}>
                 <span class="material-symbols-outlined" aria-hidden="true">home</span>
                 <button
                     class="btn"
@@ -1285,8 +1375,8 @@ export class SomaFileManager extends LitElement {
         const onRoot = this.path === '' || this.path === WORKROOT_ROOT;
         const onInbox = this.path === INBOX_PATH || this.path === `${WORKROOT_ROOT}/${INBOX_PATH}`;
         return html`
-            <aside class="col tree-panel" aria-label="Workroot tree">
-                <div class="tree-std" role="tree" aria-label="Workroot locations">
+            <aside class="col tree-panel" aria-label=${t('files.workrootTree')}>
+                <div class="tree-std" role="tree" aria-label=${t('files.workrootLocations')}>
                     <button
                         class="tree-node ${onRoot ? 'selected' : ''}"
                         role="treeitem"
@@ -1333,9 +1423,9 @@ export class SomaFileManager extends LitElement {
         if (this._filesStatus === 'error') {
             return html`
                 <div class="status-block error" role="alert">
-                    <span>Files could not be listed.</span>
+                    <span>${t('files.listError')}</span>
                     ${this._filesError ? html`<div class="detail">${this._filesError}</div>` : nothing}
-                    <button class="btn" aria-label="Retry listing files" @click=${() => void this._loadFiles()}>
+                    <button class="btn" aria-label=${t('files.retryListing')} @click=${() => void this._loadFiles()}>
                         Retry
                     </button>
                 </div>
@@ -1369,12 +1459,12 @@ export class SomaFileManager extends LitElement {
                 <span>Modified</span>
                 <span></span>
             </div>
-            <div role="list" aria-label="Files">
+            <div role="list" aria-label=${t('files.fileList')}>
                 ${rows.map(f => this._renderRow(f))}
             </div>
             ${this._filesTotal > rows.length
                 ? html`<div class="status-block" style="min-height:0;padding:var(--skin-space-sm)">
-                      showing ${rows.length} of ${this._filesTotal}
+                      ${rows.length} / ${this._filesTotal}
                   </div>`
                 : nothing}
         `;
@@ -1399,7 +1489,7 @@ export class SomaFileManager extends LitElement {
                 <span @click=${(e: Event) => e.stopPropagation()}>
                     <input
                         type="checkbox"
-                        aria-label=${`Select ${fileName(file)}`}
+                        aria-label=${t('files.selectFile', { name: fileName(file) })}
                         .checked=${selected}
                         @change=${(e: Event) =>
                             this._toggleSelect(file, (e.target as HTMLInputElement).checked)}
@@ -1417,24 +1507,24 @@ export class SomaFileManager extends LitElement {
                 <span class="row-actions" @click=${(e: Event) => e.stopPropagation()}>
                     <button
                         class="icon-btn"
-                        aria-label="Download"
-                        title="Download"
+                        aria-label=${t('files.download')}
+                        title=${t('files.download')}
                         @click=${() => void this._download(file)}
                     >
                         <span class="material-symbols-outlined">download</span>
                     </button>
                     <button
                         class="icon-btn"
-                        aria-label="Preview"
-                        title="Preview"
+                        aria-label=${t('files.preview')}
+                        title=${t('files.preview')}
                         @click=${() => this._openPreview(file)}
                     >
                         <span class="material-symbols-outlined">visibility</span>
                     </button>
                     <button
                         class="icon-btn"
-                        aria-label="Rename"
-                        title=${canMutate ? 'Rename' : RENAME_DISABLED_REASON}
+                        aria-label=${t('files.rename')}
+                        title=${canMutate ? t('files.rename') : RENAME_DISABLED_REASON}
                         ?disabled=${!canMutate}
                         aria-disabled=${!canMutate ? 'true' : 'false'}
                         @click=${() => this._openRename(file)}
@@ -1443,8 +1533,8 @@ export class SomaFileManager extends LitElement {
                     </button>
                     <button
                         class="icon-btn"
-                        aria-label="Move"
-                        title=${canMutate ? 'Move' : MOVE_DISABLED_REASON}
+                        aria-label=${t('files.move')}
+                        title=${canMutate ? t('files.move') : MOVE_DISABLED_REASON}
                         ?disabled=${!canMutate}
                         aria-disabled=${!canMutate ? 'true' : 'false'}
                         @click=${() => this._openMove(file)}
@@ -1453,8 +1543,8 @@ export class SomaFileManager extends LitElement {
                     </button>
                     <button
                         class="icon-btn"
-                        aria-label="Delete"
-                        title=${canMutate ? 'Delete' : 'Switch to manage mode to delete'}
+                        aria-label=${t('files.delete')}
+                        title=${canMutate ? t('files.delete') : 'Switch to manage mode to delete'}
                         ?disabled=${!canMutate}
                         aria-disabled=${!canMutate ? 'true' : 'false'}
                         @click=${() => this._openDelete(file)}
@@ -1465,8 +1555,8 @@ export class SomaFileManager extends LitElement {
                         ? html`
                               <button
                                   class="icon-btn"
-                                  aria-label="Attach to chat"
-                                  title="Attach to chat"
+                                  aria-label=${t('files.attachToChat')}
+                                  title=${t('files.attachToChat')}
                                   @click=${() => {
                                       this._toggleSelect(file, true);
                                       this._emitAttach();
@@ -1486,7 +1576,7 @@ export class SomaFileManager extends LitElement {
             <soma-glass-modal
                 id="rename-modal"
                 size="sm"
-                title="Rename file"
+                title=${t('files.renameFile')}
                 subtitle=${this._renameTarget ? fileName(this._renameTarget) : ''}
                 @soma-modal-close=${() => {
                     this._renameTarget = null;
@@ -1538,7 +1628,7 @@ export class SomaFileManager extends LitElement {
             <soma-glass-modal
                 id="move-modal"
                 size="sm"
-                title="Move file"
+                title=${t('files.moveFile')}
                 subtitle=${this._moveTarget ? fileName(this._moveTarget) : ''}
                 @soma-modal-close=${() => {
                     this._moveTarget = null;
@@ -1593,7 +1683,7 @@ export class SomaFileManager extends LitElement {
             <soma-glass-modal
                 id="delete-modal"
                 size="sm"
-                title="Delete file"
+                title=${t('files.deleteFile')}
                 subtitle=${this._deleteTarget ? fileName(this._deleteTarget) : ''}
                 @soma-modal-close=${() => {
                     this._deleteTarget = null;

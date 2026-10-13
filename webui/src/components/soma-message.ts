@@ -21,6 +21,8 @@ import { moduleBase } from '../styles/module-base.js';
 import { renderMarkdown, renderCodeBlock, bindCodeCopy, formatTime, formatBytes } from '../utils/markdown.js';
 import { apiClient } from '../services/api-client.js';
 import { attachmentIcon } from '../utils/file-icons.js';
+import { t } from '../i18n/index.js';
+import { pushToast } from './soma-toast-stack.js';
 import {
     CHAT_PREFS_EVENT,
     getChatPrefs,
@@ -48,6 +50,21 @@ function isVideoAttachment(name: string, type?: string): boolean {
 
 export type MessageRole = 'user' | 'assistant' | 'system';
 
+/**
+ * Bubble action contract (CH-11 / CH-35 / operator 2026-10-13).
+ * Parent (`soma-chat`) wires these to the live WS `chat.message` path.
+ * No fake regenerate API — Retry re-sends the real preceding user turn.
+ */
+export type MessageActionKind = 'copy' | 'retry' | 'edit';
+
+export interface MessageActionDetail {
+    action: MessageActionKind;
+    messageId: string;
+    role: MessageRole;
+    /** For `edit`: the confirmed replacement text. */
+    text?: string;
+}
+
 /** Turn chips from `chat.turn_meta` — only fields the server sent. */
 export interface MessageTurnMeta {
     model?: string;
@@ -74,6 +91,8 @@ interface AttachmentMedia {
 export class SomaMessage extends LitElement {
     /** Message role. Deliberately not `role` — that is the native ARIA attribute. */
     @property({ type: String, attribute: 'message-role' }) messageRole: MessageRole = 'assistant';
+    /** Stable row id from the parent so Retry/Edit can correlate. */
+    @property({ type: String, attribute: 'message-id' }) messageId = '';
     @property({ type: String }) text = '';
     @property({ type: String }) timestamp = '';
     @property({ type: Array }) tools: ToolCallStep[] = [];
@@ -91,6 +110,8 @@ export class SomaMessage extends LitElement {
 
     @state() private _copied = false;
     @state() private _toolsExpanded = true;
+    @state() private _editing = false;
+    @state() private _editDraft = '';
     @state() private _media: Record<string, AttachmentMedia> = {};
     @state() private _prefs: ChatPrefs = getChatPrefs();
     private _prefsOff?: () => void;
@@ -212,15 +233,18 @@ export class SomaMessage extends LitElement {
 
         .text :deep(.md-h1) {
             font-size: 1.38em;
+            /* Solid fallback first — gradient clip is progressive enhancement (C-05). */
+            color: var(--skin-color-text-primary);
             background: linear-gradient(92deg, var(--skin-color-accent), var(--skin-color-accent-hover));
             -webkit-background-clip: text;
             background-clip: text;
-            color: transparent;
+            -webkit-text-fill-color: transparent;
         }
 
         :host([message-role='user']) .text :deep(.md-h1) {
             background: none;
             color: var(--skin-color-accent-text);
+            -webkit-text-fill-color: var(--skin-color-accent-text);
         }
 
         .text :deep(.md-h2) { font-size: 1.2em; color: var(--skin-color-text-primary); }
@@ -323,7 +347,8 @@ export class SomaMessage extends LitElement {
             border-radius: var(--skin-radius-sm);
             background: var(--skin-color-bg-base);
             border: var(--skin-border-width) solid var(--skin-color-border);
-            color: var(--skin-color-text-link);
+            /* text-link aliases accent (= user-bubble fill) — never use it for code. */
+            color: var(--skin-color-text-primary);
         }
 
         :host([message-role='user']) .text :deep(.md-code) {
@@ -803,8 +828,9 @@ export class SomaMessage extends LitElement {
             transition: transform var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
+        /* expand_more points down; open flips it up. */
         .tools-toggle .chev.open {
-            transform: rotate(90deg);
+            transform: rotate(180deg);
         }
 
         /* ---------- inline error ---------- */
@@ -839,20 +865,24 @@ export class SomaMessage extends LitElement {
 
         .time {
             font-size: var(--skin-text-xs);
-            color: var(--skin-color-text-muted);
+            /* AA on glass — muted fails 4.5:1 in light. */
+            color: var(--skin-color-text-secondary);
             font-variant-numeric: tabular-nums;
         }
 
         :host([message-role='user']) .time {
-            opacity: 0.78;
+            color: var(--skin-color-accent-text);
+            opacity: 0.88;
         }
 
         .stopped-badge {
             font-size: var(--skin-text-xs);
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            color: var(--skin-color-warning);
-            border: var(--skin-border-width) solid color-mix(in srgb, var(--skin-color-warning) 40%, transparent);
+            /* AA: soft warning fill + primary text (never bare warning-on-glass). */
+            color: var(--skin-color-text-primary);
+            background: color-mix(in srgb, var(--skin-color-warning) 20%, var(--skin-color-bg-card));
+            border: var(--skin-border-width) solid var(--skin-color-warning);
             border-radius: var(--skin-radius-sm);
             padding: 1px var(--skin-space-xs);
         }
@@ -862,7 +892,8 @@ export class SomaMessage extends LitElement {
             align-items: center;
             gap: var(--skin-space-xs);
             font-size: var(--skin-text-xs);
-            color: var(--skin-color-text-muted);
+            /* AA on glass — muted fails 4.5:1 in light. */
+            color: var(--skin-color-text-secondary);
             font-variant-numeric: tabular-nums;
         }
 
@@ -893,28 +924,75 @@ export class SomaMessage extends LitElement {
             opacity: 1;
         }
 
+        /* Touch devices have no hover — actions must stay reachable (A-04). */
+        @media (hover: none) {
+            .actions {
+                opacity: 1;
+            }
+        }
+
         .action-btn {
             display: inline-flex;
             align-items: center;
             gap: var(--skin-space-xs);
             padding: var(--skin-space-xs) var(--skin-space-sm);
             border-radius: var(--skin-radius-md);
-            border: none;
+            border: var(--skin-border-width) solid transparent;
             background: transparent;
-            color: var(--skin-color-text-muted);
+            /* AA: secondary, never muted-on-glass. */
+            color: var(--skin-color-text-secondary);
             font-size: var(--skin-text-xs);
             cursor: pointer;
-            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
+            transition:
+                background var(--skin-motion-fast) var(--skin-motion-ease),
+                color var(--skin-motion-fast) var(--skin-motion-ease),
+                border-color var(--skin-motion-fast) var(--skin-motion-ease);
+        }
+
+        :host([message-role='user']) .action-btn {
+            color: var(--skin-color-accent-text);
         }
 
         .action-btn:hover {
             background: var(--skin-color-bg-hover);
             color: var(--skin-color-text-primary);
+            border-color: var(--skin-color-border-subtle);
+        }
+
+        :host([message-role='user']) .action-btn:hover {
+            background: color-mix(in srgb, var(--skin-color-accent-text) 14%, transparent);
+            color: var(--skin-color-accent-text);
+            border-color: color-mix(in srgb, var(--skin-color-accent-text) 28%, transparent);
         }
 
         .action-btn:focus-visible {
             outline: var(--skin-focus-ring-width) solid var(--skin-focus-ring);
             outline-offset: var(--skin-focus-ring-offset);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .edit-area {
+            width: 100%;
+            min-height: 4.5em;
+            margin: var(--skin-space-xs) 0;
+            padding: var(--skin-space-sm);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            background: var(--skin-color-bg-base);
+            color: var(--skin-color-text-primary);
+            font: inherit;
+            resize: vertical;
+        }
+
+        .edit-actions {
+            display: flex;
+            gap: var(--skin-space-xs);
+            justify-content: flex-end;
+            margin-top: var(--skin-space-xs);
         }
     `,
     ];
@@ -1032,8 +1110,48 @@ export class SomaMessage extends LitElement {
                 this._copied = false;
             }, 1500);
         } catch (err) {
-            console.warn('[SomaMessage] clipboard write failed', err);
+            // HR-02: failure is visible, never a silent console warn.
+            pushToast({ kind: 'error', message: t('message.copyFailed') });
         }
+    }
+
+    private _emitAction(action: MessageActionKind, text?: string) {
+        this.dispatchEvent(
+            new CustomEvent<MessageActionDetail>('soma-message-action', {
+                detail: {
+                    action,
+                    messageId: this.messageId,
+                    role: this.messageRole,
+                    ...(text !== undefined ? { text } : {}),
+                },
+                bubbles: true,
+                composed: true,
+            }),
+        );
+    }
+
+    private _startEdit() {
+        this._editDraft = this.text || '';
+        this._editing = true;
+    }
+
+    private _cancelEdit() {
+        this._editing = false;
+        this._editDraft = '';
+    }
+
+    private _confirmEdit() {
+        const next = (this._editDraft || '').trim();
+        if (!next) {
+            pushToast({ kind: 'error', message: t('message.editEmpty') });
+            return;
+        }
+        this._editing = false;
+        this._emitAction('edit', next);
+    }
+
+    private _retry() {
+        this._emitAction('retry');
     }
 
     private _toggleTools() {
@@ -1074,13 +1192,13 @@ export class SomaMessage extends LitElement {
         return html`
             <div class="turn-chips" role="group" aria-label="Turn metadata">
                 ${p.showModelChip && meta.model
-                    ? html`<span class="chip model" title="Model serving this turn">
-                          <span class="material-symbols-outlined">memory</span>
+                    ? html`<span class="chip model" title=${t('message.modelChip')}>
+                          <span class="material-symbols-outlined">smart_toy</span>
                           ${meta.model}
                       </span>`
                     : nothing}
                 ${hits.length > 0 && p.toolIcons.memory
-                    ? html`<span class="chip recall" title="Memory hits recalled this turn">
+                    ? html`<span class="chip recall" title=${t('message.recallChip')}>
                           <span class="material-symbols-outlined">psychology</span>
                           recall ${hits.length}
                       </span>`
@@ -1088,7 +1206,7 @@ export class SomaMessage extends LitElement {
                 ${p.showTokenUsage && ctxPct != null && meta.contextTokens && meta.contextWindow
                     ? html`<span
                           class="chip ${this._ctxClass(meta)}"
-                          title="Context fill — ${meta.contextTokens} of ${meta.contextWindow} tokens"
+                          title="${t('message.ctxChip')} — ${meta.contextTokens} / ${meta.contextWindow}"
                       >
                           <span class="material-symbols-outlined">data_object</span>
                           CTX ${ctxPct}%
@@ -1175,7 +1293,7 @@ export class SomaMessage extends LitElement {
                     <figcaption class="file-meta">
                         <span class="name">${a.name}</span>
                         <span class="sub">${sub}</span>
-                        <a class="download" href=${media.url} download=${a.name}>Download</a>
+                        <a class="download" href=${media.url} download=${a.name}>${t('message.download')}</a>
                     </figcaption>
                 </figure>
             `;
@@ -1189,7 +1307,7 @@ export class SomaMessage extends LitElement {
                 </span>
                 <figcaption class="file-meta">
                     <span class="name">${a.name}</span>
-                    <span class="sub">${a.file_id ? 'Preview unavailable' : 'Not uploaded'} · ${sub}</span>
+                    <span class="sub">${a.file_id ? t('message.previewUnavailable') : t('message.notUploaded')} · ${sub}</span>
                 </figcaption>
             </figure>
         `;
@@ -1216,10 +1334,10 @@ export class SomaMessage extends LitElement {
                             class="tools-toggle"
                             @click=${this._toggleTools}
                             aria-expanded=${this._toolsExpanded ? 'true' : 'false'}
-                            title=${this._toolsExpanded ? 'Collapse tool activity' : 'Expand tool activity'}
+                            title=${this._toolsExpanded ? t('message.collapseTools') : t('message.expandTools')}
                         >
-                            <span class="chev ${this._toolsExpanded ? 'open' : ''} material-symbols-outlined" aria-hidden="true">play_arrow</span>
-                            <span>${visibleTools.length} tool${visibleTools.length === 1 ? '' : 's'}</span>
+                            <span class="chev ${this._toolsExpanded ? 'open' : ''} material-symbols-outlined" aria-hidden="true">expand_more</span>
+                            <span>${t('message.toolsCount')} (${visibleTools.length})</span>
                         </button>
                         ${this._toolsExpanded ? html`
                             <soma-tool-timeline .steps=${visibleTools}></soma-tool-timeline>
@@ -1242,9 +1360,28 @@ export class SomaMessage extends LitElement {
                       </div>`
                     : nothing}
 
-                ${this.messageRole === 'user'
-                    ? html`<div class="text">${this.text}</div>`
-                    : html`<div class="text" aria-live=${this.streaming ? 'polite' : 'off'}>${unsafeHTML(this._renderedHtml)}</div>`}
+                ${this._editing
+                    ? html`
+                          <textarea
+                              class="edit-area"
+                              .value=${this._editDraft}
+                              @input=${(e: Event) => {
+                                  this._editDraft = (e.target as HTMLTextAreaElement).value;
+                              }}
+                              aria-label=${t('message.edit')}
+                          ></textarea>
+                          <div class="edit-actions">
+                              <button class="action-btn" @click=${this._cancelEdit}>
+                                  ${t('message.editCancel')}
+                              </button>
+                              <button class="action-btn" @click=${this._confirmEdit}>
+                                  ${t('message.editConfirm')}
+                              </button>
+                          </div>
+                      `
+                    : this.messageRole === 'user'
+                      ? html`<div class="text">${this.text}</div>`
+                      : html`<div class="text" aria-live=${this.streaming ? 'polite' : 'off'}>${unsafeHTML(this._renderedHtml)}</div>`}
                 ${this.streaming && this.text ? html`<span class="cursor" aria-hidden="true"></span>` : nothing}
 
                 ${this.error ? html`
@@ -1254,10 +1391,10 @@ export class SomaMessage extends LitElement {
                     </div>
                 ` : nothing}
 
-                ${showFooter ? html`
+                ${showFooter && !this._editing ? html`
                     <div class="footer">
                         ${this.timestamp && this._prefs.showTimestamps ? html`<span class="time">${this._formatTime(this.timestamp)}</span>` : nothing}
-                        ${this.stopped ? html`<span class="stopped-badge">stopped</span>` : nothing}
+                        ${this.stopped ? html`<span class="stopped-badge">${t('message.stopped')}</span>` : nothing}
                         ${this.confidence != null && this._prefs.showConfidence ? html`
                             <span class="confidence-wrap" title="Response confidence">
                                 <span class="confidence-bar">
@@ -1271,14 +1408,40 @@ export class SomaMessage extends LitElement {
                                 <button
                                     class="action-btn"
                                     @click=${this._copy}
-                                    title="Copy message text"
-                                    aria-label="Copy message text"
+                                    title=${t('message.copyMessage')}
+                                    aria-label=${t('message.copyMessage')}
                                 >
                                     <span class="material-symbols-outlined" style="font-size: var(--skin-text-xs)">
                                         ${this._copied ? 'check' : 'content_copy'}
                                     </span>
-                                    ${this._copied ? 'Copied' : 'Copy'}
+                                    ${this._copied ? t('message.copied') : t('message.copy')}
                                 </button>
+                                ${this.messageRole === 'user'
+                                    ? html`
+                                          <button
+                                              class="action-btn"
+                                              @click=${this._startEdit}
+                                              title=${t('message.editHint')}
+                                              aria-label=${t('message.edit')}
+                                          >
+                                              <span class="material-symbols-outlined" style="font-size: var(--skin-text-xs)">edit</span>
+                                              ${t('message.edit')}
+                                          </button>
+                                      `
+                                    : nothing}
+                                ${this.messageRole === 'assistant' && !this.streaming && !this.thinking
+                                    ? html`
+                                          <button
+                                              class="action-btn"
+                                              @click=${this._retry}
+                                              title=${t('message.retryHint')}
+                                              aria-label=${t('message.retry')}
+                                          >
+                                              <span class="material-symbols-outlined" style="font-size: var(--skin-text-xs)">refresh</span>
+                                              ${t('message.retry')}
+                                          </button>
+                                      `
+                                    : nothing}
                             </div>
                         ` : nothing}
                     </div>
