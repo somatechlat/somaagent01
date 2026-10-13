@@ -245,3 +245,7 @@
 | path/prefix | agent | task | started_at | status |
 |---|---|---|---|---|
 | docs/reports/SOMA-RPT-SEC-CODE-DOCS-001.md docs/standards/SOMA-LAW-SECURITY-001.md infra/standalone/README.md | security-reviewer | Doc-vs-code security verification report + two doc mismatches fixed (README root-in-T0, LAW policy wording). Docs only. | 2026-10-13T22:00:00Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| docs/reports/SOMA-RPT-PROD-HARDENING-001.md | soma-prod-hardening | Prod-hardening skill-vs-code audit (Django security block, CONN_*, DEBUG/log, rate limits, bounded inputs, SSRF, update_fields). Docs only. No secret values. | 2026-10-13T21:22:28Z | ACTIVE |
