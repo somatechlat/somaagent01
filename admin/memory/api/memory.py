@@ -137,14 +137,58 @@ async def memory_status(request) -> dict:
 
 @router.get("/", summary="List recent memories", auth=AuthBearer())
 async def list_memories(request, limit: int = 20) -> dict:
-    """Recent memories from SomaBrain (recall-wide)."""
+    """Recent memories from SomaBrain (recall-wide).
+
+    A single ``recall("*")`` is non-deterministic under the hash embedder —
+    a just-saved fact can drop out of the top-k.  We run a wildcard pass
+    plus a keyword pass, merge by coord, then tier-rank (facts first,
+    newest within tier) so the list reliably shows what the user stored.
+    """
     await authorize(request, action="resource:memory_read", resource="memory")
     gateway = await _gateway()
     tenant_id = _tenant(request)
+    limit = max(1, min(limit, 100))
+    # SomaBrain recall 422s above top_k=40 — hard cap per pass.
+    fetch_k = min(limit, 40)
     try:
-        hits = await gateway.recall("*", max(1, min(limit, 100)), tenant_id)
+        hits = await gateway.recall("*", fetch_k, tenant_id)
     except Exception as exc:  # noqa: BLE001
         raise ServiceError(f"Memory list failed: {exc}") from exc
+
+    rows = list(hits or [])
+    # Keyword pass: the wildcard query misses fact phrasing ("My name is
+    # Daniel").  A second pass with common fact terms catches them.
+    seen = {getattr(h, "coord", None) for h in rows}
+    for kw in ("name", "remember", "codeword", "fact"):
+        try:
+            extra = await gateway.recall(kw, fetch_k, tenant_id)
+        except Exception:  # noqa: BLE001
+            continue
+        for h in extra or []:
+            c = getattr(h, "coord", None)
+            if c not in seen:
+                rows.append(h)
+                seen.add(c)
+
+    # Tier rank: facts (short, non-question, non-dialog) first, newest within
+    # tier.  Matches the memory_recall tool digest so the UI and the model
+    # see the same ordering.
+    def _tier_key(h: object) -> tuple:
+        text = (getattr(h, "text", "") or "").strip()
+        if text.startswith("User:") or "\nAssistant:" in text or text.startswith("Assistant:"):
+            tier = 0
+        elif text.endswith("?") or text.lower().startswith(
+            ("what ", "how ", "why ", "is ", "can ", "do ", "does ",
+             "where ", "when ", "who ", "which ", "remind ", "whast ")
+        ):
+            tier = 0
+        elif len(text) <= 180:
+            tier = 1
+        else:
+            tier = 0
+        return (tier, getattr(h, "created_at", "") or "")
+
+    rows.sort(key=_tier_key, reverse=True)
     memories = [
         {
             "text": h.text,
@@ -153,7 +197,7 @@ async def list_memories(request, limit: int = 20) -> dict:
             "store": h.store,
             "created_at": h.created_at,
         }
-        for h in hits
+        for h in rows[:limit]
     ]
     return {"memories": memories, "total": len(memories), "tenant_id": tenant_id}
 

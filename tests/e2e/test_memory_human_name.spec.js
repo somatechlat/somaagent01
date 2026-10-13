@@ -216,7 +216,7 @@ async function awaitNewReply(page, count) {
     .poll(
       async () => {
         const cur = await bubbleText(bubble);
-        await page.waitForTimeout(800);
+        await page.waitForTimeout(3000);
         return cur === (await bubbleText(bubble));
       },
       { timeout: 30000, message: 'assistant reply never stopped streaming' }

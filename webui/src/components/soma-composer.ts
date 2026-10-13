@@ -188,6 +188,20 @@ export class SomaComposer extends LitElement {
             transform: none;
         }
 
+        @media (prefers-reduced-motion: reduce) {
+            .mic-btn.recording {
+                animation: none;
+            }
+            .send-btn:hover:not(:disabled) {
+                transform: none;
+            }
+            .icon-btn,
+            .send-btn,
+            .input-row {
+                transition: none;
+            }
+        }
+
         .status-row {
             display: flex;
             align-items: center;

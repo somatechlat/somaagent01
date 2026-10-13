@@ -59,7 +59,10 @@ async def execute_a2a(request: HttpRequest, req: A2ARequest) -> dict:
     event = dict(req.event)
     workflow_id = f"a2a-{event.get('session_id') or 'n/a'}-{uuid.uuid4()}"
     client = await get_temporal_client()
-    task_queue = settings.TEMPORAL_A2A_QUEUE
+    # ONE task queue: A2AWorkflow is registered on the conversation worker
+    # (WAVE 5 fold). TEMPORAL_A2A_QUEUE is unused by any Worker — starting
+    # there strands the workflow forever.
+    task_queue = settings.TEMPORAL_CONVERSATION_QUEUE
     event["workflow_id"] = workflow_id
 
     await client.start_workflow(

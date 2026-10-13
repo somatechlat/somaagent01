@@ -60,32 +60,42 @@ export class SomaToolTimeline extends LitElement {
         }
 
         .step {
-            border: 1px solid var(--platform-border-color, rgba(255,255,255,0.06));
-            border-radius: var(--platform-radius-md, 8px);
-            background: var(--platform-bg-void, #f5f5f5);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 12px;
+            background: rgba(12, 12, 14, 0.72);
             overflow: hidden;
+            transition: border-color 140ms ease;
+        }
+
+        .step:hover {
+            border-color: rgba(255, 90, 20, 0.22);
         }
 
         .step-header {
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 8px 10px;
+            padding: 8px 11px;
             cursor: pointer;
             user-select: none;
-            transition: background 100ms ease;
+            transition: background 120ms ease;
         }
 
         .step-header:hover {
-            background: var(--platform-bg-hover, #141414);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .step-header:focus-visible {
+            outline: 2px solid #60a5fa;
+            outline-offset: -2px;
         }
 
         .chevron {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--platform-text-dim, #6b6b6b);
             width: 12px;
             flex-shrink: 0;
-            transition: transform 120ms ease;
+            transition: transform 140ms ease;
         }
 
         .chevron.open {
@@ -129,8 +139,18 @@ export class SomaToolTimeline extends LitElement {
             50% { opacity: 0.35; }
         }
 
+        @media (prefers-reduced-motion: reduce) {
+            .status-dot.pending,
+            .status-dot.executing {
+                animation: none;
+            }
+            .chevron {
+                transition: none;
+            }
+        }
+
         .step-name {
-            font-family: var(--platform-font-mono, 'JetBrains Mono', monospace);
+            font-family: var(--platform-font-mono, 'JetBrains Mono', ui-monospace, monospace);
             font-size: 12px;
             color: var(--platform-text-bright, #f8fafc);
             font-weight: 500;
@@ -151,41 +171,46 @@ export class SomaToolTimeline extends LitElement {
         .status-label {
             font-size: 10px;
             text-transform: uppercase;
-            letter-spacing: 0.4px;
-            padding: 2px 6px;
-            border-radius: var(--platform-radius-sm, 4px);
-            background: var(--platform-bg-base, #1e293b);
+            letter-spacing: 0.45px;
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.06);
             color: var(--platform-text-dim, #6b6b6b);
         }
 
         .status-label.executed {
             color: var(--platform-success, #22c55e);
+            border-color: rgba(34, 197, 94, 0.28);
         }
 
         .status-label.error,
         .status-label.denied,
         .status-label.invalid_arguments {
             color: var(--platform-danger, #ef4444);
+            border-color: rgba(239, 68, 68, 0.3);
         }
 
         .status-label.approval_required,
         .status-label.executing {
             color: var(--platform-warning, #eab308);
+            border-color: rgba(234, 179, 8, 0.3);
         }
 
         .duration {
-            font-family: var(--platform-font-mono, 'JetBrains Mono', monospace);
+            font-family: var(--platform-font-mono, 'JetBrains Mono', ui-monospace, monospace);
             font-size: 10px;
             color: var(--platform-text-dim, #6b6b6b);
+            font-variant-numeric: tabular-nums;
         }
 
         .step-body {
-            padding: 0 10px 10px 30px;
+            padding: 0 11px 11px 30px;
             display: flex;
             flex-direction: column;
             gap: 8px;
-            border-top: 1px solid var(--platform-border-color, rgba(255,255,255,0.06));
-            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 9px;
         }
 
         .section-label {
@@ -193,17 +218,18 @@ export class SomaToolTimeline extends LitElement {
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--platform-text-dim, #6b6b6b);
-            margin-bottom: 2px;
+            margin-bottom: 3px;
         }
 
         pre {
             margin: 0;
             padding: 8px 10px;
-            background: var(--platform-bg-base, #1e293b);
-            border-radius: var(--platform-radius-sm, 4px);
-            font-family: var(--platform-font-mono, 'JetBrains Mono', monospace);
+            background: rgba(8, 8, 10, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            font-family: var(--platform-font-mono, 'JetBrains Mono', ui-monospace, monospace);
             font-size: 11px;
-            line-height: 1.5;
+            line-height: 1.55;
             color: var(--platform-text-main, #e2e8f0);
             max-height: 220px;
             overflow: auto;
@@ -223,9 +249,9 @@ export class SomaToolTimeline extends LitElement {
 
         .approval-btn {
             padding: 5px 14px;
-            border-radius: var(--platform-radius-md, 8px);
-            border: 1px solid var(--platform-border-hover, rgba(255,255,255,0.1));
-            background: var(--platform-bg-base, #1e293b);
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.04);
             color: var(--platform-text-main, #e2e8f0);
             font-size: 12px;
             cursor: pointer;
@@ -233,7 +259,7 @@ export class SomaToolTimeline extends LitElement {
         }
 
         .approval-btn:hover:not(:disabled) {
-            background: var(--platform-surface-hover, rgba(51,65,85,0.9));
+            background: rgba(255, 255, 255, 0.08);
         }
 
         .approval-btn:disabled {
@@ -242,13 +268,21 @@ export class SomaToolTimeline extends LitElement {
         }
 
         .approval-btn.approve {
-            border-color: var(--platform-success, #22c55e);
+            border-color: rgba(34, 197, 94, 0.5);
             color: var(--platform-success, #22c55e);
         }
 
+        .approval-btn.approve:hover:not(:disabled) {
+            background: rgba(34, 197, 94, 0.12);
+        }
+
         .approval-btn.deny {
-            border-color: var(--platform-danger, #ef4444);
+            border-color: rgba(239, 68, 68, 0.5);
             color: var(--platform-danger, #ef4444);
+        }
+
+        .approval-btn.deny:hover:not(:disabled) {
+            background: rgba(239, 68, 68, 0.12);
         }
 
         .empty {
@@ -258,11 +292,11 @@ export class SomaToolTimeline extends LitElement {
         }
 
         .memory-id {
-            font-family: var(--platform-font-mono, 'JetBrains Mono', monospace);
+            font-family: var(--platform-font-mono, 'JetBrains Mono', ui-monospace, monospace);
             font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            border: 1px solid var(--platform-info, #3b82f6);
+            padding: 2px 7px;
+            border-radius: 999px;
+            border: 1px solid rgba(59, 130, 246, 0.4);
             color: var(--platform-info, #3b82f6);
             max-width: 180px;
             overflow: hidden;
@@ -335,7 +369,19 @@ export class SomaToolTimeline extends LitElement {
 
         return html`
             <div class="step">
-                <div class="step-header" @click=${() => this._toggle(step.id)}>
+                <div
+                    class="step-header"
+                    role="button"
+                    tabindex="0"
+                    aria-expanded=${open ? 'true' : 'false'}
+                    @click=${() => this._toggle(step.id)}
+                    @keydown=${(e: KeyboardEvent) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            this._toggle(step.id);
+                        }
+                    }}
+                >
                     <span class="chevron ${open ? 'open' : ''}">▶</span>
                     <span class="status-dot ${step.status}"></span>
                     <span class="step-name">${step.name || 'tool'}</span>

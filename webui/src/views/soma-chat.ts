@@ -47,6 +47,17 @@ export interface ChatMessage {
      * bytes were accepted by POST /filesv2/upload — never a guessed one.
      */
     attachments?: { name: string; type?: string; size?: number; file_id?: string }[];
+    /**
+     * Snapshot of `chat.turn_meta` for the turn that produced this row.
+     * Carries only fields the server actually sent — never filled with
+     * defaults. Rendered as chips on the assistant bubble.
+     */
+    turnMeta?: {
+        model?: string;
+        memoryHits?: { text?: string; score?: number | null; kind?: string | null }[];
+        contextTokens?: number;
+        contextWindow?: number;
+    };
 }
 
 export interface Conversation {
@@ -628,8 +639,9 @@ export class SomaChat extends LitElement {
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 14px;
-            padding: 18px 20px 12px;
+            gap: 16px;
+            padding: 22px 22px 14px;
+            scroll-behavior: smooth;
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -1512,6 +1524,8 @@ export class SomaChat extends LitElement {
     private _wsClient: WebSocketClient | null = null;
     private _turnStopped = false;
     private _activeResponseId = '';
+    /** turn_meta for the in-flight turn; attached to the committed bubble. */
+    private _pendingTurnMeta: ChatMessage['turnMeta'] | null = null;
     private _reconnectBannerTimer = 0;
     private _connectionChipTimer = 0;
     private _lastErrorMessage = '';
@@ -2030,6 +2044,12 @@ export class SomaChat extends LitElement {
         });
         this._wsClient.on('disconnected', () => {
             this._wsConnected = false;
+            // A drop mid-reply must not hide tokens already received. The
+            // buffer is the only body the UI holds (done carries none), so
+            // commit it as an interrupted turn before the live bubble unmounts.
+            if (this._streamContent || this._activeTools.length > 0) {
+                this._finalizeStreamedMessage(true);
+            }
             // Debounce the degraded chip so a single blip doesn't flash it.
             window.clearTimeout(this._reconnectBannerTimer);
             window.clearTimeout(this._connectionChipTimer);
@@ -2046,12 +2066,19 @@ export class SomaChat extends LitElement {
             const payload = data as { message?: string; code?: string } | undefined;
             if (payload && typeof payload === 'object' && typeof payload.message === 'string') {
                 const msg = payload.message || 'Chat stream error';
+                // The buffer IS the reply body (done is metadata-only).
+                // Commit what already streamed FIRST so the inline error lands
+                // on the interrupted reply instead of the previous message.
+                if (this._streamContent || this._activeTools.length > 0) {
+                    this._finalizeStreamedMessage(true);
+                } else {
+                    this._isStreaming = false;
+                }
                 // Do not spam identical errors (e.g. reconnect storms).
                 if (this._lastErrorMessage !== msg) {
                     this._lastErrorMessage = msg;
                     this._pushInlineError(msg);
                 }
-                this._isStreaming = false;
                 return;
             }
             // Raw socket Event — wait for the debounce chip instead of hard error.
@@ -2099,6 +2126,16 @@ export class SomaChat extends LitElement {
     // STREAM HANDLERS
     // ==========================================================================
 
+    /**
+     * True while a reply is in flight or buffered. The live bubble keys off
+     * this — not `_isStreaming` alone — so tokens that arrived before the
+     * flag flipped (or after an error cleared it) never vanish from the
+     * transcript while they are still held in `_streamContent`.
+     */
+    private get _hasLiveStream(): boolean {
+        return this._isStreaming || this._streamContent.length > 0 || this._activeTools.length > 0;
+    }
+
     private _handleIncomingMessage(msg: ChatMessage) {
         // Only a real chat row may land in the transcript. The WS also carries
         // metadata frames whose payload is not a ChatMessage; treating one as a
@@ -2106,9 +2143,22 @@ export class SomaChat extends LitElement {
         if (!msg || typeof msg !== 'object' || (msg.role !== 'user' && msg.role !== 'assistant' && msg.role !== 'system')) {
             return;
         }
-        this._isStreaming = false;
+        if (msg.role === 'system') {
+            // A system notice must never clobber a live reply buffer.
+            this._messages = [...this._messages, { ...msg, content: msg.content ?? '' }];
+            this.updateComplete.then(() => this._scrollToBottom());
+            return;
+        }
+        // A full user/assistant row ends the stream. `chat.done` is
+        // metadata-only (no content), so the buffer IS the reply body — but
+        // when the server also commits the row, that row is authoritative
+        // (server created_at, ids). Drop the buffer instead of double-committing.
         this._streamContent = '';
+        this._activeTools = [];
         this._activeResponseId = '';
+        this._pendingTurnMeta = null;
+        this._isStreaming = false;
+        this._turnStopped = false;
         this._messages = [...this._messages, { ...msg, content: msg.content ?? '' }];
         this.updateComplete.then(() => this._scrollToBottom());
     }
@@ -2124,9 +2174,16 @@ export class SomaChat extends LitElement {
             }
             this._activeResponseId = chunk.response_id;
         }
-        if (this._paused) return;
+        // Never drop tokens on `_paused`. The gateway already holds emission
+        // server-side while paused (`chat.py` pause gate); `chat.done` is
+        // metadata-only and carries no body, so a discarded delta is reply
+        // text lost forever. Accumulate always.
         const delta = chunk.delta ?? chunk.content ?? '';
+        if (!delta) return;
         this._streamContent += delta;
+        // First token of a turn entered outside `_onComposerSend` (reconnect
+        // resume, server-driven turn) must light the live bubble.
+        this._isStreaming = true;
         this.updateComplete.then(() => this._scrollToBottom());
     }
 
@@ -2142,6 +2199,7 @@ export class SomaChat extends LitElement {
             this._streamContent = '';
             this._activeTools = [];
             this._activeResponseId = '';
+            this._pendingTurnMeta = null;
             this._isStreaming = false;
             this._turnStopped = false;
             return;
@@ -2151,23 +2209,41 @@ export class SomaChat extends LitElement {
             this._isStreaming = false;
             return;
         }
-        const content = chunk.content ?? this._streamContent;
+        // Gateway `chat.done` is metadata-only (`{response_id, token_count}`)
+        // and sends no `content`. Fall back to the accumulated buffer. An
+        // explicit empty string must not shadow the buffer (`'' ?? x` is `''`).
+        const content =
+            chunk.content != null && chunk.content.length > 0 ? chunk.content : this._streamContent;
+        const tools = this._activeTools.length > 0 ? [...this._activeTools] : undefined;
+        const hasBody = !!(content && content.trim()) || !!(tools && tools.length > 0);
+        const turnMeta = this._pendingTurnMeta ?? undefined;
+
+        this._streamContent = '';
+        this._activeTools = [];
+        this._activeResponseId = '';
+        this._pendingTurnMeta = null;
+        this._isStreaming = false;
+        this._turnStopped = false;
+
+        // No tokens and no tools → the turn produced nothing visible. A blank
+        // assistant bubble is noise; skip it.
+        if (!hasBody) {
+            this.updateComplete.then(() => this._scrollToBottom());
+            return;
+        }
+
         const message: ChatMessage = {
             id: `msg-${Date.now()}`,
             role: 'assistant',
-            content,
+            content: content ?? '',
             // Server message time is not in the stream frame. A client-clock
             // stamp presented as message time is a lie — leave it empty and
             // the bubble renders no time (history rows carry created_at).
             timestamp: '',
             confidence: chunk.confidence,
-            tools: this._activeTools.length > 0 ? [...this._activeTools] : undefined,
+            tools,
+            turnMeta,
         };
-        this._streamContent = '';
-        this._activeTools = [];
-        this._activeResponseId = '';
-        this._isStreaming = false;
-        this._turnStopped = false;
         this._messages = [...this._messages, message];
         this.updateComplete.then(() => this._scrollToBottom());
     }
@@ -2175,9 +2251,12 @@ export class SomaChat extends LitElement {
     private _finalizeStreamedMessage(stopped: boolean) {
         const content = this._streamContent;
         const tools = this._activeTools.length > 0 ? [...this._activeTools] : undefined;
+        const turnMeta = this._pendingTurnMeta ?? undefined;
         this._streamContent = '';
         this._activeTools = [];
+        this._pendingTurnMeta = null;
         this._isStreaming = false;
+        this._activeResponseId = '';
         if (content || tools) {
             this._messages = [
                 ...this._messages,
@@ -2188,6 +2267,7 @@ export class SomaChat extends LitElement {
                     timestamp: '',
                     stopped,
                     tools,
+                    turnMeta,
                 },
             ];
             this.updateComplete.then(() => this._scrollToBottom());
@@ -2296,6 +2376,17 @@ export class SomaChat extends LitElement {
             typeof p.context_window === 'number' && p.context_window > 0
                 ? p.context_window
                 : 0;
+        // Snapshot for the bubble that will hold this turn's reply. Only
+        // fields the server actually sent — never invented defaults.
+        this._pendingTurnMeta = {
+            model: p.model || undefined,
+            memoryHits: Array.isArray(p.memory_hits) ? p.memory_hits : undefined,
+            contextTokens: typeof p.context_tokens === 'number' ? p.context_tokens : undefined,
+            contextWindow:
+                typeof p.context_window === 'number' && p.context_window > 0
+                    ? p.context_window
+                    : undefined,
+        };
     }
 
     /** Real fill fraction. Null when the model catalog has no ctx_length. */
@@ -2444,7 +2535,7 @@ export class SomaChat extends LitElement {
         // model turn running server-side. `chat.stop` is fail-closed on the
         // server (no-op when idle) so this is safe to send even when unsure.
         this._sendChatControl('chat.stop');
-        if (!this._isStreaming) return;
+        if (!this._hasLiveStream) return;
         this._turnStopped = true;
         this._paused = false;
         this._finalizeStreamedMessage(true);
@@ -2458,6 +2549,7 @@ export class SomaChat extends LitElement {
         this._messages = [];
         this._streamContent = '';
         this._activeTools = [];
+        this._pendingTurnMeta = null;
         this._paused = false;
         this._chatTitle = 'New conversation';
         if (this._selectedAgentId) {
@@ -2477,6 +2569,7 @@ export class SomaChat extends LitElement {
         this._messages = [];
         this._streamContent = '';
         this._activeTools = [];
+        this._pendingTurnMeta = null;
     }
 
     private _onExportChat() {
@@ -2580,6 +2673,7 @@ export class SomaChat extends LitElement {
         this._streamContent = '';
         this._activeTools = [];
         this._activeResponseId = '';
+        this._pendingTurnMeta = null;
         this._lastErrorMessage = '';
 
         this.updateComplete.then(() => this._scrollToBottom());
@@ -2638,6 +2732,7 @@ export class SomaChat extends LitElement {
         this._messages = [];
         this._streamContent = '';
         this._activeTools = [];
+        this._pendingTurnMeta = null;
         this._isStreaming = false;
         this._chatTitle = 'New conversation';
         this._activeConversationId = '';
@@ -2659,6 +2754,8 @@ export class SomaChat extends LitElement {
         const conv = this._conversations.find((c) => c.id === id);
         this._chatTitle = conv?.title || 'Conversation';
         this._streamContent = '';
+        this._activeTools = [];
+        this._pendingTurnMeta = null;
         this._isStreaming = false;
         await this._loadConversationMessages(id);
     }
@@ -2681,12 +2778,54 @@ export class SomaChat extends LitElement {
                 const meta = msg.metadata;
                 const metaObj =
                     meta && typeof meta === 'object' ? (meta as Record<string, unknown>) : null;
+                const rawAtt = Array.isArray(msg.attachments)
+                    ? msg.attachments
+                    : Array.isArray(metaObj?.attachments)
+                      ? metaObj.attachments
+                      : null;
+                const attachments = rawAtt
+                    ? rawAtt
+                          .filter((a): a is Record<string, unknown> => !!a && typeof a === 'object')
+                          .map((a) => ({
+                              name: String(a.name ?? 'file'),
+                              type: typeof a.type === 'string' ? a.type : undefined,
+                              size: typeof a.size === 'number' ? a.size : undefined,
+                              file_id: typeof a.file_id === 'string' ? a.file_id : undefined,
+                          }))
+                    : undefined;
+                const rawTurn = metaObj?.turn_meta;
+                const turnMetaObj =
+                    rawTurn && typeof rawTurn === 'object'
+                        ? (rawTurn as Record<string, unknown>)
+                        : null;
+                const turnHits = Array.isArray(turnMetaObj?.memory_hits)
+                    ? (turnMetaObj.memory_hits as { text?: string; score?: number | null; kind?: string | null }[])
+                    : undefined;
                 return {
                     id: String(msg.id ?? `msg-${Date.now()}`),
                     role: (msg.role as ChatMessage['role']) ?? 'assistant',
                     content: String(msg.content ?? ''),
                     timestamp: String(msg.created_at ?? msg.timestamp ?? ''),
                     confidence: metaObj?.confidence as number | undefined,
+                    attachments,
+                    turnMeta: turnMetaObj
+                        ? {
+                              model:
+                                  typeof turnMetaObj.model === 'string'
+                                      ? turnMetaObj.model
+                                      : undefined,
+                              memoryHits: turnHits,
+                              contextTokens:
+                                  typeof turnMetaObj.context_tokens === 'number'
+                                      ? turnMetaObj.context_tokens
+                                      : undefined,
+                              contextWindow:
+                                  typeof turnMetaObj.context_window === 'number' &&
+                                  turnMetaObj.context_window > 0
+                                      ? turnMetaObj.context_window
+                                      : undefined,
+                          }
+                        : undefined,
                 };
             });
             this.updateComplete.then(() => this._scrollToBottom());
@@ -3005,7 +3144,7 @@ export class SomaChat extends LitElement {
     private _renderMain() {
         return html`
             <main class="main">
-                <div class="messages" @tool-approval=${this._onToolApproval} role="log" aria-live="polite">
+                <div class="messages" @tool-approval=${this._onToolApproval} role="log" aria-live="polite" aria-relevant="additions text">
                     ${this._messagesLoading
                         ? html`
                               <div class="msg-skeleton" aria-hidden="true">
@@ -3014,15 +3153,13 @@ export class SomaChat extends LitElement {
                                   <div class="bar short"></div>
                               </div>
                           `
-                        : this._messages.length === 0 &&
-                            !this._isStreaming &&
-                            !this._messagesLoading &&
+                        : !this._hasLiveStream &&
+                            this._messages.length === 0 &&
                             !this._activeConversationId
                             ? this._renderWelcome()
-                            : this._messages.length === 0 &&
-                                  !this._isStreaming &&
-                                  !this._messagesLoading &&
-                                  this._activeConversationId
+                            : !this._hasLiveStream &&
+                                this._messages.length === 0 &&
+                                this._activeConversationId
                               ? html`
                                     <div class="empty-transcript" data-control="empty-conversation">
                                         <p>No messages in this conversation yet.</p>
@@ -3033,13 +3170,16 @@ export class SomaChat extends LitElement {
                                 `
                               : html`
                                   ${this._messages.map((msg) => this._renderMessage(msg))}
-                                  ${this._isStreaming
+                                  ${this._hasLiveStream
                                       ? html`
                                             <soma-message
                                                 message-role="assistant"
                                                 .text=${this._streamContent}
                                                 .tools=${this._activeTools}
                                                 .streaming=${!this._paused}
+                                                .thinking=${this._streamContent.length === 0 &&
+                                                    this._activeTools.length === 0}
+                                                .turnMeta=${this._pendingTurnMeta ?? undefined}
                                             ></soma-message>
                                         `
                                       : nothing}
@@ -3376,6 +3516,7 @@ export class SomaChat extends LitElement {
                 .stopped=${!!msg.stopped}
                 .confidence=${msg.confidence}
                 .error=${msg.error ?? ''}
+                .turnMeta=${msg.turnMeta}
             ></soma-message>
         `;
     }

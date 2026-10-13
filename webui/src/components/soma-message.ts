@@ -5,6 +5,11 @@
  * copy action, timestamps, streaming cursor, and inline error state.
  * Tool timeline binds to WS tool.* payloads via ToolCallStep[] (see
  * soma-tool-timeline.ts for the WS → step mapping).
+ *
+ * Attachments with a real filesv2 `file_id` resolve a download URL and
+ * render as media (image / audio / video) or a download card. Attachments
+ * without one, or whose URL cannot be resolved, render an honest
+ * "preview unavailable" card — never a broken frame.
  */
 
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
@@ -12,6 +17,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import type { ToolCallStep } from './soma-tool-timeline.js';
 import { renderMarkdown, renderCodeBlock, bindCodeCopy, formatTime, formatBytes } from '../utils/markdown.js';
+import { apiClient } from '../services/api-client.js';
 import './soma-tool-timeline.js';
 
 /** Material icon for a file attachment — no emojis. */
@@ -33,7 +39,39 @@ function isImageAttachment(name: string, type?: string): boolean {
     return t.startsWith('image/') || /\.(png|jpe?g|gif|webp|avif|bmp)$/.test((name || '').toLowerCase());
 }
 
+function isAudioAttachment(name: string, type?: string): boolean {
+    const t = (type || '').toLowerCase();
+    return t.startsWith('audio/') || /\.(mp3|wav|ogg|m4a|flac)$/.test((name || '').toLowerCase());
+}
+
+function isVideoAttachment(name: string, type?: string): boolean {
+    const t = (type || '').toLowerCase();
+    return t.startsWith('video/') || /\.(mp4|webm|mov|mkv)$/.test((name || '').toLowerCase());
+}
+
 export type MessageRole = 'user' | 'assistant' | 'system';
+
+/** Turn chips from `chat.turn_meta` — only fields the server sent. */
+export interface MessageTurnMeta {
+    model?: string;
+    memoryHits?: { text?: string; score?: number | null; kind?: string | null }[];
+    contextTokens?: number;
+    contextWindow?: number;
+}
+
+interface AttachmentInput {
+    name: string;
+    type?: string;
+    size?: number;
+    file_id?: string;
+}
+
+/** Resolved media URL state per attachment (honest, never guessed). */
+interface AttachmentMedia {
+    url: string | null;
+    /** 'ok' | 'pending' | 'unavailable' */
+    state: 'pending' | 'ok' | 'unavailable';
+}
 
 @customElement('soma-message')
 export class SomaMessage extends LitElement {
@@ -43,41 +81,54 @@ export class SomaMessage extends LitElement {
     @property({ type: String }) timestamp = '';
     @property({ type: Array }) tools: ToolCallStep[] = [];
     @property({ type: Boolean }) streaming = false;
+    /** True while waiting for the first token — renders a typing indicator. */
+    @property({ type: Boolean }) thinking = false;
     @property({ type: Boolean }) stopped = false;
     @property({ type: Number }) confidence?: number;
     /** Inline error for this message (not a global banner). */
     @property({ type: String }) error = '';
-    /** Optional attachment chips: {name, type, size} */
-    @property({ type: Array }) attachments: { name: string; type?: string; size?: number }[] = [];
+    /** Optional attachment chips: {name, type, size, file_id} */
+    @property({ type: Array }) attachments: AttachmentInput[] = [];
+    /** turn_meta chips for the turn that produced this bubble. */
+    @property({ type: Object }) turnMeta?: MessageTurnMeta;
 
     @state() private _copied = false;
     @state() private _toolsExpanded = true;
+    @state() private _media: Record<string, AttachmentMedia> = {};
 
     private _renderedHtml = '';
+    private _mediaRequested = new Set<string>();
 
     static styles = css`
         :host {
             display: block;
             max-width: min(88%, 860px);
-            animation: msgIn 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+            animation: msgIn 240ms cubic-bezier(0.22, 0.85, 0.25, 1) both;
         }
 
         @keyframes msgIn {
             from {
                 opacity: 0;
-                transform: translateY(10px) scale(0.97) blur(4px);
-                filter: blur(4px);
+                transform: translateY(8px) scale(0.985);
             }
             to {
                 opacity: 1;
                 transform: none;
-                filter: blur(0);
             }
         }
 
         @media (prefers-reduced-motion: reduce) {
             :host {
                 animation: none;
+            }
+            .cursor {
+                animation: none;
+                opacity: 1;
+            }
+            .tools-toggle .chev,
+            .action-btn,
+            .tools-toggle {
+                transition: none;
             }
         }
 
@@ -90,45 +141,42 @@ export class SomaMessage extends LitElement {
             max-width: 92%;
         }
 
+        /* ---------- bubble ---------- */
         .bubble {
             padding: 14px 18px;
-            border-radius: 16px;
+            border-radius: 18px;
             font-size: 14.5px;
-            line-height: 1.7;
+            line-height: 1.72;
+            letter-spacing: 0.005em;
             word-wrap: break-word;
             overflow-wrap: anywhere;
             position: relative;
-            overflow: hidden;
         }
 
         :host([message-role='user']) .bubble {
-            background: linear-gradient(135deg, #FF4D00 0%, #FF6A28 55%, #E64500 100%);
-            color: #F8FAFC;
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-bottom-right-radius: 6px;
-            backdrop-filter: blur(18px) saturate(140%);
-            -webkit-backdrop-filter: blur(18px) saturate(140%);
+            background: linear-gradient(145deg, #FF5A14 0%, #FF6E30 48%, #E84800 100%);
+            color: #FFF7F3;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-bottom-right-radius: 7px;
             box-shadow:
-                0 1px 0 rgba(255, 255, 255, 0.12) inset,
-                0 8px 28px rgba(59, 130, 246, 0.28);
+                0 1px 0 rgba(255, 255, 255, 0.14) inset,
+                0 8px 22px rgba(232, 72, 0, 0.28),
+                0 2px 6px rgba(0, 0, 0, 0.12);
         }
 
         :host([message-role='assistant']) .bubble {
-            background:
-                linear-gradient(145deg, rgba(26, 26, 26, 0.82) 0%, rgba(17, 17, 17, 0.92) 100%);
-            color: #E8EDF7;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-bottom-left-radius: 6px;
-            backdrop-filter: blur(22px) saturate(130%);
-            -webkit-backdrop-filter: blur(22px) saturate(130%);
+            background: linear-gradient(160deg, rgba(28, 28, 30, 0.94) 0%, rgba(18, 18, 20, 0.97) 100%);
+            color: #EAEFF7;
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-bottom-left-radius: 7px;
             box-shadow:
-                0 1px 0 rgba(255, 255, 255, 0.05) inset,
-                0 12px 32px rgba(0, 0, 0, 0.35),
-                0 0 0 1px rgba(59, 130, 246, 0.04);
+                0 1px 0 rgba(255, 255, 255, 0.04) inset,
+                0 10px 28px rgba(0, 0, 0, 0.32),
+                0 1px 3px rgba(0, 0, 0, 0.18);
         }
 
         :host([message-role='system']) .bubble {
-            background: #1A1A1A;
+            background: rgba(26, 26, 28, 0.9);
             color: #94a3b8;
             font-size: 12px;
             border: 1px dashed rgba(148, 163, 184, 0.28);
@@ -147,7 +195,7 @@ export class SomaMessage extends LitElement {
         }
 
         .text :deep(p) {
-            margin: 0 0 0.75em;
+            margin: 0 0 0.78em;
         }
 
         .text :deep(p:last-child) {
@@ -155,15 +203,15 @@ export class SomaMessage extends LitElement {
         }
 
         .text :deep(.md-h) {
-            margin: 0.85em 0 0.4em;
+            margin: 0.9em 0 0.42em;
             font-weight: 650;
-            line-height: 1.25;
-            letter-spacing: -0.01em;
+            line-height: 1.28;
+            letter-spacing: -0.012em;
         }
 
         .text :deep(.md-h1) {
-            font-size: 1.4em;
-            background: linear-gradient(90deg, #FF4D00, #FF7A3D);
+            font-size: 1.38em;
+            background: linear-gradient(92deg, #FF5A14, #FF8A52);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
@@ -174,13 +222,13 @@ export class SomaMessage extends LitElement {
             color: #fff;
         }
 
-        .text :deep(.md-h2) { font-size: 1.22em; color: #dbeafe; }
-        .text :deep(.md-h3) { font-size: 1.1em; color: #e2e8f0; }
+        .text :deep(.md-h2) { font-size: 1.2em; color: #dce8f8; }
+        .text :deep(.md-h3) { font-size: 1.08em; color: #e4ecf6; }
         .text :deep(.md-h4),
         .text :deep(.md-h5),
         .text :deep(.md-h6) {
             font-size: 1em;
-            color: #cbd5e1;
+            color: #c9d4e2;
             text-transform: none;
         }
 
@@ -207,12 +255,12 @@ export class SomaMessage extends LitElement {
 
         .text :deep(.md-ul),
         .text :deep(.md-ol) {
-            margin: 0 0 0.75em;
+            margin: 0 0 0.78em;
             padding-left: 1.25em;
         }
 
         .text :deep(li) {
-            margin: 0.28em 0;
+            margin: 0.3em 0;
             padding-left: 0.15em;
         }
 
@@ -228,28 +276,25 @@ export class SomaMessage extends LitElement {
             content: '';
             position: absolute;
             left: -0.9em;
-            top: 0.62em;
+            top: 0.64em;
             width: 6px;
             height: 6px;
             border-radius: 999px;
-            background: #FF4D00;
+            background: #FF5A14;
         }
 
         :host([message-role='user']) .text :deep(.md-ul > li::before) {
-            background: rgba(255, 255, 255, 0.75);
+            background: rgba(255, 255, 255, 0.78);
         }
 
         .text :deep(.md-quote) {
-            margin: 0 0 0.8em;
+            margin: 0 0 0.85em;
             padding: 10px 14px;
-            border-left: 3px solid transparent;
-            border-image: linear-gradient(180deg, #FF4D00, #FF7A3D) 1;
+            border-left: 3px solid #FF5A14;
             border-radius: 0 12px 12px 0;
-            background: linear-gradient(135deg, rgba(255, 77, 0, 0.1), rgba(255, 122, 61, 0.08));
-            color: #CBD5E1;
+            background: rgba(255, 90, 20, 0.08);
+            color: #C8D2E0;
             font-style: italic;
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
         }
 
         :host([message-role='user']) .text :deep(.md-quote) {
@@ -261,8 +306,8 @@ export class SomaMessage extends LitElement {
         .text :deep(.md-hr) {
             border: none;
             height: 1px;
-            margin: 1em 0;
-            background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.35), transparent);
+            margin: 1.05em 0;
+            background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.32), transparent);
         }
 
         .text :deep(.md-code) {
@@ -270,35 +315,33 @@ export class SomaMessage extends LitElement {
             font-size: 0.86em;
             padding: 0.14em 0.42em;
             border-radius: 6px;
-            background: #0A0A0A;
-            border: 1px solid #2A2A2A;
+            background: #0C0C0E;
+            border: 1px solid #2A2A2E;
             color: #FFD0BA;
         }
 
         :host([message-role='user']) .text :deep(.md-code) {
             background: rgba(0, 0, 0, 0.22);
             border-color: rgba(255, 255, 255, 0.18);
-            color: #e0e7ff;
+            color: #ffe8dc;
         }
 
         .text :deep(.md-pre) {
             margin: 0 0 0.85em;
             padding: 12px 14px;
-            background: #0A0A0A;
-            border: 1px solid #2A2A2A;
+            background: #0A0A0C;
+            border: 1px solid #2A2A2E;
             border-radius: 12px;
             overflow-x: auto;
         }
 
         .text :deep(.md-codeblock-wrap) {
-            margin: 0 0 0.9em;
+            margin: 0 0 0.95em;
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 12px;
+            border-radius: 14px;
             overflow: hidden;
-            background: rgba(10, 10, 10, 0.72);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+            background: rgba(10, 10, 12, 0.92);
+            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
         }
 
         .text :deep(.md-codeblock-bar) {
@@ -307,21 +350,21 @@ export class SomaMessage extends LitElement {
             justify-content: space-between;
             gap: 8px;
             padding: 7px 12px;
-            background: linear-gradient(90deg, #1A1A1A, #111111);
-            border-bottom: 1px solid #2A2A2A;
+            background: linear-gradient(90deg, #1A1A1E, #121216);
+            border-bottom: 1px solid #2A2A2E;
         }
 
         .text :deep(.md-codeblock-lang) {
             font-family: var(--platform-font-mono, ui-monospace, monospace);
             font-size: 11px;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.05em;
             text-transform: uppercase;
-            color: #FF7A3D;
+            color: #FF8A52;
         }
 
         .text :deep(.md-copy-btn) {
             border: 1px solid rgba(148, 163, 184, 0.25);
-            background: #1A1A1A;
+            background: #1A1A1E;
             color: #cbd5e1;
             font-size: 11px;
             line-height: 1;
@@ -332,9 +375,9 @@ export class SomaMessage extends LitElement {
         }
 
         .text :deep(.md-copy-btn:hover) {
-            background: rgba(255, 77, 0, 0.28);
-            border-color: #FF4D00;
-            color: #e0e7ff;
+            background: rgba(255, 90, 20, 0.22);
+            border-color: #FF5A14;
+            color: #ffe8dc;
         }
 
         .text :deep(.md-codeblock-wrap .md-pre) {
@@ -348,7 +391,7 @@ export class SomaMessage extends LitElement {
         .text :deep(.md-codeblock) {
             font-family: var(--platform-font-mono, ui-monospace, 'SF Mono', Menlo, monospace);
             font-size: 12.5px;
-            line-height: 1.6;
+            line-height: 1.62;
             color: #e2e8f0;
             white-space: pre;
         }
@@ -372,11 +415,11 @@ export class SomaMessage extends LitElement {
         .text :deep(table) {
             width: 100%;
             border-collapse: collapse;
-            margin: 0 0 0.85em;
+            margin: 0 0 0.9em;
             font-size: 13px;
-            border-radius: 10px;
+            border-radius: 12px;
             overflow: hidden;
-            border: 1px solid #2A2A2A;
+            border: 1px solid #2A2A2E;
         }
 
         .text :deep(th),
@@ -387,7 +430,7 @@ export class SomaMessage extends LitElement {
         }
 
         .text :deep(th) {
-            background: #1A1A1A;
+            background: #1A1A1E;
             color: #e2e8f0;
             font-weight: 600;
         }
@@ -403,17 +446,107 @@ export class SomaMessage extends LitElement {
 
         .text :deep(img) {
             max-width: 100%;
-            border-radius: 10px;
+            border-radius: 12px;
             margin: 0.4em 0;
         }
 
+        /* ---------- turn chips (model / recall / ctx) ---------- */
+        .turn-chips {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 9px;
+            border-radius: 999px;
+            font-size: 11px;
+            line-height: 1.35;
+            letter-spacing: 0.01em;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+            color: #A8B4C4;
+            white-space: nowrap;
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chip .material-symbols-outlined {
+            font-size: 13px;
+            opacity: 0.85;
+        }
+
+        .chip.model {
+            border-color: rgba(16, 185, 129, 0.35);
+            color: #6EE7B7;
+        }
+
+        .chip.model .live {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            color: #10B981;
+            border: 1px solid rgba(16, 185, 129, 0.5);
+            border-radius: 999px;
+            padding: 0 5px;
+        }
+
+        .chip.recall {
+            border-color: rgba(59, 130, 246, 0.32);
+            color: #93C5FD;
+        }
+
+        .chip.ctx-ok { border-color: rgba(16, 185, 129, 0.3); color: #6EE7B7; }
+        .chip.ctx-mid { border-color: rgba(251, 191, 36, 0.32); color: #FCD34D; }
+        .chip.ctx-high { border-color: rgba(248, 113, 113, 0.35); color: #FCA5A5; }
+
+        .chip-hit {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            line-height: 1.4;
+            border: 1px solid rgba(59, 130, 246, 0.22);
+            background: rgba(59, 130, 246, 0.08);
+            color: #B6C8DE;
+            max-width: 100%;
+        }
+
+        .chip-hit .score {
+            flex-shrink: 0;
+            font-variant-numeric: tabular-nums;
+            color: #93C5FD;
+            font-weight: 600;
+        }
+
+        .chip-hit .hit-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
+        }
 
         /* ---------- media / documents ---------- */
         .attachments {
             display: flex;
-            flex-wrap: wrap;
+            flex-direction: column;
             gap: 10px;
             margin-bottom: 12px;
+        }
+
+        .attachment-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .attachment-card {
@@ -423,31 +556,42 @@ export class SomaMessage extends LitElement {
             margin: 0;
             padding: 10px 12px;
             border-radius: 14px;
-            max-width: 280px;
-            background: linear-gradient(145deg, rgba(18, 18, 18, 0.92), rgba(10, 10, 10, 0.88));
-            border: 1px solid rgba(255, 77, 0, 0.22);
-            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
-            color: #E8E8E8;
+            max-width: 300px;
+            background: rgba(18, 18, 20, 0.92);
+            border: 1px solid rgba(255, 90, 20, 0.2);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+            color: #E8E8EC;
         }
 
         .attachment-card.is-image {
-            border-color: rgba(52, 211, 153, 0.28);
+            border-color: rgba(52, 211, 153, 0.26);
+        }
+
+        .attachment-card.is-unavailable {
+            border-color: rgba(148, 163, 184, 0.22);
+            border-style: dashed;
+            opacity: 0.92;
         }
 
         .attachment-card .file-icon {
             flex: 0 0 auto;
             width: 40px;
             height: 40px;
-            border-radius: 10px;
+            border-radius: 11px;
             display: grid;
             place-items: center;
-            background: rgba(255, 77, 0, 0.14);
-            color: #FF7A3D;
+            background: rgba(255, 90, 20, 0.13);
+            color: #FF8A52;
         }
 
         .attachment-card.is-image .file-icon {
-            background: rgba(52, 211, 153, 0.14);
+            background: rgba(52, 211, 153, 0.13);
             color: #34d399;
+        }
+
+        .attachment-card.is-unavailable .file-icon {
+            background: rgba(148, 163, 184, 0.12);
+            color: #94a3b8;
         }
 
         .attachment-card .file-icon .material-symbols-outlined {
@@ -467,18 +611,85 @@ export class SomaMessage extends LitElement {
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            color: #F5F5F5;
+            color: #F5F5F7;
         }
 
         .attachment-card .sub {
             font-size: 11px;
-            color: #A3A3A3;
+            color: #A3A3AC;
             text-transform: lowercase;
             letter-spacing: 0.02em;
         }
 
+        .attachment-card a.download {
+            color: #FFB088;
+            font-size: 11px;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        .media-frame {
+            margin: 0;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(10, 10, 12, 0.6);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+            max-width: min(100%, 520px);
+        }
+
+        .media-frame img {
+            display: block;
+            width: 100%;
+            max-height: 420px;
+            object-fit: contain;
+            background: #0A0A0C;
+        }
+
+        .media-frame audio {
+            display: block;
+            width: min(100%, 420px);
+            padding: 12px 14px;
+        }
+
+        .media-frame video {
+            display: block;
+            width: 100%;
+            max-height: 420px;
+            background: #000;
+        }
+
+        .media-frame figcaption {
+            padding: 8px 12px;
+            font-size: 11px;
+            color: #94A3B8;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .media-frame figcaption .name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #E2E8F0;
+            font-weight: 500;
+        }
+
+        .media-pending {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            border: 1px dashed rgba(148, 163, 184, 0.25);
+            color: #94A3B8;
+            font-size: 12px;
+        }
+
         :host([message-role='user']) .attachment-card {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.12);
             border-color: rgba(255, 255, 255, 0.22);
             color: #fff;
         }
@@ -488,71 +699,55 @@ export class SomaMessage extends LitElement {
         }
 
         :host([message-role='user']) .attachment-card .sub {
-            color: rgba(255, 255, 255, 0.7);
+            color: rgba(255, 255, 255, 0.72);
         }
 
-        .text :deep(.md-img),
-        .text :deep(img) {
-            display: block;
-            max-width: min(100%, 520px);
-            border-radius: 14px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            margin: 10px 0;
-            box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+        :host([message-role='user']) .attachment-card .file-icon {
+            background: rgba(255, 255, 255, 0.16);
+            color: #fff;
         }
 
-        .text :deep(.md-file-card),
-        .text :deep(.file-card) {
-            display: flex;
+        /* ---------- typing / thinking ---------- */
+        .typing {
+            display: inline-flex;
             align-items: center;
-            gap: 12px;
-            margin: 10px 0;
-            padding: 12px 14px;
-            border-radius: 14px;
-            background: linear-gradient(145deg, rgba(18, 18, 18, 0.9), rgba(10, 10, 10, 0.85));
-            border: 1px solid rgba(255, 77, 0, 0.18);
-            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+            gap: 5px;
+            padding: 6px 2px 2px;
         }
 
-        .text :deep(.file-card .icon) {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            display: grid;
-            place-items: center;
-            background: rgba(255, 77, 0, 0.14);
-            color: #FF4D00;
-            font-size: 20px;
+        .typing span {
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+            background: #FF8A52;
+            opacity: 0.35;
+            animation: typingPulse 1.2s ease-in-out infinite;
         }
 
-        .text :deep(.file-card .meta) {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            min-width: 0;
+        .typing span:nth-child(2) { animation-delay: 0.15s; }
+        .typing span:nth-child(3) { animation-delay: 0.3s; }
+
+        @keyframes typingPulse {
+            0%, 100% { opacity: 0.3; transform: translateY(0); }
+            50% { opacity: 1; transform: translateY(-2px); }
         }
 
-        .text :deep(.file-card .title) {
-            color: #FFFFFF;
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .text :deep(.file-card .sub) {
-            color: #94A3B8;
-            font-size: 11px;
+        @media (prefers-reduced-motion: reduce) {
+            .typing span {
+                animation: none;
+                opacity: 0.7;
+            }
         }
 
         /* streaming cursor */
-
         .cursor {
             display: inline-block;
-            width: 8px;
-            height: 15px;
+            width: 7px;
+            height: 1.05em;
             margin-left: 3px;
             vertical-align: text-bottom;
             border-radius: 2px;
-            background: linear-gradient(180deg, #FF4D00, #FF7A3D);
+            background: linear-gradient(180deg, #FF5A14, #FF8A52);
             animation: blink 1s step-end infinite;
         }
 
@@ -564,18 +759,18 @@ export class SomaMessage extends LitElement {
 
         /* ---------- tools ---------- */
         .tools {
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
 
         .tools-toggle {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 5px 10px;
+            padding: 5px 11px;
             margin-bottom: 8px;
             border-radius: 999px;
-            border: 1px solid #2A2A2A;
-            background: #1A1A1A;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
             color: #94a3b8;
             font-size: 11.5px;
             cursor: pointer;
@@ -584,8 +779,8 @@ export class SomaMessage extends LitElement {
 
         .tools-toggle:hover {
             color: #e2e8f0;
-            background: #1A1A1A;
-            border-color: #FF4D00;
+            background: rgba(255, 90, 20, 0.1);
+            border-color: rgba(255, 90, 20, 0.45);
         }
 
         .tools-toggle:focus-visible {
@@ -602,8 +797,6 @@ export class SomaMessage extends LitElement {
             transform: rotate(90deg);
         }
 
-        /* ---------- attachments: styles live with .attachment-card above ---------- */
-
         /* ---------- inline error ---------- */
         .inline-error {
             display: flex;
@@ -611,9 +804,9 @@ export class SomaMessage extends LitElement {
             gap: 8px;
             margin-top: 10px;
             padding: 10px 12px;
-            border-radius: 10px;
-            background: rgba(239, 68, 68, 0.12);
-            border: 1px solid rgba(239, 68, 68, 0.35);
+            border-radius: 12px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.32);
             color: #fca5a5;
             font-size: 12.5px;
             line-height: 1.45;
@@ -630,27 +823,28 @@ export class SomaMessage extends LitElement {
             display: flex;
             align-items: center;
             gap: 10px;
-            margin-top: 8px;
+            margin-top: 10px;
             min-height: 18px;
         }
 
         .time {
             font-size: 11px;
             color: #64748b;
+            font-variant-numeric: tabular-nums;
         }
 
         :host([message-role='user']) .time {
-            opacity: 0.75;
+            opacity: 0.78;
         }
 
         .stopped-badge {
             font-size: 10px;
             text-transform: uppercase;
-            letter-spacing: 0.4px;
+            letter-spacing: 0.45px;
             color: #fbbf24;
-            border: 1px solid rgba(251, 191, 36, 0.45);
+            border: 1px solid rgba(251, 191, 36, 0.4);
             border-radius: 6px;
-            padding: 1px 6px;
+            padding: 1px 7px;
         }
 
         .confidence-wrap {
@@ -659,6 +853,7 @@ export class SomaMessage extends LitElement {
             gap: 6px;
             font-size: 11px;
             color: #64748b;
+            font-variant-numeric: tabular-nums;
         }
 
         .confidence-bar {
@@ -703,7 +898,7 @@ export class SomaMessage extends LitElement {
         }
 
         .action-btn:hover {
-            background: #1A1A1A;
+            background: rgba(255, 255, 255, 0.06);
             color: #e2e8f0;
         }
 
@@ -722,6 +917,9 @@ export class SomaMessage extends LitElement {
                 ? ''
                 : renderMarkdown(this.text, { onCodeBlock: renderCodeBlock });
         }
+        if (changed.has('attachments')) {
+            this._resolveMedia();
+        }
     }
 
     private _unbindCodeCopy: (() => void) | null = null;
@@ -737,6 +935,49 @@ export class SomaMessage extends LitElement {
         this._unbindCodeCopy?.();
         this._unbindCodeCopy = null;
         super.disconnectedCallback();
+    }
+
+    /**
+     * Resolve a download URL for attachments that carry a real filesv2 id.
+     * Failures land in an honest `unavailable` state — never a broken frame.
+     */
+    private _resolveMedia() {
+        const list = this.attachments ?? [];
+        for (const a of list) {
+            const key = a.file_id || `local:${a.name}`;
+            if (this._mediaRequested.has(key)) continue;
+            this._mediaRequested.add(key);
+
+            if (!a.file_id) {
+                // No filesv2 id — the bytes were never accepted. Chip only.
+                this._media = { ...this._media, [key]: { url: null, state: 'unavailable' } };
+                continue;
+            }
+
+            this._media = { ...this._media, [key]: { url: null, state: 'pending' } };
+            void apiClient
+                .get<{ download_url?: string }>(`/filesv2/${a.file_id}/download-url`)
+                .then((res) => {
+                    const url = res?.download_url;
+                    if (typeof url === 'string' && url.length > 0) {
+                        this._media = {
+                            ...this._media,
+                            [key]: { url, state: 'ok' },
+                        };
+                    } else {
+                        this._media = {
+                            ...this._media,
+                            [key]: { url: null, state: 'unavailable' },
+                        };
+                    }
+                })
+                .catch(() => {
+                    this._media = {
+                        ...this._media,
+                        [key]: { url: null, state: 'unavailable' },
+                    };
+                });
+        }
     }
 
     private async _copy() {
@@ -761,8 +1002,151 @@ export class SomaMessage extends LitElement {
         return formatTime(iso);
     }
 
+    private _ctxClass(meta: MessageTurnMeta): string {
+        if (!meta.contextTokens || !meta.contextWindow) return '';
+        const pct = Math.round((meta.contextTokens / meta.contextWindow) * 100);
+        if (!Number.isFinite(pct)) return '';
+        if (pct >= 80) return 'ctx-high';
+        if (pct >= 50) return 'ctx-mid';
+        return 'ctx-ok';
+    }
+
+    /** Beautiful chip row for turn_meta — only fields the server sent. */
+    private _renderTurnChips() {
+        const meta = this.turnMeta;
+        if (!meta) return nothing;
+        const hasAnything =
+            meta.model || (meta.memoryHits && meta.memoryHits.length > 0) || meta.contextTokens;
+        if (!hasAnything) return nothing;
+
+        const hits = meta.memoryHits ?? [];
+        const top = hits[0];
+        const ctxPct =
+            meta.contextTokens && meta.contextWindow
+                ? Math.round((meta.contextTokens / meta.contextWindow) * 100)
+                : null;
+
+        return html`
+            <div class="turn-chips" role="group" aria-label="Turn metadata">
+                ${meta.model
+                    ? html`<span class="chip model" title="Model serving this turn">
+                          <span class="material-symbols-outlined">memory</span>
+                          ${meta.model}
+                      </span>`
+                    : nothing}
+                ${hits.length > 0
+                    ? html`<span class="chip recall" title="Memory hits recalled this turn">
+                          <span class="material-symbols-outlined">psychology</span>
+                          recall ${hits.length}
+                      </span>`
+                    : nothing}
+                ${ctxPct != null && meta.contextTokens && meta.contextWindow
+                    ? html`<span
+                          class="chip ${this._ctxClass(meta)}"
+                          title="Context fill — ${meta.contextTokens} of ${meta.contextWindow} tokens"
+                      >
+                          <span class="material-symbols-outlined">data_object</span>
+                          CTX ${ctxPct}%
+                      </span>`
+                    : meta.contextTokens
+                      ? html`<span class="chip" title="Context tokens (model window unknown)">
+                            <span class="material-symbols-outlined">data_object</span>
+                            ${meta.contextTokens} tok
+                        </span>`
+                      : nothing}
+            </div>
+            ${top && top.text
+                ? html`<div class="turn-chips">
+                      <span class="chip-hit" title="Top memory hit this turn">
+                          <span class="score"
+                              >${typeof top.score === 'number'
+                                  ? top.score.toFixed(2)
+                                  : '—'}</span
+                          >
+                          <span class="hit-text">${top.text}</span>
+                      </span>
+                  </div>`
+                : nothing}
+        `;
+    }
+
+    /** One attachment: media frame when resolvable, honest card otherwise. */
+    private _renderAttachment(a: AttachmentInput) {
+        const key = a.file_id || `local:${a.name}`;
+        const media = this._media[key];
+        const isImage = isImageAttachment(a.name, a.type);
+        const isAudio = isAudioAttachment(a.name, a.type);
+        const isVideo = isVideoAttachment(a.name, a.type);
+        const icon = attachmentIcon(a.name, a.type);
+        const sub = `${(a.type || 'file').split('/').pop() || 'file'}${
+            a.size ? ` · ${formatBytes(a.size)}` : ''
+        }`;
+
+        if (media?.state === 'pending') {
+            return html`
+                <div class="media-pending" title=${a.name}>
+                    <span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span>
+                    <span>Preparing preview…</span>
+                </div>
+            `;
+        }
+
+        if (media?.state === 'ok' && media.url && (isImage || isAudio || isVideo)) {
+            return html`
+                <figure class="media-frame">
+                    ${isImage
+                        ? html`<img src=${media.url} alt=${a.name} loading="lazy" />`
+                        : nothing}
+                    ${isAudio
+                        ? html`<audio src=${media.url} controls preload="metadata"></audio>`
+                        : nothing}
+                    ${isVideo
+                        ? html`<video src=${media.url} controls preload="metadata"></video>`
+                        : nothing}
+                    <figcaption>
+                        <span class="material-symbols-outlined" aria-hidden="true" style="font-size:14px"
+                            >${icon}</span
+                        >
+                        <span class="name">${a.name}</span>
+                        <span>${sub}</span>
+                    </figcaption>
+                </figure>
+            `;
+        }
+
+        // Resolved but not media (pdf/zip/…) → download card.
+        if (media?.state === 'ok' && media.url) {
+            return html`
+                <figure class="attachment-card">
+                    <span class="file-icon" aria-hidden="true">
+                        <span class="material-symbols-outlined">${icon}</span>
+                    </span>
+                    <figcaption class="file-meta">
+                        <span class="name">${a.name}</span>
+                        <span class="sub">${sub}</span>
+                        <a class="download" href=${media.url} download=${a.name}>Download</a>
+                    </figcaption>
+                </figure>
+            `;
+        }
+
+        // No file_id, or the download URL could not be resolved — honest card.
+        return html`
+            <figure class="attachment-card is-unavailable ${isImage ? 'is-image' : ''}" title=${a.name}>
+                <span class="file-icon" aria-hidden="true">
+                    <span class="material-symbols-outlined">${icon}</span>
+                </span>
+                <figcaption class="file-meta">
+                    <span class="name">${a.name}</span>
+                    <span class="sub">${a.file_id ? 'Preview unavailable' : 'Not uploaded'} · ${sub}</span>
+                </figcaption>
+            </figure>
+        `;
+    }
+
     render() {
         const hasTools = this.tools && this.tools.length > 0;
+        const hasAttachments = this.attachments && this.attachments.length > 0;
         const showFooter =
             !!this.timestamp ||
             this.stopped ||
@@ -771,7 +1155,9 @@ export class SomaMessage extends LitElement {
             this.messageRole === 'user';
 
         return html`
-            <div class="bubble">
+            <div class="bubble" role="article" aria-label=${`${this.messageRole} message`}>
+                ${this._renderTurnChips()}
+
                 ${hasTools ? html`
                     <div class="tools">
                         <button
@@ -790,32 +1176,24 @@ export class SomaMessage extends LitElement {
                 ` : nothing}
                 <slot name="tools"></slot>
 
-                ${this.attachments.length > 0 ? html`
+                ${hasAttachments ? html`
                     <div class="attachments">
-                        ${this.attachments.map((a) => {
-                            const icon = attachmentIcon(a.name, a.type);
-                            const isImage = isImageAttachment(a.name, a.type);
-                            return html`
-                            <figure class="attachment-card ${isImage ? 'is-image' : ''}" title=${a.name}>
-                                <span class="file-icon" aria-hidden="true">
-                                    <span class="material-symbols-outlined">${icon}</span>
-                                </span>
-                                <figcaption class="file-meta">
-                                    <span class="name">${a.name}</span>
-                                    <span class="sub">
-                                        ${(a.type || 'file').split('/').pop() || 'file'}
-                                        ${a.size ? html` · ${formatBytes(a.size)}` : nothing}
-                                    </span>
-                                </figcaption>
-                            </figure>`;
-                        })}
+                        <div class="attachment-grid">
+                            ${this.attachments.map((a) => this._renderAttachment(a))}
+                        </div>
                     </div>
                 ` : nothing}
 
+                ${this.thinking && !this.text
+                    ? html`<div class="typing" role="status" aria-label="Assistant is thinking">
+                          <span></span><span></span><span></span>
+                      </div>`
+                    : nothing}
+
                 ${this.messageRole === 'user'
                     ? html`<div class="text">${this.text}</div>`
-                    : html`<div class="text">${unsafeHTML(this._renderedHtml)}</div>`}
-                ${this.streaming ? html`<span class="cursor" aria-hidden="true"></span>` : nothing}
+                    : html`<div class="text" aria-live=${this.streaming ? 'polite' : 'off'}>${unsafeHTML(this._renderedHtml)}</div>`}
+                ${this.streaming && this.text ? html`<span class="cursor" aria-hidden="true"></span>` : nothing}
 
                 ${this.error ? html`
                     <div class="inline-error" role="alert">

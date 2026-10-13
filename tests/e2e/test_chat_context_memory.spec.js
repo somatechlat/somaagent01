@@ -55,8 +55,10 @@ async function ask(page, text) {
     .toBeGreaterThan(0);
   // Wait for the STREAM to finish, not just the first token. A read at the
   // first delta is a truncated reply (live Mission T: mid-coord cutoff).
-  // Signal: assistant text stable across two samples. The send button is NOT
-  // a signal — it stays disabled on an empty composer after send.
+  // Signal: assistant text stable across two samples 3s apart. The send
+  // button is NOT a signal — it stays disabled on an empty composer after
+  // send.  3s (not 1.5s) because the stream pauses between tokens and a
+  // shorter window reads a mid-word truncation (live: "ctx-...4o" vs "…4o4").
   await expect
     .poll(async () => {
       const t1 = await last.evaluate((el) => {
@@ -64,14 +66,14 @@ async function ask(page, text) {
         const body = root.querySelector('.text') || root;
         return (body.textContent || '').replace(/\s+/g, ' ').trim();
       });
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(3000);
       const t2 = await last.evaluate((el) => {
         const root = el.shadowRoot || el;
         const body = root.querySelector('.text') || root;
         return (body.textContent || '').replace(/\s+/g, ' ').trim();
       });
       return t1 === t2 && t1.length > 0;
-    }, { timeout: 90000, intervals: [2000] })
+    }, { timeout: 90000, intervals: [3000] })
     .toBe(true);
   return (await last.evaluate((el) => {
     const root = el.shadowRoot || el;

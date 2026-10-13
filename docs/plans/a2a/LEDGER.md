@@ -327,3 +327,61 @@ reduced-motion on pulse.
 
 **Tests:** targeted unit tests green (pre-existing failures `test_transports_use_resolver`, `test_memory_vector_fail_closed` untouched). No commits (operator order).
 | 2026-10-12T23:58:53Z | MiMoCode-AgentSkin-SDK | CLAIM | Branch AgentSkin-SDK created. Claiming webui/src/skin-sdk/ + skin-applier/skin-boot + skin-aliases.css + tokens.css. Scope: SOMA-ARCH-SKINS-001 P0-P1 (token vocabulary, schema, sanitiser X-1..X-12, templates, SkinApplier). No shims/fakes. Not touching chat components claimed by soma-chat-uiux. |
+
+## 2026-10-13 Mission T Playwright — 3 specs green + memory ranking fix (NOT committed)
+
+**Scope:** `tests/e2e/test_human_chat_session.spec.js`, `tests/e2e/test_memory_human_name.spec.js`,
+`tests/e2e/test_chat_context_memory.spec.js`. Defect fixes in `services/tool_executor/memory_tools.py`,
+`admin/core/chat_orchestrator.py`, `admin/memory/api/memory.py`. Test timing fix in both memory specs.
+
+**Runner:** `bun node_modules/@playwright/test/cli.js test …` (host `node` broken — ada-url
+`libada.3.dylib` self-loop symlink outside repo). Env: UI/API/credentials from runner.
+
+**Final result: 13/13 passed (3.6 min, 3 workers)**
+- `test_human_chat_session.spec.js` — 6/6 (login, stream, controls, remember+recall, logout, settings honesty)
+- `test_memory_human_name.spec.js` — 3/3 (remember Daniel, recall Daniel, GET /memory/ lists Daniel)
+- `test_chat_context_memory.spec.js` — 4/4 (project thread 4 turns, name+color+codeword fresh conv, coord/id explain, knobs dock)
+
+### Defects found and fixed
+
+**D1 — memory recall returns wrong name (Marco instead of Daniel).**
+Root cause: hash embedder cosine scores are low-discriminative. `recall("What is my name?")`
+returns the question itself (0.81) and stale Q&A pairs (`User: … Assistant: Your name is **Marco**.`)
+above the just-saved fact `My name is Daniel. Remember it.` (0.357). The fact is not even in the
+top-40 for that query. Chat-turn auto-capture (`_store_turn`, salience 0.2–0.25) floods the store
+with questions and Q&A transcripts.
+
+Fix in `memory_tools.py` + `chat_orchestrator.py`:
+- **Tier ranking:** facts (short, non-question, non-dialog) always outrank questions and chat
+  transcripts. Within each tier, newest `created_at` wins. Questions ("What is my name?") get −0.40,
+  dialog ("User: …/Assistant: …") get −0.50, facts get +0.30.
+- **Multi-query recall:** second pass with extracted keywords ("what name" from "What is my name?")
+  surfaces the fact even when the primary query misses it. Merged by coord, de-duplicated.
+- **Keyword boost** raised 0.04 → 0.08 per matched term.
+- **fetch_k capped at 40** — SomaBrain `/memory/recall` returns 422 for top_k > 40.
+
+**D2 — `GET /memory/` list misses just-saved facts.**
+Root cause: `list_memories` used `recall("*", limit)` — a single semantic query with the literal
+string `"*"`. Non-deterministic under the hash embedder; the Daniel fact dropped in and out of
+the top-20 across runs.
+
+Fix in `admin/memory/api/memory.py`: wildcard pass + keyword pass ("name", "remember", "codeword",
+"fact") merged by coord, then tier-ranked (facts first, newest within tier). Matches the tool
+digest ordering so UI and model see the same list.
+
+**D3 — stream truncation in test stability window.**
+Root cause: both memory specs waited for assistant text to be stable across 800 ms / 1500 ms
+samples. The stream pauses between tokens; a short window reads a mid-word truncation
+(live evidence: `"ctx-mv5xb4o"` instead of `"ctx-mv5xb4o4"`).
+
+Fix: stability window raised to 3000 ms in both `test_memory_human_name.spec.js` and
+`test_chat_context_memory.spec.js`.
+
+### Pre-existing (not fixed, out of scope)
+- SomaBrain `/memory/recall` returns 422 for `top_k > 40` — hard-capped in agent code.
+- Chat turns auto-stored as memories (`_store_turn`) pollute the store with questions and Q&A
+  pairs. The tier ranking mitigates but does not eliminate the noise.
+- Host `node` broken (`/usr/local/opt/ada-url/lib/libada.3.dylib` → `libada.3.dylib` self-loop).
+  Tests run via `bun node_modules/@playwright/test/cli.js`.
+
+**No commits (operator order).**

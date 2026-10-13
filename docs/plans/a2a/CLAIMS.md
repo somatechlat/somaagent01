@@ -177,3 +177,7 @@
 | path/prefix | agent | task | started_at | status |
 |---|---|---|---|---|
 | webui/src/skin-sdk/ webui/src/services/skin-applier.ts webui/src/services/skin-boot.ts webui/src/styles/skin-aliases.css webui/src/styles/tokens.css | MiMoCode-AgentSkin-SDK | AgentSkin-SDK branch: skin vocabulary + schema + sanitiser + templates + applier (P0-P1 of SOMA-ARCH-SKINS-001). Branch AgentSkin-SDK. Shared webui files merge-additive; do not revert peer chat-uiux / wave6-webui-roles edits. | 2026-10-12T23:58:53Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| tests/e2e/test_human_chat_session.spec.js tests/e2e/test_memory_human_name.spec.js tests/e2e/test_chat_context_memory.spec.js services/tool_executor/memory_tools.py admin/core/chat_orchestrator.py admin/memory/api/memory.py | MiMoCode-mission-t-playwright | Mission T Playwright: 3 specs green on real services + memory recall ranking defect fix (tier facts>questions, multi-query, list endpoint fact pass) | 2026-10-13T00:15:00Z | DONE — 13/13 passed; see LEDGER 2026-10-13 |

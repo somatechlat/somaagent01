@@ -210,21 +210,42 @@ async def drain_memory_wal_activity(limit: int = 50) -> dict[str, Any]:
             skipped += 1
             continue
         try:
-            status, resp = await _brain_post("/memory/remember", body)
+            # T-1: ONE write lane — MemoryGateway → SomaBrainAdapter. Never raw
+            # httpx to /memory/remember from this activity.
+            from services.common.memory_gateway import get_memory_gateway
+
+            gateway = get_memory_gateway()
+            text = str(
+                (body.get("text") or (body.get("payload") or {}).get("text") or "")
+            )
+            tenant = str(body.get("tenant") or row.partition_key or "")
+            kind = str((body.get("meta") or {}).get("kind") or body.get("kind") or "episodic")
+            salience = body.get("importance")
+            try:
+                salience_f = float(salience) if salience is not None else None
+            except (TypeError, ValueError):
+                salience_f = None
+            acks = await gateway.remember_text(
+                text,
+                tenant_id=tenant,
+                kind=kind,
+                salience=salience_f,
+                source=str((body.get("meta") or {}).get("source") or "memory.wal"),
+            )
+            ok = any(getattr(a, "ok", False) for a in (acks or []))
+            if ok:
+                if await _mark_row_published(row.pk):
+                    published += 1
+            else:
+                err = "; ".join(
+                    str(getattr(a, "error", "") or "") for a in (acks or [])
+                )
+                _mark_row_failure(row.pk, f"gateway: {err or 'no ok ack'}", dead=False)
+                failed += 1
         except Exception as exc:  # transport — retryable
             _mark_row_failure(row.pk, f"transport: {exc}", dead=False)
             failed += 1
             continue
-        if 200 <= status < 300:
-            if await _mark_row_published(row.pk):
-                published += 1
-        elif 400 <= status < 500 and status != 429:
-            # Permanent client error (schema/tenant/auth) — terminal dead-letter.
-            _mark_row_failure(row.pk, f"HTTP {status}: {resp}", dead=True)
-            dead += 1
-        else:
-            _mark_row_failure(row.pk, f"HTTP {status}: {resp}", dead=False)
-            failed += 1
     return {
         "topic": _wal_topic(),
         "claimed": len(rows),

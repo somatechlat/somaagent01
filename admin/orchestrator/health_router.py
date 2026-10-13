@@ -76,10 +76,18 @@ def attach_to_app(app, router_obj: UnifiedHealthRouter) -> None:
     assert Router is not None
     router = Router()
 
-    @router.get("/v1/health")
-    async def health() -> Dict:  # pragma: no cover – exercised via API tests
-        """Execute health."""
+    from admin.common.auth import AuthBearer
 
+    @router.get("/v1/health", auth=AuthBearer())
+    async def health(request) -> Dict:  # pragma: no cover – exercised via API tests
+        """Execute health.
+
+        Authenticated: per-service health is internal state and is not an
+        unauthenticated probe surface (SOMA-STD-SECURITY-001 / operator LAW).
+        """
+        from services.common.authorization import authorize
+
+        await authorize(request, action="system:view", resource="health")
         return await router_obj.health_endpoint()
 
     app.add_router("", router)

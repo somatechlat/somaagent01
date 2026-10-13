@@ -25,18 +25,28 @@ _SUMMARY_CHARS = 240
 
 
 def _fact_boost(text: str) -> float:
-    """Prefer durable facts over raw dialog transcripts when ranking.
+    """Prefer durable facts over raw dialog transcripts and questions.
 
     Chat turns are also stored (chat_history). When the user asks for a
     name/codeword the fact row must outrank "User: ...\\nAssistant: ...".
+    Questions ("What is my name?") are what the user asked, not what they
+    said — they must never outrank the fact that answers them.
     """
     t = (text or "").strip()
     if not t:
-        return 0.0
+        return -1.0
+    # Dialog / Q&A transcripts — chat turns, not facts.
     if t.startswith("User:") or "\nAssistant:" in t or t.startswith("Assistant:"):
-        return -0.15
+        return -0.50
+    # Questions are not facts.
+    if t.endswith("?") or t.lower().startswith(
+        ("what ", "how ", "why ", "is ", "can ", "do ", "does ",
+         "where ", "when ", "who ", "which ", "remind ", "whast ")
+    ):
+        return -0.40
+    # Short factual statements.
     if len(t) <= 180 and "User:" not in t:
-        return 0.12
+        return 0.30
     return 0.0
 
 
@@ -54,11 +64,21 @@ def _keyword_boost(text: str, query: str) -> float:
     if not terms:
         return 0.0
     matched = sum(1 for t in terms if t in text_lower)
-    return matched * 0.04
+    return matched * 0.08
+
+
+def _is_fact(text: str) -> bool:
+    """True when the row is a durable fact (not a question or chat transcript)."""
+    return _fact_boost(text) > 0
 
 
 def _digest(hits: List[Dict[str, Any]], query: str = "") -> List[Dict[str, Any]]:
     """Shape hits into a ranked digest the model can answer from.
+
+    Ranking is tiered: facts always outrank questions and chat transcripts,
+    and within each tier the newest created_at wins.  This is what makes
+    "My name is Daniel" beat "What is my name?" and stale "My name is Marco"
+    even when the raw cosine score favours the wrong row.
 
     Raw payloads invite re-query: they overflow the tool-message cap, the
     model sees incomplete JSON, and asks again. A summary per hit keeps the
@@ -72,8 +92,19 @@ def _digest(hits: List[Dict[str, Any]], query: str = "") -> List[Dict[str, Any]]
             base_f = float(base) if base is not None else 0.0
         except (TypeError, ValueError):
             base_f = 0.0
-        scored.append({**h, "_rank_score": base_f + _fact_boost(text) + _keyword_boost(text, query)})
-    scored.sort(key=lambda x: x.get("_rank_score") or 0.0, reverse=True)
+        tier = 1 if _is_fact(text) else 0
+        created = str(h.get("created_at") or "")
+        scored.append({
+            **h,
+            "_tier": tier,
+            "_created": created,
+            "_rank_score": base_f + _fact_boost(text) + _keyword_boost(text, query),
+        })
+    # Tier (facts first) → newest → score.  Reverse sorts each key descending.
+    scored.sort(
+        key=lambda x: (x["_tier"], x["_created"], x.get("_rank_score") or 0.0),
+        reverse=True,
+    )
 
     out: List[Dict[str, Any]] = []
     for i, h in enumerate(scored, start=1):
@@ -185,10 +216,13 @@ class MemoryRecallTool(BaseTool):
             }
 
         gateway = _memory_gateway()
-        # Over-fetch: the store's raw cosine scores are low-discriminative, so
-        # the true fact can sit outside a narrow top_k. We widen the fetch,
-        # re-rank with keyword + fact boosts, then trim to the caller's top_k.
-        fetch_k = min(max(top_k * 3, 20), 50)
+        # Over-fetch + multi-query: the hash embedder's cosine scores are
+        # low-discriminative, so "My name is Daniel" can sit outside the
+        # top_k for "What is my name?".  We widen the fetch, add a
+        # keyword-focused second query that matches fact phrasing, merge by
+        # coord, then re-rank with tier + keyword + fact boosts.
+        # SomaBrain's recall endpoint 422s above top_k=40 — hard cap there.
+        fetch_k = min(max(top_k * 3, 20), 40)
         try:
             hits = await gateway.recall(probe, fetch_k, tenant_id)
         except Exception as exc:  # noqa: BLE001
@@ -196,6 +230,25 @@ class MemoryRecallTool(BaseTool):
             raise ToolExecutionError(f"memory_recall failed: {exc}") from exc
 
         results = [_hit_to_dict(h) for h in (hits or [])]
+
+        # Second pass: keyword-focused query.  "What is my name?" rarely
+        # surfaces "My name is Daniel" in the vector store, but "name" or
+        # "my name" does.  Extract the distinctive terms and try once more.
+        terms = [t for t in re.findall(r"[a-z0-9]{3,}", probe.lower()) if t]
+        if len(terms) >= 1:
+            kw_query = " ".join(terms[:4])
+            if kw_query.lower() != probe.lower():
+                try:
+                    kw_hits = await gateway.recall(kw_query, fetch_k, tenant_id)
+                    seen = {r.get("coord") for r in results}
+                    for h in kw_hits or []:
+                        d = _hit_to_dict(h)
+                        if d.get("coord") not in seen:
+                            results.append(d)
+                            seen.add(d.get("coord"))
+                except Exception:  # noqa: BLE001
+                    LOGGER.debug("keyword recall pass failed (non-fatal)", exc_info=True)
+
         digest = _digest(results, query=probe)[:top_k]
         return {
             "query": probe,

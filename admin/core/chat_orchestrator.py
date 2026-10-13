@@ -1572,34 +1572,64 @@ class V3ChatOrchestrator:
         except Exception:
             recall_limit = int(_mem_setting("MEM_RECALL_TOP_K"))
         try:
-            # Over-fetch: the store's raw cosine scores are low-discriminative,
-            # so the just-saved fact can sit outside a narrow top_k. Widen the
-            # fetch, re-rank with keyword + fact evidence, then trim to the
-            # caller's recall_limit (Mission T: Marco/terracotta vs stale Daniel).
+            # Over-fetch + multi-query: the hash embedder's cosine scores are
+            # low-discriminative, so "My name is Daniel" can sit outside the
+            # top_k for "What is my name?".  Widen the fetch, add a
+            # keyword-focused second query, merge by coord, then re-rank with
+            # tier + keyword + fact evidence, then trim to recall_limit.
+            # SomaBrain recall 422s above top_k=40 — hard cap there.
             import re as _re
 
-            fetch_k = min(max(recall_limit * 3, 20), 50)
+            fetch_k = min(max(recall_limit * 3, 20), 40)
             hits = await gateway.recall(query=query, k=fetch_k, tenant_id=tenant_id)
             rows = list(hits or [])
             if not rows:
                 return rows
+
+            # Second pass: keyword-focused query.  "What is my name?" rarely
+            # surfaces "My name is Daniel" in the vector store, but "name" does.
             terms = {t for t in _re.findall(r"[a-z0-9]{3,}", (query or "").lower()) if t}
+            if terms:
+                kw_query = " ".join(sorted(terms)[:4])
+                if kw_query.lower() != (query or "").lower():
+                    try:
+                        kw_hits = await gateway.recall(query=kw_query, k=fetch_k, tenant_id=tenant_id)
+                        seen = set()
+                        for r in rows:
+                            key = getattr(r, "coord", None) or (r.get("coord") if isinstance(r, dict) else None)
+                            seen.add(key)
+                        for r in kw_hits or []:
+                            key = getattr(r, "coord", None) or (r.get("coord") if isinstance(r, dict) else None)
+                            if key not in seen:
+                                rows.append(r)
+                                seen.add(key)
+                    except Exception:  # noqa: BLE001
+                        logger.debug("keyword recall pass failed (non-fatal)", exc_info=True)
 
             def _rank_key(h: object):
                 text = str(getattr(h, "text", "") or "")
                 if isinstance(h, dict):
                     text = str(h.get("text") or "")
-                if text.startswith("User:") or "\nAssistant:" in text:
-                    fact = -0.2
+                # Tier: facts (1) always outrank questions / chat transcripts (0).
+                # Questions ("What is my name?") are what the user asked, not
+                # what they said — they must never outrank the fact.
+                if text.startswith("User:") or "\nAssistant:" in text or text.startswith("Assistant:"):
+                    fact = -0.50
+                elif text.endswith("?") or text.lower().startswith(
+                    ("what ", "how ", "why ", "is ", "can ", "do ", "does ",
+                     "where ", "when ", "who ", "which ", "remind ", "whast ")
+                ):
+                    fact = -0.40
                 else:
-                    fact = 0.2 if len(text) <= 180 else 0.0
+                    fact = 0.30 if len(text) <= 180 else 0.0
+                tier = 1 if fact > 0 else 0
                 created = str(getattr(h, "created_at", "") or "")
                 if isinstance(h, dict):
                     created = str(h.get("created_at") or "")
                 # Lexical evidence: a hit that shares the user's own words
                 # outranks unrelated noise at the same fact tier.
-                kw = sum(1 for t in terms if t in text.lower()) * 0.04 if terms else 0.0
-                return (fact + kw, created)
+                kw = sum(1 for t in terms if t in text.lower()) * 0.08 if terms else 0.0
+                return (tier, created, fact + kw)
 
             rows.sort(key=_rank_key, reverse=True)
             return rows[:recall_limit]
