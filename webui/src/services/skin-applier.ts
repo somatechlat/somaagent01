@@ -7,6 +7,7 @@
  */
 
 import { HOST_ATTR, SURFACE_ATTR, type SurfaceKey } from '../skin-sdk/surfaces.js';
+import { expandTokenMap } from '../skin-sdk/aliases.js';
 import type { ResolvedSkin } from '../skin-sdk/resolve.js';
 import type { TokenMap } from '../skin-sdk/types.js';
 
@@ -17,16 +18,23 @@ const listeners = new Set<Listener>();
 let current: ResolvedSkin | null = null;
 let previous: ResolvedSkin | null = null;
 
+/** Write --skin-* plus legacy --platform-* / --soma-* aliases (migration bridge). */
 function writeTokens(el: HTMLElement, tokens: TokenMap): void {
-  for (const [name, value] of Object.entries(tokens)) {
-    if (!name.startsWith('--skin-')) continue;
+  const expanded = expandTokenMap(tokens);
+  for (const [name, value] of Object.entries(expanded)) {
+    if (!name.startsWith('--skin-') && !name.startsWith('--platform-') && !name.startsWith('--soma-')) {
+      continue;
+    }
     el.style.setProperty(name, value);
   }
 }
 
 function clearTokens(el: HTMLElement, tokens: TokenMap): void {
-  for (const name of Object.keys(tokens)) {
-    if (!name.startsWith('--skin-')) continue;
+  const expanded = expandTokenMap(tokens);
+  for (const name of Object.keys(expanded)) {
+    if (!name.startsWith('--skin-') && !name.startsWith('--platform-') && !name.startsWith('--soma-')) {
+      continue;
+    }
     el.style.removeProperty(name);
   }
 }

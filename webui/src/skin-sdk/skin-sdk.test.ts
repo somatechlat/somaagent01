@@ -10,6 +10,7 @@ import { BUNDLED_PACKS } from './templates/index.js';
 import { isSkinPackManifest } from './pack.js';
 import { REQUIRED_TOKEN_NAMES } from './tokens/vocabulary.js';
 import { SURFACE_KEYS } from './surfaces.js';
+import { expandTokenMap } from './aliases.js';
 import type { SkinDocument } from './types.js';
 
 function fullTokens(overrides: Record<string, string> = {}): Record<string, string> {
@@ -280,5 +281,28 @@ describe('resolveSkin', () => {
 
     const resolved = resolveSkin({ capsule, platform });
     expect(resolved.surfaces.chat?.['--skin-color-bg-card']).toBe('#111111');
+  });
+});
+
+describe('alias bridge', () => {
+  test('expandTokenMap emits legacy --platform-* / --soma-* reads', () => {
+    const expanded = expandTokenMap({
+      '--skin-color-accent': '#FF4D00',
+      '--skin-color-bg-void': '#050505',
+    });
+    expect(expanded['--platform-accent']).toBe('#FF4D00');
+    expect(expanded['--soma-accent']).toBe('#FF4D00');
+    expect(expanded['--soma-primary']).toBe('#FF4D00');
+    expect(expanded['--platform-bg-void']).toBe('#050505');
+    expect(expanded['--soma-bg-void']).toBe('#050505');
+  });
+
+  test('alias values never override an explicit legacy key', () => {
+    const expanded = expandTokenMap({
+      '--skin-color-accent': '#FF4D00',
+      '--platform-accent': '#000000',
+    });
+    expect(expanded['--platform-accent']).toBe('#000000');
+    expect(expanded['--soma-accent']).toBe('#FF4D00');
   });
 });
