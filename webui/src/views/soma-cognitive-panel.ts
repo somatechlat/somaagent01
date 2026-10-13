@@ -17,6 +17,8 @@
  */
 
 import { LitElement, html, css } from 'lit';
+import { glassCard } from '../styles/glass.js';
+import { moduleBase } from '../styles/module-base.js';
 import { customElement, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
 
@@ -40,13 +42,16 @@ interface AdaptationParams {
 
 @customElement('soma-cognitive-panel')
 export class SomaCognitivePanel extends LitElement {
-    static styles = css`
+    static styles = [
+        glassCard,
+        moduleBase,
+        css`
         :host {
             display: flex;
             height: 100vh;
-            background: var(--soma-bg-page, #f5f5f5);
-            font-family: var(--soma-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-            color: var(--soma-text-primary, #1a1a1a);
+            background: var(--skin-color-bg-void);
+            font-family: var(--skin-font-sans);
+            color: var(--skin-color-text-primary);
         }
 
         * {
@@ -58,7 +63,7 @@ export class SomaCognitivePanel extends LitElement {
             font-family: 'Material Symbols Outlined';
             font-weight: normal;
             font-style: normal;
-            font-size: 20px;
+            font-size: var(--skin-text-xl);
             line-height: 1;
             letter-spacing: normal;
             text-transform: none;
@@ -74,140 +79,140 @@ export class SomaCognitivePanel extends LitElement {
            SIDEBAR
            ======================================== */
         .sidebar {
-            width: 280px;
-            background: var(--soma-bg-card, #ffffff);
-            border-right: 1px solid var(--soma-border-light, #e0e0e0);
+            width: calc(var(--skin-space-2xl) * 5 + var(--skin-space-xl));
+            background: var(--skin-color-bg-card);
+            border-right: var(--skin-border-width) solid var(--skin-color-border);
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
-            padding: 24px 20px;
+            padding: var(--skin-space-lg) calc(var(--skin-space-md) + var(--skin-space-xs));
         }
 
         .sidebar-header {
-            margin-bottom: 24px;
+            margin-bottom: var(--skin-space-lg);
         }
 
         .sidebar-title {
-            font-size: 20px;
-            font-weight: 600;
-            margin: 0 0 4px 0;
+            font-size: var(--skin-text-xl);
+            font-weight: var(--skin-weight-semibold);
+            margin: 0 0 var(--skin-space-xs) 0;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5);
         }
 
         .sidebar-subtitle {
-            font-size: 13px;
-            color: var(--soma-text-secondary, #666);
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-secondary);
         }
 
         .mode-badge {
-            padding: 4px 8px;
-            border-radius: 4px;
-            background: #fef3c7;
-            color: #b45309;
-            font-size: 11px;
-            font-weight: 600;
+            padding: var(--skin-space-xs) var(--skin-space-sm);
+            border-radius: var(--skin-radius-sm);
+            background: color-mix(in srgb, var(--skin-color-warning) 22%, transparent);
+            color: var(--skin-color-warning-text);
+            font-size: var(--skin-text-xs);
+            font-weight: var(--skin-weight-semibold);
         }
 
         /* Status Card */
         .status-card {
-            background: var(--soma-bg-hover, #fafafa);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 20px;
+            background: var(--skin-color-bg-hover);
+            border-radius: var(--skin-radius-lg);
+            padding: var(--skin-space-md);
+            margin-bottom: calc(var(--skin-space-md) + var(--skin-space-xs));
         }
 
         .status-row {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
-            font-size: 13px;
+            padding: var(--skin-space-sm) 0;
+            font-size: var(--skin-text-sm);
         }
 
         .status-label {
-            color: var(--soma-text-secondary, #666);
+            color: var(--skin-color-text-secondary);
         }
 
         .status-value {
-            font-weight: 600;
+            font-weight: var(--skin-weight-semibold);
         }
 
         .status-value.online {
-            color: var(--soma-status-success, #22c55e);
+            color: var(--skin-color-success);
         }
 
         .status-value.warning {
-            color: var(--soma-status-warning, #f59e0b);
+            color: var(--skin-color-warning);
         }
 
         /* Quick Actions */
         .quick-actions {
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            margin-bottom: 24px;
+            gap: var(--skin-space-sm);
+            margin-bottom: var(--skin-space-lg);
         }
 
         .action-btn {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 12px 14px;
-            border-radius: 8px;
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            background: var(--soma-bg-card, #ffffff);
-            font-size: 14px;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5);
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) calc(var(--skin-space-md) - var(--skin-space-xs) * 0.5);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            background: var(--skin-color-bg-card);
+            font-size: var(--skin-text-base);
             cursor: pointer;
-            transition: all 0.15s ease;
-            color: var(--soma-text-primary, #1a1a1a);
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
+            color: var(--skin-color-text-primary);
         }
 
         .action-btn:hover {
-            background: var(--soma-bg-hover, #fafafa);
-            border-color: var(--soma-border-medium, #ccc);
+            background: var(--skin-color-bg-hover);
+            border-color: var(--skin-color-border-strong);
         }
 
         .action-btn.primary {
-            background: #1a1a1a;
-            color: white;
-            border-color: #1a1a1a;
+            background: var(--skin-color-accent);
+            color: var(--skin-color-accent-text);
+            border-color: var(--skin-color-accent);
         }
 
         .action-btn.primary:hover {
-            background: #333;
+            background: var(--skin-color-accent-hover);
         }
 
         .action-btn.warning {
-            border-color: var(--soma-status-warning, #f59e0b);
-            color: var(--soma-status-warning, #f59e0b);
+            border-color: var(--skin-color-warning);
+            color: var(--skin-color-warning);
         }
 
         .action-btn.warning:hover {
-            background: #fffbeb;
+            background: color-mix(in srgb, var(--skin-color-warning) 12%, transparent);
         }
 
         .action-btn .material-symbols-outlined {
-            font-size: 18px;
+            font-size: var(--skin-text-xl);
         }
 
         /* Back Button */
         .back-btn {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 12px 14px;
+            gap: var(--skin-space-sm);
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) calc(var(--skin-space-md) - var(--skin-space-xs) * 0.5);
             margin-top: auto;
             border: none;
             background: transparent;
-            font-size: 14px;
-            color: var(--soma-text-secondary, #666);
+            font-size: var(--skin-text-base);
+            color: var(--skin-color-text-secondary);
             cursor: pointer;
-            transition: all 0.1s ease;
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .back-btn:hover {
-            color: var(--soma-text-primary, #1a1a1a);
+            color: var(--skin-color-text-primary);
         }
 
         /* ========================================
@@ -222,61 +227,61 @@ export class SomaCognitivePanel extends LitElement {
 
         /* Header */
         .header {
-            padding: 16px 24px;
-            background: var(--soma-bg-card, #ffffff);
-            border-bottom: 1px solid var(--soma-border-light, #e0e0e0);
+            padding: var(--skin-space-md) var(--skin-space-lg);
+            background: var(--skin-color-bg-card);
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border);
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
         .header-title {
-            font-size: 18px;
-            font-weight: 600;
+            font-size: var(--skin-text-xl);
+            font-weight: var(--skin-weight-semibold);
         }
 
         .header-actions {
             display: flex;
-            gap: 8px;
+            gap: var(--skin-space-sm);
         }
 
         .save-btn {
-            padding: 10px 20px;
-            border-radius: 8px;
-            background: #1a1a1a;
-            color: white;
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5) calc(var(--skin-space-md) + var(--skin-space-xs));
+            border-radius: var(--skin-radius-md);
+            background: var(--skin-color-accent);
+            color: var(--skin-color-accent-text);
             border: none;
-            font-size: 14px;
-            font-weight: 500;
+            font-size: var(--skin-text-base);
+            font-weight: var(--skin-weight-medium);
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
-            transition: all 0.1s ease;
+            gap: var(--skin-space-sm);
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .save-btn:hover:not(:disabled) {
-            background: #333;
+            background: var(--skin-color-accent-hover);
         }
 
         .save-btn:disabled {
-            background: var(--soma-border-light, #e0e0e0);
-            color: var(--soma-text-muted, #999);
+            background: var(--skin-color-border);
+            color: var(--skin-color-text-muted);
             cursor: not-allowed;
         }
 
         .save-btn .material-symbols-outlined {
-            font-size: 18px;
+            font-size: var(--skin-text-xl);
         }
 
         /* Content Area */
         .content {
             flex: 1;
             overflow-y: auto;
-            padding: 24px;
+            padding: var(--skin-space-lg);
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
+            gap: calc(var(--skin-space-md) + var(--skin-space-xs));
             align-content: start;
         }
 
@@ -288,10 +293,10 @@ export class SomaCognitivePanel extends LitElement {
 
         /* Cards */
         .card {
-            background: var(--soma-bg-card, #ffffff);
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            border-radius: 12px;
-            padding: 24px;
+            background: var(--skin-color-bg-card);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-lg);
+            padding: var(--skin-space-lg);
         }
 
         .card.full-width {
@@ -299,30 +304,30 @@ export class SomaCognitivePanel extends LitElement {
         }
 
         .card-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin: 0 0 16px 0;
+            font-size: var(--skin-text-lg);
+            font-weight: var(--skin-weight-semibold);
+            margin: 0 0 var(--skin-space-md) 0;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5);
         }
 
         .card-title .material-symbols-outlined {
-            font-size: 20px;
-            color: var(--soma-text-secondary, #666);
+            font-size: var(--skin-text-xl);
+            color: var(--skin-color-text-secondary);
         }
 
         .card-desc {
-            font-size: 13px;
-            color: var(--soma-text-secondary, #666);
-            margin-bottom: 20px;
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-secondary);
+            margin-bottom: calc(var(--skin-space-md) + var(--skin-space-xs));
         }
 
         /* Neuromodulator Gauges */
         .gauge-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
+            gap: var(--skin-space-md);
         }
 
         @media (max-width: 1200px) {
@@ -332,71 +337,71 @@ export class SomaCognitivePanel extends LitElement {
         }
 
         .gauge-item {
-            background: var(--soma-bg-hover, #fafafa);
-            border-radius: 12px;
-            padding: 16px;
+            background: var(--skin-color-bg-hover);
+            border-radius: var(--skin-radius-lg);
+            padding: var(--skin-space-md);
             text-align: center;
         }
 
         .gauge-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
+            width: calc(var(--skin-space-xl) + var(--skin-space-sm));
+            height: calc(var(--skin-space-xl) + var(--skin-space-sm));
+            border-radius: var(--skin-radius-md);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 12px;
-            background: var(--soma-bg-card, #ffffff);
-            border: 1px solid var(--soma-border-light, #e0e0e0);
+            margin: 0 auto calc(var(--skin-space-sm) + var(--skin-space-xs));
+            background: var(--skin-color-bg-card);
+            border: var(--skin-border-width) solid var(--skin-color-border);
         }
 
         .gauge-icon .material-symbols-outlined {
-            font-size: 20px;
+            font-size: var(--skin-text-xl);
         }
 
         .gauge-name {
-            font-size: 13px;
-            font-weight: 500;
-            margin-bottom: 8px;
+            font-size: var(--skin-text-sm);
+            font-weight: var(--skin-weight-medium);
+            margin-bottom: var(--skin-space-sm);
         }
 
         .gauge-bar {
-            height: 8px;
-            background: var(--soma-border-light, #e0e0e0);
-            border-radius: 4px;
+            height: var(--skin-space-sm);
+            background: var(--skin-color-border);
+            border-radius: var(--skin-radius-sm);
             overflow: hidden;
-            margin-bottom: 8px;
+            margin-bottom: var(--skin-space-sm);
         }
 
         .gauge-fill {
             height: 100%;
-            border-radius: 4px;
-            transition: width 0.3s ease;
+            border-radius: var(--skin-radius-sm);
+            transition: width var(--skin-motion-slow) var(--skin-motion-ease);
         }
 
-        .gauge-fill.dopamine { background: #8b5cf6; }
-        .gauge-fill.serotonin { background: #f59e0b; }
-        .gauge-fill.norepinephrine { background: #ef4444; }
-        .gauge-fill.acetylcholine { background: #22c55e; }
-        .gauge-fill.gaba { background: #3b82f6; }
-        .gauge-fill.cortisol { background: #ec4899; }
+        .gauge-fill.dopamine { background: color-mix(in srgb, var(--skin-color-accent) 55%, var(--skin-color-info)); }
+        .gauge-fill.serotonin { background: var(--skin-color-warning); }
+        .gauge-fill.norepinephrine { background: var(--skin-color-danger); }
+        .gauge-fill.acetylcholine { background: var(--skin-color-success); }
+        .gauge-fill.gaba { background: var(--skin-color-info); }
+        .gauge-fill.cortisol { background: color-mix(in srgb, var(--skin-color-danger) 55%, var(--skin-color-accent)); }
 
         .gauge-value {
-            font-size: 12px;
-            color: var(--soma-text-muted, #999);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-muted);
         }
 
         /* Parameter Sliders */
         .param-list {
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: calc(var(--skin-space-md) + var(--skin-space-xs));
         }
 
         .param-item {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: var(--skin-space-sm);
         }
 
         .param-header {
@@ -406,36 +411,36 @@ export class SomaCognitivePanel extends LitElement {
         }
 
         .param-label {
-            font-size: 14px;
-            font-weight: 500;
+            font-size: var(--skin-text-base);
+            font-weight: var(--skin-weight-medium);
         }
 
         .param-value {
-            font-size: 13px;
-            color: var(--soma-text-secondary, #666);
-            font-family: monospace;
-            background: var(--soma-bg-hover, #fafafa);
-            padding: 4px 8px;
-            border-radius: 4px;
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-secondary);
+            font-family: var(--skin-font-mono);
+            background: var(--skin-color-bg-hover);
+            padding: var(--skin-space-xs) var(--skin-space-sm);
+            border-radius: var(--skin-radius-sm);
         }
 
         .param-slider {
             -webkit-appearance: none;
             width: 100%;
-            height: 6px;
-            border-radius: 3px;
-            background: var(--soma-border-light, #e0e0e0);
+            height: calc(var(--skin-space-sm) * 0.75);
+            border-radius: var(--skin-radius-sm);
+            background: var(--skin-color-border);
             outline: none;
         }
 
         .param-slider::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #1a1a1a;
+            width: calc(var(--skin-space-md) + var(--skin-space-xs) * 0.5);
+            height: calc(var(--skin-space-md) + var(--skin-space-xs) * 0.5);
+            border-radius: var(--skin-radius-full);
+            background: var(--skin-color-accent);
             cursor: pointer;
-            transition: transform 0.1s ease;
+            transition: transform var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .param-slider::-webkit-slider-thumb:hover {
@@ -443,22 +448,22 @@ export class SomaCognitivePanel extends LitElement {
         }
 
         .param-desc {
-            font-size: 12px;
-            color: var(--soma-text-muted, #999);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-muted);
         }
 
         /* Activity Log */
         .activity-log {
-            max-height: 200px;
+            max-height: calc(var(--skin-space-2xl) * 4 + var(--skin-space-sm));
             overflow-y: auto;
         }
 
         .log-entry {
             display: flex;
             align-items: flex-start;
-            gap: 12px;
-            padding: 10px 0;
-            border-bottom: 1px solid var(--soma-border-light, #e0e0e0);
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs));
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5) 0;
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border);
         }
 
         .log-entry:last-child {
@@ -466,10 +471,10 @@ export class SomaCognitivePanel extends LitElement {
         }
 
         .log-icon {
-            width: 28px;
-            height: 28px;
-            border-radius: 6px;
-            background: var(--soma-bg-hover, #fafafa);
+            width: calc(var(--skin-space-lg) + var(--skin-space-xs));
+            height: calc(var(--skin-space-lg) + var(--skin-space-xs));
+            border-radius: var(--skin-radius-md);
+            background: var(--skin-color-bg-hover);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -477,7 +482,7 @@ export class SomaCognitivePanel extends LitElement {
         }
 
         .log-icon .material-symbols-outlined {
-            font-size: 14px;
+            font-size: var(--skin-text-base);
         }
 
         .log-content {
@@ -485,13 +490,13 @@ export class SomaCognitivePanel extends LitElement {
         }
 
         .log-message {
-            font-size: 13px;
-            margin-bottom: 2px;
+            font-size: var(--skin-text-sm);
+            margin-bottom: var(--skin-space-xs);
         }
 
         .log-time {
-            font-size: 11px;
-            color: var(--soma-text-muted, #999);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-muted);
         }
 
         /* Loading */
@@ -499,22 +504,23 @@ export class SomaCognitivePanel extends LitElement {
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 60px;
+            padding: calc(var(--skin-space-2xl) + var(--skin-space-sm) + var(--skin-space-xs));
         }
 
         .spinner {
-            width: 32px;
-            height: 32px;
-            border: 3px solid var(--soma-border-light, #e0e0e0);
-            border-top-color: #1a1a1a;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            width: var(--skin-space-xl);
+            height: var(--skin-space-xl);
+            border: calc(var(--skin-border-width) * 3) solid var(--skin-color-border);
+            border-top-color: var(--skin-color-text-primary);
+            border-radius: var(--skin-radius-full);
+            animation: spin var(--skin-motion-slow) linear infinite;
         }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-    `;
+    `
+    ];
 
     @state() private _isLoading = false;
     @state() private _isDirty = false;

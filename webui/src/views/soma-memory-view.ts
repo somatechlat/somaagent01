@@ -10,6 +10,8 @@
  */
 
 import { LitElement, html, css, nothing } from 'lit';
+import { glassCard } from '../styles/glass.js';
+import { moduleBase } from '../styles/module-base.js';
 import { customElement, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
 
@@ -69,13 +71,16 @@ function mapSomaHit(raw: SomaMemoryHit, index: number): Memory {
 
 @customElement('soma-memory-view')
 export class SomaMemoryView extends LitElement {
-    static styles = css`
+    static styles = [
+        glassCard,
+        moduleBase,
+        css`
         :host {
             display: flex;
             height: 100vh;
-            background: var(--soma-bg-page, #f5f5f5);
-            font-family: var(--soma-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-            color: var(--soma-text-primary, #1a1a1a);
+            background: var(--skin-color-bg-void);
+            font-family: var(--skin-font-sans);
+            color: var(--skin-color-text-primary);
         }
 
         * {
@@ -86,7 +91,7 @@ export class SomaMemoryView extends LitElement {
             font-family: 'Material Symbols Outlined';
             font-weight: normal;
             font-style: normal;
-            font-size: 20px;
+            font-size: var(--skin-text-xl);
             line-height: 1;
             letter-spacing: normal;
             text-transform: none;
@@ -102,279 +107,279 @@ export class SomaMemoryView extends LitElement {
            SIDEBAR
            ======================================== */
         .sidebar {
-            width: 280px;
-            background: var(--soma-bg-card, #ffffff);
-            border-right: 1px solid var(--soma-border-light, #e0e0e0);
+            width: calc(var(--skin-space-2xl) * 5 + var(--skin-space-xl));
+            background: var(--skin-color-bg-card);
+            border-right: var(--skin-border-width) solid var(--skin-color-border);
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
-            padding: 24px 20px;
+            padding: var(--skin-space-lg) calc(var(--skin-space-md) + var(--skin-space-xs));
         }
 
         .sidebar-header {
-            margin-bottom: 24px;
+            margin-bottom: var(--skin-space-lg);
         }
 
         .sidebar-title {
-            font-size: 20px;
-            font-weight: 600;
-            margin: 0 0 4px 0;
+            font-size: var(--skin-text-xl);
+            font-weight: var(--skin-weight-semibold);
+            margin: 0 0 var(--skin-space-xs) 0;
         }
 
         .sidebar-subtitle {
-            font-size: 13px;
-            color: var(--soma-text-secondary, #666);
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-secondary);
         }
 
         /* Search */
         .search-box {
             position: relative;
-            margin-bottom: 20px;
+            margin-bottom: calc(var(--skin-space-md) + var(--skin-space-xs));
         }
 
         .search-input {
             width: 100%;
-            padding: 10px 14px 10px 42px;
-            border-radius: 8px;
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            font-size: 14px;
-            background: var(--soma-bg-card, #ffffff);
-            color: var(--soma-text-primary, #1a1a1a);
-            transition: border-color 0.15s ease;
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5) calc(var(--skin-space-md) - var(--skin-space-xs) * 0.5) calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5) calc(var(--skin-space-xl) + var(--skin-space-sm) + var(--skin-space-xs) * 0.5);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            font-size: var(--skin-text-base);
+            background: var(--skin-color-bg-card);
+            color: var(--skin-color-text-primary);
+            transition: border-color var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .search-input:focus {
             outline: none;
-            border-color: var(--soma-text-primary, #1a1a1a);
+            border-color: var(--skin-color-accent);
         }
 
         .search-icon {
             position: absolute;
-            left: 12px;
+            left: calc(var(--skin-space-sm) + var(--skin-space-xs));
             top: 50%;
             transform: translateY(-50%);
-            color: var(--soma-text-muted, #999);
-            font-size: 18px;
+            color: var(--skin-color-text-muted);
+            font-size: var(--skin-text-xl);
         }
 
         /* Filters */
         .filter-section {
-            margin-bottom: 24px;
+            margin-bottom: var(--skin-space-lg);
         }
 
         .filter-label {
-            font-size: 11px;
+            font-size: var(--skin-text-xs);
             text-transform: uppercase;
-            color: var(--soma-text-muted, #999);
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            margin-bottom: 10px;
+            color: var(--skin-color-text-muted);
+            font-weight: var(--skin-weight-semibold);
+            letter-spacing: 0.035em;
+            margin-bottom: calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5);
         }
 
         .filter-options {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: var(--skin-space-sm);
         }
 
         .filter-chip {
-            padding: 6px 12px;
-            border-radius: 16px;
-            background: var(--soma-bg-hover, #fafafa);
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            font-size: 13px;
+            padding: calc(var(--skin-space-sm) * 0.75) calc(var(--skin-space-sm) + var(--skin-space-xs));
+            border-radius: var(--skin-radius-xl);
+            background: var(--skin-color-bg-hover);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            font-size: var(--skin-text-sm);
             cursor: pointer;
-            transition: all 0.1s ease;
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .filter-chip:hover {
-            border-color: var(--soma-border-medium, #ccc);
+            border-color: var(--skin-color-border-strong);
         }
 
         .filter-chip.active {
-            background: #1a1a1a;
-            color: white;
-            border-color: #1a1a1a;
+            background: var(--skin-color-accent);
+            color: var(--skin-color-accent-text);
+            border-color: var(--skin-color-accent);
         }
 
         /* Sort */
         .sort-select {
             width: 100%;
-            padding: 10px 14px;
-            border-radius: 8px;
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            font-size: 14px;
-            background: var(--soma-bg-card, #ffffff);
-            color: var(--soma-text-primary, #1a1a1a);
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5) calc(var(--skin-space-md) - var(--skin-space-xs) * 0.5);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            font-size: var(--skin-text-base);
+            background: var(--skin-color-bg-card);
+            color: var(--skin-color-text-primary);
             cursor: pointer;
         }
 
         /* Stats */
         .stats {
             margin-top: auto;
-            padding-top: 20px;
-            border-top: 1px solid var(--soma-border-light, #e0e0e0);
+            padding-top: calc(var(--skin-space-md) + var(--skin-space-xs));
+            border-top: var(--skin-border-width) solid var(--skin-color-border);
         }
 
         .stat-row {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
-            font-size: 13px;
+            padding: var(--skin-space-sm) 0;
+            font-size: var(--skin-text-sm);
         }
 
         .stat-label {
-            color: var(--soma-text-secondary, #666);
+            color: var(--skin-color-text-secondary);
         }
 
         .stat-value {
-            font-weight: 600;
+            font-weight: var(--skin-weight-semibold);
         }
 
         .stat-value.queued {
-            color: #b45309;
+            color: var(--skin-color-warning-text);
         }
 
         /* MEMORY DASHBOARD (UI-S-04 §3.7) */
         .memory-dashboard {
             margin-top: auto;
-            padding-top: 16px;
-            border-top: 1px solid var(--soma-border-light, #e0e0e0);
+            padding-top: var(--skin-space-md);
+            border-top: var(--skin-border-width) solid var(--skin-color-border);
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
+            gap: var(--skin-space-sm);
         }
 
         .dash-tile {
             display: flex;
             flex-direction: column;
-            gap: 2px;
-            padding: 8px 10px;
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            border-radius: 8px;
-            background: var(--soma-bg-hover, #fafafa);
+            gap: var(--skin-space-xs);
+            padding: var(--skin-space-sm) calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-md);
+            background: var(--skin-color-bg-hover);
         }
 
         .dash-value {
-            font-size: 16px;
-            font-weight: 650;
+            font-size: var(--skin-text-lg);
+            font-weight: var(--skin-weight-semibold);
             line-height: 1.2;
         }
 
         .dash-value.gated {
-            color: var(--soma-text-muted, #999);
+            color: var(--skin-color-text-muted);
         }
 
         .dash-value.queued {
-            color: #b45309;
+            color: var(--skin-color-warning-text);
         }
 
         .dash-label {
-            font-size: 11px;
-            font-weight: 600;
+            font-size: var(--skin-text-xs);
+            font-weight: var(--skin-weight-semibold);
             letter-spacing: 0.04em;
             text-transform: uppercase;
-            color: var(--soma-text-secondary, #666);
+            color: var(--skin-color-text-secondary);
         }
 
         .dash-note {
-            font-size: 10px;
-            color: var(--soma-text-muted, #999);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-muted);
         }
 
         .dash-footnote {
             grid-column: 1 / -1;
-            margin: 2px 0 0;
-            font-size: 10px;
+            margin: var(--skin-space-xs) 0 0;
+            font-size: var(--skin-text-xs);
             line-height: 1.4;
-            color: var(--soma-text-muted, #999);
+            color: var(--skin-color-text-muted);
         }
 
         /* Remember… form (UI-S-04 action 12) */
         .remember-form {
-            margin: 12px 0;
-            padding: 12px;
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            border-radius: 10px;
-            background: var(--soma-bg-hover, #fafafa);
+            margin: calc(var(--skin-space-sm) + var(--skin-space-xs)) 0;
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs));
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-md);
+            background: var(--skin-color-bg-hover);
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: var(--skin-space-sm);
         }
 
         .remember-form textarea {
             width: 100%;
-            min-height: 64px;
+            min-height: calc(var(--skin-space-2xl) + var(--skin-space-md));
             resize: vertical;
-            padding: 8px 10px;
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            border-radius: 8px;
+            padding: var(--skin-space-sm) calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-md);
             font: inherit;
-            font-size: 13px;
-            background: #fff;
-            color: var(--soma-text-primary, #1a1a1a);
+            font-size: var(--skin-text-sm);
+            background: var(--skin-color-bg-base);
+            color: var(--skin-color-text-primary);
         }
 
         .remember-actions {
             display: flex;
-            gap: 8px;
+            gap: var(--skin-space-sm);
             align-items: center;
         }
 
         .remember-status {
-            font-size: 12px;
+            font-size: var(--skin-text-xs);
         }
 
         .remember-status.ok {
-            color: #047857;
+            color: var(--skin-color-success);
         }
 
         .remember-status.err {
-            color: #b91c1c;
+            color: var(--skin-color-danger);
         }
 
         .probe-btn {
-            margin-top: 8px;
+            margin-top: var(--skin-space-sm);
             width: 100%;
-            padding: 8px 10px;
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            border-radius: 8px;
-            background: #fff;
-            color: var(--soma-text-primary, #1a1a1a);
+            padding: var(--skin-space-sm) calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-md);
+            background: var(--skin-color-bg-base);
+            color: var(--skin-color-text-primary);
             font: inherit;
-            font-size: 12px;
-            font-weight: 600;
+            font-size: var(--skin-text-xs);
+            font-weight: var(--skin-weight-semibold);
             cursor: pointer;
         }
 
         .probe-btn:hover {
-            background: var(--soma-bg-hover, #fafafa);
+            background: var(--skin-color-bg-hover);
         }
 
         .memory-queued-banner {
             display: flex;
-            gap: 10px;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5);
             align-items: flex-start;
-            margin: 12px 0 4px;
-            padding: 10px 12px;
-            border-radius: 10px;
-            border: 1px solid rgba(245, 158, 11, 0.45);
-            background: rgba(245, 158, 11, 0.12);
-            color: #92400e;
-            font-size: 12px;
+            margin: calc(var(--skin-space-sm) + var(--skin-space-xs)) 0 var(--skin-space-xs);
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5) calc(var(--skin-space-sm) + var(--skin-space-xs));
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid color-mix(in srgb, var(--skin-color-warning) 45%, transparent);
+            background: color-mix(in srgb, var(--skin-color-warning) 12%, transparent);
+            color: var(--skin-color-warning-text);
+            font-size: var(--skin-text-xs);
             line-height: 1.4;
         }
 
         .memory-queued-banner .material-symbols-outlined {
-            font-size: 18px;
-            color: #d97706;
-            margin-top: 1px;
+            font-size: var(--skin-text-xl);
+            color: var(--skin-color-warning);
+            margin-top: var(--skin-border-width);
         }
 
         .memory-queued-banner strong {
             display: block;
-            color: #b45309;
-            margin-bottom: 2px;
+            color: var(--skin-color-warning-text);
+            margin-bottom: var(--skin-space-xs);
         }
 
         .memory-queued-banner p {
@@ -384,58 +389,58 @@ export class SomaMemoryView extends LitElement {
         .queued-pill {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            margin-right: 8px;
-            padding: 2px 8px;
-            border-radius: 999px;
-            font-size: 11px;
-            font-weight: 600;
-            color: #b45309;
-            border: 1px solid rgba(245, 158, 11, 0.5);
-            background: rgba(245, 158, 11, 0.15);
+            gap: var(--skin-space-xs);
+            margin-right: var(--skin-space-sm);
+            padding: var(--skin-space-xs) var(--skin-space-sm);
+            border-radius: var(--skin-radius-full);
+            font-size: var(--skin-text-xs);
+            font-weight: var(--skin-weight-semibold);
+            color: var(--skin-color-warning-text);
+            border: var(--skin-border-width) solid color-mix(in srgb, var(--skin-color-warning) 50%, transparent);
+            background: color-mix(in srgb, var(--skin-color-warning) 15%, transparent);
         }
 
         .memory-unavailable-bar {
-            margin: 0 0 16px;
-            padding: 12px 16px;
-            border-radius: 10px;
-            border: 1px solid rgba(245, 158, 11, 0.4);
-            background: rgba(245, 158, 11, 0.1);
-            color: #92400e;
-            font-size: 13px;
+            margin: 0 0 var(--skin-space-md);
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) var(--skin-space-md);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid color-mix(in srgb, var(--skin-color-warning) 40%, transparent);
+            background: color-mix(in srgb, var(--skin-color-warning) 10%, transparent);
+            color: var(--skin-color-warning-text);
+            font-size: var(--skin-text-sm);
         }
 
         .empty-state.unavailable .empty-icon.warn {
-            background: rgba(245, 158, 11, 0.15);
-            color: #d97706;
+            background: color-mix(in srgb, var(--skin-color-warning) 15%, transparent);
+            color: var(--skin-color-warning);
         }
 
         .empty-state.unavailable .empty-title {
-            color: #b45309;
+            color: var(--skin-color-warning-text);
         }
 
         .empty-state .action-btn {
-            margin-top: 16px;
+            margin-top: var(--skin-space-md);
         }
 
         /* Back Button */
         .back-btn {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 10px 14px;
-            border-radius: 8px;
+            gap: var(--skin-space-sm);
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5) calc(var(--skin-space-md) - var(--skin-space-xs) * 0.5);
+            border-radius: var(--skin-radius-md);
             background: transparent;
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            font-size: 14px;
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            font-size: var(--skin-text-base);
             cursor: pointer;
-            color: var(--soma-text-primary, #1a1a1a);
-            margin-top: 16px;
-            transition: all 0.1s ease;
+            color: var(--skin-color-text-primary);
+            margin-top: var(--skin-space-md);
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .back-btn:hover {
-            background: var(--soma-bg-hover, #fafafa);
+            background: var(--skin-color-bg-hover);
         }
 
         /* ========================================
@@ -450,9 +455,9 @@ export class SomaMemoryView extends LitElement {
 
         /* Header */
         .header {
-            padding: 16px 24px;
-            background: var(--soma-bg-card, #ffffff);
-            border-bottom: 1px solid var(--soma-border-light, #e0e0e0);
+            padding: var(--skin-space-md) var(--skin-space-lg);
+            background: var(--skin-color-bg-card);
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -461,132 +466,132 @@ export class SomaMemoryView extends LitElement {
         .header-left {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs));
         }
 
         .result-count {
-            font-size: 14px;
-            color: var(--soma-text-secondary, #666);
+            font-size: var(--skin-text-base);
+            color: var(--skin-color-text-secondary);
         }
 
         .header-actions {
             display: flex;
-            gap: 8px;
+            gap: var(--skin-space-sm);
         }
 
         .action-btn {
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            background: var(--soma-bg-card, #ffffff);
-            font-size: 13px;
+            padding: var(--skin-space-sm) var(--skin-space-md);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            background: var(--skin-color-bg-card);
+            font-size: var(--skin-text-sm);
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 6px;
-            transition: all 0.1s ease;
+            gap: calc(var(--skin-space-sm) * 0.75);
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .action-btn:hover {
-            background: var(--soma-bg-hover, #fafafa);
+            background: var(--skin-color-bg-hover);
         }
 
         .action-btn.primary {
-            background: #1a1a1a;
-            color: white;
-            border-color: #1a1a1a;
+            background: var(--skin-color-accent);
+            color: var(--skin-color-accent-text);
+            border-color: var(--skin-color-accent);
         }
 
         .action-btn.primary:hover {
-            background: #333;
+            background: var(--skin-color-accent-hover);
         }
 
         .action-btn .material-symbols-outlined {
-            font-size: 18px;
+            font-size: var(--skin-text-xl);
         }
 
         /* Memory Grid */
         .memory-grid {
             flex: 1;
             overflow-y: auto;
-            padding: 24px;
+            padding: var(--skin-space-lg);
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(auto-fill, minmax(calc(var(--skin-space-2xl) * 6 + var(--skin-space-md)), 1fr));
+            gap: var(--skin-space-md);
             align-content: start;
         }
 
         /* Memory Card */
         .memory-card {
-            background: var(--soma-bg-card, #ffffff);
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            border-radius: 12px;
-            padding: 20px;
+            background: var(--skin-color-bg-card);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-lg);
+            padding: calc(var(--skin-space-md) + var(--skin-space-xs));
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .memory-card:hover {
-            border-color: var(--soma-border-medium, #ccc);
-            box-shadow: var(--soma-shadow-sm, 0 2px 4px rgba(0,0,0,0.04));
+            border-color: var(--skin-color-border-strong);
+            box-shadow: var(--skin-shadow-sm));
         }
 
         .memory-card.selected {
-            border-color: #1a1a1a;
-            box-shadow: 0 0 0 1px #1a1a1a;
+            border-color: var(--skin-color-accent);
+            box-shadow: 0 0 0 var(--skin-focus-ring-width) var(--skin-focus-ring);
         }
 
         .memory-header {
             display: flex;
             align-items: flex-start;
             justify-content: space-between;
-            margin-bottom: 12px;
+            margin-bottom: calc(var(--skin-space-sm) + var(--skin-space-xs));
         }
 
         .memory-type {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: calc(var(--skin-space-sm) * 0.75);
         }
 
         .type-icon {
-            width: 28px;
-            height: 28px;
-            border-radius: 6px;
+            width: calc(var(--skin-space-lg) + var(--skin-space-xs));
+            height: calc(var(--skin-space-lg) + var(--skin-space-xs));
+            border-radius: var(--skin-radius-md);
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         .type-icon .material-symbols-outlined {
-            font-size: 16px;
+            font-size: var(--skin-text-lg);
         }
 
-        .type-icon.conversation { background: #e0f2fe; color: #0369a1; }
-        .type-icon.fact { background: #fef3c7; color: #b45309; }
-        .type-icon.episode { background: #e0e7ff; color: #4338ca; }
-        .type-icon.semantic { background: #d1fae5; color: #047857; }
+        .type-icon.conversation { background: color-mix(in srgb, var(--skin-color-info) 18%, transparent); color: var(--skin-color-info); }
+        .type-icon.fact { background: color-mix(in srgb, var(--skin-color-warning) 22%, transparent); color: var(--skin-color-warning-text); }
+        .type-icon.episode { background: color-mix(in srgb, var(--skin-color-info) 18%, transparent); color: var(--skin-color-info); }
+        .type-icon.semantic { background: color-mix(in srgb, var(--skin-color-success) 18%, transparent); color: var(--skin-color-success); }
 
         .type-label {
-            font-size: 12px;
-            font-weight: 500;
+            font-size: var(--skin-text-xs);
+            font-weight: var(--skin-weight-medium);
             text-transform: capitalize;
-            color: var(--soma-text-secondary, #666);
+            color: var(--skin-color-text-secondary);
         }
 
         .memory-score {
-            font-size: 12px;
-            font-weight: 600;
-            padding: 4px 8px;
-            border-radius: 4px;
-            background: var(--soma-bg-hover, #fafafa);
+            font-size: var(--skin-text-xs);
+            font-weight: var(--skin-weight-semibold);
+            padding: var(--skin-space-xs) var(--skin-space-sm);
+            border-radius: var(--skin-radius-sm);
+            background: var(--skin-color-bg-hover);
         }
 
         .memory-content {
-            font-size: 14px;
+            font-size: var(--skin-text-base);
             line-height: 1.6;
-            color: var(--soma-text-primary, #1a1a1a);
-            margin-bottom: 12px;
+            color: var(--skin-color-text-primary);
+            margin-bottom: calc(var(--skin-space-sm) + var(--skin-space-xs));
             display: -webkit-box;
             -webkit-line-clamp: 3;
             -webkit-box-orient: vertical;
@@ -596,56 +601,56 @@ export class SomaMemoryView extends LitElement {
         .memory-tags {
             display: flex;
             flex-wrap: wrap;
-            gap: 6px;
-            margin-bottom: 12px;
+            gap: calc(var(--skin-space-sm) * 0.75);
+            margin-bottom: calc(var(--skin-space-sm) + var(--skin-space-xs));
         }
 
         .tag {
-            padding: 4px 8px;
-            border-radius: 4px;
-            background: var(--soma-bg-hover, #fafafa);
-            font-size: 11px;
-            color: var(--soma-text-secondary, #666);
+            padding: var(--skin-space-xs) var(--skin-space-sm);
+            border-radius: var(--skin-radius-sm);
+            background: var(--skin-color-bg-hover);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-secondary);
         }
 
         .memory-footer {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 12px;
-            color: var(--soma-text-muted, #999);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-muted);
         }
 
         .memory-actions {
             display: flex;
-            gap: 4px;
+            gap: var(--skin-space-xs);
         }
 
         .memory-action {
-            width: 28px;
-            height: 28px;
-            border-radius: 6px;
+            width: calc(var(--skin-space-lg) + var(--skin-space-xs));
+            height: calc(var(--skin-space-lg) + var(--skin-space-xs));
+            border-radius: var(--skin-radius-md);
             background: transparent;
             border: none;
-            color: var(--soma-text-muted, #999);
+            color: var(--skin-color-text-muted);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.1s ease;
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .memory-action:hover {
-            background: var(--soma-bg-hover, #fafafa);
-            color: var(--soma-text-primary, #1a1a1a);
+            background: var(--skin-color-bg-hover);
+            color: var(--skin-color-text-primary);
         }
 
         .memory-action.danger:hover {
-            color: var(--soma-status-danger, #ef4444);
+            color: var(--skin-color-danger);
         }
 
         .memory-action .material-symbols-outlined {
-            font-size: 16px;
+            font-size: var(--skin-text-lg);
         }
 
         /* Empty State */
@@ -656,35 +661,35 @@ export class SomaMemoryView extends LitElement {
             align-items: center;
             justify-content: center;
             text-align: center;
-            padding: 40px;
+            padding: calc(var(--skin-space-xl) + var(--skin-space-sm));
         }
 
         .empty-icon {
-            width: 64px;
-            height: 64px;
-            background: var(--soma-bg-hover, #fafafa);
-            border-radius: 16px;
+            width: calc(var(--skin-space-2xl) + var(--skin-space-md));
+            height: calc(var(--skin-space-2xl) + var(--skin-space-md));
+            background: var(--skin-color-bg-hover);
+            border-radius: var(--skin-radius-xl);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 20px;
+            margin-bottom: calc(var(--skin-space-md) + var(--skin-space-xs));
         }
 
         .empty-icon .material-symbols-outlined {
-            font-size: 28px;
-            color: var(--soma-text-secondary, #666);
+            font-size: var(--skin-text-2xl);
+            color: var(--skin-color-text-secondary);
         }
 
         .empty-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 8px;
+            font-size: var(--skin-text-xl);
+            font-weight: var(--skin-weight-semibold);
+            margin-bottom: var(--skin-space-sm);
         }
 
         .empty-desc {
-            font-size: 14px;
-            color: var(--soma-text-secondary, #666);
-            max-width: 320px;
+            font-size: var(--skin-text-base);
+            color: var(--skin-color-text-secondary);
+            max-width: calc(var(--skin-space-2xl) * 6 + var(--skin-space-md));
         }
 
         /* Loading */
@@ -692,22 +697,23 @@ export class SomaMemoryView extends LitElement {
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 60px;
+            padding: calc(var(--skin-space-2xl) + var(--skin-space-sm) + var(--skin-space-xs));
         }
 
         .spinner {
-            width: 32px;
-            height: 32px;
-            border: 3px solid var(--soma-border-light, #e0e0e0);
-            border-top-color: #1a1a1a;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            width: var(--skin-space-xl);
+            height: var(--skin-space-xl);
+            border: calc(var(--skin-border-width) * 3) solid var(--skin-color-border);
+            border-top-color: var(--skin-color-text-primary);
+            border-radius: var(--skin-radius-full);
+            animation: spin var(--skin-motion-slow) linear infinite;
         }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-    `;
+    `
+    ];
 
     @state() private _memories: Memory[] = [];
     @state() private _isLoading = false;
@@ -786,7 +792,7 @@ export class SomaMemoryView extends LitElement {
                                       @click=${this._clearThisTurn}
                                       title="Clear the this-turn filter"
                                   >
-                                      this turn ✕
+                                      this turn <span class="material-symbols-outlined" aria-hidden="true">close</span>
                                   </button>
                               </div>
                           </div>
@@ -907,7 +913,7 @@ export class SomaMemoryView extends LitElement {
                     <div class="header-left">
                         <span class="result-count">
                             ${this._memoryUnavailable
-                                ? html`<span class="queued-pill">● Queued</span> ${this._visibleMemories.length} shown`
+                                ? html`<span class="queued-pill"><span class="material-symbols-outlined" aria-hidden="true">schedule</span> Queued</span> ${this._visibleMemories.length} shown`
                                 : `${this._visibleMemories.length} memories`}
                         </span>
                     </div>

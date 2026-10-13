@@ -11,6 +11,8 @@
  */
 
 import { LitElement, html, css } from 'lit';
+import { glassCard } from '../styles/glass.js';
+import { moduleBase } from '../styles/module-base.js';
 import { customElement, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
 
@@ -121,13 +123,16 @@ const SSO_PROVIDERS: ProviderConfig[] = [
 
 @customElement('soma-login')
 export class SomaLogin extends LitElement {
-    static styles = css`
+    static styles = [
+        glassCard,
+        moduleBase,
+        css`
         :host {
             display: block;
             min-height: 100vh;
-            font-family: var(--soma-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
-            background: var(--soma-bg-page, #f5f5f5);
-            color: var(--soma-text-primary, #1a1a1a);
+            font-family: var(--skin-font-sans);
+            background: var(--skin-color-bg-void);
+            color: var(--skin-color-text-primary);
         }
 
         * { box-sizing: border-box; }
@@ -136,7 +141,7 @@ export class SomaLogin extends LitElement {
             font-family: 'Material Symbols Outlined';
             font-weight: normal;
             font-style: normal;
-            font-size: 20px;
+            font-size: var(--skin-text-xl);
             line-height: 1;
             letter-spacing: normal;
             text-transform: none;
@@ -153,166 +158,166 @@ export class SomaLogin extends LitElement {
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            padding: 24px;
+            padding: var(--skin-space-lg);
         }
 
         .login-card {
-            background: var(--soma-bg-card, #ffffff);
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            border-radius: 12px;
-            box-shadow: var(--soma-shadow-md, 0 2px 8px rgba(0,0,0,0.06));
+            background: var(--skin-color-bg-card);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-lg);
+            box-shadow: var(--skin-shadow-md));
             width: 100%;
-            max-width: 400px;
-            padding: 40px;
+            max-width: calc(var(--skin-space-2xl) * 8 + var(--skin-space-md));
+            padding: calc(var(--skin-space-xl) + var(--skin-space-sm));
         }
 
         .brand {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 32px;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs));
+            margin-bottom: var(--skin-space-xl);
         }
 
         .brand-icon {
-            width: 40px;
-            height: 40px;
+            width: calc(var(--skin-space-xl) + var(--skin-space-sm));
+            height: calc(var(--skin-space-xl) + var(--skin-space-sm));
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         .brand-icon img {
-            width: 40px;
-            height: 40px;
+            width: calc(var(--skin-space-xl) + var(--skin-space-sm));
+            height: calc(var(--skin-space-xl) + var(--skin-space-sm));
             object-fit: contain;
         }
 
         .brand-name {
-            font-size: 18px;
-            font-weight: 600;
+            font-size: var(--skin-text-xl);
+            font-weight: var(--skin-weight-semibold);
         }
 
-        .form-header { margin-bottom: 28px; }
-        .form-title { font-size: 22px; font-weight: 600; margin: 0 0 8px 0; }
-        .form-subtitle { font-size: 14px; color: var(--soma-text-secondary, #666); margin: 0; }
-        .form-subtitle a { color: #1a1a1a; font-weight: 500; text-decoration: underline; }
+        .form-header { margin-bottom: calc(var(--skin-space-lg) + var(--skin-space-xs)); }
+        .form-title { font-size: var(--skin-text-2xl); font-weight: var(--skin-weight-semibold); margin: 0 0 var(--skin-space-sm) 0; }
+        .form-subtitle { font-size: var(--skin-text-base); color: var(--skin-color-text-secondary); margin: 0; }
+        .form-subtitle a { color: var(--skin-color-text-primary); font-weight: var(--skin-weight-medium); text-decoration: underline; }
 
-        .oauth-section { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
+        .oauth-section { display: flex; flex-direction: column; gap: calc(var(--skin-space-sm) + var(--skin-space-xs)); margin-bottom: var(--skin-space-lg); }
 
         .oauth-btn {
             width: 100%;
-            padding: 12px 16px;
-            border-radius: 8px;
-            border: 1px solid var(--soma-border-light, #e0e0e0);
-            background: #fff;
-            font-size: 14px;
-            font-weight: 500;
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) var(--skin-space-md);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            background: var(--skin-color-bg-base);
+            font-size: var(--skin-text-base);
+            font-weight: var(--skin-weight-medium);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            transition: all 0.15s ease;
-            font-family: inherit;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5);
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
+            font-family: var(--skin-font-sans);
         }
 
-        .oauth-btn:hover { background: var(--soma-bg-hover, #fafafa); border-color: #ccc; }
-        .oauth-btn svg { width: 18px; height: 18px; }
+        .oauth-btn:hover { background: var(--skin-color-bg-hover); border-color: var(--skin-color-border-strong); }
+        .oauth-btn svg { width: calc(var(--skin-space-md) + var(--skin-space-xs) * 0.5); height: calc(var(--skin-space-md) + var(--skin-space-xs) * 0.5); }
 
         .divider {
             display: flex;
             align-items: center;
-            gap: 16px;
-            margin: 24px 0;
-            color: var(--soma-text-muted, #999);
-            font-size: 12px;
+            gap: var(--skin-space-md);
+            margin: var(--skin-space-lg) 0;
+            color: var(--skin-color-text-muted);
+            font-size: var(--skin-text-xs);
         }
-        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #e0e0e0; }
+        .divider::before, .divider::after { content: ''; flex: 1; height: var(--skin-border-width); background: var(--skin-color-border); }
 
-        .form-group { margin-bottom: 20px; }
-        .form-label { display: flex; justify-content: space-between; font-size: 13px; font-weight: 500; color: #666; margin-bottom: 8px; }
-        .form-label a { color: #1a1a1a; text-decoration: none; font-weight: 400; }
+        .form-group { margin-bottom: calc(var(--skin-space-md) + var(--skin-space-xs)); }
+        .form-label { display: flex; justify-content: space-between; font-size: var(--skin-text-sm); font-weight: var(--skin-weight-medium); color: var(--skin-color-text-secondary); margin-bottom: var(--skin-space-sm); }
+        .form-label a { color: var(--skin-color-text-primary); text-decoration: none; font-weight: var(--skin-weight-normal); }
 
         .form-input {
             width: 100%;
-            padding: 12px 14px;
-            border-radius: 8px;
-            border: 1px solid #e0e0e0;
-            font-size: 14px;
-            transition: border-color 0.15s ease;
-            background: #fff;
-            font-family: inherit;
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) calc(var(--skin-space-md) - var(--skin-space-xs) * 0.5);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            font-size: var(--skin-text-base);
+            transition: border-color var(--skin-motion-fast) var(--skin-motion-ease);
+            background: var(--skin-color-bg-base);
+            font-family: var(--skin-font-sans);
         }
-        .form-input:focus { outline: none; border-color: #1a1a1a; }
+        .form-input:focus { outline: none; border-color: var(--skin-color-accent); }
         .password-wrapper { position: relative; display: flex; align-items: center; }
-        .password-wrapper .form-input { padding-right: 44px; }
+        .password-wrapper .form-input { padding-right: calc(var(--skin-space-xl) + var(--skin-space-sm) + var(--skin-space-xs)); }
         .toggle-password {
-            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-            background: none; border: none; cursor: pointer; color: #999; padding: 4px;
+            position: absolute; right: calc(var(--skin-space-sm) + var(--skin-space-xs)); top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer; color: var(--skin-color-text-muted); padding: var(--skin-space-xs);
             display: flex; align-items: center; justify-content: center;
         }
-        .toggle-password:hover { color: #333; }
+        .toggle-password:hover { color: var(--skin-color-accent-hover); }
 
-        .remember-row { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
-        .remember-row input { width: 16px; height: 16px; accent-color: #1a1a1a; cursor: pointer; }
-        .remember-row label { font-size: 13px; color: #666; cursor: pointer; }
+        .remember-row { display: flex; align-items: center; gap: calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5); margin-bottom: var(--skin-space-lg); }
+        .remember-row input { width: var(--skin-space-md); height: var(--skin-space-md); accent-color: var(--skin-color-accent); cursor: pointer; }
+        .remember-row label { font-size: var(--skin-text-sm); color: var(--skin-color-text-secondary); cursor: pointer; }
 
         .submit-btn {
             width: 100%;
-            padding: 12px 16px;
-            border-radius: 8px;
-            background: #1a1a1a;
-            color: white;
-            font-size: 14px;
-            font-weight: 600;
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) var(--skin-space-md);
+            border-radius: var(--skin-radius-md);
+            background: var(--skin-color-accent);
+            color: var(--skin-color-accent-text);
+            font-size: var(--skin-text-base);
+            font-weight: var(--skin-weight-semibold);
             border: none;
             cursor: pointer;
-            transition: background 0.15s ease;
-            font-family: inherit;
+            transition: background var(--skin-motion-fast) var(--skin-motion-ease);
+            font-family: var(--skin-font-sans);
         }
-        .submit-btn:hover:not(:disabled) { background: #333; }
+        .submit-btn:hover:not(:disabled) { background: var(--skin-color-accent-hover); }
         .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .spinner {
-            width: 14px; height: 14px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: white;
-            border-radius: 50%;
+            width: calc(var(--skin-space-md) - var(--skin-space-xs) * 0.5); height: calc(var(--skin-space-md) - var(--skin-space-xs) * 0.5);
+            border: calc(var(--skin-border-width) * 3) solid color-mix(in srgb, var(--skin-color-accent-text) 30%, transparent);
+            border-top-color: var(--skin-color-accent-text);
+            border-radius: var(--skin-radius-full);
             animation: spin 0.6s linear infinite;
             display: inline-block;
-            margin-right: 8px;
+            margin-right: var(--skin-space-sm);
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
         .error-message {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            border-radius: 8px;
-            padding: 12px 14px;
-            margin-bottom: 20px;
-            color: #ef4444;
-            font-size: 13px;
+            background: color-mix(in srgb, var(--skin-color-danger) 10%, transparent);
+            border: var(--skin-border-width) solid color-mix(in srgb, var(--skin-color-danger) 20%, transparent);
+            border-radius: var(--skin-radius-md);
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) calc(var(--skin-space-md) - var(--skin-space-xs) * 0.5);
+            margin-bottom: calc(var(--skin-space-md) + var(--skin-space-xs));
+            color: var(--skin-color-danger);
+            font-size: var(--skin-text-sm);
         }
 
         .input-error {
-            border-color: #ef4444 !important;
+            border-color: var(--skin-color-danger) !important;
         }
 
         .field-error {
             display: block;
-            color: #ef4444;
-            font-size: 12px;
-            margin-top: 6px;
+            color: var(--skin-color-danger);
+            font-size: var(--skin-text-xs);
+            margin-top: calc(var(--skin-space-sm) * 0.75);
         }
 
         .footer {
             text-align: center;
-            margin-top: 28px;
-            padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
+            margin-top: calc(var(--skin-space-lg) + var(--skin-space-xs));
+            padding-top: calc(var(--skin-space-md) + var(--skin-space-xs));
+            border-top: var(--skin-border-width) solid var(--skin-color-border);
         }
-        .footer-text { font-size: 12px; color: #999; }
-        .footer-text a { color: #666; text-decoration: none; }
+        .footer-text { font-size: var(--skin-text-xs); color: var(--skin-color-text-muted); }
+        .footer-text a { color: var(--skin-color-text-secondary); text-decoration: none; }
 
         /* ========================================
            GLASSMORPHISM SSO MODAL
@@ -320,26 +325,26 @@ export class SomaLogin extends LitElement {
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.4);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            background: color-mix(in srgb, var(--skin-color-text-primary) 40%, transparent);
+            backdrop-filter: var(--skin-glass-backdrop);
+            -webkit-backdrop-filter: var(--skin-glass-backdrop);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 1000;
-            padding: 24px;
+            padding: var(--skin-space-lg);
         }
 
         .modal-overlay.hidden { display: none; }
 
         .sso-modal {
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: var(--skin-color-bg-base);
+            backdrop-filter: var(--skin-glass-backdrop);
+            -webkit-backdrop-filter: var(--skin-glass-backdrop);
             border: none;
             border-radius: 0;
             box-shadow: none;
-                0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+                0 0 0 var(--skin-focus-ring-width) color-mix(in srgb, var(--skin-color-accent-text) 50%, transparent) inset;
             width: 100vw;
             max-width: 100vw;
             height: 100vh;
@@ -350,8 +355,8 @@ export class SomaLogin extends LitElement {
         }
 
         .sso-header {
-            padding: 28px 32px 20px;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+            padding: calc(var(--skin-space-lg) + var(--skin-space-xs)) var(--skin-space-xl) calc(var(--skin-space-md) + var(--skin-space-xs));
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border-subtle);
             display: flex;
             align-items: flex-start;
             justify-content: space-between;
@@ -360,34 +365,34 @@ export class SomaLogin extends LitElement {
         .sso-title-block { }
 
         .sso-title {
-            font-size: 24px;
-            font-weight: 700;
-            margin: 0 0 6px 0;
+            font-size: var(--skin-text-2xl);
+            font-weight: var(--skin-weight-bold);
+            margin: 0 0 calc(var(--skin-space-sm) * 0.75) 0;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs));
         }
 
-        .sso-title .material-symbols-outlined { font-size: 28px; }
+        .sso-title .material-symbols-outlined { font-size: var(--skin-text-2xl); }
 
         .sso-subtitle {
-            font-size: 14px;
-            color: var(--soma-text-secondary, #666);
+            font-size: var(--skin-text-base);
+            color: var(--skin-color-text-secondary);
             margin: 0;
         }
 
         .sso-close {
-            width: 36px; height: 36px;
-            border-radius: 10px;
+            width: calc(var(--skin-space-xl) + var(--skin-space-xs)); height: calc(var(--skin-space-xl) + var(--skin-space-xs));
+            border-radius: var(--skin-radius-md);
             border: none;
-            background: rgba(0, 0, 0, 0.04);
+            background: color-mix(in srgb, var(--skin-color-text-primary) 4%, transparent);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.1s ease;
+            transition: background var(--skin-motion-fast) var(--skin-motion-ease);
         }
-        .sso-close:hover { background: rgba(0, 0, 0, 0.08); }
+        .sso-close:hover { background: var(--skin-color-border); }
 
         .sso-body {
             flex: 1;
@@ -397,9 +402,9 @@ export class SomaLogin extends LitElement {
 
         /* Provider List */
         .provider-list {
-            width: 260px;
-            border-right: 1px solid rgba(0, 0, 0, 0.06);
-            padding: 16px;
+            width: calc(var(--skin-space-2xl) * 5 + var(--skin-space-md));
+            border-right: var(--skin-border-width) solid var(--skin-color-border-subtle);
+            padding: var(--skin-space-md);
             flex-shrink: 0;
             overflow-y: auto;
         }
@@ -407,179 +412,180 @@ export class SomaLogin extends LitElement {
         .provider-item {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 14px 16px;
-            border-radius: 12px;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs));
+            padding: calc(var(--skin-space-md) - var(--skin-space-xs) * 0.5) var(--skin-space-md);
+            border-radius: var(--skin-radius-lg);
             cursor: pointer;
-            transition: all 0.15s ease;
-            margin-bottom: 4px;
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
+            margin-bottom: var(--skin-space-xs);
         }
 
-        .provider-item:hover { background: rgba(0, 0, 0, 0.04); }
-        .provider-item.active { background: rgba(0, 0, 0, 0.08); }
+        .provider-item:hover { background: color-mix(in srgb, var(--skin-color-text-primary) 4%, transparent); }
+        .provider-item.active { background: var(--skin-color-border); }
 
         .provider-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            background: rgba(0, 0, 0, 0.04);
+            width: calc(var(--skin-space-xl) + var(--skin-space-sm));
+            height: calc(var(--skin-space-xl) + var(--skin-space-sm));
+            border-radius: var(--skin-radius-md);
+            background: color-mix(in srgb, var(--skin-color-text-primary) 4%, transparent);
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
         }
 
-        .provider-icon .material-symbols-outlined { font-size: 20px; }
+        .provider-icon .material-symbols-outlined { font-size: var(--skin-text-xl); }
 
         .provider-info { flex: 1; min-width: 0; }
-        .provider-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
-        .provider-desc { font-size: 11px; color: #999; line-height: 1.3; }
+        .provider-name { font-size: var(--skin-text-base); font-weight: var(--skin-weight-semibold); margin-bottom: var(--skin-space-xs); }
+        .provider-desc { font-size: var(--skin-text-xs); color: var(--skin-color-text-muted); line-height: 1.3; }
 
         /* Config Panel */
         .config-panel {
             flex: 1;
-            padding: 24px 28px;
+            padding: var(--skin-space-lg) calc(var(--skin-space-lg) + var(--skin-space-xs));
             overflow-y: auto;
         }
 
         .config-header {
-            margin-bottom: 24px;
+            margin-bottom: var(--skin-space-lg);
         }
 
         .config-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin: 0 0 6px 0;
+            font-size: var(--skin-text-xl);
+            font-weight: var(--skin-weight-semibold);
+            margin: 0 0 calc(var(--skin-space-sm) * 0.75) 0;
         }
 
         .config-desc {
-            font-size: 13px;
-            color: #666;
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-secondary);
             margin: 0;
         }
 
         .config-form {
             display: flex;
             flex-direction: column;
-            gap: 18px;
+            gap: calc(var(--skin-space-md) + var(--skin-space-xs) * 0.5);
         }
 
         .config-field { }
 
         .config-label {
             display: block;
-            font-size: 12px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 8px;
+            font-size: var(--skin-text-xs);
+            font-weight: var(--skin-weight-semibold);
+            color: var(--skin-color-accent-hover);
+            margin-bottom: var(--skin-space-sm);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.035em;
         }
 
         .config-label .required {
-            color: #ef4444;
-            margin-left: 4px;
+            color: var(--skin-color-danger);
+            margin-left: var(--skin-space-xs);
         }
 
         .config-input {
             width: 100%;
-            padding: 12px 16px;
-            border-radius: 10px;
-            border: 1px solid rgba(0, 0, 0, 0.12);
-            font-size: 14px;
-            background: rgba(255, 255, 255, 0.8);
-            transition: all 0.15s ease;
-            font-family: inherit;
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) var(--skin-space-md);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            font-size: var(--skin-text-base);
+            background: color-mix(in srgb, var(--skin-color-bg-base) 80%, transparent);
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
+            font-family: var(--skin-font-sans);
         }
 
         .config-input:focus {
             outline: none;
-            border-color: #1a1a1a;
-            background: #fff;
-            box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.08);
+            border-color: var(--skin-color-accent);
+            background: var(--skin-color-bg-base);
+            box-shadow: 0 0 0 var(--skin-focus-ring-width) color-mix(in srgb, var(--skin-color-accent) 8%, transparent);
         }
 
-        .config-input::placeholder { color: #999; }
+        .config-input::placeholder { color: var(--skin-color-text-muted); }
 
         /* Test Connection */
         .test-section {
-            margin-top: 24px;
-            padding-top: 24px;
-            border-top: 1px solid rgba(0, 0, 0, 0.06);
+            margin-top: var(--skin-space-lg);
+            padding-top: var(--skin-space-lg);
+            border-top: var(--skin-border-width) solid var(--skin-color-border-subtle);
         }
 
         .test-btn {
-            padding: 12px 24px;
-            border-radius: 10px;
-            border: 1px solid #e0e0e0;
-            background: #fff;
-            font-size: 14px;
-            font-weight: 500;
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) var(--skin-space-lg);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            background: var(--skin-color-bg-base);
+            font-size: var(--skin-text-base);
+            font-weight: var(--skin-weight-medium);
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
-            transition: all 0.1s ease;
+            gap: var(--skin-space-sm);
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
-        .test-btn:hover { background: #fafafa; }
+        .test-btn:hover { background: var(--skin-color-bg-hover); }
 
-        .test-btn .material-symbols-outlined { font-size: 18px; }
+        .test-btn .material-symbols-outlined { font-size: var(--skin-text-xl); }
 
         .test-result {
-            margin-top: 12px;
-            padding: 12px 16px;
-            border-radius: 10px;
-            font-size: 13px;
+            margin-top: calc(var(--skin-space-sm) + var(--skin-space-xs));
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) var(--skin-space-md);
+            border-radius: var(--skin-radius-md);
+            font-size: var(--skin-text-sm);
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: calc(var(--skin-space-sm) + var(--skin-space-xs) * 0.5);
         }
 
-        .test-result.success { background: #d1fae5; color: #047857; }
-        .test-result.error { background: #fee2e2; color: #b91c1c; }
-        .test-result.pending { background: #fef3c7; color: #b45309; }
+        .test-result.success { background: color-mix(in srgb, var(--skin-color-success) 18%, transparent); color: var(--skin-color-success); }
+        .test-result.error { background: color-mix(in srgb, var(--skin-color-danger) 12%, transparent); color: var(--skin-color-danger); }
+        .test-result.pending { background: color-mix(in srgb, var(--skin-color-warning) 22%, transparent); color: var(--skin-color-warning-text); }
 
         /* Modal Footer */
         .sso-footer {
-            padding: 20px 28px;
-            border-top: 1px solid rgba(0, 0, 0, 0.06);
+            padding: calc(var(--skin-space-md) + var(--skin-space-xs)) calc(var(--skin-space-lg) + var(--skin-space-xs));
+            border-top: var(--skin-border-width) solid var(--skin-color-border-subtle);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(250, 250, 250, 0.8);
+            background: color-mix(in srgb, var(--skin-color-bg-hover) 80%, transparent);
         }
 
         .sso-help {
-            font-size: 13px;
-            color: #666;
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-secondary);
         }
 
-        .sso-help a { color: #1a1a1a; font-weight: 500; }
+        .sso-help a { color: var(--skin-color-text-primary); font-weight: var(--skin-weight-medium); }
 
-        .sso-actions { display: flex; gap: 12px; }
+        .sso-actions { display: flex; gap: calc(var(--skin-space-sm) + var(--skin-space-xs)); }
 
         .sso-btn {
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 600;
+            padding: calc(var(--skin-space-sm) + var(--skin-space-xs)) var(--skin-space-lg);
+            border-radius: var(--skin-radius-md);
+            font-size: var(--skin-text-base);
+            font-weight: var(--skin-weight-semibold);
             cursor: pointer;
-            transition: all 0.1s ease;
-            border: 1px solid #e0e0e0;
-            background: #fff;
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            background: var(--skin-color-bg-base);
         }
 
-        .sso-btn:hover { background: #fafafa; }
+        .sso-btn:hover { background: var(--skin-color-bg-hover); }
 
         .sso-btn.primary {
-            background: #1a1a1a;
-            color: white;
-            border-color: #1a1a1a;
+            background: var(--skin-color-accent);
+            color: var(--skin-color-accent-text);
+            border-color: var(--skin-color-accent);
         }
 
-        .sso-btn.primary:hover { background: #333; }
-    `;
+        .sso-btn.primary:hover { background: var(--skin-color-accent-hover); }
+    `
+    ];
 
     @state() private _email = '';
     @state() private _password = '';
