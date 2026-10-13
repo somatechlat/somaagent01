@@ -25,6 +25,7 @@ import '../components/settings-form.js';
 import './soma-settings-models.js';
 import './soma-settings-somabrain.js';
 import '../components/soma-agent-iq.js';
+import '../components/soma-skin-gallery.js';
 import type { SomaSettingsSomaBrain } from './soma-settings-somabrain.js';
 
 type SettingsTab =
@@ -869,6 +870,11 @@ export class SomaSettings extends LitElement {
                         <option value="dark">Dark</option>
                         <option value="light">Light</option>
                     </select>
+                </div>
+
+                <div class="toggle-row" style="display:block">
+                    <div class="toggle-label" style="margin-bottom: 8px">Skins</div>
+                    <soma-skin-gallery></soma-skin-gallery>
                 </div>
 
                 <div class="toggle-row">
