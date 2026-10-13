@@ -432,3 +432,4 @@ Fix: stability window raised to 3000 ms in both `test_memory_human_name.spec.js`
 - `DOCUMENT-REGISTER.md` regenerated (224 rows). `check_docs.py` RESULT: PASS.
 
 **Residual (code, later turn):** `bootstrap_exec.py` `mint_scoped` still mints **without** `no_parent` (Δ-06). Do not pair with root revoke. Mint path of record remains `vault_scoped_tokens.py`.
+| 2026-10-13T21:45:00Z | security-reviewer | COMMIT | def52636 docs: Vault ceremony truth — orphan tokens, 720h TTL, T0 volume, no root on disk (SOMA-RPT-SEC-VAULT-001 + BOOTSTRAP/SECURITY/LAW errata + CLAUDE.md + register). |
