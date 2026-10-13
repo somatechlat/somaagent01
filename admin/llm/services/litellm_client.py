@@ -649,7 +649,10 @@ def _get_litellm_chat(
     they are reached via a deployment endpoint (``api_base``). Only vault-keyed
     providers require ``UnifiedSecretManager.get_provider_key``.
     """
-    from admin.llm.providers import provider_requires_api_key
+    from admin.llm.providers import (
+        OPENAI_COMPAT_PROVIDER_IDS,
+        provider_requires_api_key,
+    )
 
     if not provider_name or not model_name:
         raise LLMNotConfiguredError(
@@ -665,6 +668,18 @@ def _get_litellm_chat(
             )
     if api_key:
         kwargs["api_key"] = api_key
+    # Fail closed for OpenAI-compatible deployment endpoints (mimo / custom /
+    # ollama). Without api_base, LiteLLM would send that provider's key to
+    # api.openai.com and the upstream rejects it as "Incorrect API key".
+    if provider_name.strip().lower() in OPENAI_COMPAT_PROVIDER_IDS:
+        base = (kwargs.get("api_base") or getattr(model_config, "api_base", "") or "").strip()
+        if not base:
+            raise LLMNotConfiguredError(
+                f"api_base_missing: provider '{provider_name}' is an OpenAI-compatible "
+                f"deployment endpoint. Set LLMModelConfig.api_base (or pass api_base) "
+                f"to the gateway URL — never call api.openai.com with this provider."
+            )
+        kwargs["api_base"] = base.rstrip("/")
     provider_name, model_name, kwargs = _adjust_call_args(provider_name, model_name, kwargs)
     return cls(provider=provider_name, model=model_name, model_config=model_config, **kwargs)
 

@@ -113,12 +113,15 @@ def is_known_provider(provider_id: str) -> bool:
 
 
 def provider_requires_api_key(provider_id: str) -> bool:
-    """True when this provider's credential is a vendor API key in Vault.
+    """True when this provider's credential is a vendor/gateway API key in Vault.
 
     Vault-keyed providers (including mimo) fail closed without a key from
     ``UnifiedSecretManager.get_provider_key``.  Pure gateway-keyed providers
     (custom / ollama) have no vendor key — the operator supplies only a
     deployment endpoint.
+
+    OpenAI-compatible deployment endpoints (mimo / custom / ollama) MUST also
+    carry ``api_base``; without it LiteLLM would address api.openai.com.
     """
     return provider_id.strip().lower() not in GATEWAY_KEYED_PROVIDER_IDS
 
