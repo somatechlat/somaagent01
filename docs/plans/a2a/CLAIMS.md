@@ -164,3 +164,16 @@
 | path/prefix | agent | task | started_at | status |
 |---|---|---|---|---|
 | webui/src/views/soma-memory-view.ts webui/src/views/soma-chat.ts docs/reports/SOMA-RPT-UIUX-AUDIT-001.md docs/plans/a2a/CLAIMS.md docs/plans/a2a/LEDGER.md | MiMoCode-uiux-audit | FULL UI/UX audit webui vs design suite (UIUX-001..005, UI-S-*) + P1-P6 fixes: memory panel WM/LTM tiles + Remember/Run probe + ?turn=current, chat model LIVE chip (chat_role bound), C2 Open Memory link, honest totals | 2026-10-13T01:30:00Z | DONE — tsc exit 0; no commits |
+| docs/architecture/SOMA-ARCH-SKINS-001.md | architect-skins | Skinnable UI theme system architecture (new doc only; no edits to existing arch docs) | 2026-10-12T23:46:50Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| somafractalmemory/secrets/ somafractalmemory/somafractalmemory/api/auth.py somafractalmemory/somafractalmemory/api/utils.py somabrain/somabrain/api/standalone_auth.py somabrain/somabrain/transactions/event_store.py somabrain/somabrain/services/tiered_memory_registry.py somaAgent01/admin/orchestrator/health_router.py somafractalmemory/infra/standalone/seed_vault.py docs/reports/ | MiMoCode-sec-review-2026-10-13 | Enterprise security review + minimal fixes (secrets-on-disk, admin:read on shared token, tenant fail-closed, unauth health, banned VAULT_TOKEN alias) | 2026-10-13T02:30:00Z | DONE — 7 fixes landed, 6 residuals documented in SOMA-RPT-SEC-REVIEW-2026-10-13; no commits |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| webui/src/views/soma-chat.ts webui/src/components/soma-message.ts webui/src/components/soma-tool-timeline.ts webui/src/components/soma-composer.ts | MiMoCode-soma-chat-uiux | Chat UI reliability + bubble/cards/media/transitions polish (delta/done commit, live bubble, turn-meta chips, media cards, a11y) | 2026-01-15T00:00:00Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| webui/src/skin-sdk/ webui/src/services/skin-applier.ts webui/src/services/skin-boot.ts webui/src/styles/skin-aliases.css webui/src/styles/tokens.css | MiMoCode-AgentSkin-SDK | AgentSkin-SDK branch: skin vocabulary + schema + sanitiser + templates + applier (P0-P1 of SOMA-ARCH-SKINS-001). Branch AgentSkin-SDK. Shared webui files merge-additive; do not revert peer chat-uiux / wave6-webui-roles edits. | 2026-10-12T23:58:53Z | ACTIVE |

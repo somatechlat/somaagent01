@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://soma.tech/schemas/skin-v1.schema.json",
+  "title": "Soma Skin Document v1",
+  "description": "SOMA-UI-SKINS-001 §3.1 — closed top-level keys, unknown keys rejected (X-2).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "name", "tokens"],
+  "properties": {
+    "schema_version": { "const": "1" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 50 },
+    "description": { "type": "string", "maxLength": 200 },
+    "template": { "type": "string", "maxLength": 50 },
+    "tokens": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 128,
+      "propertyNames": { "pattern": "^--skin-[a-z0-9-]+$" },
+      "additionalProperties": { "type": "string", "maxLength": 256 }
+    },
+    "surfaces": {
+      "type": "object",
+      "maxProperties": 8,
+      "additionalProperties": {
+        "type": "object",
+        "maxProperties": 64,
+        "propertyNames": { "pattern": "^--skin-[a-z0-9-]+$" },
+        "additionalProperties": { "type": "string", "maxLength": 256 }
+      },
+      "propertyNames": {
+        "enum": ["chat", "sidebar", "composer", "tool_timeline", "login", "chrome", "right_panel"]
+      }
+    },
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "author": { "type": "string" },
+        "version": { "type": "string" },
+        "changelog": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "required": ["version", "date", "note"],
+            "additionalProperties": false,
+            "properties": {
+              "version": { "type": "string" },
+              "date": { "type": "string" },
+              "note": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

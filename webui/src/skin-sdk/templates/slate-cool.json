@@ -1,0 +1,124 @@
+{
+  "format": "soma-skin-pack",
+  "format_version": "1",
+  "pack_id": "slate-cool",
+  "title": "Slate Cool",
+  "description": "Cool slate dark theme with electric blue accent \u2014 support-desk ready.",
+  "version": "1.0.0",
+  "author": "SomaTech Engineering",
+  "tags": [
+    "dark",
+    "cool",
+    "bundled"
+  ],
+  "swatches": [
+    {
+      "token": "--skin-color-accent",
+      "label": "Accent"
+    },
+    {
+      "token": "--skin-color-bg-base",
+      "label": "Surface"
+    },
+    {
+      "token": "--skin-color-text-primary",
+      "label": "Text"
+    }
+  ],
+  "source": "bundled",
+  "skin": {
+    "schema_version": "1",
+    "name": "Slate Cool",
+    "description": "Cool slate dark theme with electric blue accent \u2014 support-desk ready.",
+    "tokens": {
+      "--skin-color-bg-void": "#0f1419",
+      "--skin-color-bg-base": "#151b23",
+      "--skin-color-bg-card": "#1c2430",
+      "--skin-color-bg-sidebar": "#121820",
+      "--skin-color-bg-hover": "#222b38",
+      "--skin-color-bg-active": "#2a3544",
+      "--skin-color-text-primary": "#e7ecf1",
+      "--skin-color-text-secondary": "#a8b3c0",
+      "--skin-color-text-muted": "#7d8896",
+      "--skin-color-text-inverse": "#0f1419",
+      "--skin-color-text-link": "#7cb7ff",
+      "--skin-color-accent": "#3d7eff",
+      "--skin-color-accent-hover": "#5b92ff",
+      "--skin-color-accent-text": "#0f1419",
+      "--skin-color-success": "#22c55e",
+      "--skin-color-success-text": "#052e16",
+      "--skin-color-warning": "#eab308",
+      "--skin-color-warning-text": "#422006",
+      "--skin-color-danger": "#ef4444",
+      "--skin-color-danger-text": "#ffffff",
+      "--skin-color-info": "#3b82f6",
+      "--skin-color-info-text": "#ffffff",
+      "--skin-color-border": "rgba(255, 255, 255, 0.10)",
+      "--skin-color-border-strong": "rgba(255, 255, 255, 0.18)",
+      "--skin-color-border-subtle": "rgba(255, 255, 255, 0.06)",
+      "--skin-focus-ring": "#3d7eff",
+      "--skin-focus-ring-width": "2px",
+      "--skin-focus-ring-offset": "2px",
+      "--skin-font-sans": "Inter, system-ui, sans-serif",
+      "--skin-font-mono": "JetBrains Mono, ui-monospace, monospace",
+      "--skin-text-xs": "11px",
+      "--skin-text-sm": "13px",
+      "--skin-text-base": "14px",
+      "--skin-text-lg": "16px",
+      "--skin-text-xl": "18px",
+      "--skin-text-2xl": "24px",
+      "--skin-weight-normal": "400",
+      "--skin-weight-medium": "500",
+      "--skin-weight-semibold": "600",
+      "--skin-weight-bold": "700",
+      "--skin-leading-tight": "1.25",
+      "--skin-leading-normal": "1.5",
+      "--skin-leading-relaxed": "1.75",
+      "--skin-space-xs": "4px",
+      "--skin-space-sm": "8px",
+      "--skin-space-md": "16px",
+      "--skin-space-lg": "24px",
+      "--skin-space-xl": "32px",
+      "--skin-space-2xl": "48px",
+      "--skin-radius-sm": "4px",
+      "--skin-radius-md": "8px",
+      "--skin-radius-lg": "12px",
+      "--skin-radius-xl": "16px",
+      "--skin-radius-full": "9999px",
+      "--skin-shadow-sm": "0 1px 2px rgba(0, 0, 0, 0.4)",
+      "--skin-shadow-md": "0 2px 8px rgba(0, 0, 0, 0.45)",
+      "--skin-shadow-lg": "0 8px 24px rgba(0, 0, 0, 0.5)",
+      "--skin-shadow-overlay": "0 16px 48px rgba(0, 0, 0, 0.55)",
+      "--skin-motion-fast": "120ms",
+      "--skin-motion-normal": "200ms",
+      "--skin-motion-slow": "320ms",
+      "--skin-motion-ease": "cubic-bezier(0.2, 0, 0, 1)"
+    },
+    "template": "slate-cool",
+    "surfaces": {
+      "chat": {
+        "--skin-color-bg-card": "#1a222d",
+        "--skin-radius-md": "10px"
+      },
+      "sidebar": {
+        "--skin-color-bg-sidebar": "#0c1117",
+        "--skin-space-md": "12px"
+      },
+      "login": {
+        "--skin-color-bg-void": "#0a0e13",
+        "--skin-shadow-overlay": "0 24px 64px rgba(0, 0, 0, 0.65)"
+      }
+    },
+    "meta": {
+      "author": "SomaTech Engineering",
+      "version": "1.0.0",
+      "changelog": [
+        {
+          "version": "1.0.0",
+          "date": "2026-10-13",
+          "note": "Bundled installable pack"
+        }
+      ]
+    }
+  }
+}

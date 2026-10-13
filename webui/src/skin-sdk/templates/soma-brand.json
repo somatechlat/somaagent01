@@ -1,0 +1,122 @@
+{
+  "format": "soma-skin-pack",
+  "format_version": "1",
+  "pack_id": "soma-brand",
+  "title": "Soma Brand",
+  "description": "SomaTech LAT / Yachaq.AI brand identity \u2014 deep black with signature orange.",
+  "version": "1.0.0",
+  "author": "SomaTech Engineering",
+  "tags": [
+    "dark",
+    "brand",
+    "bundled"
+  ],
+  "swatches": [
+    {
+      "token": "--skin-color-accent",
+      "label": "Brand"
+    },
+    {
+      "token": "--skin-color-bg-void",
+      "label": "Void"
+    },
+    {
+      "token": "--skin-color-border",
+      "label": "Border"
+    }
+  ],
+  "source": "bundled",
+  "skin": {
+    "schema_version": "1",
+    "name": "Soma Brand",
+    "description": "SomaTech LAT / Yachaq.AI brand identity \u2014 deep black with signature orange.",
+    "tokens": {
+      "--skin-color-bg-void": "#050505",
+      "--skin-color-bg-base": "#121212",
+      "--skin-color-bg-card": "#1a1a1a",
+      "--skin-color-bg-sidebar": "#0d0d0d",
+      "--skin-color-bg-hover": "#242424",
+      "--skin-color-bg-active": "#2e2e2e",
+      "--skin-color-text-primary": "#f5f5f5",
+      "--skin-color-text-secondary": "#c4c4c4",
+      "--skin-color-text-muted": "#8a8a8a",
+      "--skin-color-text-inverse": "#050505",
+      "--skin-color-text-link": "#FF4D00",
+      "--skin-color-accent": "#FF4D00",
+      "--skin-color-accent-hover": "#ff6a2b",
+      "--skin-color-accent-text": "#1a1a1a",
+      "--skin-color-success": "#22c55e",
+      "--skin-color-success-text": "#052e16",
+      "--skin-color-warning": "#eab308",
+      "--skin-color-warning-text": "#422006",
+      "--skin-color-danger": "#ef4444",
+      "--skin-color-danger-text": "#ffffff",
+      "--skin-color-info": "#3b82f6",
+      "--skin-color-info-text": "#ffffff",
+      "--skin-color-border": "rgba(255, 77, 0, 0.25)",
+      "--skin-color-border-strong": "rgba(255, 77, 0, 0.45)",
+      "--skin-color-border-subtle": "rgba(255, 255, 255, 0.08)",
+      "--skin-focus-ring": "#FF4D00",
+      "--skin-focus-ring-width": "2px",
+      "--skin-focus-ring-offset": "2px",
+      "--skin-font-sans": "Inter, system-ui, sans-serif",
+      "--skin-font-mono": "JetBrains Mono, ui-monospace, monospace",
+      "--skin-text-xs": "11px",
+      "--skin-text-sm": "13px",
+      "--skin-text-base": "14px",
+      "--skin-text-lg": "16px",
+      "--skin-text-xl": "18px",
+      "--skin-text-2xl": "24px",
+      "--skin-weight-normal": "400",
+      "--skin-weight-medium": "500",
+      "--skin-weight-semibold": "600",
+      "--skin-weight-bold": "700",
+      "--skin-leading-tight": "1.25",
+      "--skin-leading-normal": "1.5",
+      "--skin-leading-relaxed": "1.75",
+      "--skin-space-xs": "4px",
+      "--skin-space-sm": "8px",
+      "--skin-space-md": "16px",
+      "--skin-space-lg": "24px",
+      "--skin-space-xl": "32px",
+      "--skin-space-2xl": "48px",
+      "--skin-radius-sm": "4px",
+      "--skin-radius-md": "8px",
+      "--skin-radius-lg": "12px",
+      "--skin-radius-xl": "16px",
+      "--skin-radius-full": "9999px",
+      "--skin-shadow-sm": "0 1px 2px rgba(255, 77, 0, 0.08)",
+      "--skin-shadow-md": "0 4px 12px rgba(255, 77, 0, 0.12)",
+      "--skin-shadow-lg": "0 12px 32px rgba(255, 77, 0, 0.18)",
+      "--skin-shadow-overlay": "0 20px 56px rgba(255, 77, 0, 0.22)",
+      "--skin-motion-fast": "120ms",
+      "--skin-motion-normal": "200ms",
+      "--skin-motion-slow": "320ms",
+      "--skin-motion-ease": "cubic-bezier(0.2, 0, 0, 1)"
+    },
+    "template": "soma-brand",
+    "surfaces": {
+      "login": {
+        "--skin-color-bg-void": "#000000",
+        "--skin-shadow-overlay": "0 24px 64px rgba(255, 77, 0, 0.25)"
+      },
+      "composer": {
+        "--skin-radius-md": "12px"
+      },
+      "chrome": {
+        "--skin-color-bg-base": "#0d0d0d"
+      }
+    },
+    "meta": {
+      "author": "SomaTech Engineering",
+      "version": "1.0.0",
+      "changelog": [
+        {
+          "version": "1.0.0",
+          "date": "2026-10-13",
+          "note": "Bundled installable pack"
+        }
+      ]
+    }
+  }
+}

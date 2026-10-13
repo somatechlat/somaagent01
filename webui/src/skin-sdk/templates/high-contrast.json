@@ -1,0 +1,110 @@
+{
+  "format": "soma-skin-pack",
+  "format_version": "1",
+  "pack_id": "high-contrast",
+  "title": "High Contrast",
+  "description": "Maximum contrast for low-vision users. Motion neutralised. WCAG AAA where possible.",
+  "version": "1.0.0",
+  "author": "SomaTech Engineering",
+  "tags": [
+    "light",
+    "a11y",
+    "bundled"
+  ],
+  "swatches": [
+    {
+      "token": "--skin-color-accent",
+      "label": "Accent"
+    },
+    {
+      "token": "--skin-color-bg-void",
+      "label": "Background"
+    },
+    {
+      "token": "--skin-focus-ring",
+      "label": "Focus"
+    }
+  ],
+  "source": "bundled",
+  "skin": {
+    "schema_version": "1",
+    "name": "High Contrast",
+    "description": "Maximum contrast for low-vision users. Motion neutralised. WCAG AAA where possible.",
+    "tokens": {
+      "--skin-color-bg-void": "#000000",
+      "--skin-color-bg-base": "#000000",
+      "--skin-color-bg-card": "#000000",
+      "--skin-color-bg-sidebar": "#000000",
+      "--skin-color-bg-hover": "#1a1a1a",
+      "--skin-color-bg-active": "#333333",
+      "--skin-color-text-primary": "#ffffff",
+      "--skin-color-text-secondary": "#ffffff",
+      "--skin-color-text-muted": "#ffff00",
+      "--skin-color-text-inverse": "#000000",
+      "--skin-color-text-link": "#00ffff",
+      "--skin-color-accent": "#ffff00",
+      "--skin-color-accent-hover": "#ffffff",
+      "--skin-color-accent-text": "#000000",
+      "--skin-color-success": "#00ff00",
+      "--skin-color-success-text": "#000000",
+      "--skin-color-warning": "#ffff00",
+      "--skin-color-warning-text": "#000000",
+      "--skin-color-danger": "#ff0000",
+      "--skin-color-danger-text": "#ffffff",
+      "--skin-color-info": "#00ffff",
+      "--skin-color-info-text": "#000000",
+      "--skin-color-border": "#ffffff",
+      "--skin-color-border-strong": "#ffffff",
+      "--skin-color-border-subtle": "#cccccc",
+      "--skin-focus-ring": "#ffff00",
+      "--skin-focus-ring-width": "3px",
+      "--skin-focus-ring-offset": "2px",
+      "--skin-font-sans": "Inter, system-ui, sans-serif",
+      "--skin-font-mono": "JetBrains Mono, ui-monospace, monospace",
+      "--skin-text-xs": "12px",
+      "--skin-text-sm": "14px",
+      "--skin-text-base": "16px",
+      "--skin-text-lg": "18px",
+      "--skin-text-xl": "22px",
+      "--skin-text-2xl": "28px",
+      "--skin-weight-normal": "400",
+      "--skin-weight-medium": "500",
+      "--skin-weight-semibold": "600",
+      "--skin-weight-bold": "700",
+      "--skin-leading-tight": "1.25",
+      "--skin-leading-normal": "1.5",
+      "--skin-leading-relaxed": "1.75",
+      "--skin-space-xs": "4px",
+      "--skin-space-sm": "8px",
+      "--skin-space-md": "16px",
+      "--skin-space-lg": "24px",
+      "--skin-space-xl": "32px",
+      "--skin-space-2xl": "48px",
+      "--skin-radius-sm": "4px",
+      "--skin-radius-md": "8px",
+      "--skin-radius-lg": "12px",
+      "--skin-radius-xl": "16px",
+      "--skin-radius-full": "9999px",
+      "--skin-shadow-sm": "0 0 0 1px #ffffff",
+      "--skin-shadow-md": "0 0 0 2px #ffffff",
+      "--skin-shadow-lg": "0 0 0 3px #ffffff",
+      "--skin-shadow-overlay": "0 0 0 4px #ffffff",
+      "--skin-motion-fast": "0ms",
+      "--skin-motion-normal": "0ms",
+      "--skin-motion-slow": "0ms",
+      "--skin-motion-ease": "linear"
+    },
+    "template": "high-contrast",
+    "meta": {
+      "author": "SomaTech Engineering",
+      "version": "1.0.0",
+      "changelog": [
+        {
+          "version": "1.0.0",
+          "date": "2026-10-13",
+          "note": "Bundled installable pack"
+        }
+      ]
+    }
+  }
+}

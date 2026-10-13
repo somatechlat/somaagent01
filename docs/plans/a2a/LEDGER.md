@@ -230,3 +230,100 @@ Law sweeps on `webui/src`: 0 env-var reads, 0 hardcoded hosts/ports, 0 secret-li
 - Host node/ada-url symlink breakage (outside repo).
 
 **No commits (operator order).**
+
+## 2026-01-15 — Chat UI reliability + bubble/cards polish (MiMoCode-soma-chat-uiux)
+
+Scope: `webui/` only. No commits (parent commits).
+
+**Root cause of "assistant reply sometimes missing":** gateway `chat.done` is
+metadata-only (`{response_id, token_count}` — `services/gateway/consumers/chat.py`
+~L760). The UI buffer `_streamContent` IS the reply body. Several paths dropped
+or hid that buffer:
+
+1. `_handleStreamDelta` never set `_isStreaming`; the live bubble was gated on
+   that flag alone, so tokens could accumulate invisibly.
+2. The error handler set `_isStreaming = false` without committing the buffer —
+   the live bubble vanished mid-reply and the text was lost if `chat.done`
+   never arrived (disconnect).
+3. `_handleStreamDelta` dropped deltas while `_paused`, even though the gateway
+   already holds emission server-side. A dropped delta is reply text lost
+   forever (done carries no content).
+4. `chunk.content ?? this._streamContent` let an explicit `content: ''` shadow
+   the buffer.
+5. Empty `chat.done` still pushed a blank assistant bubble.
+6. Empty-transcript/welcome branches keyed off `!this._isStreaming` and could
+   show "No messages" while a buffer held a partial reply.
+7. `_handleIncomingMessage` wiped `_streamContent` for any role, including
+   system notices mid-stream.
+
+**Fixes (soma-chat.ts):**
+- `_hasLiveStream` = streaming OR buffered text OR active tools. Live bubble,
+  empty-state, and stop-key off it.
+- Deltas always accumulate; first token sets `_isStreaming`.
+- `chat.done`: non-empty `content` else buffer; skip commit when no body and
+  no tools; attach a `turnMeta` snapshot.
+- Disconnect / gateway error mid-stream → `_finalizeStreamedMessage(true)` so
+  buffered text is committed as an interrupted turn, never dropped.
+- System rows never clobber the live buffer; user/assistant rows supersede it
+  (no double-commit).
+- History mapper also reads `attachments` / `turn_meta` from row or metadata
+  when present (absent → undefined, never invented).
+
+**Bubbles / cards / media (soma-message.ts):**
+- Elegant bubbles: warm shadow on user (was a blue shadow on an orange bubble),
+  refined radius/type/depth, lighter entrance (no blur).
+- `thinking` typing dots while waiting for the first token.
+- turn_meta chips on the assistant bubble: model, recall n, CTX% (real fill
+  only when both tokens and window exist), top memory hit with score.
+- Attachments with a real filesv2 `file_id` resolve
+  `GET /filesv2/{id}/download-url` and render image / audio / video frames or
+  a download card. Missing id or failed resolve → honest "Preview unavailable"
+  / "Not uploaded" card. Never a broken frame.
+- `prefers-reduced-motion` on entrance, cursor, typing, tool chevrons.
+
+**Tool timeline (soma-tool-timeline.ts):** card chrome (status pills, quieter
+surfaces), keyboard toggle (role=button, Enter/Space, aria-expanded),
+reduced-motion on pulse.
+
+**Composer (soma-composer.ts):** reduced-motion for mic pulse / send hover.
+
+**Verification:** `bun node_modules/typescript/bin/tsc --noEmit` → exit 0.
+
+**Honest gaps (not invented):**
+- `Message.metadata` persistence is only `{"tenant_id"}` today
+  (`chat_orchestrator._persist_message`), so history rows carry no attachments,
+  tools, confidence, or turn_meta. UI renders them when present; otherwise the
+  chips/cards simply do not appear.
+- `GET /filesv2/{id}/download-url` is S3-only (no local-bytes download route).
+  Local-fallback uploads therefore show "Preview unavailable" — honest state.
+- `chat.done` never carries `confidence`; the confidence bar stays hidden
+  unless a server field provides it.
+
+**No commits (operator order).**
+| 2026-10-12T23:54:37Z | architect-skins | LAND | docs/architecture/SOMA-ARCH-SKINS-001.md: skinnable UI theme system architecture EXTENDING SOMA-UI-SKINS-001 (not parallel). Token system --skin-* + alias bridge for --platform-*/--soma-*; skin manifest = contract keys (schema_version/tokens/surfaces/meta) + components + polarity; module style slots keyed to contract §3.3 surface list (chat, sidebar, composer, tool_timeline, login, chrome, right_panel); SkinApplier via CSS custom properties on hosts, no re-render; skin SDK (types/validate/fromTemplate/preview/apply); Settings→Interface→Skins UI; phased plan P0–P6. Store stubs S-F-01..02 scheduled for real impl (C-3 no stubs). |
+
+## 2026-10-13T03:10:00Z — MiMoCode-sec-review-2026-10-13 — Enterprise security review (no commits)
+
+**Scope:** somaAgent01 + somabrain + somafractalmemory. Standard: SOMA-STD-SECURITY-001 / TRIAD / BOOTSTRAP + operator LAW (full enterprise: real AuthN/AuthZ, Brain/SFM real, no mocks, no bypasses).
+
+**FIXED (minimal diffs, py_compile OK):**
+- F-1 CRITICAL `somafractalmemory/secrets/vault-token` deleted (banned secret file on disk; no code referenced it).
+- F-2 HIGH `somabrain/api/standalone_auth.py:57` shared memory token no longer grants `admin:read`; admin scopes only on dedicated `SOMABRAIN_ADMIN_TOKEN` (closes B24 class).
+- F-3 HIGH `somabrain/transactions/event_store.py` fail-closed on empty `tenant_id` (no `or "default"` Kafka/Outbox merge).
+- F-4 MED `somabrain/services/tiered_memory_registry.py` empty tenant dropped, never `default`.
+- F-5 MED `somaAgent01/admin/orchestrator/health_router.py` `/v1/health` now `AuthBearer` + `authorize(system:view)`.
+- F-6 MED `somafractalmemory/api/routers/health.py` `/health` per-tenant stats scoped to `SOMA_BOUND_TENANT` (no all-tenant enumeration).
+- F-7 MED `seed_vault.py` prefers canonical `VAULT_ADDR`/`VAULT_TOKEN_FILE`; `api/utils.py` `_validate_tenant_id` rejects control chars / path traversal / oversized tenant keys.
+
+**OPEN residuals (report `docs/reports/SOMA-RPT-SEC-REVIEW-2026-10-13.md`):**
+- R-1 CRITICAL F-02b one-token-one-tenant (`SOMA_BOUND_TENANT='*'`) — per-credential tenant map needed.
+- R-2 HIGH webui `sessionStorage` `soma_ws_token` + `Sec-WebSocket-Protocol` bearer (XSS-theftable).
+- R-3 HIGH `vault_unseal.py` macOS keychain vs operator "container-native only".
+- R-4 HIGH unseal key at rest in T0 (`bootstrap_exec.py:181`).
+- R-5 MED `memory_forget` `query=` auto_execute bypasses HITL (product path; RBAC still enforced).
+- R-6 MED `require_service_url` no scheme/host allow-list (SSRF from admin-set URLs).
+
+**Verified clean:** authz.py no-wildcard/org-scoped; memory API authorize on every route; `require_admin_auth` refuses shared token; Brain health/delegation bearer gates; `sfm_auth.py` Vault-first fail-closed; T-1 enforced; parameterized SQL; argv subprocess; no hardcoded secrets; no mocks in auth/memory.
+
+**Tests:** targeted unit tests green (pre-existing failures `test_transports_use_resolver`, `test_memory_vector_fail_closed` untouched). No commits (operator order).
+| 2026-10-12T23:58:53Z | MiMoCode-AgentSkin-SDK | CLAIM | Branch AgentSkin-SDK created. Claiming webui/src/skin-sdk/ + skin-applier/skin-boot + skin-aliases.css + tokens.css. Scope: SOMA-ARCH-SKINS-001 P0-P1 (token vocabulary, schema, sanitiser X-1..X-12, templates, SkinApplier). No shims/fakes. Not touching chat components claimed by soma-chat-uiux. |
