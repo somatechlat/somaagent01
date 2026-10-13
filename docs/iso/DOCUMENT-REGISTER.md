@@ -246,6 +246,7 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-SRS-TESTBENCH-001 | docs/requirements/SOMA-SRS-TESTBENCH-001.md | SRS-TEST-WORKBENCH — Cross-Repository Test Audit | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-SRS-TESTMODULES-001 | docs/requirements/SOMA-SRS-TESTMODULES-001.md | SRS-TEST-MODULES — Module-Based Test Suite Design | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-SRS-TOOLS-001 | docs/requirements/SOMA-SRS-TOOLS-001.md | SRS-TOOL-SYSTEM — Tool Discovery and Execution | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-LAW-SECURITY-001 | docs/standards/SOMA-LAW-SECURITY-001.md | Security & Vault operating law (matches live code) | 1.0.0 | Draft | — | 2027-01-13 | Non-compliant |
 | SOMA-RAPID-DEVELOPMENT-001 | docs/standards/SOMA-RAPID-DEVELOPMENT-001.md | Rapid Development Plan + The Rules | 1.0.0 | Draft | — | 2027-01-08 | Non-compliant |
 | SOMA-STD-BOOTSTRAP-001 | docs/standards/SOMA-STD-BOOTSTRAP-001.md | SOMA-STD-BOOTSTRAP-001 — TRIAD Credential & Secret Lifecycle | 1.0.0 | Draft | — | 2027-01-10 | Compliant |
 | SOMA-STD-CODING-001 | docs/standards/SOMA-STD-CODING-001.md | SOMA-STD-CODING-001 — Vibe Coding Rules | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
@@ -267,9 +268,9 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 
 | Metric | Count |
 |---|---|
-| Registered documents | 222 |
+| Registered documents | 223 |
 | Compliant | 117 |
-| Non-compliant (tracked gaps) | 38 |
+| Non-compliant (tracked gaps) | 39 |
 | Annexes (design artefacts) | 67 |
 
 ## 4. Tracked remediation

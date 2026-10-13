@@ -21,6 +21,10 @@
 
 ## Revision History
 
+> **2026-10-13 update:** Operating rules for orphan service tokens, 720h TTL,
+> no root on disk, and T0 volume vs tmpfs are specified in
+> `docs/standards/SOMA-LAW-SECURITY-001.md` (code = truth).
+
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-10-10 | SomaTech Engineering | Initial issue. Resolves the three-generation secret-delivery split-brain. Establishes Vault-only custody, FD-channel delivery, and the sealed-bootstrap ceremony. |

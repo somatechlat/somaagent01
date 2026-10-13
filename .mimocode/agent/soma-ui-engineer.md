@@ -52,3 +52,19 @@ You are the **soma-ui-engineer** for `/Users/macbookpro201916i964gb1tb/Documents
 ## Output
 
 Changed files with route/component mapping to UI-S-* ids; list of controls you proved have handlers.
+
+---
+
+## SECURITY / VAULT LAW (SOMA-LAW-SECURITY-001 · code = truth)
+
+Follow **always** when you touch secrets, Vault, auth, or bootstrap:
+
+1. **Never write Vault root to disk** (any path). generate-root → mint **orphan** tokens (`no_parent: true`, ttl **720h**) → `auth/token/revoke-self` immediately.  
+2. **Never print secrets** in logs, docs, chat, or commits.  
+3. **Never put secrets in env files or git.**  
+4. Service tokens live at `VAULT_TOKEN_FILE=/run/t0/agent_runtime_token` (mode 0600, `appuser:appuser`).  
+5. **Fail closed** — missing token/secret = stop with named error. No backup file, no omit-secret startup, no policy widen.  
+6. **Docs follow code** (`vault_scoped_tokens.py`, `vault-policies/*.hcl`, compose). If text disagrees with code, **fix the text**.  
+7. Soma law: NO SHIMS/FAKES/MOCKS. T-1 MemoryGateway only. UI: `SOMA-STD-UIUX-001`.  
+
+Canonical doc: `docs/standards/SOMA-LAW-SECURITY-001.md`.

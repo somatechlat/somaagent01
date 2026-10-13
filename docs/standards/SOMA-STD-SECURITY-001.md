@@ -25,6 +25,10 @@
 
 ## Revision History
 
+> **2026-10-13 update:** Operating rules for orphan service tokens, 720h TTL,
+> no root on disk, and T0 volume vs tmpfs are specified in
+> `docs/standards/SOMA-LAW-SECURITY-001.md` (code = truth).
+
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-10-11 | security-reviewer (somaAgent01) | Initial issue. Vault-only secret custody, KV v2 merge-write lifecycle, channel delivery. Document Control brought to house style (SOMA-01-DOCS-001). |
