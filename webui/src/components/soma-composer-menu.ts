@@ -1,8 +1,7 @@
 /**
  * SomaAgent01 — Composer "+" Menu
- * Attachments (composerStore), Memory Context, Clear, Export
+ * Attach files ONLY (operator). Closes after pick. No memory/export/clear items.
  */
-
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { composerStore } from '../stores/composer-store.js';
@@ -24,44 +23,31 @@ export class SomaComposerMenu extends LitElement {
             font-style: normal;
             font-size: 18px;
             line-height: 1;
-            letter-spacing: normal;
-            text-transform: none;
             display: inline-block;
             white-space: nowrap;
-            word-wrap: normal;
-            direction: ltr;
-            -webkit-font-feature-settings: 'liga';
-            -webkit-font-smoothing: antialiased;
         }
 
         .menu {
             position: absolute;
             bottom: calc(100% + 8px);
             left: 0;
-            min-width: 220px;
-            background: var(--platform-bg-card, #1e1e1e);
-            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
-            border-radius: var(--platform-radius-lg, 12px);
+            min-width: 200px;
+            background: var(--skin-color-bg-card, var(--platform-bg-card, #fff));
+            border: 1px solid var(--skin-color-border, var(--platform-border-light, rgba(0,0,0,.08)));
+            border-radius: var(--skin-radius-lg, 12px);
             padding: 6px;
-            box-shadow: var(--platform-shadow-lg, 0 8px 24px rgba(0,0,0,0.6));
-            animation: menuIn 150ms ease-out;
-        }
-
-        @keyframes menuIn {
-            from { opacity: 0; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
+            box-shadow: var(--skin-shadow-md, 0 8px 24px rgba(0,0,0,.12));
         }
 
         .menu-item {
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 9px 12px;
-            border-radius: var(--platform-radius-md, 8px);
+            padding: 10px 12px;
+            border-radius: var(--skin-radius-md, 8px);
             cursor: pointer;
             font-size: 13px;
-            color: var(--platform-text-secondary, #a1a1a1);
-            transition: all 100ms ease;
+            color: var(--skin-color-text-primary, #1a1a1a);
             border: none;
             background: transparent;
             width: 100%;
@@ -70,25 +56,12 @@ export class SomaComposerMenu extends LitElement {
         }
 
         .menu-item:hover {
-            background: var(--platform-bg-hover, #141414);
-            color: var(--platform-text-primary, #ffffff);
+            background: var(--skin-color-bg-hover, #f5f5f5);
         }
 
         .menu-item:focus-visible {
-            outline: 2px solid var(--platform-info, #3b82f6);
+            outline: 2px solid var(--skin-focus-ring, var(--skin-color-accent, #FF4D00));
             outline-offset: -1px;
-        }
-
-        .menu-item .icon {
-            width: 20px;
-            text-align: center;
-            flex-shrink: 0;
-        }
-
-        .menu-divider {
-            height: 1px;
-            background: var(--platform-border-light, rgba(255,255,255,0.06));
-            margin: 4px 0;
         }
 
         input[type='file'] {
@@ -98,75 +71,45 @@ export class SomaComposerMenu extends LitElement {
         .notice {
             padding: 6px 12px;
             font-size: 11px;
-            color: var(--platform-text-muted, #999999);
+            color: var(--skin-color-text-secondary, #666);
         }
 
         .notice.error {
-            color: var(--platform-danger, #ef4444);
+            color: var(--skin-color-danger, #ef4444);
         }
     `;
 
+    private _close() {
+        this.dispatchEvent(new CustomEvent('soma-menu-close', {
+            bubbles: true,
+            composed: true,
+        }));
+    }
+
     private _onFileSelect(e: Event) {
         const input = e.target as HTMLInputElement;
-        if (input.files) {
+        if (input.files && input.files.length > 0) {
             Array.from(input.files).forEach((f) => composerStore.addAttachment(f));
             this._notice = '';
+            // Close the menu as soon as files are chosen — upload runs from chips.
+            this._close();
         } else {
             this._notice = 'No files selected';
         }
         input.value = '';
     }
 
-    private _clearChat() {
-        this.dispatchEvent(new CustomEvent('clear-chat', {
-            bubbles: true,
-            composed: true,
-        }));
-    }
-
-    private _exportChat() {
-        this.dispatchEvent(new CustomEvent('export-chat', {
-            bubbles: true,
-            composed: true,
-        }));
-    }
-
-    private _navigate(path: string) {
-        window.dispatchEvent(new CustomEvent('soma-navigate', {
-            detail: { route: path },
-        }));
-    }
-
     render() {
         return html`
             <div class="menu" role="menu">
-                <label class="menu-item" role="menuitem">
+                <label class="menu-item" role="menuitem" title="Upload files">
                     <span class="material-symbols-outlined icon">attach_file</span>
-                    <span>Attach Files</span>
+                    <span>Upload files</span>
                     <input type="file" multiple @change=${this._onFileSelect} />
                 </label>
-                <button type="button" class="menu-item" role="menuitem" @click=${() => this._navigate('/memory')}>
-                    <span class="material-symbols-outlined icon">psychology</span>
-                    <span>Memory Context</span>
-                </button>
-                <!--
-                    Skills was a misroute: it sent people to /settings, which is
-                    not a skills surface. There is no skills registry API in this
-                    deployment (no /skills router in admin/api.py) and no screen
-                    in SOMA-01-UIUX-001, so a picker here would be fabricated.
-                    composerStore.activeSkills has no server-backed catalog to
-                    read, so the entry is removed rather than shipped as a lie.
-                -->
-                <div class="menu-divider"></div>
-                <button type="button" class="menu-item" role="menuitem" @click=${this._clearChat}>
-                    <span class="material-symbols-outlined icon">delete_sweep</span>
-                    <span>Clear Chat</span>
-                </button>
-                <button type="button" class="menu-item" role="menuitem" @click=${this._exportChat}>
-                    <span class="material-symbols-outlined icon">download</span>
-                    <span>Export Chat</span>
-                </button>
-                ${this._notice ? html`<div class="notice ${this._notice.includes('fail') || this._notice.includes('No') ? 'error' : ''}">${this._notice}</div>` : nothing}
+                ${this._notice
+                    ? html`<div class="notice error" role="alert">${this._notice}</div>`
+                    : nothing}
             </div>
         `;
     }

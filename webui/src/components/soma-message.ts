@@ -18,21 +18,10 @@ import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import type { ToolCallStep } from './soma-tool-timeline.js';
 import { renderMarkdown, renderCodeBlock, bindCodeCopy, formatTime, formatBytes } from '../utils/markdown.js';
 import { apiClient } from '../services/api-client.js';
+import { attachmentIcon } from '../utils/file-icons.js';
 import './soma-tool-timeline.js';
 
-/** Material icon for a file attachment — no emojis. */
-function attachmentIcon(name: string, type?: string): string {
-    const n = (name || '').toLowerCase();
-    const t = (type || '').toLowerCase();
-    if (t.startsWith('image/') || /\.(png|jpe?g|gif|webp|avif|bmp)$/.test(n)) return 'image';
-    if (t === 'application/pdf' || n.endsWith('.pdf')) return 'picture_as_pdf';
-    if (t.startsWith('video/') || /\.(mp4|webm|mov)$/.test(n)) return 'movie';
-    if (t.startsWith('audio/') || /\.(mp3|wav|ogg|m4a)$/.test(n)) return 'audio_file';
-    if (/\.(zip|tar|gz|7z|rar)$/.test(n) || t.includes('zip')) return 'folder_zip';
-    if (/\.(md|txt|csv|json|yml|yaml)$/.test(n)) return 'description';
-    if (/\.(py|js|ts|tsx|go|rs|java)$/.test(n)) return 'code';
-    return 'attach_file';
-}
+/** Material icon for a file attachment — delegated to shared util (no emojis). */
 
 function isImageAttachment(name: string, type?: string): boolean {
     const t = (type || '').toLowerCase();

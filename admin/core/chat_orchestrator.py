@@ -674,7 +674,12 @@ class V3ChatOrchestrator:
                 result.errors.append(str(exc))
                 result.phase_completed = 7
                 return result
-            messages = self._to_langchain_messages(context, history, turn.user_message)
+            user_content = await self._vision_user_content(
+                turn.user_message, turn.attachments
+            )
+            messages = self._to_langchain_messages(
+                context, history, turn.user_message, user_content=user_content
+            )
             self._metrics.record_turn_phase(turn_id, TurnPhase.LLM_INVOKED)
 
             # Provider-reported usage only. The LLM response carries it; when a
@@ -1117,7 +1122,12 @@ class V3ChatOrchestrator:
             context = context.model_copy(update={"system": (context.system or "") + identity_line})
         except Exception as identity_exc:
             logger.warning("Identity line injection failed: %s", identity_exc)
-        messages = self._to_langchain_messages(context, history, turn.user_message)
+        user_content = await self._vision_user_content(
+            turn.user_message, turn.attachments
+        )
+        messages = self._to_langchain_messages(
+            context, history, turn.user_message, user_content=user_content
+        )
 
         # Register the turn so the completion metrics below actually land.
         # Without a matching start, record_turn_complete looks up a turn id it
@@ -1368,9 +1378,83 @@ class V3ChatOrchestrator:
                 else:
                     msgs.append(HumanMessage(content=content))
 
-        # Lane 5: Buffer (current user message)
-        msgs.append(HumanMessage(content=context.buffer or user_message))
+        # Lane 5: Buffer (current user message — optional multimodal vision)
+        buffer = user_content if user_content is not None else (context.buffer or user_message)
+        msgs.append(HumanMessage(content=buffer))
         return msgs
+
+    async def _vision_user_content(
+        self,
+        user_message: str,
+        attachments: Optional[List[Dict[str, Any]]],
+    ) -> Any:
+        """Multimodal buffer when image attachments exist (text + image_url).
+
+        Pixels come from filesv2 storage. Non-images stay filename-only.
+        """
+        text = user_message or ""
+        if not attachments:
+            return text
+
+        parts: List[Dict[str, Any]] = [
+            {"type": "text", "text": text or "Describe the attached image."}
+        ]
+        saw_image = False
+
+        for att in attachments:
+            content_type = str(att.get("content_type") or att.get("type") or "")
+            if not content_type.startswith("image/"):
+                continue
+            data_url = await self._attachment_image_data_url(att, content_type)
+            if not data_url:
+                continue
+            saw_image = True
+            parts.append({"type": "image_url", "image_url": {"url": data_url}})
+
+        return parts if saw_image else text
+
+    async def _attachment_image_data_url(
+        self,
+        att: Dict[str, Any],
+        content_type: str,
+    ) -> Optional[str]:
+        """Load one image attachment from filesv2 → data URL, or None."""
+        file_id = str(att.get("file_id") or "").strip()
+        if not file_id:
+            logger.warning(
+                "Vision attachment missing file_id — cannot load pixels for %s",
+                att.get("name"),
+            )
+            return None
+
+        def _load() -> Optional[str]:
+            import base64
+
+            from django.core.files.storage import default_storage
+
+            from admin.filesv2.models import File as FileModel
+
+            try:
+                row = FileModel.objects.get(id=file_id, deleted_at__isnull=True)
+            except Exception:
+                return None
+            try:
+                if not default_storage.exists(row.storage_key):
+                    return None
+                with default_storage.open(row.storage_key, "rb") as fh:
+                    raw = fh.read()
+                if not raw or len(raw) > 8 * 1024 * 1024:
+                    return None
+                b64 = base64.b64encode(raw).decode("ascii")
+                mime = content_type or row.mime_type or "image/jpeg"
+                return f"data:{mime};base64,{b64}"
+            except Exception:
+                logger.exception("Failed loading vision attachment %s", file_id)
+                return None
+
+        from asgiref.sync import sync_to_async
+
+        return await sync_to_async(_load)()
 
     async def _persist_message(
         self,

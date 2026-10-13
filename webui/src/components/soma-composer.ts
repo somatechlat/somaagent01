@@ -11,6 +11,7 @@ import { customElement, property, state, query } from 'lit/decorators.js';
 import { composerStore } from '../stores/composer-store.js';
 import { apiClient } from '../services/api-client.js';
 import { formatBytes } from '../utils/markdown.js';
+import { attachmentIcon } from '../utils/file-icons.js';
 import './soma-composer-menu.js';
 
 export interface ComposerSendDetail {
@@ -29,6 +30,8 @@ export class SomaComposer extends LitElement {
     @state() private _input = '';
     @state() private _menuOpen = false;
     @state() private _attachments: File[] = [];
+    @state() private _previews = new Map<string, string>();
+    @state() private _dragging = false;
     @state() private _queue: ComposerSendDetail[] = [];
     @state() private _micState: MicState = 'idle';
     @state() private _micError = '';
@@ -267,14 +270,41 @@ export class SomaComposer extends LitElement {
         .attachment-chip {
             display: flex;
             align-items: center;
-            gap: 6px;
-            padding: 5px 10px;
-            background: var(--platform-bg-hover, #141414);
-            border: 1px solid var(--platform-border-light, rgba(255,255,255,0.06));
-            border-radius: var(--platform-radius-md, 8px);
+            gap: 8px;
+            padding: 6px 10px;
+            background: var(--skin-color-bg-hover, var(--platform-bg-hover, #f5f5f5));
+            border: 1px solid var(--skin-color-border, var(--platform-border-light, rgba(0,0,0,.08)));
+            border-radius: var(--skin-radius-md, 8px);
             font-size: 12px;
-            color: var(--platform-text-secondary, #a1a1a1);
-            max-width: 240px;
+            color: var(--skin-color-text-secondary, var(--platform-text-secondary, #666));
+            max-width: 280px;
+        }
+
+        .attachment-chip .file-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--skin-color-bg-active, var(--platform-bg-active, #eee));
+            color: var(--skin-color-text-primary, #1a1a1a);
+            flex-shrink: 0;
+        }
+
+        .attachment-chip .file-icon .material-symbols-outlined {
+            font-size: 18px;
+        }
+
+        .dropzone {
+            border: 1.5px dashed transparent;
+            border-radius: var(--skin-radius-lg, 12px);
+            transition: border-color 120ms ease, background 120ms ease;
+        }
+
+        .dropzone.dragging {
+            border-color: var(--skin-color-accent, #FF4D00);
+            background: color-mix(in srgb, var(--skin-color-accent, #FF4D00) 8%, transparent);
         }
 
         .attachment-chip .material-symbols-outlined {
@@ -546,12 +576,31 @@ export class SomaComposer extends LitElement {
                     : 'Start voice input (speech-to-text)';
 
         return html`
-            <div class="composer">
+            <div
+                class="composer dropzone ${this._dragging ? 'dragging' : ''}"
+                @dragover=${(e: DragEvent) => {
+                    e.preventDefault();
+                    if (!this._dragging) this._dragging = true;
+                }}
+                @dragleave=${(e: DragEvent) => {
+                    if (e.currentTarget === e.target) this._dragging = false;
+                }}
+                @drop=${(e: DragEvent) => {
+                    e.preventDefault();
+                    this._dragging = false;
+                    const files = e.dataTransfer?.files;
+                    if (files && files.length > 0) {
+                        Array.from(files).forEach((f) => composerStore.addAttachment(f));
+                    }
+                }}
+            >
                 ${this._attachments.length > 0 ? html`
                     <div class="attachments" role="list" aria-label="Attached files">
                         ${this._attachments.map((file, i) => html`
                             <div class="attachment-chip" role="listitem">
-                                <span class="material-symbols-outlined">attach_file</span>
+                                <span class="file-icon" aria-hidden="true">
+                                    <span class="material-symbols-outlined">${attachmentIcon(file.name, file.type)}</span>
+                                </span>
                                 <span class="name" title=${file.name}>${file.name}</span>
                                 <span class="size">${formatBytes(file.size)}</span>
                                 <button
@@ -611,7 +660,14 @@ export class SomaComposer extends LitElement {
                     </button>
                 </div>
 
-                ${this._menuOpen ? html`<soma-composer-menu></soma-composer-menu>` : ''}
+                ${this._menuOpen
+                    ? html`<soma-composer-menu
+                          @soma-menu-close=${() => {
+                              this._menuOpen = false;
+                              composerStore.setMenuOpen(false);
+                          }}
+                      ></soma-composer-menu>`
+                    : ''}
 
                 <div class="status-row">
                     ${this._queue.length > 0 ? html`
