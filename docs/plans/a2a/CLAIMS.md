@@ -248,4 +248,8 @@
 
 | path/prefix | agent | task | started_at | status |
 |---|---|---|---|---|
-| docs/reports/SOMA-RPT-PROD-HARDENING-001.md | soma-prod-hardening | Prod-hardening skill-vs-code audit (Django security block, CONN_*, DEBUG/log, rate limits, bounded inputs, SSRF, update_fields). Docs only. No secret values. | 2026-10-13T21:22:28Z | ACTIVE |
+| docs/reports/SOMA-RPT-PROD-HARDENING-001.md | soma-prod-hardening | Prod-hardening skill-vs-code audit (Django security block, CONN_*, DEBUG/log, rate limits, bounded inputs, SSRF, update_fields). Docs only. No secret values. | 2026-10-13T21:22:28Z | DONE — report issued; P0-1 rate limits, P1-1 SSL policy fork, P1-2..P1-6 gaps; skill-text deferred pending operator SSL decision |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| docs/reports/SOMA-RPT-PROD-HARDENING-001.md .mimocode/agent/soma-prod-hardening.md docs/plans/a2a/ | soma-prod-hardening | Skill-vs-code alignment (authz.py, gateway settings, middleware, rate limits, SSRF) + report v1.1.0 refresh. Docs/skill-text only. No secrets. No runtime config. | 2026-10-14T00:00:00Z | DONE — skill anchors+SSL-exception+authz rule; report v1.1.0 matrix A0-A21; P0-1/P1-2..P1-6/P2-* remain for code turn |
