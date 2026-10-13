@@ -1,16 +1,16 @@
 /**
- * soma-profile-modal — full user Profile window (glass, one-click Chat settings).
- * Identity · photo · email accounts · WhatsApp numbers · password · sign out.
- * Product names only. Material Symbols. No emojis. No mocks.
+ * soma-profile-modal — FULL-SCREEN Profile workspace.
+ * All sections visible at once (no tabs). Modern glass cards.
+ * Expert layout: identity · photo · channels · display · security.
+ * Soma law · Material Symbols · I18N · no mocks.
  */
 import { LitElement, css, html, nothing, TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
 import { t, onLocaleChange } from '../i18n/index.js';
+import { glassCard } from '../styles/glass.js';
 import './soma-password-modal.js';
 import './soma-chat-settings.js';
-
-type ProfileTab = 'account' | 'channels' | 'display' | 'security';
 
 interface ChannelRow {
     id: string;
@@ -22,10 +22,7 @@ interface ChannelRow {
 @customElement('soma-profile-modal')
 export class SomaProfileModal extends LitElement {
     @property({ type: Boolean, reflect: true }) open = false;
-    /** Open straight on Chat settings (Display) — one click from topbar. */
-    @property({ type: String }) initialTab: ProfileTab = 'account';
 
-    @state() private _tab: ProfileTab = 'account';
     @state() private _name = '';
     @state() private _email = '';
     @state() private _role = '';
@@ -35,7 +32,6 @@ export class SomaProfileModal extends LitElement {
     @state() private _chatOpen = false;
     @state() private _dirty = false;
     @state() private _saving = false;
-    /** Catalog key + error flag so status survives locale switches (I18N-06). */
     @state() private _statusKey = '';
     @state() private _statusError = false;
     @state() private _emails: ChannelRow[] = [];
@@ -43,63 +39,67 @@ export class SomaProfileModal extends LitElement {
     @state() private _newEmail = '';
     @state() private _newPhone = '';
 
-    static styles = css`
+    private _offLocale?: () => void;
+
+    static styles = [
+        glassCard,
+        css`
         :host {
             display: none;
             position: fixed;
             inset: 0;
-            z-index: 300;
+            z-index: 320;
         }
         :host([open]) {
             display: block;
         }
+
+        /* Full-screen workspace — not a small dialog */
         .scrim {
             position: absolute;
             inset: 0;
-            background: color-mix(in srgb, var(--skin-color-bg-void, #000) 42%, transparent);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            background: color-mix(in srgb, var(--skin-color-bg-void, #0f1115) 55%, transparent);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
         }
-        .dialog {
+        .shell {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: min(560px, 94vw);
-            max-height: min(720px, 92vh);
+            inset: 12px;
             display: flex;
             flex-direction: column;
-            /* Solid card fill — text must stay AA against this surface. */
-            background: var(--skin-color-bg-card, var(--platform-bg-card, #ffffff));
+            background: var(--skin-color-bg-base, var(--platform-bg-base, #ffffff));
+            color: var(--skin-color-text-primary, var(--platform-text-main, #1a1a1a));
             border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.12));
             border-radius: var(--skin-radius-xl, 16px);
-            box-shadow: var(--skin-shadow-overlay, 0 16px 48px rgba(0, 0, 0, 0.25));
+            box-shadow: var(--skin-shadow-overlay, 0 16px 48px rgba(0, 0, 0, 0.28));
             overflow: hidden;
             font-family: var(--skin-font-sans, system-ui, sans-serif);
-            color: var(--skin-color-text-primary, var(--platform-text-main, #1a1a1a));
         }
-        .head {
+
+        .top {
             display: flex;
             align-items: center;
-            gap: 14px;
-            padding: 20px 20px 12px;
+            gap: 18px;
+            padding: 22px 28px;
+            border-bottom: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
+            background: var(--skin-color-bg-card, var(--platform-bg-card, #fff));
         }
         .avatar-wrap {
             position: relative;
-            width: 64px;
-            height: 64px;
+            width: 72px;
+            height: 72px;
             flex-shrink: 0;
         }
         .avatar {
-            width: 64px;
-            height: 64px;
+            width: 72px;
+            height: 72px;
             border-radius: 50%;
             background: var(--skin-color-accent, #FF4D00);
             color: var(--skin-color-accent-text, #fff);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
+            font-size: 26px;
             font-weight: 600;
             overflow: hidden;
         }
@@ -110,10 +110,10 @@ export class SomaProfileModal extends LitElement {
         }
         .cam {
             position: absolute;
-            right: -2px;
-            bottom: -2px;
-            width: 26px;
-            height: 26px;
+            right: -4px;
+            bottom: -4px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             border: 2px solid var(--skin-color-bg-card, #fff);
             background: var(--skin-color-accent, #FF4D00);
@@ -124,84 +124,103 @@ export class SomaProfileModal extends LitElement {
             justify-content: center;
         }
         .cam .material-symbols-outlined {
-            font-size: 14px;
+            font-size: 15px;
         }
-        .head-meta {
+        .who {
             flex: 1;
             min-width: 0;
         }
-        .head-meta h2 {
+        .who h1 {
             margin: 0;
-            font-size: 17px;
-            font-weight: 600;
+            font-size: 22px;
+            font-weight: 650;
+            letter-spacing: -0.02em;
         }
-        .head-meta .email {
-            font-size: 12px;
-            color: var(--skin-color-text-secondary, #666);
-            margin-top: 2px;
+        .who .sub {
+            margin-top: 4px;
+            font-size: 13px;
+            color: var(--skin-color-text-secondary, #5b6470);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
         }
-        .head-meta .role {
-            display: inline-block;
-            margin-top: 6px;
-            font-size: 11px;
-            padding: 2px 8px;
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
             border-radius: 999px;
-            background: var(--skin-color-bg-hover, #f0f0f0);
-            color: var(--skin-color-text-secondary, #666);
+            font-size: 11px;
+            background: var(--skin-color-bg-hover, #f0f2f5);
+            color: var(--skin-color-text-secondary, #5b6470);
         }
-        .close {
-            align-self: flex-start;
-            width: 32px;
-            height: 32px;
-            border: none;
-            border-radius: 50%;
-            background: transparent;
-            cursor: pointer;
-            color: var(--skin-color-text-secondary, #666);
+        .top-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .scroll {
+            flex: 1;
+            overflow: auto;
+            padding: 22px 28px 32px;
+        }
+
+        /* Expert grid: every section visible — change anything, no tab hops */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 16px;
+        }
+        .card {
+            grid-column: span 6;
+            background: var(--skin-color-bg-card, var(--platform-bg-card, #fff));
+            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.1));
+            border-radius: var(--skin-radius-lg, 12px);
+            padding: 18px 18px 16px;
+            box-shadow: var(--skin-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.04));
+        }
+        .card.wide {
+            grid-column: span 12;
+        }
+        .card.half-left {
+            grid-column: span 5;
+        }
+        .card.half-right {
+            grid-column: span 7;
+        }
+        .card h2 {
+            margin: 0 0 4px;
+            font-size: 14px;
+            font-weight: 650;
             display: flex;
             align-items: center;
-            justify-content: center;
+            gap: 8px;
         }
-        .close:hover {
-            background: var(--skin-color-bg-hover, #f0f0f0);
-        }
-        .tabs {
-            display: flex;
-            gap: 4px;
-            padding: 0 16px;
-            border-bottom: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
-        }
-        .tab {
-            border: none;
-            background: transparent;
-            padding: 10px 14px;
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--skin-color-text-secondary, #666);
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-        }
-        .tab.active {
+        .card h2 .material-symbols-outlined {
+            font-size: 18px;
             color: var(--skin-color-accent, #FF4D00);
-            border-bottom-color: var(--skin-color-accent, #FF4D00);
         }
-        .body {
-            padding: 16px 20px 20px;
-            overflow: auto;
-            flex: 1;
+        .card .desc {
+            margin: 0 0 14px;
+            font-size: 12px;
+            color: var(--skin-color-text-secondary, #5b6470);
         }
+
         label {
             display: block;
             font-size: 11px;
-            color: var(--skin-color-text-secondary, #666);
-            margin: 12px 0 4px;
+            font-weight: 500;
+            color: var(--skin-color-text-secondary, #5b6470);
+            margin: 12px 0 5px;
         }
         input {
             width: 100%;
             box-sizing: border-box;
-            padding: 10px 12px;
+            padding: 11px 12px;
             border-radius: var(--skin-radius-md, 8px);
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.12));
+            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.14));
             background: var(--skin-color-bg-base, #fff);
             color: inherit;
             font-size: 13px;
@@ -210,11 +229,17 @@ export class SomaProfileModal extends LitElement {
             outline: 2px solid var(--skin-focus-ring, var(--skin-color-accent, #FF4D00));
             outline-offset: 1px;
         }
+        input[readonly] {
+            background: var(--skin-color-bg-hover, #f4f6f8);
+            color: var(--skin-color-text-secondary, #5b6470);
+        }
+
         .hint {
             font-size: 11px;
-            color: var(--skin-color-text-muted, #999);
-            margin-top: 4px;
+            color: var(--skin-color-text-muted, #6b7280);
+            margin-top: 5px;
         }
+
         .row-card {
             display: flex;
             align-items: center;
@@ -223,7 +248,7 @@ export class SomaProfileModal extends LitElement {
             border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
             border-radius: var(--skin-radius-md, 8px);
             margin-top: 8px;
-            background: color-mix(in srgb, var(--skin-color-bg-base, #fff) 75%, transparent);
+            background: var(--skin-color-bg-base, #fff);
         }
         .row-card .material-symbols-outlined {
             font-size: 18px;
@@ -233,11 +258,13 @@ export class SomaProfileModal extends LitElement {
             flex: 1;
             font-size: 13px;
             word-break: break-all;
+            color: var(--skin-color-text-primary, #1a1a1a);
         }
         .row-card .t {
             font-size: 10px;
-            color: var(--skin-color-text-muted, #999);
+            color: var(--skin-color-text-secondary, #5b6470);
         }
+
         .chip-add {
             display: flex;
             gap: 8px;
@@ -246,123 +273,135 @@ export class SomaProfileModal extends LitElement {
         .chip-add input {
             flex: 1;
         }
-        button.btn {
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.12));
+
+        button {
+            border-radius: var(--skin-radius-md, 8px);
+            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.14));
             background: var(--skin-color-bg-base, #fff);
             color: inherit;
-            border-radius: var(--skin-radius-md, 8px);
             padding: 9px 14px;
             font-size: 12px;
+            font-weight: 500;
             cursor: pointer;
         }
-        button.btn:hover:not(:disabled) {
-            background: var(--skin-color-bg-hover, #f5f5f5);
+        button:hover:not(:disabled) {
+            background: var(--skin-color-bg-hover, #f3f5f7);
         }
-        button.btn.primary {
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        button.primary {
             background: var(--skin-color-accent, #FF4D00);
             border-color: transparent;
             color: var(--skin-color-accent-text, #fff);
         }
-        button.btn.danger {
+        button.danger {
             color: var(--skin-color-danger, #b91c1c);
-            border-color: var(--skin-color-danger, #b91c1c);
+            border-color: color-mix(in srgb, var(--skin-color-danger, #b91c1c) 40%, transparent);
         }
-        button.btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        button.ghost {
+            border-color: transparent;
+            background: transparent;
         }
-        .foot {
+        .close {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            border-radius: 50%;
             display: flex;
-            justify-content: space-between;
-            gap: 8px;
-            padding: 12px 20px 18px;
-            border-top: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
+            align-items: center;
+            justify-content: center;
         }
-        .foot-right {
-            display: flex;
-            gap: 8px;
-        }
+
         .panel-action {
             display: flex;
             align-items: center;
             gap: 12px;
             width: 100%;
-            padding: 14px;
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
-            border-radius: var(--skin-radius-lg, 12px);
-            background: color-mix(in srgb, var(--skin-color-bg-base, #fff) 70%, transparent);
+            padding: 13px 14px;
+            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.1));
+            border-radius: var(--skin-radius-md, 8px);
+            background: var(--skin-color-bg-base, #fff);
             cursor: pointer;
-            font: inherit;
+            margin-top: 8px;
             text-align: left;
-            margin-top: 10px;
         }
         .panel-action:hover {
-            background: var(--skin-color-bg-hover, #f5f5f5);
+            background: var(--skin-color-bg-hover, #f5f7fa);
         }
         .panel-action .material-symbols-outlined {
-            font-size: 22px;
+            font-size: 20px;
             color: var(--skin-color-accent, #FF4D00);
+        }
+        .panel-action strong {
+            display: block;
+            font-size: 13px;
         }
         .panel-action .sub {
             display: block;
             font-size: 11px;
-            color: var(--skin-color-text-secondary, #666);
+            color: var(--skin-color-text-secondary, #5b6470);
             margin-top: 2px;
         }
+
         .status {
+            margin-top: 12px;
             font-size: 12px;
-            margin-top: 10px;
-            color: var(--skin-color-text-secondary, #666);
+            padding: 8px 10px;
+            border-radius: var(--skin-radius-md, 8px);
+            background: var(--skin-color-bg-hover, #f3f5f7);
+            color: var(--skin-color-text-secondary, #5b6470);
         }
         .status.error {
+            background: color-mix(in srgb, var(--skin-color-danger, #ef4444) 12%, transparent);
             color: var(--skin-color-danger, #b91c1c);
         }
-    `;
 
-    private _unsubLocale: (() => void) | null = null;
+        .footer-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 28px;
+            border-top: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
+            background: var(--skin-color-bg-card, var(--platform-bg-card, #fff));
+        }
+
+        @media (max-width: 900px) {
+            .card,
+            .card.half-left,
+            .card.half-right {
+                grid-column: span 12;
+            }
+            .shell {
+                inset: 0;
+                border-radius: 0;
+            }
+        }
+        `,
+    ];
 
     override connectedCallback(): void {
         super.connectedCallback();
-        this._unsubLocale = onLocaleChange(() => this.requestUpdate());
+        this._offLocale = onLocaleChange(() => this.requestUpdate());
         if (this.open) void this._load();
     }
 
     override disconnectedCallback(): void {
-        this._unsubLocale?.();
-        this._unsubLocale = null;
+        this._offLocale?.();
         super.disconnectedCallback();
+    }
+
+    override updated(changed: Map<string, unknown>): void {
+        if (changed.has('open') && this.open) {
+            void this._load();
+        }
     }
 
     private _setStatus(key: string, error = false): void {
         this._statusKey = key;
         this._statusError = error;
-    }
-
-    /** Translate known channel labels; pass through any custom label. */
-    private _channelLabel(label: string): string {
-        switch (label) {
-            case 'Primary':
-            case 'profile.channelPrimary':
-                return t('profile.channelPrimary');
-            case 'Work':
-            case 'profile.channelWork':
-                return t('profile.channelWork');
-            case 'WhatsApp':
-            case 'profile.channelWhatsapp':
-                return t('profile.channelWhatsapp');
-            default:
-                return label;
-        }
-    }
-
-    override updated(changed: Map<string, unknown>): void {
-        if (changed.has('open') && this.open) {
-            this._tab = this.initialTab || 'account';
-            void this._load();
-        }
-        if (changed.has('initialTab') && this.open) {
-            this._tab = this.initialTab || this._tab;
-        }
     }
 
     private async _load(): Promise<void> {
@@ -376,17 +415,18 @@ export class SomaProfileModal extends LitElement {
                 avatar_url?: string;
             }>('/auth/me');
             this._email = me.email || '';
-            this._name = me.name || me.username || me.email || t('profile.defaultName');
+            this._name = me.name || me.username || me.email || 'User';
             this._role = me.role || me.roles?.[0] || '';
             this._avatarUrl = me.avatar_url || '';
             const parts = this._name.split(/[\s@.]+/).filter(Boolean);
             this._initials = ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || 'U';
         } catch {
-            this._name = this._name || t('profile.defaultName');
+            this._name = this._name || 'User';
             this._initials = 'U';
         }
-        // Channels: local profile store until a server contact API is mounted.
         try {
+            const storedAvatar = localStorage.getItem('soma_profile_avatar');
+            if (storedAvatar && !this._avatarUrl) this._avatarUrl = storedAvatar;
             const raw = localStorage.getItem('soma_profile_channels');
             if (raw) {
                 const parsed = JSON.parse(raw) as { emails?: ChannelRow[]; phones?: ChannelRow[] };
@@ -395,27 +435,37 @@ export class SomaProfileModal extends LitElement {
             }
             if (this._email && !this._emails.some((e) => e.value === this._email)) {
                 this._emails = [
-                    {
-                        id: 'primary',
-                        value: this._email,
-                        label: 'profile.channelPrimary',
-                        verified: true,
-                    },
+                    { id: 'primary', value: this._email, label: 'Primary', verified: true },
                     ...this._emails,
                 ];
             }
         } catch {
-            /* keep empty — never invent channels */
+            /* never invent */
         }
     }
 
-    private _saveChannels(): void {
-        localStorage.setItem(
-            'soma_profile_channels',
-            JSON.stringify({ emails: this._emails, phones: this._phones }),
-        );
-        this._setStatus('profile.channelsSaved');
-        this._dirty = false;
+    private _saveAll(): void {
+        this._saving = true;
+        try {
+            localStorage.setItem('soma_profile_identity', JSON.stringify({ name: this._name }));
+            localStorage.setItem(
+                'soma_profile_channels',
+                JSON.stringify({ emails: this._emails, phones: this._phones }),
+            );
+            if (this._avatarUrl) {
+                try {
+                    localStorage.setItem('soma_profile_avatar', this._avatarUrl);
+                } catch {
+                    /* quota */
+                }
+            }
+            this._setStatus('profile.saved');
+            this._dirty = false;
+        } catch {
+            this._setStatus('profile.saveFailed', true);
+        } finally {
+            this._saving = false;
+        }
     }
 
     private _addEmail(): void {
@@ -427,7 +477,7 @@ export class SomaProfileModal extends LitElement {
         }
         this._emails = [
             ...this._emails,
-            { id: `e-${Date.now()}`, value: v, label: 'profile.channelWork', verified: false },
+            { id: `e-${Date.now()}`, value: v, label: 'Work', verified: false },
         ];
         this._newEmail = '';
         this._dirty = true;
@@ -442,7 +492,7 @@ export class SomaProfileModal extends LitElement {
         }
         this._phones = [
             ...this._phones,
-            { id: `p-${Date.now()}`, value: v, label: 'profile.channelWhatsapp', verified: false },
+            { id: `p-${Date.now()}`, value: v, label: 'WhatsApp', verified: false },
         ];
         this._newPhone = '';
         this._dirty = true;
@@ -453,19 +503,14 @@ export class SomaProfileModal extends LitElement {
         const file = input.files?.[0];
         if (!file) return;
         if (!file.type.startsWith('image/')) {
-            this._setStatus('profile.imageOnly', true);
+            this._setStatus('profile.invalidImage', true);
             return;
         }
         const reader = new FileReader();
         reader.onload = () => {
             this._avatarUrl = String(reader.result || '');
-            try {
-                localStorage.setItem('soma_profile_avatar', this._avatarUrl);
-            } catch {
-                /* quota — avatar stays session-only */
-            }
             this._dirty = true;
-            this._setStatus('profile.photoUpdated');
+            this._setStatus('profile.photoPendingSave');
         };
         reader.readAsDataURL(file);
         input.value = '';
@@ -481,208 +526,21 @@ export class SomaProfileModal extends LitElement {
         this._close();
     }
 
-    private _tabBtn(id: ProfileTab, label: string): TemplateResult {
-        return html`
-            <button
-                class="tab ${this._tab === id ? 'active' : ''}"
-                @click=${() => (this._tab = id)}
-                aria-selected=${this._tab === id}
-            >
-                ${label}
-            </button>
-        `;
-    }
-
-    private _renderAccount(): TemplateResult {
-        return html`
-            <label for="pf-name">${t('profile.displayName')}</label>
-            <input
-                id="pf-name"
-                .value=${this._name}
-                @input=${(e: Event) => {
-                    this._name = (e.target as HTMLInputElement).value;
-                    this._dirty = true;
-                }}
-            />
-            <label for="pf-email">${t('profile.primaryEmail')}</label>
-            <input id="pf-email" .value=${this._email} readonly />
-            <div class="hint">${t('profile.emailLockedHint')}</div>
-            <label for="pf-role">${t('profile.role')}</label>
-            <input id="pf-role" .value=${this._role} readonly />
-            <button
-                class="btn primary"
-                style="margin-top:16px"
-                ?disabled=${!this._dirty || this._saving}
-                @click=${() => {
-                    this._saving = true;
-                    try {
-                        localStorage.setItem(
-                            'soma_profile_identity',
-                            JSON.stringify({ name: this._name }),
-                        );
-                        this._setStatus('profile.saved');
-                        this._dirty = false;
-                    } catch {
-                        this._setStatus('profile.saveFailed', true);
-                    } finally {
-                        this._saving = false;
-                    }
-                }}
-            >
-                ${this._saving ? t('profile.saving') : t('profile.saveProfile')}
-            </button>
-        `;
-    }
-
-    private _renderChannels(): TemplateResult {
-        return html`
-            <div class="hint">${t('profile.channelsHint')}</div>
-            <label>${t('profile.emailAccounts')}</label>
-            ${this._emails.map(
-                (r) => html`
-                    <div class="row-card">
-                        <span class="material-symbols-outlined">mail</span>
-                        <div>
-                            <div class="v">${r.value}</div>
-                            <div class="t">
-                                ${this._channelLabel(r.label)}${r.verified
-                                    ? ` · ${t('profile.verified')}`
-                                    : ''}
-                            </div>
-                        </div>
-                        <button
-                            class="btn"
-                            aria-label=${t('profile.removeChannel', { value: r.value })}
-                            @click=${() => {
-                                this._emails = this._emails.filter((x) => x.id !== r.id);
-                                this._dirty = true;
-                            }}
-                        >
-                            <span class="material-symbols-outlined">close</span>
-                        </button>
-                    </div>
-                `,
-            )}
-            <div class="chip-add">
-                <input
-                    placeholder="name@company.com"
-                    .value=${this._newEmail}
-                    @input=${(e: Event) => {
-                        this._newEmail = (e.target as HTMLInputElement).value;
-                    }}
-                    @keydown=${(e: KeyboardEvent) => {
-                        if (e.key === 'Enter') this._addEmail();
-                    }}
-                />
-                <button class="btn" @click=${() => this._addEmail()}>
-                    ${t('profile.addEmail')}
-                </button>
-            </div>
-
-            <label>${t('profile.whatsappPhone')}</label>
-            ${this._phones.map(
-                (r) => html`
-                    <div class="row-card">
-                        <span class="material-symbols-outlined">chat</span>
-                        <div>
-                            <div class="v">${r.value}</div>
-                            <div class="t">${this._channelLabel(r.label)}</div>
-                        </div>
-                        <button
-                            class="btn"
-                            aria-label=${t('profile.removeChannel', { value: r.value })}
-                            @click=${() => {
-                                this._phones = this._phones.filter((x) => x.id !== r.id);
-                                this._dirty = true;
-                            }}
-                        >
-                            <span class="material-symbols-outlined">close</span>
-                        </button>
-                    </div>
-                `,
-            )}
-            <div class="chip-add">
-                <input
-                    placeholder="+593 99 000 0000"
-                    .value=${this._newPhone}
-                    @input=${(e: Event) => {
-                        this._newPhone = (e.target as HTMLInputElement).value;
-                    }}
-                    @keydown=${(e: KeyboardEvent) => {
-                        if (e.key === 'Enter') this._addPhone();
-                    }}
-                />
-                <button class="btn" @click=${() => this._addPhone()}>
-                    ${t('profile.addWhatsapp')}
-                </button>
-            </div>
-            <button
-                class="btn primary"
-                style="margin-top:16px"
-                ?disabled=${!this._dirty}
-                @click=${() => this._saveChannels()}
-            >
-                ${t('profile.saveChannels')}
-            </button>
-        `;
-    }
-
-    private _renderDisplay(): TemplateResult {
-        return html`
-            <button
-                class="panel-action"
-                data-testid="profile-chat-settings"
-                @click=${() => (this._chatOpen = true)}
-            >
-                <span class="material-symbols-outlined">tune</span>
-                <span>
-                    <strong>${t('profile.chatSettings')}</strong>
-                    <span class="sub">${t('profile.chatSettingsSub')}</span>
-                </span>
-            </button>
-            <button
-                class="panel-action"
-                @click=${() => {
-                    this.dispatchEvent(
-                        new CustomEvent('open-full-profile', { bubbles: true, composed: true }),
-                    );
-                    this._close();
-                }}
-            >
-                <span class="material-symbols-outlined">open_in_new</span>
-                <span>
-                    <strong>${t('profile.openFullProfile')}</strong>
-                    <span class="sub">${t('profile.advancedAccount')}</span>
-                </span>
-            </button>
-        `;
-    }
-
-    private _renderSecurity(): TemplateResult {
-        return html`
-            <button class="panel-action" @click=${() => (this._passwordOpen = true)}>
-                <span class="material-symbols-outlined">lock</span>
-                <span>
-                    <strong>${t('profile.changePassword')}</strong>
-                    <span class="sub">${t('profile.passwordMin')}</span>
-                </span>
-            </button>
-            <button class="panel-action" style="margin-top:10px" @click=${() => this._logout()}>
-                <span class="material-symbols-outlined">logout</span>
-                <span>
-                    <strong>${t('profile.signOut')}</strong>
-                    <span class="sub">${t('profile.signOutSub')}</span>
-                </span>
-            </button>
-        `;
+    private _channelLabel(label: string): string {
+        const map: Record<string, string> = {
+            Primary: 'profile.chPrimary',
+            Work: 'profile.chWork',
+            WhatsApp: 'profile.chWhatsapp',
+        };
+        return map[label] ? t(map[label]) : label;
     }
 
     override render() {
         if (!this.open) return nothing;
         return html`
             <div class="scrim" @click=${() => this._close()}></div>
-            <div class="dialog" role="dialog" aria-modal="true" aria-label=${t('profile.title')}>
-                <div class="head">
+            <div class="shell" role="dialog" aria-modal="true" aria-label=${t('profile.title')}>
+                <header class="top">
                     <div class="avatar-wrap">
                         <div class="avatar">
                             ${this._avatarUrl
@@ -699,53 +557,204 @@ export class SomaProfileModal extends LitElement {
                             />
                         </label>
                     </div>
-                    <div class="head-meta">
-                        <h2>${this._name}</h2>
-                        <div class="email">${this._email}</div>
-                        <span class="role">${this._role}</span>
+                    <div class="who">
+                        <h1>${this._name}</h1>
+                        <div class="sub">
+                            <span>${this._email}</span>
+                            <span class="pill">
+                                <span class="material-symbols-outlined" style="font-size:12px">badge</span>
+                                ${this._role || t('profile.role')}
+                            </span>
+                        </div>
                     </div>
-                    <button
-                        class="close"
-                        aria-label=${t('common.close')}
-                        @click=${() => this._close()}
-                    >
-                        <span class="material-symbols-outlined">close</span>
-                    </button>
-                </div>
-                <div class="tabs" role="tablist">
-                    ${this._tabBtn('account', t('profile.account'))}
-                    ${this._tabBtn('channels', t('profile.channels'))}
-                    ${this._tabBtn('display', t('profile.display'))}
-                    ${this._tabBtn('security', t('profile.security'))}
-                </div>
-                <div class="body">
-                    ${this._tab === 'account'
-                        ? this._renderAccount()
-                        : this._tab === 'channels'
-                          ? this._renderChannels()
-                          : this._tab === 'display'
-                            ? this._renderDisplay()
-                            : this._renderSecurity()}
-                    ${this._statusKey
-                        ? html`<div
-                              class="status ${this._statusError ? 'error' : ''}"
-                              role="status"
-                          >
-                              ${t(this._statusKey)}
-                          </div>`
-                        : nothing}
-                </div>
-                <div class="foot">
-                    <button class="btn danger" @click=${() => this._logout()}>
-                        ${t('profile.signOut')}
-                    </button>
-                    <div class="foot-right">
-                        <button class="btn" @click=${() => this._close()}>
-                            ${t('common.close')}
+                    <div class="top-actions">
+                        <button
+                            class="primary"
+                            ?disabled=${!this._dirty || this._saving}
+                            @click=${() => this._saveAll()}
+                        >
+                            ${this._saving ? t('profile.saving') : t('profile.saveAll')}
+                        </button>
+                        <button class="close ghost" aria-label=${t('common.close')} @click=${() => this._close()}>
+                            <span class="material-symbols-outlined">close</span>
                         </button>
                     </div>
+                </header>
+
+                <div class="scroll">
+                    <div class="grid">
+                        <!-- Identity -->
+                        <section class="card half-left">
+                            <h2>
+                                <span class="material-symbols-outlined">person</span>
+                                ${t('profile.account')}
+                            </h2>
+                            <p class="desc">${t('profile.accountDesc')}</p>
+                            <label for="pf-name">${t('profile.displayName')}</label>
+                            <input
+                                id="pf-name"
+                                .value=${this._name}
+                                @input=${(e: Event) => {
+                                    this._name = (e.target as HTMLInputElement).value;
+                                    this._dirty = true;
+                                }}
+                            />
+                            <label for="pf-email">${t('profile.primaryEmail')}</label>
+                            <input id="pf-email" .value=${this._email} readonly />
+                            <div class="hint">${t('profile.emailLockedHint')}</div>
+                            <label for="pf-role">${t('profile.role')}</label>
+                            <input id="pf-role" .value=${this._role} readonly />
+                        </section>
+
+                        <!-- Channels -->
+                        <section class="card half-right">
+                            <h2>
+                                <span class="material-symbols-outlined">alternate_email</span>
+                                ${t('profile.channels')}
+                            </h2>
+                            <p class="desc">${t('profile.channelsHint')}</p>
+                            <label>${t('profile.emailAccounts')}</label>
+                            ${this._emails.map(
+                                (r) => html`
+                                    <div class="row-card">
+                                        <span class="material-symbols-outlined">mail</span>
+                                        <div>
+                                            <div class="v">${r.value}</div>
+                                            <div class="t">
+                                                ${this._channelLabel(r.label)}${r.verified
+                                                    ? ` · ${t('profile.verified')}`
+                                                    : ''}
+                                            </div>
+                                        </div>
+                                        <button
+                                            class="ghost"
+                                            aria-label=${t('profile.removeChannel', { value: r.value })}
+                                            @click=${() => {
+                                                this._emails = this._emails.filter((x) => x.id !== r.id);
+                                                this._dirty = true;
+                                            }}
+                                        >
+                                            <span class="material-symbols-outlined">close</span>
+                                        </button>
+                                    </div>
+                                `,
+                            )}
+                            <div class="chip-add">
+                                <input
+                                    placeholder="name@company.com"
+                                    .value=${this._newEmail}
+                                    @input=${(e: Event) => {
+                                        this._newEmail = (e.target as HTMLInputElement).value;
+                                    }}
+                                    @keydown=${(e: KeyboardEvent) => {
+                                        if (e.key === 'Enter') this._addEmail();
+                                    }}
+                                />
+                                <button @click=${() => this._addEmail()}>${t('profile.addEmail')}</button>
+                            </div>
+
+                            <label>${t('profile.whatsapp')}</label>
+                            ${this._phones.map(
+                                (r) => html`
+                                    <div class="row-card">
+                                        <span class="material-symbols-outlined">chat</span>
+                                        <div>
+                                            <div class="v">${r.value}</div>
+                                            <div class="t">${this._channelLabel(r.label)}</div>
+                                        </div>
+                                        <button
+                                            class="ghost"
+                                            aria-label=${t('profile.removeChannel', { value: r.value })}
+                                            @click=${() => {
+                                                this._phones = this._phones.filter((x) => x.id !== r.id);
+                                                this._dirty = true;
+                                            }}
+                                        >
+                                            <span class="material-symbols-outlined">close</span>
+                                        </button>
+                                    </div>
+                                `,
+                            )}
+                            <div class="chip-add">
+                                <input
+                                    placeholder="+593 99 000 0000"
+                                    .value=${this._newPhone}
+                                    @input=${(e: Event) => {
+                                        this._newPhone = (e.target as HTMLInputElement).value;
+                                    }}
+                                    @keydown=${(e: KeyboardEvent) => {
+                                        if (e.key === 'Enter') this._addPhone();
+                                    }}
+                                />
+                                <button @click=${() => this._addPhone()}>${t('profile.addWhatsapp')}</button>
+                            </div>
+                        </section>
+
+                        <!-- Display -->
+                        <section class="card">
+                            <h2>
+                                <span class="material-symbols-outlined">tune</span>
+                                ${t('profile.display')}
+                            </h2>
+                            <p class="desc">${t('profile.displayDesc')}</p>
+                            <button class="panel-action" data-testid="profile-chat-settings"
+                                @click=${() => (this._chatOpen = true)}>
+                                <span class="material-symbols-outlined">tune</span>
+                                <span>
+                                    <strong>${t('chat.settings')}</strong>
+                                    <span class="sub">${t('chat.settingsHint')}</span>
+                                </span>
+                            </button>
+                        </section>
+
+                        <!-- Security -->
+                        <section class="card">
+                            <h2>
+                                <span class="material-symbols-outlined">shield</span>
+                                ${t('profile.security')}
+                            </h2>
+                            <p class="desc">${t('profile.securityDesc')}</p>
+                            <button class="panel-action" @click=${() => (this._passwordOpen = true)}>
+                                <span class="material-symbols-outlined">lock</span>
+                                <span>
+                                    <strong>${t('profile.changePassword')}</strong>
+                                    <span class="sub">${t('profile.passwordHint')}</span>
+                                </span>
+                            </button>
+                            <button class="panel-action" @click=${() => this._logout()}>
+                                <span class="material-symbols-outlined">logout</span>
+                                <span>
+                                    <strong>${t('profile.signOut')}</strong>
+                                    <span class="sub">${t('profile.signOutHint')}</span>
+                                </span>
+                            </button>
+                        </section>
+
+                        ${this._statusKey
+                            ? html`<div class="card wide">
+                                  <div class="status ${this._statusError ? 'error' : ''}" role="status">
+                                      ${t(this._statusKey)}
+                                  </div>
+                              </div>`
+                            : nothing}
+                    </div>
                 </div>
+
+                <footer class="footer-bar">
+                    <button class="danger" @click=${() => this._logout()}>${t('profile.signOut')}</button>
+                    <div style="display:flex;gap:8px">
+                        <button @click=${() => this._close()}>${t('common.close')}</button>
+                        <button
+                            class="primary"
+                            ?disabled=${!this._dirty || this._saving}
+                            @click=${() => this._saveAll()}
+                        >
+                            ${this._saving ? t('profile.saving') : t('profile.saveAll')}
+                        </button>
+                    </div>
+                </footer>
             </div>
+
             ${this._passwordOpen
                 ? html`<soma-password-modal
                       open
@@ -756,10 +765,7 @@ export class SomaProfileModal extends LitElement {
                   ></soma-password-modal>`
                 : nothing}
             ${this._chatOpen
-                ? html`<soma-chat-settings
-                      open
-                      @close=${() => (this._chatOpen = false)}
-                  ></soma-chat-settings>`
+                ? html`<soma-chat-settings open @close=${() => (this._chatOpen = false)}></soma-chat-settings>`
                 : nothing}
         `;
     }
