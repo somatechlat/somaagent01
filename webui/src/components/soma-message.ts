@@ -51,18 +51,22 @@ function isVideoAttachment(name: string, type?: string): boolean {
 export type MessageRole = 'user' | 'assistant' | 'system';
 
 /**
- * Bubble action contract (CH-11 / CH-35 / operator 2026-10-13).
+ * Bubble action contract (CH-11 / CH-35 / operator 2026-10-14).
  * Parent (`soma-chat`) wires these to the live WS `chat.message` path.
- * No fake regenerate API — Retry re-sends the real preceding user turn.
+ *
+ * Operator law (2026-10-14):
+ * - Copy (content_copy) — always, handled in-bubble via clipboard.
+ * - Retry (refresh) — ONLY when the turn failed / stopped / errored.
+ * - Fork (call_split) — user + assistant; honest refusal when no API.
+ * - NO Edit on already-sent messages. Drafts only — not this bubble.
+ * - Icon-only buttons (aria-label + title). No emoji. No text buttons.
  */
-export type MessageActionKind = 'copy' | 'retry' | 'edit';
+export type MessageActionKind = 'retry' | 'fork';
 
 export interface MessageActionDetail {
     action: MessageActionKind;
     messageId: string;
     role: MessageRole;
-    /** For `edit`: the confirmed replacement text. */
-    text?: string;
 }
 
 /** Turn chips from `chat.turn_meta` — only fields the server sent. */
@@ -91,7 +95,7 @@ interface AttachmentMedia {
 export class SomaMessage extends LitElement {
     /** Message role. Deliberately not `role` — that is the native ARIA attribute. */
     @property({ type: String, attribute: 'message-role' }) messageRole: MessageRole = 'assistant';
-    /** Stable row id from the parent so Retry/Edit can correlate. */
+    /** Stable row id from the parent so Retry/Fork can correlate. */
     @property({ type: String, attribute: 'message-id' }) messageId = '';
     @property({ type: String }) text = '';
     @property({ type: String }) timestamp = '';
@@ -110,8 +114,6 @@ export class SomaMessage extends LitElement {
 
     @state() private _copied = false;
     @state() private _toolsExpanded = true;
-    @state() private _editing = false;
-    @state() private _editDraft = '';
     @state() private _media: Record<string, AttachmentMedia> = {};
     @state() private _prefs: ChatPrefs = getChatPrefs();
     private _prefsOff?: () => void;
@@ -934,8 +936,11 @@ export class SomaMessage extends LitElement {
         .action-btn {
             display: inline-flex;
             align-items: center;
-            gap: var(--skin-space-xs);
-            padding: var(--skin-space-xs) var(--skin-space-sm);
+            justify-content: center;
+            /* Icon-only (operator 2026-10-14): square hit target ≥ 24px (WCAG 2.2 AA). */
+            width: 1.75rem;
+            height: 1.75rem;
+            padding: 0;
             border-radius: var(--skin-radius-md);
             border: var(--skin-border-width) solid transparent;
             background: transparent;
@@ -947,6 +952,12 @@ export class SomaMessage extends LitElement {
                 background var(--skin-motion-fast) var(--skin-motion-ease),
                 color var(--skin-motion-fast) var(--skin-motion-ease),
                 border-color var(--skin-motion-fast) var(--skin-motion-ease);
+        }
+
+        .action-btn .material-symbols-outlined {
+            font-size: var(--skin-text-sm);
+            line-height: 1;
+            pointer-events: none;
         }
 
         :host([message-role='user']) .action-btn {
@@ -973,26 +984,6 @@ export class SomaMessage extends LitElement {
         .action-btn:disabled {
             opacity: 0.55;
             cursor: not-allowed;
-        }
-
-        .edit-area {
-            width: 100%;
-            min-height: 4.5em;
-            margin: var(--skin-space-xs) 0;
-            padding: var(--skin-space-sm);
-            border-radius: var(--skin-radius-md);
-            border: var(--skin-border-width) solid var(--skin-color-border);
-            background: var(--skin-color-bg-base);
-            color: var(--skin-color-text-primary);
-            font: inherit;
-            resize: vertical;
-        }
-
-        .edit-actions {
-            display: flex;
-            gap: var(--skin-space-xs);
-            justify-content: flex-end;
-            margin-top: var(--skin-space-xs);
         }
     `,
     ];
@@ -1115,14 +1106,13 @@ export class SomaMessage extends LitElement {
         }
     }
 
-    private _emitAction(action: MessageActionKind, text?: string) {
+    private _emitAction(action: MessageActionKind) {
         this.dispatchEvent(
             new CustomEvent<MessageActionDetail>('soma-message-action', {
                 detail: {
                     action,
                     messageId: this.messageId,
                     role: this.messageRole,
-                    ...(text !== undefined ? { text } : {}),
                 },
                 bubbles: true,
                 composed: true,
@@ -1130,28 +1120,26 @@ export class SomaMessage extends LitElement {
         );
     }
 
-    private _startEdit() {
-        this._editDraft = this.text || '';
-        this._editing = true;
+    /**
+     * Retry is gated to failed / stopped / errored turns only (operator
+     * 2026-10-14). A healthy completed turn has no retry control.
+     */
+    private get _canRetry(): boolean {
+        if (this.streaming || this.thinking) return false;
+        return !!this.error || !!this.stopped;
     }
 
-    private _cancelEdit() {
-        this._editing = false;
-        this._editDraft = '';
-    }
-
-    private _confirmEdit() {
-        const next = (this._editDraft || '').trim();
-        if (!next) {
-            pushToast({ kind: 'error', message: t('message.editEmpty') });
-            return;
-        }
-        this._editing = false;
-        this._emitAction('edit', next);
+    /** Fork is offered on user + assistant bubbles with content to branch from. */
+    private get _canFork(): boolean {
+        return this.messageRole !== 'system' && !!this.text;
     }
 
     private _retry() {
         this._emitAction('retry');
+    }
+
+    private _fork() {
+        this._emitAction('fork');
     }
 
     private _toggleTools() {
@@ -1323,6 +1311,10 @@ export class SomaMessage extends LitElement {
             this.confidence != null ||
             this.messageRole === 'assistant' ||
             this.messageRole === 'user';
+        const showCopy = !!this.text;
+        const showRetry = this._canRetry;
+        const showFork = this._canFork;
+        const showActions = showCopy || showRetry || showFork;
 
         return html`
             <div class="bubble" role="article" aria-label=${`${this.messageRole} message`}>
@@ -1360,28 +1352,9 @@ export class SomaMessage extends LitElement {
                       </div>`
                     : nothing}
 
-                ${this._editing
-                    ? html`
-                          <textarea
-                              class="edit-area"
-                              .value=${this._editDraft}
-                              @input=${(e: Event) => {
-                                  this._editDraft = (e.target as HTMLTextAreaElement).value;
-                              }}
-                              aria-label=${t('message.edit')}
-                          ></textarea>
-                          <div class="edit-actions">
-                              <button class="action-btn" @click=${this._cancelEdit}>
-                                  ${t('message.editCancel')}
-                              </button>
-                              <button class="action-btn" @click=${this._confirmEdit}>
-                                  ${t('message.editConfirm')}
-                              </button>
-                          </div>
-                      `
-                    : this.messageRole === 'user'
-                      ? html`<div class="text">${this.text}</div>`
-                      : html`<div class="text" aria-live=${this.streaming ? 'polite' : 'off'}>${unsafeHTML(this._renderedHtml)}</div>`}
+                ${this.messageRole === 'user'
+                    ? html`<div class="text">${this.text}</div>`
+                    : html`<div class="text" aria-live=${this.streaming ? 'polite' : 'off'}>${unsafeHTML(this._renderedHtml)}</div>`}
                 ${this.streaming && this.text ? html`<span class="cursor" aria-hidden="true"></span>` : nothing}
 
                 ${this.error ? html`
@@ -1391,7 +1364,7 @@ export class SomaMessage extends LitElement {
                     </div>
                 ` : nothing}
 
-                ${showFooter && !this._editing ? html`
+                ${showFooter ? html`
                     <div class="footer">
                         ${this.timestamp && this._prefs.showTimestamps ? html`<span class="time">${this._formatTime(this.timestamp)}</span>` : nothing}
                         ${this.stopped ? html`<span class="stopped-badge">${t('message.stopped')}</span>` : nothing}
@@ -1403,45 +1376,40 @@ export class SomaMessage extends LitElement {
                                 <span>${Math.round(this.confidence * 100)}%</span>
                             </span>
                         ` : nothing}
-                        ${this.messageRole !== 'system' && this.text ? html`
-                            <div class="actions">
-                                <button
-                                    class="action-btn"
-                                    @click=${this._copy}
-                                    title=${t('message.copyMessage')}
-                                    aria-label=${t('message.copyMessage')}
-                                >
-                                    <span class="material-symbols-outlined" style="font-size: var(--skin-text-xs)">
-                                        ${this._copied ? 'check' : 'content_copy'}
-                                    </span>
-                                    ${this._copied ? t('message.copied') : t('message.copy')}
-                                </button>
-                                ${this.messageRole === 'user'
-                                    ? html`
-                                          <button
-                                              class="action-btn"
-                                              @click=${this._startEdit}
-                                              title=${t('message.editHint')}
-                                              aria-label=${t('message.edit')}
-                                          >
-                                              <span class="material-symbols-outlined" style="font-size: var(--skin-text-xs)">edit</span>
-                                              ${t('message.edit')}
-                                          </button>
-                                      `
-                                    : nothing}
-                                ${this.messageRole === 'assistant' && !this.streaming && !this.thinking
-                                    ? html`
-                                          <button
-                                              class="action-btn"
-                                              @click=${this._retry}
-                                              title=${t('message.retryHint')}
-                                              aria-label=${t('message.retry')}
-                                          >
-                                              <span class="material-symbols-outlined" style="font-size: var(--skin-text-xs)">refresh</span>
-                                              ${t('message.retry')}
-                                          </button>
-                                      `
-                                    : nothing}
+                        ${showActions ? html`
+                            <div class="actions" role="group" aria-label=${t('message.actions')}>
+                                ${showCopy ? html`
+                                    <button
+                                        class="action-btn"
+                                        @click=${this._copy}
+                                        title=${this._copied ? t('message.copied') : t('message.copyMessage')}
+                                        aria-label=${this._copied ? t('message.copied') : t('message.copyMessage')}
+                                    >
+                                        <span class="material-symbols-outlined" aria-hidden="true">
+                                            ${this._copied ? 'check' : 'content_copy'}
+                                        </span>
+                                    </button>
+                                ` : nothing}
+                                ${showRetry ? html`
+                                    <button
+                                        class="action-btn"
+                                        @click=${this._retry}
+                                        title=${t('message.retryHint')}
+                                        aria-label=${t('message.retry')}
+                                    >
+                                        <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+                                    </button>
+                                ` : nothing}
+                                ${showFork ? html`
+                                    <button
+                                        class="action-btn"
+                                        @click=${this._fork}
+                                        title=${t('message.forkHint')}
+                                        aria-label=${t('message.fork')}
+                                    >
+                                        <span class="material-symbols-outlined" aria-hidden="true">call_split</span>
+                                    </button>
+                                ` : nothing}
                             </div>
                         ` : nothing}
                     </div>

@@ -261,3 +261,6 @@
 | path/prefix | agent | task | started_at | status |
 |---|---|---|---|---|
 | webui/src/components/soma-file-manager.ts webui/src/components/soma-file-manager-modal.ts webui/src/components/soma-file-preview.ts webui/src/components/soma-right-panel.ts | soma-ui-engineer | File browser repair: list-all, /content preview+download, upload+refresh, drop wiring, honest rename/move/new-folder/tree gates | 2026-10-14T22:30:00Z | DONE — live curl + Playwright 2/2; honesty pass 2026-10-13T23:40Z (search-no-match, toast errors) |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| webui/src/components/soma-message.ts webui/src/views/soma-chat.ts webui/src/i18n/en.json webui/src/i18n/es.json | soma-ui-engineer | CH bubble action bar: icon-only (content_copy/refresh/call_split), Retry gated failed/stopped/error, remove Edit on sent, fork honest-no-API | 2026-10-13T23:47:02Z | ACTIVE |

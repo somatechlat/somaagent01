@@ -23,6 +23,8 @@ import type { ComposerSendDetail } from '../components/soma-composer.js';
 import type { MessageActionDetail } from '../components/soma-message.js';
 import type { ChatControlAction, ConnectionStatus } from '../components/soma-chat-topbar.js';
 import { formatRelative } from '../utils/markdown.js';
+import { t } from '../i18n/index.js';
+import { pushToast } from '../components/soma-toast-stack.js';
 import '../components/soma-message.js';
 import '../components/soma-tool-timeline.js';
 import '../components/soma-chat-topbar.js';
@@ -2406,17 +2408,21 @@ export class SomaChat extends LitElement {
     }
 
     /**
-     * One live turn: ensure WS, ensure conversation, push the user row, send
-     * `chat.message`. Shared by composer send, Retry, and Edit so every path
-     * is a real handler on the same wire (no second send implementation).
+     * One live turn: ensure WS, ensure conversation, optionally push the user
+     * row, send `chat.message`. Shared by composer send and Retry so every
+     * path is a real handler on the same wire (no second send implementation).
+     * Retry passes `appendUserRow: false` — the user row already exists.
      */
     private async _startTurn(opts: {
         text: string;
         sentAttachments: NonNullable<ChatMessage['attachments']>;
         error?: string;
+        /** Composer send appends a new user row; Retry reuses the existing one. */
+        appendUserRow?: boolean;
     }): Promise<void> {
         const content = opts.text.trim();
         const sentAttachments = opts.sentAttachments ?? [];
+        const appendUserRow = opts.appendUserRow !== false;
 
         const wsReady = await this._ensureWebSocket();
         if (!wsReady) {
@@ -2443,17 +2449,19 @@ export class SomaChat extends LitElement {
             return;
         }
 
-        const userMessage: ChatMessage = {
-            id: `msg-${Date.now()}`,
-            role: 'user',
-            content,
-            // Client send-time is not the server message time. History rows
-            // carry created_at; a live bubble shows no clock instead of one.
-            timestamp: '',
-            attachments: sentAttachments,
-            error: opts.error || '',
-        };
-        this._messages = [...this._messages, userMessage];
+        if (appendUserRow) {
+            const userMessage: ChatMessage = {
+                id: `msg-${Date.now()}`,
+                role: 'user',
+                content,
+                // Client send-time is not the server message time. History rows
+                // carry created_at; a live bubble shows no clock instead of one.
+                timestamp: '',
+                attachments: sentAttachments,
+                error: opts.error || '',
+            };
+            this._messages = [...this._messages, userMessage];
+        }
         this._turnStopped = false;
         this._paused = false;
         this._streamContent = '';
@@ -3342,65 +3350,79 @@ export class SomaChat extends LitElement {
     }
 
     /**
-     * Bubble actions (CH-11 / CH-35). Real handlers only:
-     * - edit  → rewrite the user row and re-send over live WS `chat.message`
-     * - retry → re-send the preceding user row over live WS `chat.message`
-     * No regenerate endpoint is invented (control map CH-35 stays honest).
+     * Bubble actions (CH-11 / CH-35 / operator 2026-10-14). Real handlers only:
+     * - retry → re-send the real user turn over live WS `chat.message`
+     *           (gated in the bubble to failed / stopped / errored turns)
+     * - fork  → `soma-message-action {action:'fork'}`; honest refusal when the
+     *           server has no branch API (CH-34). Never a fake branch.
+     * No edit on already-sent messages. No regenerate endpoint is invented.
      */
     private _onMessageAction(e: Event) {
         const detail = (e as CustomEvent<MessageActionDetail>).detail;
         if (!detail) return;
-        if (detail.action === 'edit') {
-            void this._handleEditAction(detail);
-            return;
-        }
         if (detail.action === 'retry') {
             void this._handleRetryAction(detail);
-        }
-    }
-
-    private async _handleEditAction(detail: MessageActionDetail) {
-        const next = (detail.text ?? '').trim();
-        if (!next) return;
-        const idx = this._messages.findIndex((m) => m.id === detail.messageId);
-        if (idx < 0) return;
-        if (this._isStreaming) {
-            this._pushInlineError('Still finishing the previous turn — edit not sent');
             return;
         }
-        this._messages = this._messages.map((m, i) =>
-            i === idx ? { ...m, content: next, error: '' } : m,
-        );
-        this._isStreaming = true;
-        await this._startTurn({ text: next, sentAttachments: [] });
+        if (detail.action === 'fork') {
+            this._handleForkAction(detail);
+        }
     }
 
+    /**
+     * Fork / branch (CH-34). There is no conversation-fork endpoint on this
+     * server (only /chat/conversations CRUD + WS chat.message). Emitting a
+     * local fake branch would be a shim — visible refusal instead.
+     */
+    private _handleForkAction(_detail: MessageActionDetail) {
+        pushToast({ kind: 'error', message: t('message.forkUnavailable') });
+    }
+
+    /**
+     * Retry a failed / stopped / errored turn by re-sending the real user turn
+     * over live WS `chat.message`. Never invents a regenerate API.
+     * - On an assistant row: drop the failed row, re-send the preceding user turn.
+     * - On a user row with error: clear the send-failure badge and re-send it.
+     * Attachments were already uploaded on the original send — pass their
+     * filesv2 metadata through, never re-upload (File objects are gone).
+     */
     private async _handleRetryAction(detail: MessageActionDetail) {
         if (this._isStreaming) {
-            this._pushInlineError('Still finishing the previous turn — retry not sent');
+            this._pushInlineError(t('message.retryBusy'));
             return;
         }
         const idx = this._messages.findIndex((m) => m.id === detail.messageId);
         if (idx < 0) return;
-        // Walk back to the user turn that produced this assistant row.
+
         let userMsg: ChatMessage | undefined;
-        for (let i = idx - 1; i >= 0; i -= 1) {
-            const m = this._messages[i];
-            if (m.role === 'user') {
-                userMsg = m;
-                break;
+        if (detail.role === 'user') {
+            userMsg = this._messages[idx];
+            // Clear the send-failure badge; content is unchanged.
+            this._messages = this._messages.map((m, i) =>
+                i === idx ? { ...m, error: '' } : m,
+            );
+        } else {
+            // Walk back to the user turn that produced this assistant row.
+            for (let i = idx - 1; i >= 0; i -= 1) {
+                const m = this._messages[i];
+                if (m.role === 'user') {
+                    userMsg = m;
+                    break;
+                }
             }
+            // Drop the failed/stopped assistant row — the live turn replaces it.
+            this._messages = this._messages.filter((_, i) => i !== idx);
         }
+
         if (!userMsg || !userMsg.content?.trim()) {
-            this._pushInlineError('No user message to re-send for this reply');
+            this._pushInlineError(t('message.retryNoUser'));
             return;
         }
         this._isStreaming = true;
-        // Attachments were already uploaded on the original send — pass their
-        // filesv2 metadata through, never re-upload (File objects are gone).
         await this._startTurn({
             text: userMsg.content,
             sentAttachments: userMsg.attachments ?? [],
+            appendUserRow: false,
         });
     }
 
