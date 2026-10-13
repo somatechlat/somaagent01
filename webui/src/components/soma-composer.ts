@@ -8,6 +8,8 @@
 
 import { LitElement, html, css, nothing, PropertyValues } from 'lit';
 import { customElement, property, state, query } from 'lit/decorators.js';
+import { glassCard } from '../styles/glass.js';
+import { moduleBase } from '../styles/module-base.js';
 import { composerStore } from '../stores/composer-store.js';
 import { apiClient } from '../services/api-client.js';
 import { formatBytes } from '../utils/markdown.js';
@@ -43,17 +45,20 @@ export class SomaComposer extends LitElement {
     private _audioChunks: Blob[] = [];
     private _micMime = 'audio/webm';
 
-    static styles = css`
+    static styles = [
+        glassCard,
+        moduleBase,
+        css`
         :host {
             display: block;
-            padding: 12px 20px 16px;
+            padding: var(--skin-space-md) var(--skin-space-lg) var(--skin-space-md);
         }
 
         .material-symbols-outlined {
             font-family: 'Material Symbols Outlined';
             font-weight: normal;
             font-style: normal;
-            font-size: 20px;
+            font-size: var(--skin-text-xl);
             line-height: 1;
             letter-spacing: normal;
             text-transform: none;
@@ -66,58 +71,60 @@ export class SomaComposer extends LitElement {
         }
 
         .composer {
-            max-width: 760px;
+            max-width: 48rem;
             margin: 0 auto;
         }
 
         .input-row {
             display: flex;
             align-items: flex-end;
-            gap: 8px;
-            background: var(--skin-color-bg-card, #1e1e1e);
-            border: 1px solid var(--skin-color-border-subtle, rgba(255,255,255,0.06));
-            border-radius: var(--skin-radius-xl, 16px);
-            padding: 10px 12px;
-            transition: border-color 200ms ease, box-shadow 200ms ease;
+            gap: var(--skin-space-sm);
+            background: var(--skin-color-bg-card);
+            border: var(--skin-border-width) solid var(--skin-color-border-subtle);
+            border-radius: var(--skin-radius-xl);
+            padding: var(--skin-space-sm) var(--skin-space-md);
+            transition:
+                border-color var(--skin-motion-normal) var(--skin-motion-ease),
+                box-shadow var(--skin-motion-normal) var(--skin-motion-ease);
         }
 
         .input-row:focus-within {
-            border-color: var(--skin-color-border, rgba(255,255,255,0.14));
-            box-shadow: 0 0 0 3px rgba(232, 228, 220, 0.1);
+            border-color: var(--skin-color-border-strong);
+            box-shadow: 0 0 0 var(--skin-focus-ring-width) color-mix(in srgb, var(--skin-focus-ring) 18%, transparent);
         }
 
         .icon-btn {
-            width: 34px;
-            height: 34px;
+            width: var(--skin-space-xl);
+            height: var(--skin-space-xl);
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 50%;
+            border-radius: var(--skin-radius-full);
             background: transparent;
             border: none;
-            color: var(--skin-color-text-muted, #999999);
+            color: var(--skin-color-text-muted);
             cursor: pointer;
             flex-shrink: 0;
-            transition: all 150ms ease;
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .icon-btn .material-symbols-outlined {
-            font-size: 20px;
+            font-size: var(--skin-text-xl);
         }
 
         .icon-btn:hover:not(:disabled) {
-            background: var(--skin-color-bg-hover, #141414);
-            color: var(--skin-color-text-secondary, #a1a1a1);
+            background: var(--skin-color-bg-hover);
+            color: var(--skin-color-text-secondary);
         }
 
         .icon-btn:focus-visible {
-            outline: 2px solid var(--skin-color-info, #3b82f6);
-            outline-offset: 2px;
+            outline: var(--skin-focus-ring-width) solid var(--skin-focus-ring);
+            outline-offset: var(--skin-focus-ring-offset);
         }
 
         .icon-btn.active {
-            background: var(--skin-color-bg-active, #1a1a1a);
-            color: var(--skin-color-accent, #e8e4dc);
+            background: var(--skin-color-bg-active);
+            color: var(--skin-color-accent);
             transform: rotate(45deg);
         }
 
@@ -125,24 +132,24 @@ export class SomaComposer extends LitElement {
             flex: 1;
             background: transparent;
             border: none;
-            color: var(--skin-color-text-primary, #ffffff);
-            font-size: 14px;
-            line-height: 1.5;
+            color: var(--skin-color-text-primary);
+            font-size: var(--skin-text-base);
+            line-height: var(--skin-leading-normal);
             resize: none;
             outline: none;
-            min-height: 24px;
-            max-height: 168px;
-            padding: 5px 2px;
+            min-height: var(--skin-space-lg);
+            max-height: 10.5rem;
+            padding: var(--skin-space-xs) 2px;
             font-family: inherit;
         }
 
         textarea::placeholder {
-            color: var(--skin-color-text-muted, #999999);
+            color: var(--skin-color-text-muted);
         }
 
         .mic-btn.recording {
-            background: var(--skin-color-danger, #ef4444);
-            color: #fff;
+            background: var(--skin-color-danger);
+            color: var(--skin-color-text-inverse);
             animation: micPulse 1.2s ease-in-out infinite;
         }
 
@@ -152,37 +159,37 @@ export class SomaComposer extends LitElement {
         }
 
         @keyframes micPulse {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45); }
-            50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+            0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--skin-color-danger) 45%, transparent); }
+            50% { box-shadow: 0 0 0 var(--skin-space-sm) color-mix(in srgb, var(--skin-color-danger) 0%, transparent); }
         }
 
         .send-btn {
-            width: 34px;
-            height: 34px;
+            width: var(--skin-space-xl);
+            height: var(--skin-space-xl);
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 50%;
-            background: var(--skin-color-accent, #e8e4dc);
+            border-radius: var(--skin-radius-full);
+            background: var(--skin-color-accent);
             border: none;
-            color: var(--skin-color-bg-void, #f5f5f5);
+            color: var(--skin-color-accent-text);
             cursor: pointer;
             flex-shrink: 0;
-            transition: all 150ms ease;
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .send-btn .material-symbols-outlined {
-            font-size: 18px;
+            font-size: var(--skin-text-lg);
         }
 
         .send-btn:hover:not(:disabled) {
-            background: var(--skin-color-accent-hover, #ffffff);
+            background: var(--skin-color-accent-hover);
             transform: scale(1.05);
         }
 
         .send-btn:focus-visible {
-            outline: 2px solid var(--skin-color-info, #3b82f6);
-            outline-offset: 2px;
+            outline: var(--skin-focus-ring-width) solid var(--skin-focus-ring);
+            outline-offset: var(--skin-focus-ring-offset);
         }
 
         .send-btn:disabled {
@@ -209,106 +216,108 @@ export class SomaComposer extends LitElement {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            margin-top: 8px;
-            min-height: 24px;
+            gap: var(--skin-space-sm);
+            margin-top: var(--skin-space-sm);
+            min-height: var(--skin-space-lg);
             flex-wrap: wrap;
         }
 
         .queue-chip {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: var(--skin-radius-full, 9999px);
-            background: var(--skin-color-bg-hover, #141414);
-            border: 1px solid var(--skin-color-border-subtle, rgba(255,255,255,0.06));
-            font-size: 12px;
-            color: var(--skin-color-text-secondary, #a1a1a1);
+            gap: var(--skin-space-xs);
+            padding: var(--skin-space-xs) var(--skin-space-sm);
+            border-radius: var(--skin-radius-full);
+            background: var(--skin-color-bg-hover);
+            border: var(--skin-border-width) solid var(--skin-color-border-subtle);
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-secondary);
         }
 
         .queue-chip .material-symbols-outlined {
-            font-size: 13px;
+            font-size: var(--skin-text-xs);
         }
 
         .queue-chip button {
             border: none;
             background: transparent;
-            color: var(--skin-color-text-muted, #999999);
+            color: var(--skin-color-text-muted);
             cursor: pointer;
-            font-size: 11px;
+            font-size: var(--skin-text-xs);
             padding: 0 2px;
             display: inline-flex;
             align-items: center;
         }
 
         .queue-chip button:hover {
-            color: var(--skin-color-danger, #ef4444);
+            color: var(--skin-color-danger);
         }
 
         .queue-chip button:focus-visible {
-            outline: 2px solid var(--skin-color-info, #3b82f6);
-            outline-offset: 1px;
+            outline: var(--skin-focus-ring-width) solid var(--skin-focus-ring);
+            outline-offset: var(--skin-focus-ring-offset);
         }
 
         .mic-hint {
-            font-size: 12px;
-            color: var(--skin-color-text-muted, #999999);
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-muted);
         }
 
         .mic-hint.error {
-            color: var(--skin-color-danger, #ef4444);
+            color: var(--skin-color-danger);
         }
 
         .attachments {
             display: flex;
-            gap: 6px;
-            margin-bottom: 8px;
+            gap: var(--skin-space-xs);
+            margin-bottom: var(--skin-space-sm);
             flex-wrap: wrap;
         }
 
         .attachment-chip {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 6px 10px;
-            background: var(--skin-color-bg-hover, var(--skin-color-bg-hover, #f5f5f5));
-            border: 1px solid var(--skin-color-border, var(--skin-color-border-subtle, rgba(0,0,0,.08)));
-            border-radius: var(--skin-radius-md, 8px);
-            font-size: 12px;
-            color: var(--skin-color-text-secondary, var(--skin-color-text-secondary, #666));
-            max-width: 280px;
+            gap: var(--skin-space-sm);
+            padding: var(--skin-space-xs) var(--skin-space-sm);
+            background: var(--skin-color-bg-hover);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-md);
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-secondary);
+            max-width: 17.5rem;
         }
 
         .attachment-chip .file-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
+            width: var(--skin-space-xl);
+            height: var(--skin-space-xl);
+            border-radius: var(--skin-radius-md);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            background: var(--skin-color-bg-active, var(--skin-color-bg-active, #eee));
-            color: var(--skin-color-text-primary, #1a1a1a);
+            background: var(--skin-color-bg-active);
+            color: var(--skin-color-text-primary);
             flex-shrink: 0;
         }
 
         .attachment-chip .file-icon .material-symbols-outlined {
-            font-size: 18px;
+            font-size: var(--skin-text-lg);
         }
 
         .dropzone {
-            border: 1.5px dashed transparent;
-            border-radius: var(--skin-radius-lg, 12px);
-            transition: border-color 120ms ease, background 120ms ease;
+            border: var(--skin-border-width) dashed transparent;
+            border-radius: var(--skin-radius-lg);
+            transition:
+                border-color var(--skin-motion-fast) var(--skin-motion-ease),
+                background var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .dropzone.dragging {
-            border-color: var(--skin-color-accent, #FF4D00);
-            background: color-mix(in srgb, var(--skin-color-accent, #FF4D00) 8%, transparent);
+            border-color: var(--skin-color-accent);
+            background: color-mix(in srgb, var(--skin-color-accent) 8%, transparent);
         }
 
         .attachment-chip .material-symbols-outlined {
-            font-size: 14px;
+            font-size: var(--skin-text-sm);
             flex-shrink: 0;
         }
 
@@ -319,15 +328,15 @@ export class SomaComposer extends LitElement {
         }
 
         .attachment-chip .size {
-            color: var(--skin-color-text-muted, #999999);
-            font-size: 11px;
+            color: var(--skin-color-text-muted);
+            font-size: var(--skin-text-xs);
             flex-shrink: 0;
         }
 
         .attachment-chip .remove {
             cursor: pointer;
-            color: var(--skin-color-text-muted, #999999);
-            transition: color 150ms ease;
+            color: var(--skin-color-text-muted);
+            transition: color var(--skin-motion-fast) var(--skin-motion-ease);
             display: inline-flex;
             align-items: center;
             background: transparent;
@@ -336,34 +345,35 @@ export class SomaComposer extends LitElement {
         }
 
         .attachment-chip .remove:hover {
-            color: var(--skin-color-danger, #ef4444);
+            color: var(--skin-color-danger);
         }
 
         .attachment-chip .remove:focus-visible {
-            outline: 2px solid var(--skin-color-info, #3b82f6);
-            outline-offset: 1px;
+            outline: var(--skin-focus-ring-width) solid var(--skin-focus-ring);
+            outline-offset: var(--skin-focus-ring-offset);
         }
 
         .attachment-chip .remove .material-symbols-outlined {
-            font-size: 14px;
+            font-size: var(--skin-text-sm);
         }
 
         .hint {
-            font-size: 11px;
-            color: var(--skin-color-text-muted, #999999);
-            margin-top: 6px;
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-muted);
+            margin-top: var(--skin-space-xs);
             text-align: center;
         }
 
         .hint kbd {
             font-family: inherit;
-            padding: 1px 5px;
-            border-radius: 3px;
-            border: 1px solid var(--skin-color-border-subtle, rgba(255,255,255,0.06));
-            background: var(--skin-color-bg-hover, #141414);
-            font-size: 10px;
+            padding: 1px var(--skin-space-xs);
+            border-radius: var(--skin-radius-sm);
+            border: var(--skin-border-width) solid var(--skin-color-border-subtle);
+            background: var(--skin-color-bg-hover);
+            font-size: var(--skin-text-xs);
         }
-    `;
+    `,
+    ];
 
     private _unsubscribe?: () => void;
 
@@ -694,7 +704,7 @@ export class SomaComposer extends LitElement {
                                 title="Drop queued messages"
                                 aria-label="Drop queued messages"
                             >
-                                <span class="material-symbols-outlined" style="font-size:13px">close</span>
+                                <span class="material-symbols-outlined">close</span>
                             </button>
                         </span>
                     ` : nothing}

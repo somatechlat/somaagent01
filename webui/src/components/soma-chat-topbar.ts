@@ -9,8 +9,10 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { glassCard } from '../styles/glass.js';
+import { moduleBase } from '../styles/module-base.js';
 
-export type ChatControlAction = 'pause' | 'resume' | 'nudge' | 'stop' | 'reset';
+export type ChatControlAction = 'pause' | 'resume' | 'nudge' | 'stop' | 'reset' | 'chat-settings';
 export type ConnectionStatus = 'ok' | 'reconnecting' | 'degraded';
 
 @customElement('soma-chat-topbar')
@@ -34,11 +36,14 @@ export class SomaChatTopbar extends LitElement {
      */
     @property({ type: String }) nudgeTitle = 'Nudge — ask the agent to continue the current turn';
 
-    static styles = css`
+    static styles = [
+        glassCard,
+        moduleBase,
+        css`
         :host {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: var(--skin-space-md);
             width: 100%;
             min-width: 0;
         }
@@ -47,7 +52,7 @@ export class SomaChatTopbar extends LitElement {
             font-family: 'Material Symbols Outlined';
             font-weight: normal;
             font-style: normal;
-            font-size: 18px;
+            font-size: var(--skin-text-lg);
             line-height: 1;
             letter-spacing: normal;
             text-transform: none;
@@ -62,15 +67,15 @@ export class SomaChatTopbar extends LitElement {
         .title-block {
             display: flex;
             flex-direction: column;
-            gap: 3px;
+            gap: var(--skin-space-xs);
             min-width: 0;
             flex: 1;
         }
 
         .title {
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--platform-text-bright, #f8fafc);
+            font-size: var(--skin-text-lg);
+            font-weight: var(--skin-weight-semibold);
+            color: var(--skin-color-text-primary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -79,29 +84,29 @@ export class SomaChatTopbar extends LitElement {
         .meta {
             display: flex;
             align-items: center;
-            gap: 8px;
-            min-height: 20px;
+            gap: var(--skin-space-sm);
+            min-height: var(--skin-space-lg);
         }
 
         .model-label {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            font-family: var(--platform-font-mono, 'JetBrains Mono', monospace);
-            font-size: 11px;
-            color: var(--platform-text-secondary, #a1a1a1);
-            padding: 2px 8px;
-            border-radius: var(--platform-radius-full, 9999px);
-            background: var(--platform-bg-void, #f5f5f5);
-            border: 1px solid var(--platform-border-color, rgba(255,255,255,0.06));
-            max-width: 220px;
+            gap: var(--skin-space-xs);
+            font-family: var(--skin-font-mono);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-secondary);
+            padding: 2px var(--skin-space-sm);
+            border-radius: var(--skin-radius-full);
+            background: var(--skin-color-bg-void);
+            border: var(--skin-border-width) solid var(--skin-color-border-subtle);
+            max-width: 14rem;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
         .model-label .material-symbols-outlined {
-            font-size: 12px;
+            font-size: var(--skin-text-xs);
             opacity: 0.7;
         }
 
@@ -109,33 +114,33 @@ export class SomaChatTopbar extends LitElement {
         .status-pill {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            font-size: 10px;
+            gap: var(--skin-space-xs);
+            font-size: var(--skin-text-xs);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            padding: 2px 8px;
-            border-radius: var(--platform-radius-full, 9999px);
+            letter-spacing: 0.05em;
+            padding: 2px var(--skin-space-sm);
+            border-radius: var(--skin-radius-full);
         }
 
         .status-pill.running {
-            color: var(--platform-success, #22c55e);
-            background: rgba(34, 197, 94, 0.12);
+            color: var(--skin-color-success);
+            background: color-mix(in srgb, var(--skin-color-success) 12%, transparent);
         }
 
         .status-pill.paused {
-            color: var(--platform-warning, #eab308);
-            background: rgba(234, 179, 8, 0.12);
+            color: var(--skin-color-warning);
+            background: color-mix(in srgb, var(--skin-color-warning) 12%, transparent);
         }
 
         .conn-chip {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            font-size: 11px;
-            padding: 3px 10px;
-            border-radius: var(--platform-radius-full, 9999px);
-            border: 1px solid transparent;
-            animation: chipIn 160ms ease-out;
+            gap: var(--skin-space-xs);
+            font-size: var(--skin-text-xs);
+            padding: var(--skin-space-xs) var(--skin-space-sm);
+            border-radius: var(--skin-radius-full);
+            border: var(--skin-border-width) solid transparent;
+            animation: chipIn var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         @keyframes chipIn {
@@ -144,21 +149,21 @@ export class SomaChatTopbar extends LitElement {
         }
 
         .conn-chip.reconnecting {
-            color: var(--platform-warning, #f59e0b);
-            background: rgba(245, 158, 11, 0.12);
-            border-color: rgba(245, 158, 11, 0.28);
+            color: var(--skin-color-warning);
+            background: color-mix(in srgb, var(--skin-color-warning) 12%, transparent);
+            border-color: color-mix(in srgb, var(--skin-color-warning) 28%, transparent);
         }
 
         .conn-chip.degraded {
-            color: var(--platform-danger, #ef4444);
-            background: rgba(239, 68, 68, 0.12);
-            border-color: rgba(239, 68, 68, 0.28);
+            color: var(--skin-color-danger);
+            background: color-mix(in srgb, var(--skin-color-danger) 12%, transparent);
+            border-color: color-mix(in srgb, var(--skin-color-danger) 28%, transparent);
         }
 
         .conn-chip .dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
+            width: var(--skin-space-xs);
+            height: var(--skin-space-xs);
+            border-radius: var(--skin-radius-full);
             background: currentColor;
         }
 
@@ -174,34 +179,34 @@ export class SomaChatTopbar extends LitElement {
         .controls {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: var(--skin-space-xs);
             flex-shrink: 0;
         }
 
         .ctl-btn {
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            padding: 6px 12px;
-            border-radius: var(--platform-radius-md, 8px);
-            border: 1px solid var(--platform-border-color, rgba(255,255,255,0.06));
-            background: var(--platform-surface, rgba(30,41,59,0.85));
-            color: var(--platform-text-main, #e2e8f0);
-            font-size: 12px;
-            font-weight: 500;
+            gap: var(--skin-space-xs);
+            padding: var(--skin-space-xs) var(--skin-space-md);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            background: var(--skin-glass-bg);
+            color: var(--skin-color-text-primary);
+            font-size: var(--skin-text-sm);
+            font-weight: var(--skin-weight-medium);
             cursor: pointer;
-            transition: all 120ms ease;
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
             white-space: nowrap;
         }
 
         .ctl-btn:hover:not(:disabled) {
-            background: var(--platform-surface-hover, rgba(51,65,85,0.9));
-            border-color: var(--platform-border-hover, rgba(255,255,255,0.1));
+            background: var(--skin-color-bg-hover);
+            border-color: var(--skin-color-border-strong);
         }
 
         .ctl-btn:focus-visible {
-            outline: 2px solid var(--platform-info, #3b82f6);
-            outline-offset: 2px;
+            outline: var(--skin-focus-ring-width) solid var(--skin-focus-ring);
+            outline-offset: var(--skin-focus-ring-offset);
         }
 
         .ctl-btn:disabled {
@@ -210,31 +215,32 @@ export class SomaChatTopbar extends LitElement {
         }
 
         .ctl-btn.stop {
-            color: var(--platform-danger, #ef4444);
-            border-color: rgba(239, 68, 68, 0.35);
+            color: var(--skin-color-danger);
+            border-color: color-mix(in srgb, var(--skin-color-danger) 35%, transparent);
         }
 
         .ctl-btn.stop:hover:not(:disabled) {
-            background: rgba(239, 68, 68, 0.12);
+            background: color-mix(in srgb, var(--skin-color-danger) 12%, transparent);
         }
 
         .ctl-btn.reset {
-            color: var(--platform-text-dim, #64748b);
+            color: var(--skin-color-text-muted);
         }
 
         .ctl-btn .material-symbols-outlined {
-            font-size: 16px;
+            font-size: var(--skin-text-base);
         }
 
-        @media (max-width: 720px) {
+        @media (max-width: 45rem) {
             .ctl-btn .label {
                 display: none;
             }
             .ctl-btn {
-                padding: 6px 8px;
+                padding: var(--skin-space-xs) var(--skin-space-sm);
             }
         }
-    `;
+    `,
+    ];
 
     private _emit(action: ChatControlAction) {
         this.dispatchEvent(new CustomEvent('soma-chat-control', {
@@ -261,12 +267,12 @@ export class SomaChatTopbar extends LitElement {
                     ` : nothing}
                     ${this.paused
                         ? html`<span class="status-pill paused">
-                              <span class="material-symbols-outlined" style="font-size:11px">pause</span>
+                              <span class="material-symbols-outlined">pause</span>
                               Paused
                           </span>`
                         : this.busy
                             ? html`<span class="status-pill running">
-                                  <span class="material-symbols-outlined" style="font-size:11px">bolt</span>
+                                  <span class="material-symbols-outlined">bolt</span>
                                   Running
                               </span>`
                             : nothing}
@@ -325,6 +331,17 @@ export class SomaChatTopbar extends LitElement {
                 >
                     <span class="material-symbols-outlined">restart_alt</span>
                     <span class="label">Reset</span>
+                </button>
+
+                <button
+                    class="ctl-btn"
+                    data-testid="chat-settings-btn"
+                    @click=${() => this._emit('chat-settings')}
+                    title="Chat settings — tools, chain of thought, timestamps"
+                    aria-label="Chat settings"
+                >
+                    <span class="material-symbols-outlined">tune</span>
+                    <span class="label">Display</span>
                 </button>
             </div>
         `;

@@ -12,6 +12,8 @@
 
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { glassCard } from '../styles/glass.js';
+import { moduleBase } from '../styles/module-base.js';
 
 export type ToolStepStatus =
     | 'pending'
@@ -46,7 +48,10 @@ export class SomaToolTimeline extends LitElement {
     @state() private _expanded: Record<string, boolean> = {};
     @state() private _acting: Record<string, boolean> = {};
 
-    static styles = css`
+    static styles = [
+        glassCard,
+        moduleBase,
+        css`
         :host {
             display: block;
             width: 100%;
@@ -55,47 +60,47 @@ export class SomaToolTimeline extends LitElement {
         .timeline {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: var(--skin-space-xs);
             width: 100%;
         }
 
         .step {
-            border: 1px solid rgba(255, 255, 255, 0.07);
-            border-radius: 12px;
-            background: rgba(12, 12, 14, 0.72);
+            border: var(--skin-border-width) solid var(--skin-color-border-subtle);
+            border-radius: var(--skin-radius-lg);
+            background: var(--skin-glass-bg);
             overflow: hidden;
-            transition: border-color 140ms ease;
+            transition: border-color var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .step:hover {
-            border-color: rgba(255, 90, 20, 0.22);
+            border-color: color-mix(in srgb, var(--skin-color-accent) 22%, transparent);
         }
 
         .step-header {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 11px;
+            gap: var(--skin-space-sm);
+            padding: var(--skin-space-sm) var(--skin-space-md);
             cursor: pointer;
             user-select: none;
-            transition: background 120ms ease;
+            transition: background var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .step-header:hover {
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--skin-color-bg-hover);
         }
 
         .step-header:focus-visible {
-            outline: 2px solid #60a5fa;
-            outline-offset: -2px;
+            outline: var(--skin-focus-ring-width) solid var(--skin-focus-ring);
+            outline-offset: calc(-1 * var(--skin-focus-ring-offset));
         }
 
         .chevron {
-            font-size: 11px;
-            color: var(--platform-text-dim, #6b6b6b);
-            width: 12px;
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-secondary);
+            width: var(--skin-space-sm);
             flex-shrink: 0;
-            transition: transform 140ms ease;
+            transition: transform var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .chevron.open {
@@ -103,35 +108,35 @@ export class SomaToolTimeline extends LitElement {
         }
 
         .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
+            width: var(--skin-space-xs);
+            height: var(--skin-space-xs);
+            border-radius: var(--skin-radius-full);
             flex-shrink: 0;
-            background: var(--platform-text-dim, #6b6b6b);
+            background: var(--skin-color-text-secondary);
         }
 
         .status-dot.pending {
-            background: var(--platform-info, #3b82f6);
+            background: var(--skin-color-info);
             animation: pulse 1.2s ease-in-out infinite;
         }
 
         .status-dot.executing {
-            background: var(--platform-warning, #eab308);
+            background: var(--skin-color-warning);
             animation: pulse 1.2s ease-in-out infinite;
         }
 
         .status-dot.executed {
-            background: var(--platform-success, #22c55e);
+            background: var(--skin-color-success);
         }
 
         .status-dot.error,
         .status-dot.denied,
         .status-dot.invalid_arguments {
-            background: var(--platform-danger, #ef4444);
+            background: var(--skin-color-danger);
         }
 
         .status-dot.approval_required {
-            background: var(--platform-warning, #eab308);
+            background: var(--skin-color-warning);
         }
 
         @keyframes pulse {
@@ -150,10 +155,10 @@ export class SomaToolTimeline extends LitElement {
         }
 
         .step-name {
-            font-family: var(--platform-font-mono, 'JetBrains Mono', ui-monospace, monospace);
-            font-size: 12px;
-            color: var(--platform-text-bright, #f8fafc);
-            font-weight: 500;
+            font-family: var(--skin-font-mono);
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-primary);
+            font-weight: var(--skin-weight-medium);
             flex: 1;
             min-width: 0;
             overflow: hidden;
@@ -164,102 +169,102 @@ export class SomaToolTimeline extends LitElement {
         .step-meta {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--skin-space-sm);
             flex-shrink: 0;
         }
 
         .status-label {
-            font-size: 10px;
+            font-size: var(--skin-text-xs);
             text-transform: uppercase;
-            letter-spacing: 0.45px;
-            padding: 2px 7px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            color: var(--platform-text-dim, #6b6b6b);
+            letter-spacing: 0.05em;
+            padding: 2px var(--skin-space-xs);
+            border-radius: var(--skin-radius-full);
+            background: var(--skin-color-bg-hover);
+            border: var(--skin-border-width) solid var(--skin-color-border-subtle);
+            color: var(--skin-color-text-secondary);
         }
 
         .status-label.executed {
-            color: var(--platform-success, #22c55e);
-            border-color: rgba(34, 197, 94, 0.28);
+            color: var(--skin-color-success);
+            border-color: color-mix(in srgb, var(--skin-color-success) 28%, transparent);
         }
 
         .status-label.error,
         .status-label.denied,
         .status-label.invalid_arguments {
-            color: var(--platform-danger, #ef4444);
-            border-color: rgba(239, 68, 68, 0.3);
+            color: var(--skin-color-danger);
+            border-color: color-mix(in srgb, var(--skin-color-danger) 30%, transparent);
         }
 
         .status-label.approval_required,
         .status-label.executing {
-            color: var(--platform-warning, #eab308);
-            border-color: rgba(234, 179, 8, 0.3);
+            color: var(--skin-color-warning);
+            border-color: color-mix(in srgb, var(--skin-color-warning) 30%, transparent);
         }
 
         .duration {
-            font-family: var(--platform-font-mono, 'JetBrains Mono', ui-monospace, monospace);
-            font-size: 10px;
-            color: var(--platform-text-dim, #6b6b6b);
+            font-family: var(--skin-font-mono);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-secondary);
             font-variant-numeric: tabular-nums;
         }
 
         .step-body {
-            padding: 0 11px 11px 30px;
+            padding: 0 var(--skin-space-md) var(--skin-space-md) var(--skin-space-xl);
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            padding-top: 9px;
+            gap: var(--skin-space-sm);
+            border-top: var(--skin-border-width) solid var(--skin-color-border-subtle);
+            padding-top: var(--skin-space-sm);
         }
 
         .section-label {
-            font-size: 10px;
+            font-size: var(--skin-text-xs);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--platform-text-dim, #6b6b6b);
-            margin-bottom: 3px;
+            letter-spacing: 0.05em;
+            color: var(--skin-color-text-secondary);
+            margin-bottom: var(--skin-space-xs);
         }
 
         pre {
             margin: 0;
-            padding: 8px 10px;
-            background: rgba(8, 8, 10, 0.85);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            font-family: var(--platform-font-mono, 'JetBrains Mono', ui-monospace, monospace);
-            font-size: 11px;
-            line-height: 1.55;
-            color: var(--platform-text-main, #e2e8f0);
-            max-height: 220px;
+            padding: var(--skin-space-sm) var(--skin-space-sm);
+            background: var(--skin-color-bg-base);
+            border: var(--skin-border-width) solid var(--skin-color-border-subtle);
+            border-radius: var(--skin-radius-md);
+            font-family: var(--skin-font-mono);
+            font-size: var(--skin-text-xs);
+            line-height: var(--skin-leading-relaxed);
+            color: var(--skin-color-text-primary);
+            max-height: 14rem;
             overflow: auto;
             white-space: pre-wrap;
             word-break: break-word;
         }
 
         .error-text {
-            color: var(--platform-danger, #ef4444);
+            color: var(--skin-color-danger);
         }
 
         .approval-row {
             display: flex;
-            gap: 8px;
-            padding-top: 4px;
+            gap: var(--skin-space-sm);
+            padding-top: var(--skin-space-xs);
         }
 
         .approval-btn {
-            padding: 5px 14px;
-            border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(255, 255, 255, 0.04);
-            color: var(--platform-text-main, #e2e8f0);
-            font-size: 12px;
+            padding: var(--skin-space-xs) var(--skin-space-md);
+            border-radius: var(--skin-radius-full);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            background: var(--skin-color-bg-hover);
+            color: var(--skin-color-text-primary);
+            font-size: var(--skin-text-sm);
             cursor: pointer;
-            transition: all 120ms ease;
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
         }
 
         .approval-btn:hover:not(:disabled) {
-            background: rgba(255, 255, 255, 0.08);
+            background: var(--skin-color-bg-active);
         }
 
         .approval-btn:disabled {
@@ -268,43 +273,44 @@ export class SomaToolTimeline extends LitElement {
         }
 
         .approval-btn.approve {
-            border-color: rgba(34, 197, 94, 0.5);
-            color: var(--platform-success, #22c55e);
+            border-color: color-mix(in srgb, var(--skin-color-success) 50%, transparent);
+            color: var(--skin-color-success);
         }
 
         .approval-btn.approve:hover:not(:disabled) {
-            background: rgba(34, 197, 94, 0.12);
+            background: color-mix(in srgb, var(--skin-color-success) 12%, transparent);
         }
 
         .approval-btn.deny {
-            border-color: rgba(239, 68, 68, 0.5);
-            color: var(--platform-danger, #ef4444);
+            border-color: color-mix(in srgb, var(--skin-color-danger) 50%, transparent);
+            color: var(--skin-color-danger);
         }
 
         .approval-btn.deny:hover:not(:disabled) {
-            background: rgba(239, 68, 68, 0.12);
+            background: color-mix(in srgb, var(--skin-color-danger) 12%, transparent);
         }
 
         .empty {
-            font-size: 12px;
-            color: var(--platform-text-dim, #6b6b6b);
-            padding: 4px 0;
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-secondary);
+            padding: var(--skin-space-xs) 0;
         }
 
         .memory-id {
-            font-family: var(--platform-font-mono, 'JetBrains Mono', ui-monospace, monospace);
-            font-size: 10px;
-            padding: 2px 7px;
-            border-radius: 999px;
-            border: 1px solid rgba(59, 130, 246, 0.4);
-            color: var(--platform-info, #3b82f6);
-            max-width: 180px;
+            font-family: var(--skin-font-mono);
+            font-size: var(--skin-text-xs);
+            padding: 2px var(--skin-space-xs);
+            border-radius: var(--skin-radius-full);
+            border: var(--skin-border-width) solid color-mix(in srgb, var(--skin-color-info) 40%, transparent);
+            color: var(--skin-color-info);
+            max-width: 11.25rem;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
             flex-shrink: 0;
         }
-    `;
+    `,
+    ];
 
     private _toggle(id: string) {
         this._expanded = { ...this._expanded, [id]: !this._expanded[id] };
@@ -382,7 +388,7 @@ export class SomaToolTimeline extends LitElement {
                         }
                     }}
                 >
-                    <span class="chevron ${open ? 'open' : ''}">▶</span>
+                    <span class="chevron ${open ? 'open' : ''} material-symbols-outlined" aria-hidden="true">play_arrow</span>
                     <span class="status-dot ${step.status}"></span>
                     <span class="step-name">${step.name || 'tool'}</span>
                     ${memoryId ? html`
