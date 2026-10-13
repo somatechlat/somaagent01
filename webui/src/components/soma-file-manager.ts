@@ -18,6 +18,8 @@
  * Modes: browse | select (composer attach) | manage.
  */
 
+import { glassCard } from '../styles/glass.js';
+import { moduleBase } from '../styles/module-base.js';
 import { LitElement, css, html, nothing, TemplateResult } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
 import { apiClient, ApiError } from '../services/api-client.js';
@@ -127,12 +129,15 @@ function normalizeFileList(res: FileListResponseEnvelope): {
 
 @customElement('soma-file-manager')
 export class SomaFileManager extends LitElement {
-    static styles = css`
+    static styles = [
+        glassCard,
+        moduleBase,
+        css`
         .material-symbols-outlined {
             font-family: 'Material Symbols Outlined';
             font-weight: normal;
             font-style: normal;
-            font-size: 20px;
+            font-size: var(--skin-text-xl);
             line-height: 1;
             letter-spacing: normal;
             text-transform: none;
@@ -149,13 +154,13 @@ export class SomaFileManager extends LitElement {
             flex-direction: column;
             min-height: 0;
             height: 100%;
-            color: var(--skin-color-text-primary, #1a1a1a);
-            font-family: var(--skin-font-sans, system-ui, sans-serif);
-            background: var(--skin-color-bg-card, rgba(255, 255, 255, 0.72));
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
-            border-radius: var(--skin-radius-lg, 12px);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
+            color: var(--skin-color-text-primary);
+            font-family: var(--skin-font-sans);
+            background: var(--skin-color-bg-card);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-lg);
+            backdrop-filter: blur(var(--skin-space-md));
+            -webkit-backdrop-filter: blur(var(--skin-space-md));
             overflow: hidden;
         }
 
@@ -163,18 +168,18 @@ export class SomaFileManager extends LitElement {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: var(--skin-space-sm, 8px);
-            padding: var(--skin-space-sm, 10px) var(--skin-space-md, 14px);
-            border-bottom: 1px solid var(--skin-color-border-subtle, rgba(0, 0, 0, 0.05));
+            gap: var(--skin-space-sm);
+            padding: var(--skin-space-sm) var(--skin-space-md);
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border-subtle);
         }
 
         .crumb {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: var(--skin-space-xs);
             min-width: 0;
-            font-size: var(--skin-text-sm, 12px);
-            color: var(--skin-color-text-secondary, #555555);
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-secondary);
         }
 
         .crumb .sep {
@@ -182,33 +187,33 @@ export class SomaFileManager extends LitElement {
         }
 
         .crumb .current {
-            color: var(--skin-color-text-primary, #1a1a1a);
+            color: var(--skin-color-text-primary);
             font-weight: var(--skin-weight-medium, 500);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            max-width: 220px;
+            max-width: var(--skin-space-2xl);
         }
 
         .search {
             flex: 1;
-            min-width: 140px;
-            max-width: 280px;
-            height: 32px;
-            padding: 0 10px;
-            border-radius: var(--skin-radius-md, 8px);
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.1));
-            background: var(--skin-color-bg-base, transparent);
-            color: var(--skin-color-text-primary, #1a1a1a);
-            font-size: var(--skin-text-sm, 12px);
+            min-width: var(--skin-space-2xl);
+            max-width: var(--skin-space-2xl);
+            height: var(--skin-space-xl);
+            padding: 0 var(--skin-space-sm);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            background: var(--skin-color-bg-base);
+            color: var(--skin-color-text-primary);
+            font-size: var(--skin-text-sm);
             font-family: inherit;
         }
 
         .search:focus {
             outline: none;
-            border-color: var(--skin-focus-ring, var(--skin-color-accent, #3b82f6));
-            box-shadow: 0 0 0 var(--skin-focus-ring-width, 2px)
-                color-mix(in srgb, var(--skin-focus-ring, #3b82f6) 35%, transparent);
+            border-color: var(--skin-focus-ring);
+            box-shadow: 0 0 0 var(--skin-focus-ring-width, 0.125em)
+                color-mix(in srgb, var(--skin-focus-ring) 35%, transparent);
         }
 
         .spacer {
@@ -220,45 +225,45 @@ export class SomaFileManager extends LitElement {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            height: 32px;
-            padding: 0 12px;
-            border-radius: var(--skin-radius-md, 8px);
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.1));
-            background: var(--skin-color-bg-base, transparent);
-            color: var(--skin-color-text-secondary, #444444);
-            font-size: var(--skin-text-sm, 12px);
+            gap: var(--skin-space-sm);
+            height: var(--skin-space-xl);
+            padding: 0 var(--skin-space-md);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            background: var(--skin-color-bg-base);
+            color: var(--skin-color-text-secondary);
+            font-size: var(--skin-text-sm);
             font-family: inherit;
             cursor: pointer;
             white-space: nowrap;
         }
 
         .icon-btn {
-            width: 32px;
+            width: var(--skin-space-xl);
             padding: 0;
         }
 
         .btn:hover:not(:disabled),
         .icon-btn:hover:not(:disabled) {
-            background: var(--skin-color-bg-hover, rgba(0, 0, 0, 0.04));
-            color: var(--skin-color-text-primary, #1a1a1a);
+            background: var(--skin-color-bg-hover);
+            color: var(--skin-color-text-primary);
         }
 
         .btn.primary {
-            background: var(--skin-color-accent, #3b82f6);
+            background: var(--skin-color-accent);
             border-color: transparent;
-            color: var(--skin-color-accent-text, #ffffff);
+            color: var(--skin-color-accent-text);
         }
 
         .btn.primary:hover:not(:disabled) {
-            background: var(--skin-color-accent-hover, #2563eb);
-            color: var(--skin-color-accent-text, #ffffff);
+            background: var(--skin-color-accent-hover);
+            color: var(--skin-color-accent-text);
         }
 
         .btn.danger {
-            background: var(--skin-color-danger, #ef4444);
+            background: var(--skin-color-danger);
             border-color: transparent;
-            color: var(--skin-color-danger-text, #ffffff);
+            color: var(--skin-color-danger-text);
         }
 
         .btn:disabled,
@@ -270,30 +275,30 @@ export class SomaFileManager extends LitElement {
         .mode-pill {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            padding: 2px 8px;
-            border-radius: var(--skin-radius-full, 999px);
-            font-size: var(--skin-text-xs, 11px);
-            background: var(--skin-color-bg-hover, rgba(0, 0, 0, 0.05));
-            color: var(--skin-color-text-secondary, #555555);
-            border: 1px solid var(--skin-color-border-subtle, rgba(0, 0, 0, 0.06));
+            gap: var(--skin-space-xs);
+            padding: var(--skin-space-xs) var(--skin-space-sm);
+            border-radius: var(--skin-radius-full);
+            font-size: var(--skin-text-xs);
+            background: var(--skin-color-bg-hover);
+            color: var(--skin-color-text-secondary);
+            border: var(--skin-border-width) solid var(--skin-color-border-subtle);
             text-transform: uppercase;
             letter-spacing: 0.04em;
         }
 
         .layout {
             display: grid;
-            grid-template-columns: minmax(180px, 220px) minmax(0, 1.2fr) minmax(220px, 1fr);
+            grid-template-columns: minmax(var(--skin-space-2xl), var(--skin-space-2xl)) minmax(0, 1.2fr) minmax(var(--skin-space-2xl), 1fr);
             flex: 1;
             min-height: 0;
         }
 
         .layout.no-tree {
-            grid-template-columns: minmax(0, 1.2fr) minmax(220px, 1fr);
+            grid-template-columns: minmax(0, 1.2fr) minmax(var(--skin-space-2xl), 1fr);
         }
 
         .layout.no-preview {
-            grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+            grid-template-columns: minmax(var(--skin-space-2xl), var(--skin-space-2xl)) minmax(0, 1fr);
         }
 
         .layout.no-tree.no-preview {
@@ -304,7 +309,7 @@ export class SomaFileManager extends LitElement {
             min-width: 0;
             min-height: 0;
             overflow: auto;
-            border-right: 1px solid var(--skin-color-border-subtle, rgba(0, 0, 0, 0.05));
+            border-right: var(--skin-border-width) solid var(--skin-color-border-subtle);
         }
 
         .col:last-child {
@@ -312,82 +317,82 @@ export class SomaFileManager extends LitElement {
         }
 
         .tree-panel {
-            padding: var(--skin-space-sm, 10px);
-            background: var(--skin-color-bg-sidebar, rgba(0, 0, 0, 0.02));
+            padding: var(--skin-space-sm);
+            background: var(--skin-color-bg-sidebar);
         }
 
         .tree-std {
             display: flex;
             flex-direction: column;
-            gap: 2px;
-            margin-bottom: var(--skin-space-sm, 10px);
+            gap: var(--skin-space-xs);
+            margin-bottom: var(--skin-space-sm);
         }
 
         .tree-node {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: var(--skin-space-sm);
             width: 100%;
-            padding: 6px 8px;
+            padding: var(--skin-space-sm) var(--skin-space-sm);
             border: none;
-            border-radius: var(--skin-radius-sm, 4px);
+            border-radius: var(--skin-radius-sm);
             background: transparent;
-            color: var(--skin-color-text-secondary, #555555);
-            font-size: var(--skin-text-sm, 12px);
+            color: var(--skin-color-text-secondary);
+            font-size: var(--skin-text-sm);
             font-family: inherit;
             cursor: pointer;
             text-align: left;
         }
 
         .tree-node.child {
-            padding-left: 24px;
+            padding-left: var(--skin-space-lg);
         }
 
         .tree-node:hover {
-            background: var(--skin-color-bg-hover, rgba(0, 0, 0, 0.04));
-            color: var(--skin-color-text-primary, #1a1a1a);
+            background: var(--skin-color-bg-hover);
+            color: var(--skin-color-text-primary);
         }
 
         .tree-node.selected {
-            background: var(--skin-color-bg-active, rgba(59, 130, 246, 0.12));
-            color: var(--skin-color-text-primary, #1a1a1a);
+            background: var(--skin-color-bg-active);
+            color: var(--skin-color-text-primary);
             font-weight: var(--skin-weight-medium, 500);
         }
 
         .tree-node:focus-visible {
-            outline: var(--skin-focus-ring-width, 2px) solid
-                var(--skin-focus-ring, var(--skin-color-accent, #3b82f6));
+            outline: var(--skin-focus-ring-width) solid
+                var(--skin-focus-ring);
             outline-offset: -2px;
         }
 
         .gate {
             margin: 0;
-            padding: var(--skin-space-md, 12px);
-            border-radius: var(--skin-radius-md, 8px);
-            border: 1px dashed var(--skin-color-border, rgba(0, 0, 0, 0.14));
-            background: var(--skin-color-bg-hover, rgba(0, 0, 0, 0.03));
-            color: var(--skin-color-text-secondary, #555555);
-            font-size: var(--skin-text-xs, 12px);
+            padding: var(--skin-space-md);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) dashed var(--skin-color-border);
+            background: var(--skin-color-bg-hover);
+            color: var(--skin-color-text-secondary);
+            font-size: var(--skin-text-xs);
             line-height: var(--skin-leading-normal, 1.5);
         }
 
         .gate strong {
             display: block;
-            color: var(--skin-color-warning, #a16207);
-            margin-bottom: 4px;
-            font-size: var(--skin-text-xs, 11px);
+            color: var(--skin-color-warning);
+            margin-bottom: var(--skin-space-xs);
+            font-size: var(--skin-text-xs);
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
 
         .banner {
-            margin: var(--skin-space-sm, 8px);
-            padding: var(--skin-space-sm, 8px) var(--skin-space-md, 12px);
-            border-radius: var(--skin-radius-md, 8px);
-            border: 1px solid var(--skin-color-border-subtle, rgba(0, 0, 0, 0.06));
-            background: color-mix(in srgb, var(--skin-color-warning, #eab308) 18%, transparent);
-            color: var(--skin-color-text-primary, #1a1a1a);
-            font-size: var(--skin-text-xs, 12px);
+            margin: var(--skin-space-sm);
+            padding: var(--skin-space-sm) var(--skin-space-md);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-border-subtle);
+            background: color-mix(in srgb, var(--skin-color-warning) 18%, transparent);
+            color: var(--skin-color-text-primary);
+            font-size: var(--skin-text-xs);
         }
 
         .list-panel {
@@ -398,43 +403,43 @@ export class SomaFileManager extends LitElement {
 
         .list-head {
             display: grid;
-            grid-template-columns: 28px 28px minmax(0, 1fr) 80px 110px 160px;
-            gap: var(--skin-space-xs, 6px);
-            padding: 8px var(--skin-space-md, 12px);
-            font-size: var(--skin-text-xs, 11px);
-            color: var(--skin-color-text-muted, #666666);
+            grid-template-columns: var(--skin-space-xl) var(--skin-space-xl) minmax(0, 1fr) var(--skin-space-2xl) var(--skin-space-2xl) var(--skin-space-2xl);
+            gap: var(--skin-space-xs);
+            padding: var(--skin-space-sm) var(--skin-space-md);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-muted);
             text-transform: uppercase;
             letter-spacing: 0.04em;
-            border-bottom: 1px solid var(--skin-color-border-subtle, rgba(0, 0, 0, 0.05));
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border-subtle);
             position: sticky;
             top: 0;
             background: inherit;
-            z-index: 1;
+            z-index: var(--skin-z-dropdown);
         }
 
         .row {
             display: grid;
-            grid-template-columns: 28px 28px minmax(0, 1fr) 80px 110px 160px;
-            gap: var(--skin-space-xs, 6px);
+            grid-template-columns: var(--skin-space-xl) var(--skin-space-xl) minmax(0, 1fr) var(--skin-space-2xl) var(--skin-space-2xl) var(--skin-space-2xl);
+            gap: var(--skin-space-xs);
             align-items: center;
-            padding: 8px var(--skin-space-md, 12px);
-            border-bottom: 1px solid var(--skin-color-border-subtle, rgba(0, 0, 0, 0.04));
+            padding: var(--skin-space-sm) var(--skin-space-md);
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border-subtle);
             cursor: pointer;
-            font-size: var(--skin-text-sm, 12px);
+            font-size: var(--skin-text-sm);
         }
 
         .row:hover,
         .row.selected {
-            background: var(--skin-color-bg-hover, rgba(0, 0, 0, 0.035));
+            background: var(--skin-color-bg-hover);
         }
 
         .row.selected {
-            background: var(--skin-color-bg-active, rgba(59, 130, 246, 0.12));
+            background: var(--skin-color-bg-active);
         }
 
         .row:focus-visible {
-            outline: var(--skin-focus-ring-width, 2px) solid
-                var(--skin-focus-ring, var(--skin-color-accent, #3b82f6));
+            outline: var(--skin-focus-ring-width) solid
+                var(--skin-focus-ring);
             outline-offset: -2px;
         }
 
@@ -442,11 +447,11 @@ export class SomaFileManager extends LitElement {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            color: var(--skin-color-text-secondary, #555555);
+            color: var(--skin-color-text-secondary);
         }
 
         .row .file-type .material-symbols-outlined {
-            font-size: 18px;
+            font-size: var(--skin-text-xl);
         }
 
         .row .name {
@@ -458,18 +463,18 @@ export class SomaFileManager extends LitElement {
 
         .row .sub {
             display: block;
-            font-size: var(--skin-text-xs, 11px);
-            color: var(--skin-color-text-muted, #666666);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-muted);
         }
 
         .row .muted {
-            color: var(--skin-color-text-muted, #666666);
+            color: var(--skin-color-text-muted);
             font-variant-numeric: tabular-nums;
         }
 
         .row-actions {
             display: inline-flex;
-            gap: 2px;
+            gap: var(--skin-space-xs);
             justify-content: flex-end;
         }
 
@@ -478,57 +483,57 @@ export class SomaFileManager extends LitElement {
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: var(--skin-space-sm, 8px);
-            min-height: 180px;
-            padding: var(--skin-space-lg, 24px);
+            gap: var(--skin-space-sm);
+            min-height: var(--skin-space-2xl);
+            padding: var(--skin-space-lg);
             text-align: center;
-            color: var(--skin-color-text-muted, #666666);
-            font-size: var(--skin-text-sm, 13px);
+            color: var(--skin-color-text-muted);
+            font-size: var(--skin-text-sm);
         }
 
         .status-block.error {
-            color: var(--skin-color-danger, #b91c1c);
+            color: var(--skin-color-danger);
         }
 
         .status-block .detail {
             font-family: var(--skin-font-mono, ui-monospace, monospace);
-            font-size: var(--skin-text-xs, 11px);
-            color: var(--skin-color-text-secondary, #555555);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-secondary);
             word-break: break-word;
-            max-width: 420px;
+            max-width: var(--skin-space-2xl);
         }
 
         .foot {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: var(--skin-space-sm, 8px);
-            padding: var(--skin-space-sm, 8px) var(--skin-space-md, 14px);
-            border-top: 1px solid var(--skin-color-border-subtle, rgba(0, 0, 0, 0.05));
-            font-size: var(--skin-text-xs, 11px);
-            color: var(--skin-color-text-muted, #666666);
+            gap: var(--skin-space-sm);
+            padding: var(--skin-space-sm) var(--skin-space-md);
+            border-top: var(--skin-border-width) solid var(--skin-color-border-subtle);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-muted);
         }
 
         .tray {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: var(--skin-space-xs);
             width: 100%;
         }
 
         .tray-item {
             display: flex;
             align-items: center;
-            gap: var(--skin-space-sm, 8px);
-            padding: 4px 0;
-            font-size: var(--skin-text-xs, 11px);
+            gap: var(--skin-space-sm);
+            padding: var(--skin-space-xs) 0;
+            font-size: var(--skin-text-xs);
         }
 
         .tray-item .bar {
             flex: 1;
-            height: 4px;
-            border-radius: 2px;
-            background: var(--skin-color-bg-hover, rgba(0, 0, 0, 0.08));
+            height: var(--skin-space-xs);
+            border-radius: var(--skin-radius-sm);
+            background: var(--skin-color-bg-hover);
             overflow: hidden;
             position: relative;
         }
@@ -537,19 +542,19 @@ export class SomaFileManager extends LitElement {
             display: block;
             height: 100%;
             width: 40%;
-            background: var(--skin-color-accent, #3b82f6);
+            background: var(--skin-color-accent);
             animation: tray-slide 1.1s ease-in-out infinite;
         }
 
         .tray-item.complete .bar > i {
             width: 100%;
-            background: var(--skin-color-success, #22c55e);
+            background: var(--skin-color-success);
             animation: none;
         }
 
         .tray-item.failed .bar > i {
             width: 100%;
-            background: var(--skin-color-danger, #ef4444);
+            background: var(--skin-color-danger);
             animation: none;
         }
 
@@ -573,41 +578,41 @@ export class SomaFileManager extends LitElement {
         .modal-field {
             display: flex;
             flex-direction: column;
-            gap: 6px;
-            margin-bottom: 12px;
+            gap: var(--skin-space-sm);
+            margin-bottom: var(--skin-space-md);
         }
 
         .modal-field label {
-            font-size: var(--skin-text-xs, 11px);
-            color: var(--skin-color-text-secondary, #555555);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.04em;
         }
 
         .modal-field input {
-            height: 36px;
-            padding: 0 10px;
-            border-radius: var(--skin-radius-md, 8px);
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.12));
-            background: var(--skin-color-bg-base, transparent);
-            color: var(--skin-color-text-primary, #1a1a1a);
+            height: var(--skin-space-xl);
+            padding: 0 var(--skin-space-sm);
+            border-radius: var(--skin-radius-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            background: var(--skin-color-bg-base);
+            color: var(--skin-color-text-primary);
             font-family: var(--skin-font-mono, ui-monospace, monospace);
-            font-size: var(--skin-text-sm, 12px);
+            font-size: var(--skin-text-sm);
         }
 
         .modal-note {
-            font-size: var(--skin-text-xs, 12px);
-            color: var(--skin-color-text-secondary, #555555);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-secondary);
             line-height: var(--skin-leading-normal, 1.5);
         }
 
         .modal-error {
-            margin-top: 8px;
-            padding: 8px 10px;
-            border-radius: var(--skin-radius-sm, 4px);
-            background: color-mix(in srgb, var(--skin-color-danger, #ef4444) 14%, transparent);
-            color: var(--skin-color-danger, #b91c1c);
-            font-size: var(--skin-text-xs, 12px);
+            margin-top: var(--skin-space-sm);
+            padding: var(--skin-space-sm) var(--skin-space-sm);
+            border-radius: var(--skin-radius-sm);
+            background: color-mix(in srgb, var(--skin-color-danger) 14%, transparent);
+            color: var(--skin-color-danger);
+            font-size: var(--skin-text-xs);
             font-family: var(--skin-font-mono, ui-monospace, monospace);
             word-break: break-word;
         }
@@ -617,7 +622,7 @@ export class SomaFileManager extends LitElement {
             flex-direction: column;
             min-height: 0;
             height: 100%;
-            padding: var(--skin-space-sm, 8px);
+            padding: var(--skin-space-sm);
         }
 
         .preview-host soma-file-preview {
@@ -626,12 +631,13 @@ export class SomaFileManager extends LitElement {
         }
 
         input[type='checkbox'] {
-            accent-color: var(--skin-color-accent, #3b82f6);
-            width: 15px;
-            height: 15px;
+            accent-color: var(--skin-color-accent);
+            width: var(--skin-space-md);
+            height: var(--skin-space-md);
             cursor: pointer;
         }
-    `;
+    `,
+    ];
 
     @property({ type: String, reflect: true }) mode: FileManagerMode = 'browse';
     @property({ type: String, reflect: true }) path = '';
@@ -1223,7 +1229,7 @@ export class SomaFileManager extends LitElement {
                 <span class="material-symbols-outlined" aria-hidden="true">home</span>
                 <button
                     class="btn"
-                    style="height:24px;padding:0 6px;border:none;background:transparent"
+                    style="height:var(--skin-space-lg);padding:0 var(--skin-space-sm);border:none;background:transparent"
                     @click=${() => {
                         this.path = '';
                         this.dispatchEvent(
@@ -1244,7 +1250,7 @@ export class SomaFileManager extends LitElement {
                             ? html`<span class="current">${seg}</span>`
                             : html`<button
                                   class="btn"
-                                  style="height:24px;padding:0 6px;border:none;background:transparent"
+                                  style="height:var(--skin-space-lg);padding:0 var(--skin-space-sm);border:none;background:transparent"
                                   @click=${() => {
                                       const next = segments.slice(0, i + 1).join('/');
                                       this.path = next;
@@ -1367,7 +1373,7 @@ export class SomaFileManager extends LitElement {
                 ${rows.map(f => this._renderRow(f))}
             </div>
             ${this._filesTotal > rows.length
-                ? html`<div class="status-block" style="min-height:0;padding:8px">
+                ? html`<div class="status-block" style="min-height:0;padding:var(--skin-space-sm)">
                       showing ${rows.length} of ${this._filesTotal}
                   </div>`
                 : nothing}

@@ -17,6 +17,8 @@
  *   UI-X-08 Desktop  — GATED (REQ-UIX-007), fixed blocking reason
  */
 
+import { glassCard } from '../styles/glass.js';
+import { moduleBase } from '../styles/module-base.js';
 import { LitElement, html, css, nothing, TemplateResult } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { workspaceStore } from '../stores/workspace-store.js';
@@ -66,7 +68,7 @@ export const SURFACES: SurfaceDef[] = [
     },
     { key: 'editor', id: 'UI-X-04', icon: 'code', label: 'Editor' },
     { key: 'debug', id: 'UI-X-05', icon: 'bug_report', label: 'Debug' },
-    { key: 'capsule', id: 'UI-X-06', icon: 'medication', label: 'Capsule' },
+    { key: 'capsule', id: 'UI-X-06', icon: 'medication', label: 'Agent' },
     { key: 'brain', id: 'UI-X-07', icon: 'neurology', label: 'Brain' },
     {
         key: 'desktop',
@@ -283,12 +285,15 @@ export class SomaRightPanel extends LitElement {
     private _unsubscribeStore: (() => void) | null = null;
     private _unsubscribeFrames: (() => void) | null = null;
 
-    static styles = css`
+    static styles = [
+        glassCard,
+        moduleBase,
+        css`
         .material-symbols-outlined {
             font-family: 'Material Symbols Outlined';
             font-weight: normal;
             font-style: normal;
-            font-size: 20px;
+            font-size: var(--skin-text-xl);
             line-height: 1;
             letter-spacing: normal;
             text-transform: none;
@@ -302,7 +307,7 @@ export class SomaRightPanel extends LitElement {
         :host {
             display: flex;
             height: 100%;
-            background: var(--platform-bg-card, #1e1e1e);
+            background: var(--skin-color-bg-card);
         }
 
         .panel {
@@ -312,44 +317,44 @@ export class SomaRightPanel extends LitElement {
         }
 
         .tab-rail {
-            width: 44px;
+            width: var(--skin-space-2xl);
             flex-shrink: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 8px 0;
-            gap: 4px;
-            border-right: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.06));
-            background: var(--platform-bg-sidebar, #ffffff);
+            padding: var(--skin-space-sm) 0;
+            gap: var(--skin-space-xs);
+            border-right: var(--skin-border-width) solid var(--skin-color-border-subtle);
+            background: var(--skin-color-bg-sidebar);
             overflow-y: auto;
             overflow-x: hidden;
         }
 
         .tab-btn {
-            width: 36px;
-            height: 36px;
+            width: var(--skin-space-xl);
+            height: var(--skin-space-xl);
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: var(--platform-radius-md, 8px);
+            border-radius: var(--skin-radius-md);
             cursor: pointer;
-            font-size: 16px;
+            font-size: var(--skin-text-lg);
             background: transparent;
             border: none;
-            color: var(--platform-text-muted, #999999);
-            transition: all 150ms ease;
+            color: var(--skin-color-text-muted);
+            transition: all var(--skin-motion-fast) var(--skin-motion-ease);
             position: relative;
             flex-shrink: 0;
         }
 
         .tab-btn:hover {
-            background: var(--platform-bg-hover, #141414);
-            color: var(--platform-text-secondary, #a1a1a1);
+            background: var(--skin-color-bg-hover);
+            color: var(--skin-color-text-secondary);
         }
 
         .tab-btn.active {
-            background: var(--platform-bg-active, #1a1a1a);
-            color: var(--platform-accent, #e8e4dc);
+            background: var(--skin-color-bg-active);
+            color: var(--skin-color-accent);
         }
 
         .tab-btn.active::before {
@@ -358,10 +363,10 @@ export class SomaRightPanel extends LitElement {
             left: -8px;
             top: 50%;
             transform: translateY(-50%);
-            width: 3px;
-            height: 20px;
-            background: var(--platform-accent, #e8e4dc);
-            border-radius: 0 2px 2px 0;
+            width: var(--skin-space-xs);
+            height: var(--skin-space-lg);
+            background: var(--skin-color-accent);
+            border-radius: 0 var(--skin-radius-sm) var(--skin-radius-sm) 0;
         }
 
         .tab-btn.gated {
@@ -371,21 +376,21 @@ export class SomaRightPanel extends LitElement {
 
         .tab-tooltip {
             position: absolute;
-            left: 44px;
+            left: var(--skin-space-2xl);
             top: 50%;
             transform: translateY(-50%);
-            background: var(--platform-bg-hover, #141414);
-            color: var(--platform-text-secondary, #a1a1a1);
-            padding: 4px 10px;
-            border-radius: var(--platform-radius-sm, 4px);
-            font-size: 12px;
+            background: var(--skin-color-bg-hover);
+            color: var(--skin-color-text-secondary);
+            padding: var(--skin-space-xs) var(--skin-space-sm);
+            border-radius: var(--skin-radius-sm);
+            font-size: var(--skin-text-sm);
             white-space: nowrap;
             pointer-events: none;
             opacity: 0;
-            transition: opacity 150ms ease;
-            border: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.06));
-            z-index: 100;
-            max-width: 240px;
+            transition: opacity var(--skin-motion-fast) var(--skin-motion-ease);
+            border: var(--skin-border-width) solid var(--skin-color-border-subtle);
+            z-index: var(--skin-z-tooltip);
+            max-width: var(--skin-space-2xl);
         }
 
         .tab-btn:hover .tab-tooltip {
@@ -396,26 +401,26 @@ export class SomaRightPanel extends LitElement {
             flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
-            padding: 16px;
+            padding: var(--skin-space-md);
             min-width: 0;
         }
 
         .surface-header {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--platform-text-primary, #ffffff);
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.06));
+            font-size: var(--skin-text-base);
+            font-weight: var(--skin-weight-semibold);
+            color: var(--skin-color-text-primary);
+            margin-bottom: var(--skin-space-md);
+            padding-bottom: var(--skin-space-md);
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border-subtle);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--skin-space-sm);
         }
 
         .surface-id {
-            font-size: 11px;
-            font-weight: 500;
-            color: var(--platform-text-muted, #999999);
+            font-size: var(--skin-text-xs);
+            font-weight: var(--skin-weight-medium);
+            color: var(--skin-color-text-muted);
             letter-spacing: 0.04em;
         }
 
@@ -426,63 +431,63 @@ export class SomaRightPanel extends LitElement {
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 160px;
-            color: var(--platform-text-muted, #999999);
-            font-size: 13px;
+            min-height: var(--skin-space-2xl);
+            color: var(--skin-color-text-muted);
+            font-size: var(--skin-text-sm);
             text-align: center;
-            gap: 8px;
-            padding: 16px;
+            gap: var(--skin-space-sm);
+            padding: var(--skin-space-md);
         }
 
         .error {
-            color: var(--platform-danger, #f87171);
+            color: var(--skin-color-danger);
         }
 
         .disabled-frame {
-            border: 1px dashed var(--platform-border-light, rgba(255, 255, 255, 0.12));
-            border-radius: var(--platform-radius-md, 8px);
-            padding: 24px 16px;
+            border: var(--skin-border-width) dashed var(--skin-color-border-subtle);
+            border-radius: var(--skin-radius-md);
+            padding: var(--skin-space-lg) var(--skin-space-md);
             display: flex;
             flex-direction: column;
             align-items: flex-start;
-            gap: 12px;
-            color: var(--platform-text-secondary, #a1a1a1);
-            font-size: 13px;
+            gap: var(--skin-space-md);
+            color: var(--skin-color-text-secondary);
+            font-size: var(--skin-text-sm);
             line-height: 1.5;
         }
 
         .disabled-reason {
-            color: var(--platform-text-primary, #ffffff);
-            font-weight: 600;
-            font-size: 13px;
+            color: var(--skin-color-text-primary);
+            font-weight: var(--skin-weight-semibold);
+            font-size: var(--skin-text-sm);
         }
 
         .disabled-note {
-            color: var(--platform-text-muted, #999999);
-            font-size: 12px;
+            color: var(--skin-color-text-muted);
+            font-size: var(--skin-text-sm);
         }
 
         .row-list {
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: var(--skin-space-xs);
         }
 
         .row {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 10px;
-            border-radius: var(--platform-radius-sm, 4px);
+            gap: var(--skin-space-sm);
+            padding: var(--skin-space-sm) var(--skin-space-sm);
+            border-radius: var(--skin-radius-sm);
             cursor: pointer;
-            color: var(--platform-text-secondary, #a1a1a1);
-            font-size: 12px;
-            border: 1px solid transparent;
+            color: var(--skin-color-text-secondary);
+            font-size: var(--skin-text-sm);
+            border: var(--skin-border-width) solid transparent;
         }
 
         .row:hover {
-            background: var(--platform-bg-hover, #141414);
-            color: var(--platform-text-primary, #ffffff);
+            background: var(--skin-color-bg-hover);
+            color: var(--skin-color-text-primary);
         }
 
         .row-main {
@@ -490,7 +495,7 @@ export class SomaRightPanel extends LitElement {
             min-width: 0;
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: var(--skin-space-xs);
         }
 
         .row-title {
@@ -501,16 +506,16 @@ export class SomaRightPanel extends LitElement {
         }
 
         .row-sub {
-            color: var(--platform-text-muted, #999999);
-            font-size: 11px;
+            color: var(--skin-color-text-muted);
+            font-size: var(--skin-text-xs);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
 
         .row-meta {
-            color: var(--platform-text-muted, #999999);
-            font-size: 11px;
+            color: var(--skin-color-text-muted);
+            font-size: var(--skin-text-xs);
             flex-shrink: 0;
             font-variant-numeric: tabular-nums;
         }
@@ -518,58 +523,58 @@ export class SomaRightPanel extends LitElement {
         .chip {
             display: inline-flex;
             align-items: center;
-            padding: 1px 8px;
-            border-radius: 999px;
-            font-size: 11px;
-            border: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.12));
-            color: var(--platform-text-secondary, #a1a1a1);
-            background: var(--platform-bg-hover, #141414);
+            padding: var(--skin-space-xs) var(--skin-space-sm);
+            border-radius: var(--skin-radius-full);
+            font-size: var(--skin-text-xs);
+            border: var(--skin-border-width) solid var(--skin-color-border-subtle);
+            color: var(--skin-color-text-secondary);
+            background: var(--skin-color-bg-hover);
             flex-shrink: 0;
         }
 
         .section-label {
-            font-size: 11px;
-            font-weight: 600;
+            font-size: var(--skin-text-xs);
+            font-weight: var(--skin-weight-semibold);
             letter-spacing: 0.06em;
             text-transform: uppercase;
-            color: var(--platform-text-muted, #999999);
-            margin: 16px 0 8px;
+            color: var(--skin-color-text-muted);
+            margin: var(--skin-space-md) 0 var(--skin-space-sm);
         }
 
         .toolbar {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 12px;
+            gap: var(--skin-space-sm);
+            margin-bottom: var(--skin-space-md);
         }
 
         .toolbar input {
             flex: 1;
             min-width: 0;
-            background: var(--platform-bg-hover, #141414);
-            border: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.12));
-            border-radius: var(--platform-radius-sm, 4px);
-            color: var(--platform-text-primary, #ffffff);
-            font-size: 12px;
-            padding: 6px 10px;
+            background: var(--skin-color-bg-hover);
+            border: var(--skin-border-width) solid var(--skin-color-border-subtle);
+            border-radius: var(--skin-radius-sm);
+            color: var(--skin-color-text-primary);
+            font-size: var(--skin-text-sm);
+            padding: var(--skin-space-sm) var(--skin-space-sm);
         }
 
         .toolbar input:focus {
-            outline: 1px solid var(--platform-accent, #e8e4dc);
+            outline: var(--skin-focus-ring-width) solid var(--skin-color-accent);
         }
 
         .btn {
-            background: var(--platform-bg-hover, #141414);
-            border: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.12));
-            border-radius: var(--platform-radius-sm, 4px);
-            color: var(--platform-text-secondary, #a1a1a1);
-            font-size: 12px;
-            padding: 6px 10px;
+            background: var(--skin-color-bg-hover);
+            border: var(--skin-border-width) solid var(--skin-color-border-subtle);
+            border-radius: var(--skin-radius-sm);
+            color: var(--skin-color-text-secondary);
+            font-size: var(--skin-text-sm);
+            padding: var(--skin-space-sm) var(--skin-space-sm);
             cursor: pointer;
         }
 
         .btn:hover {
-            color: var(--platform-text-primary, #ffffff);
+            color: var(--skin-color-text-primary);
         }
 
         .btn:disabled {
@@ -578,32 +583,32 @@ export class SomaRightPanel extends LitElement {
         }
 
         .schema {
-            margin-top: 6px;
-            padding: 8px;
-            border-radius: var(--platform-radius-sm, 4px);
-            background: var(--platform-bg-hover, #141414);
-            border: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.08));
+            margin-top: var(--skin-space-sm);
+            padding: var(--skin-space-sm);
+            border-radius: var(--skin-radius-sm);
+            background: var(--skin-color-bg-hover);
+            border: var(--skin-border-width) solid var(--skin-color-border-subtle);
             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            font-size: 11px;
-            color: var(--platform-text-secondary, #a1a1a1);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-secondary);
             white-space: pre-wrap;
             word-break: break-word;
-            max-height: 180px;
+            max-height: var(--skin-space-2xl);
             overflow: auto;
         }
 
         .editor-header {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 10px;
+            gap: var(--skin-space-sm);
+            margin-bottom: var(--skin-space-sm);
             flex-wrap: wrap;
         }
 
         .editor-name {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--platform-text-primary, #ffffff);
+            font-size: var(--skin-text-sm);
+            font-weight: var(--skin-weight-semibold);
+            color: var(--skin-color-text-primary);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -611,10 +616,10 @@ export class SomaRightPanel extends LitElement {
         }
 
         .readonly-note {
-            font-size: 12px;
-            color: var(--platform-text-muted, #999999);
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-muted);
             line-height: 1.5;
-            margin-bottom: 12px;
+            margin-bottom: var(--skin-space-md);
         }
 
         .editor-save {
@@ -624,14 +629,14 @@ export class SomaRightPanel extends LitElement {
 
         .code-block {
             margin: 0;
-            padding: 12px;
-            border-radius: var(--platform-radius-sm, 4px);
-            background: var(--platform-bg-hover, #141414);
-            border: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.08));
+            padding: var(--skin-space-md);
+            border-radius: var(--skin-radius-sm);
+            background: var(--skin-color-bg-hover);
+            border: var(--skin-border-width) solid var(--skin-color-border-subtle);
             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            font-size: 12px;
+            font-size: var(--skin-text-sm);
             line-height: 1.5;
-            color: var(--platform-text-secondary, #a1a1a1);
+            color: var(--skin-color-text-secondary);
             white-space: pre-wrap;
             word-break: break-word;
             overflow-x: auto;
@@ -639,27 +644,27 @@ export class SomaRightPanel extends LitElement {
 
         .frame-row {
             display: grid;
-            grid-template-columns: 64px 28px 120px 1fr;
-            gap: 8px;
-            padding: 6px 8px;
-            border-radius: var(--platform-radius-sm, 4px);
+            grid-template-columns: var(--skin-space-2xl) var(--skin-space-xl) var(--skin-space-2xl) 1fr;
+            gap: var(--skin-space-sm);
+            padding: var(--skin-space-sm) var(--skin-space-sm);
+            border-radius: var(--skin-radius-sm);
             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            font-size: 11px;
-            color: var(--platform-text-secondary, #a1a1a1);
-            border-bottom: 1px solid var(--platform-border-light, rgba(255, 255, 255, 0.04));
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-secondary);
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border-subtle);
             align-items: start;
         }
 
         .frame-row:hover {
-            background: var(--platform-bg-hover, #141414);
+            background: var(--skin-color-bg-hover);
         }
 
         .frame-dir {
-            color: var(--platform-accent, #e8e4dc);
+            color: var(--skin-color-accent);
         }
 
         .frame-type {
-            color: var(--platform-text-primary, #ffffff);
+            color: var(--skin-color-text-primary);
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -673,10 +678,11 @@ export class SomaRightPanel extends LitElement {
         }
 
         .frame-ts {
-            color: var(--platform-text-muted, #999999);
+            color: var(--skin-color-text-muted);
             font-variant-numeric: tabular-nums;
         }
-    `;
+    `,
+    ];
 
     connectedCallback() {
         super.connectedCallback();
@@ -899,7 +905,7 @@ export class SomaRightPanel extends LitElement {
                 </div>`;
             }
             if (this._toolsStatus === 'empty' || this._tools.length === 0) {
-                return html`<div class="empty">No tools attached to this capsule.</div>`;
+                return html`<div class="empty">No tools attached to this agent.</div>`;
             }
             return html`
                 <div class="row-list" role="list">
@@ -924,7 +930,7 @@ export class SomaRightPanel extends LitElement {
                                         ? html`
                                               <button
                                                   class="btn"
-                                                  style="margin-top:6px; align-self:flex-start;"
+                                                  style="margin-top:var(--skin-space-sm); align-self:flex-start;"
                                                   @click=${() => {
                                                       this._openToolSchema = open ? null : t.name;
                                                   }}
@@ -1092,7 +1098,7 @@ export class SomaRightPanel extends LitElement {
                                   f => html`
                                       <div class="frame-row">
                                           <span class="frame-ts">${formatTs(f.ts)}</span>
-                                          <span class="frame-dir">${f.dir === 'in' ? '←' : '→'}</span>
+                                          <span class="frame-dir material-symbols-outlined" aria-hidden="true">${f.dir === 'in' ? 'arrow_back' : 'arrow_forward'}</span>
                                           <span class="frame-type">${f.type}</span>
                                           <span class="frame-payload" title=${this._payloadTitle(f)}
                                               >${this._payloadPreview(f)}</span

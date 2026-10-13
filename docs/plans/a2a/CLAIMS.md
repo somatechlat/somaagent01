@@ -181,3 +181,52 @@
 | path/prefix | agent | task | started_at | status |
 |---|---|---|---|---|
 | tests/e2e/test_human_chat_session.spec.js tests/e2e/test_memory_human_name.spec.js tests/e2e/test_chat_context_memory.spec.js services/tool_executor/memory_tools.py admin/core/chat_orchestrator.py admin/memory/api/memory.py | MiMoCode-mission-t-playwright | Mission T Playwright: 3 specs green on real services + memory recall ranking defect fix (tier facts>questions, multi-query, list endpoint fact pass) | 2026-10-13T00:15:00Z | DONE — 13/13 passed; see LEDGER 2026-10-13 |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| webui/src/styles/ webui/src/skin-sdk/ | MiMoCode-UI-orchestrator | L0 tokens+glass freeze | 2026-10-13T17:19:52Z | ACTIVE |
+| webui/src/components/soma-toast-stack.ts webui/src/components/soma-notification-tray.ts webui/src/components/soma-notification-bell.ts webui/src/components/soma-notification-center.ts | MiMoCode-UI-notify | notifications icon/toast/tray | 2026-10-13T17:19:52Z | ACTIVE |
+| webui/src/components/soma-profile.ts webui/src/components/soma-password-modal.ts webui/src/views/soma-personal-profile.ts | MiMoCode-UI-profile | profile + change password | 2026-10-13T17:19:52Z | ACTIVE |
+| webui/src/components/soma-agent-package.ts webui/src/components/soma-agent-hands.ts webui/src/components/soma-agent-export-modal.ts | MiMoCode-UI-hands | Agent package export/import + Hands tools | 2026-10-13T17:19:52Z | ACTIVE |
+| webui/src/components/soma-file-manager.ts webui/src/components/soma-artifacts.ts webui/src/components/file-manager/* | MiMoCode-UI-files | File Manager + Artifacts | 2026-10-13T17:19:52Z | ACTIVE |
+| webui/src/components/soma-somabrain-manager.ts webui/src/views/soma-settings-somabrain.ts | MiMoCode-UI-brain | Brain manager (modulators/mode) | 2026-10-13T17:19:52Z | ACTIVE |
+| webui/src/components/soma-chat-settings.ts webui/src/components/soma-reasoning-block.ts | MiMoCode-UI-chatprefs | Chat settings modal + CoT | 2026-10-13T17:19:52Z | ACTIVE |
+| docs/design/_superseded/ docs/design/SOMA-UI-MASTER-001.md | MiMoCode-UI-docs | doc merge/delete cleanup | 2026-10-13T17:19:52Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| webui/src/skin-sdk/ webui/src/styles/tokens.css webui/src/styles/skin-aliases.css webui/src/services/skin-applier.ts webui/src/services/skin-boot.ts docs/design/ docs/design/control-maps/ | soma-ui-engineer | UI/UX seat A: skin-sdk + token vocabulary + design/control-map docs authority (continues MiMoCode-AgentSkin-SDK). Peer seat B owns component/view implementation merge-additive. | 2026-10-13T17:20:28Z | ACTIVE |
+| webui/src/components/ webui/src/views/ (implementation of MODULE-CATALOG L0-L4 + CM-* PLANNED rows: shell, toast+tray+bell, Profile+password, Agent package export/import + Hands tools install, File Manager, Chat settings CoT) | UI-peer-seat-B | UI/UX seat B: component implementation to SOMA-UI-PEER-BRIEF-001 contracts. Merge-additive with seat A; do not edit skin-sdk/ or tokens.css. Respect ACTIVE claims (soma-chat-uiux on chat components; wave6-webui-roles on models/profile/right-panel/login). | 2026-10-13T17:20:28Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| webui/src/components/soma-file-manager.ts webui/src/components/soma-artifacts.ts webui/src/views/soma-chat.ts webui/src/views/soma-personal-profile.ts webui/src/components/soma-user-profile-card.ts webui/src/components/soma-chat-settings.ts webui/src/components/soma-chat-topbar.ts webui/src/components/file-manager/ | soma-deadcode-remover | webui/src dead-code sweep (AgentSkin-SDK): unused imports/unused CSS/emoji-comment junk in file-manager+chat+profile only. No behavior change; keep honest GATED strings. Grep-proven zero callers before each delete. Respect ACTIVE peer claims (merge-additive; do not rewrite peer-owned feature code). | 2026-10-13T18:59:16Z | DONE — dead CSS + zero-caller mode-dropdown cluster removed; tsc clean on swept files; GATED kept; peer rewrite of file-manager/soma-chat observed mid-sweep |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| webui/src/components/soma-file-manager.ts webui/src/components/soma-message.ts webui/src/components/soma-composer.ts webui/src/utils/file-icons.ts webui/src/views/soma-chat.ts webui/src/components/soma-right-panel.ts webui/src/components/soma-tool-timeline.ts webui/src/components/soma-chat-settings.ts webui/src/components/soma-capsule-editor.ts webui/src/components/soma-agent-header.ts webui/src/views/soma-settings-models.ts webui/src/views/soma-settings.ts webui/src/views/soma-settings-channels.ts webui/src/views/soma-integrations-dashboard.ts webui/src/views/soma-admin-api-keys.ts webui/src/views/soma-memory-view.ts webui/src/components/soma-agent-iq.ts docs/design/control-maps/CM-01-chat-workspace.md docs/design/control-maps/CM-02-file-manager.md docs/design/control-maps/00-INDEX.md | soma-ui-engineer | Chat/file UI enterprise polish: zero emojis (Material icons only), file manager workroot/inbox tree + move/rename/delete honest gates, clean attachment cards, Capsule→Agent product names in UI, CM-01/CM-02 ISO control-map updates. Merge-additive with UI-peer-seat-B / MiMoCode-UI-files / soma-chat-uiux. | 2026-10-13T18:30:00Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| webui/src/i18n/ webui/src/components/soma-profile-modal.ts webui/src/components/soma-file-manager-modal.ts webui/src/views/soma-settings.ts (minimal _setInterface language → setLocale) | soma-ui-engineer | SOMA-UI-I18N-001: i18n module (t/setLocale/getLocale/onLocaleChange, soma_locale, html lang) + en/es catalogs (profile/files/chat/common parity) + wire t() into profile + file-manager modal chrome + settings language setLocale. Merge-additive with UI-peer-seat-B / MiMoCode-UI-files / wave6-webui-roles. | 2026-10-13T19:30:00Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| webui/src/views/soma-settings.ts webui/src/views/soma-settings-models.ts webui/src/views/soma-settings-somabrain.ts webui/src/views/soma-personal-profile.ts | soma-ui-engineer | Skin-token migration: replace hex/px literals with var(--skin-*), adopt glassCard+moduleBase, no behavior change. CSS-only. Merge-additive with UI-peer-seat-B / MiMoCode-UI-brain / wave6-webui-roles / MiMoCode-UI-profile. | 2026-10-13T19:55:26Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| webui/src/components/soma-message.ts webui/src/components/soma-composer.ts webui/src/components/soma-tool-timeline.ts webui/src/components/soma-chat-topbar.ts | soma-ui-engineer | AgentSkin CSS migration (--skin-* only): static styles = glassCard/moduleBase/css; replace hex+px literals with skin tokens; behavior identical. Merge-additive with MiMoCode-soma-chat-uiux / UI-peer-seat-B. | 2026-10-14T12:00:00Z | ACTIVE |
+
+| webui/src/views/soma-memory-view.ts webui/src/components/soma-brain-manager.ts webui/src/views/soma-login.ts webui/src/views/soma-cognitive-panel.ts | soma-ui-engineer | CSS migrate to --skin-* tokens + glassCard/moduleBase | 2026-10-10T00:00:00Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| webui/src/components/soma-file-manager.ts webui/src/components/soma-right-panel.ts webui/src/components/soma-profile-modal.ts webui/src/components/soma-chat-settings.ts | soma-ui-engineer | AgentSkin CSS migration wave 2 (--skin-* only): static styles = glassCard/moduleBase/css; replace hex+px literals with skin tokens; no hex; tsc clean; commit only these four files. Merge-additive with MiMoCode-UI-files / UI-peer-seat-B / MiMoCode-UI-chatprefs / wave6-webui-roles. | 2026-10-14T12:30:00Z | ACTIVE |
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| docs/standards/SOMA-STD-UIUX-001.md docs/design/SOMA-UI-SKINS-001.md (§13A link only) CLAUDE.md (UI/UX row only) | soma-ui-engineer | UI/UX working standard (docs only) | 2026-10-13T00:00:00Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| tests/e2e/profile-window.spec.ts tests/e2e/files-modal.spec.ts tests/e2e/skins-gallery.spec.ts tests/e2e/chat-display.spec.ts | soma-e2e-prover | Human-like Playwright live UI suite (Profile/Files/Skins/Display) against :20080 — real clicks only, no network mocks, honest GATED assertions | 2026-10-14T20:15:00Z | ACTIVE |

@@ -12,7 +12,7 @@
  * All visual styling uses `--skin-*` tokens only (Skin SDK vocabulary).
  */
 
-import { LitElement, html, css, nothing, PropertyValues } from 'lit';
+import { LitElement, html, css, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import {
     BUBBLE_STYLE_OPTIONS,
@@ -34,6 +34,8 @@ import {
     saveChatPrefs,
 } from '../services/chat-prefs.js';
 import './soma-glass-modal.js';
+import { glassChip } from '../styles/glass.js';
+import { moduleBase } from '../styles/module-base.js';
 
 type SaveStatus = 'idle' | 'saved' | 'error';
 
@@ -54,7 +56,10 @@ export class SomaChatSettings extends LitElement {
     @state() private _status: SaveStatus = 'idle';
     @state() private _statusDetail = '';
 
-    static styles = css`
+    static styles = [
+        moduleBase,
+        glassChip,
+        css`
         :host {
             display: contents;
             font-family: var(--skin-font-sans);
@@ -80,7 +85,7 @@ export class SomaChatSettings extends LitElement {
             letter-spacing: 0.08em;
             text-transform: uppercase;
             color: var(--skin-color-text-muted);
-            border-bottom: 1px solid var(--skin-color-border-subtle);
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border-subtle);
             padding-bottom: var(--skin-space-xs);
         }
 
@@ -90,7 +95,7 @@ export class SomaChatSettings extends LitElement {
             gap: var(--skin-space-md);
         }
 
-        @media (max-width: 640px) {
+        @media (max-width: 40em) {
             .row {
                 grid-template-columns: 1fr;
             }
@@ -126,7 +131,7 @@ export class SomaChatSettings extends LitElement {
             font-size: var(--skin-text-sm);
             color: var(--skin-color-text-primary);
             background: var(--skin-color-bg-base);
-            border: 1px solid var(--skin-color-border);
+            border: var(--skin-border-width) solid var(--skin-color-border);
             border-radius: var(--skin-radius-md);
         }
 
@@ -134,7 +139,6 @@ export class SomaChatSettings extends LitElement {
         input[type='number']:focus-visible,
         .check:focus-visible,
         .chip:focus-visible,
-        .btn:focus-visible,
         .step-btn:focus-visible {
             outline: var(--skin-focus-ring-width) solid var(--skin-focus-ring);
             outline-offset: var(--skin-focus-ring-offset);
@@ -144,7 +148,7 @@ export class SomaChatSettings extends LitElement {
             display: flex;
             align-items: center;
             gap: var(--skin-space-sm);
-            min-height: 32px;
+            min-height: var(--skin-space-xl);
             cursor: pointer;
             user-select: none;
             font-size: var(--skin-text-sm);
@@ -152,8 +156,8 @@ export class SomaChatSettings extends LitElement {
         }
 
         .toggle-row input {
-            width: 16px;
-            height: 16px;
+            width: var(--skin-space-md);
+            height: var(--skin-space-md);
             accent-color: var(--skin-color-accent);
             cursor: pointer;
         }
@@ -169,7 +173,7 @@ export class SomaChatSettings extends LitElement {
             align-items: center;
             gap: var(--skin-space-xs);
             padding: var(--skin-space-xs) var(--skin-space-sm);
-            border: 1px solid var(--skin-color-border);
+            border: var(--skin-border-width) solid var(--skin-color-border);
             border-radius: var(--skin-radius-full);
             background: var(--skin-color-bg-base);
             color: var(--skin-color-text-secondary);
@@ -201,10 +205,10 @@ export class SomaChatSettings extends LitElement {
         }
 
         .step-btn {
-            width: 32px;
-            height: 32px;
+            width: var(--skin-space-xl);
+            height: var(--skin-space-xl);
             border-radius: var(--skin-radius-md);
-            border: 1px solid var(--skin-color-border);
+            border: var(--skin-border-width) solid var(--skin-color-border);
             background: var(--skin-color-bg-hover);
             color: var(--skin-color-text-primary);
             font-family: var(--skin-font-sans);
@@ -228,7 +232,7 @@ export class SomaChatSettings extends LitElement {
             justify-content: flex-end;
             align-items: center;
             padding-top: var(--skin-space-sm);
-            border-top: 1px solid var(--skin-color-border-subtle);
+            border-top: var(--skin-border-width) solid var(--skin-color-border-subtle);
         }
 
         .status {
@@ -246,52 +250,14 @@ export class SomaChatSettings extends LitElement {
             color: var(--skin-color-danger);
         }
 
-        .btn {
-            border-radius: var(--skin-radius-md);
-            border: 1px solid var(--skin-color-border);
-            background: var(--skin-color-bg-hover);
-            color: var(--skin-color-text-primary);
-            font-family: var(--skin-font-sans);
-            font-size: var(--skin-text-sm);
-            font-weight: var(--skin-weight-medium);
-            padding: var(--skin-space-sm) var(--skin-space-md);
-            cursor: pointer;
-        }
-
-        .btn:hover {
-            background: var(--skin-color-bg-active);
-        }
-
-        .btn.primary {
-            background: var(--skin-color-accent);
-            border-color: var(--skin-color-accent);
-            color: var(--skin-color-accent-text);
-        }
-
-        .btn.primary:hover {
-            background: var(--skin-color-accent-hover);
-            border-color: var(--skin-color-accent-hover);
-        }
-
-        .btn.ghost {
-            background: transparent;
-        }
-
-        .hint {
-            margin: 0;
-            font-size: var(--skin-text-xs);
-            color: var(--skin-color-text-muted);
-            line-height: var(--skin-leading-normal);
-        }
-
         @media (prefers-reduced-motion: reduce) {
-            .btn,
             .chip,
             .step-btn {
                 transition: none;
             }
         }
-    `;
+    `,
+    ];
 
     connectedCallback(): void {
         super.connectedCallback();
@@ -616,9 +582,9 @@ export class SomaChatSettings extends LitElement {
                     ${this._statusDetail ||
                     'Preferences apply live to the open chat after Save. Stored in this browser.'}
                 </p>
-                <button class="btn ghost" type="button" @click=${this.reset}>↺ Reset</button>
-                <button class="btn ghost" type="button" @click=${this.close}>Cancel</button>
-                <button class="btn primary" type="button" @click=${this.save}>Save &amp; apply</button>
+                <button class="mb-btn ghost" type="button" @click=${this.reset}><span class="material-symbols-outlined" aria-hidden="true">restart_alt</span> Reset</button>
+                <button class="mb-btn ghost" type="button" @click=${this.close}>Cancel</button>
+                <button class="mb-btn primary" type="button" @click=${this.save}>Save &amp; apply</button>
             </div>
         `;
     }

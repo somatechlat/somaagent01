@@ -9,6 +9,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
 import { t, onLocaleChange } from '../i18n/index.js';
 import { glassCard } from '../styles/glass.js';
+import { moduleBase } from '../styles/module-base.js';
 import './soma-password-modal.js';
 import './soma-chat-settings.js';
 
@@ -43,12 +44,13 @@ export class SomaProfileModal extends LitElement {
 
     static styles = [
         glassCard,
+        moduleBase,
         css`
         :host {
             display: none;
             position: fixed;
             inset: 0;
-            z-index: 320;
+            z-index: var(--skin-z-modal);
         }
         :host([open]) {
             display: block;
@@ -58,49 +60,49 @@ export class SomaProfileModal extends LitElement {
         .scrim {
             position: absolute;
             inset: 0;
-            background: color-mix(in srgb, var(--skin-color-bg-void, #0f1115) 55%, transparent);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            background: color-mix(in srgb, var(--skin-color-bg-void) 55%, transparent);
+            backdrop-filter: var(--skin-glass-backdrop);
+            -webkit-backdrop-filter: var(--skin-glass-backdrop);
         }
         .shell {
             position: absolute;
-            inset: 12px;
+            inset: var(--skin-space-sm);
             display: flex;
             flex-direction: column;
-            background: var(--skin-color-bg-base, var(--platform-bg-base, #ffffff));
-            color: var(--skin-color-text-primary, var(--platform-text-main, #1a1a1a));
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.12));
-            border-radius: var(--skin-radius-xl, 16px);
-            box-shadow: var(--skin-shadow-overlay, 0 16px 48px rgba(0, 0, 0, 0.28));
+            background: var(--skin-color-bg-base);
+            color: var(--skin-color-text-primary);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-xl);
+            box-shadow: var(--skin-shadow-overlay);
             overflow: hidden;
-            font-family: var(--skin-font-sans, system-ui, sans-serif);
+            font-family: var(--skin-font-sans);
         }
 
         .top {
             display: flex;
             align-items: center;
-            gap: 18px;
-            padding: 22px 28px;
-            border-bottom: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
-            background: var(--skin-color-bg-card, var(--platform-bg-card, #fff));
+            gap: var(--skin-space-lg);
+            padding: var(--skin-space-lg) var(--skin-space-xl);
+            border-bottom: var(--skin-border-width) solid var(--skin-color-border);
+            background: var(--skin-color-bg-card);
         }
         .avatar-wrap {
             position: relative;
-            width: 72px;
-            height: 72px;
+            width: var(--skin-space-2xl);
+            height: var(--skin-space-2xl);
             flex-shrink: 0;
         }
         .avatar {
-            width: 72px;
-            height: 72px;
-            border-radius: 50%;
-            background: var(--skin-color-accent, #FF4D00);
-            color: var(--skin-color-accent-text, #fff);
+            width: var(--skin-space-2xl);
+            height: var(--skin-space-2xl);
+            border-radius: var(--skin-radius-full);
+            background: var(--skin-color-accent);
+            color: var(--skin-color-accent-text);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 26px;
-            font-weight: 600;
+            font-size: var(--skin-text-2xl);
+            font-weight: var(--skin-weight-semibold);
             overflow: hidden;
         }
         .avatar img {
@@ -110,21 +112,21 @@ export class SomaProfileModal extends LitElement {
         }
         .cam {
             position: absolute;
-            right: -4px;
-            bottom: -4px;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            border: 2px solid var(--skin-color-bg-card, #fff);
-            background: var(--skin-color-accent, #FF4D00);
-            color: var(--skin-color-accent-text, #fff);
+            right: calc(-1 * var(--skin-space-xs));
+            bottom: calc(-1 * var(--skin-space-xs));
+            width: var(--skin-space-lg);
+            height: var(--skin-space-lg);
+            border-radius: var(--skin-radius-full);
+            border: calc(var(--skin-border-width) * 2) solid var(--skin-color-bg-card);
+            background: var(--skin-color-accent);
+            color: var(--skin-color-accent-text);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
         }
         .cam .material-symbols-outlined {
-            font-size: 15px;
+            font-size: var(--skin-text-xs);
         }
         .who {
             flex: 1;
@@ -132,54 +134,57 @@ export class SomaProfileModal extends LitElement {
         }
         .who h1 {
             margin: 0;
-            font-size: 22px;
-            font-weight: 650;
+            font-size: var(--skin-text-2xl);
+            font-weight: var(--skin-weight-semibold);
             letter-spacing: -0.02em;
         }
         .who .sub {
-            margin-top: 4px;
-            font-size: 13px;
-            color: var(--skin-color-text-secondary, #5b6470);
+            margin-top: var(--skin-space-xs);
+            font-size: var(--skin-text-sm);
+            color: var(--skin-color-text-secondary);
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: var(--skin-space-sm);
             align-items: center;
         }
         .pill {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            padding: 3px 10px;
-            border-radius: 999px;
-            font-size: 11px;
-            background: var(--skin-color-bg-hover, #f0f2f5);
-            color: var(--skin-color-text-secondary, #5b6470);
+            gap: var(--skin-space-xs);
+            padding: var(--skin-space-xs) var(--skin-space-sm);
+            border-radius: var(--skin-radius-full);
+            font-size: var(--skin-text-xs);
+            background: var(--skin-color-bg-hover);
+            color: var(--skin-color-text-secondary);
+        }
+        .pill .material-symbols-outlined {
+            font-size: var(--skin-text-xs);
         }
         .top-actions {
             display: flex;
-            gap: 10px;
+            gap: var(--skin-space-sm);
             align-items: center;
         }
 
         .scroll {
             flex: 1;
             overflow: auto;
-            padding: 22px 28px 32px;
+            padding: var(--skin-space-lg) var(--skin-space-xl) var(--skin-space-2xl);
         }
 
         /* Expert grid: every section visible — change anything, no tab hops */
         .grid {
             display: grid;
             grid-template-columns: repeat(12, 1fr);
-            gap: 16px;
+            gap: var(--skin-space-md);
         }
         .card {
             grid-column: span 6;
-            background: var(--skin-color-bg-card, var(--platform-bg-card, #fff));
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.1));
-            border-radius: var(--skin-radius-lg, 12px);
-            padding: 18px 18px 16px;
-            box-shadow: var(--skin-shadow-sm, 0 1px 2px rgba(0, 0, 0, 0.04));
+            background: var(--skin-color-bg-card);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-lg);
+            padding: var(--skin-space-lg) var(--skin-space-lg) var(--skin-space-md);
+            box-shadow: var(--skin-shadow-sm);
         }
         .card.wide {
             grid-column: span 12;
@@ -191,124 +196,62 @@ export class SomaProfileModal extends LitElement {
             grid-column: span 7;
         }
         .card h2 {
-            margin: 0 0 4px;
-            font-size: 14px;
-            font-weight: 650;
+            margin: 0 0 var(--skin-space-xs);
+            font-size: var(--skin-text-base);
+            font-weight: var(--skin-weight-semibold);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--skin-space-sm);
         }
         .card h2 .material-symbols-outlined {
-            font-size: 18px;
-            color: var(--skin-color-accent, #FF4D00);
+            font-size: var(--skin-text-lg);
+            color: var(--skin-color-accent);
         }
         .card .desc {
-            margin: 0 0 14px;
-            font-size: 12px;
-            color: var(--skin-color-text-secondary, #5b6470);
-        }
-
-        label {
-            display: block;
-            font-size: 11px;
-            font-weight: 500;
-            color: var(--skin-color-text-secondary, #5b6470);
-            margin: 12px 0 5px;
-        }
-        input {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 11px 12px;
-            border-radius: var(--skin-radius-md, 8px);
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.14));
-            background: var(--skin-color-bg-base, #fff);
-            color: inherit;
-            font-size: 13px;
-        }
-        input:focus-visible {
-            outline: 2px solid var(--skin-focus-ring, var(--skin-color-accent, #FF4D00));
-            outline-offset: 1px;
-        }
-        input[readonly] {
-            background: var(--skin-color-bg-hover, #f4f6f8);
-            color: var(--skin-color-text-secondary, #5b6470);
-        }
-
-        .hint {
-            font-size: 11px;
-            color: var(--skin-color-text-muted, #6b7280);
-            margin-top: 5px;
+            margin: 0 0 var(--skin-space-md);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-secondary);
         }
 
         .row-card {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
-            border-radius: var(--skin-radius-md, 8px);
-            margin-top: 8px;
-            background: var(--skin-color-bg-base, #fff);
+            gap: var(--skin-space-sm);
+            padding: var(--skin-space-sm) var(--skin-space-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-md);
+            margin-top: var(--skin-space-sm);
+            background: var(--skin-color-bg-base);
         }
         .row-card .material-symbols-outlined {
-            font-size: 18px;
-            color: var(--skin-color-accent, #FF4D00);
+            font-size: var(--skin-text-lg);
+            color: var(--skin-color-accent);
         }
         .row-card .v {
             flex: 1;
-            font-size: 13px;
+            font-size: var(--skin-text-sm);
             word-break: break-all;
-            color: var(--skin-color-text-primary, #1a1a1a);
+            color: var(--skin-color-text-primary);
         }
         .row-card .t {
-            font-size: 10px;
-            color: var(--skin-color-text-secondary, #5b6470);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-secondary);
         }
 
         .chip-add {
             display: flex;
-            gap: 8px;
-            margin-top: 10px;
+            gap: var(--skin-space-sm);
+            margin-top: var(--skin-space-sm);
         }
         .chip-add input {
             flex: 1;
         }
 
-        button {
-            border-radius: var(--skin-radius-md, 8px);
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.14));
-            background: var(--skin-color-bg-base, #fff);
-            color: inherit;
-            padding: 9px 14px;
-            font-size: 12px;
-            font-weight: 500;
-            cursor: pointer;
-        }
-        button:hover:not(:disabled) {
-            background: var(--skin-color-bg-hover, #f3f5f7);
-        }
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        button.primary {
-            background: var(--skin-color-accent, #FF4D00);
-            border-color: transparent;
-            color: var(--skin-color-accent-text, #fff);
-        }
-        button.danger {
-            color: var(--skin-color-danger, #b91c1c);
-            border-color: color-mix(in srgb, var(--skin-color-danger, #b91c1c) 40%, transparent);
-        }
-        button.ghost {
-            border-color: transparent;
-            background: transparent;
-        }
         .close {
-            width: 36px;
-            height: 36px;
+            width: var(--skin-space-xl);
+            height: var(--skin-space-xl);
             padding: 0;
-            border-radius: 50%;
+            border-radius: var(--skin-radius-full);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -317,58 +260,56 @@ export class SomaProfileModal extends LitElement {
         .panel-action {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: var(--skin-space-md);
             width: 100%;
-            padding: 13px 14px;
-            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.1));
-            border-radius: var(--skin-radius-md, 8px);
-            background: var(--skin-color-bg-base, #fff);
+            padding: var(--skin-space-md);
+            border: var(--skin-border-width) solid var(--skin-color-border);
+            border-radius: var(--skin-radius-md);
+            background: var(--skin-color-bg-base);
             cursor: pointer;
-            margin-top: 8px;
+            margin-top: var(--skin-space-sm);
             text-align: left;
+            color: inherit;
+            font-family: var(--skin-font-sans);
+            font-size: var(--skin-text-sm);
         }
         .panel-action:hover {
-            background: var(--skin-color-bg-hover, #f5f7fa);
+            background: var(--skin-color-bg-hover);
         }
         .panel-action .material-symbols-outlined {
-            font-size: 20px;
-            color: var(--skin-color-accent, #FF4D00);
+            font-size: var(--skin-text-xl);
+            color: var(--skin-color-accent);
         }
         .panel-action strong {
             display: block;
-            font-size: 13px;
+            font-size: var(--skin-text-sm);
         }
         .panel-action .sub {
             display: block;
-            font-size: 11px;
-            color: var(--skin-color-text-secondary, #5b6470);
-            margin-top: 2px;
-        }
-
-        .status {
-            margin-top: 12px;
-            font-size: 12px;
-            padding: 8px 10px;
-            border-radius: var(--skin-radius-md, 8px);
-            background: var(--skin-color-bg-hover, #f3f5f7);
-            color: var(--skin-color-text-secondary, #5b6470);
-        }
-        .status.error {
-            background: color-mix(in srgb, var(--skin-color-danger, #ef4444) 12%, transparent);
-            color: var(--skin-color-danger, #b91c1c);
+            font-size: var(--skin-text-xs);
+            color: var(--skin-color-text-secondary);
+            margin-top: calc(var(--skin-border-width) * 2);
         }
 
         .footer-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 12px;
-            padding: 14px 28px;
-            border-top: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
-            background: var(--skin-color-bg-card, var(--platform-bg-card, #fff));
+            gap: var(--skin-space-md);
+            padding: var(--skin-space-md) var(--skin-space-xl);
+            border-top: var(--skin-border-width) solid var(--skin-color-border);
+            background: var(--skin-color-bg-card);
+        }
+        .footer-actions {
+            display: flex;
+            gap: var(--skin-space-sm);
         }
 
-        @media (max-width: 900px) {
+        .card .mb-status {
+            margin-top: var(--skin-space-md);
+        }
+
+        @media (max-width: 56em) {
             .card,
             .card.half-left,
             .card.half-right {
@@ -562,20 +503,20 @@ export class SomaProfileModal extends LitElement {
                         <div class="sub">
                             <span>${this._email}</span>
                             <span class="pill">
-                                <span class="material-symbols-outlined" style="font-size:12px">badge</span>
+                                <span class="material-symbols-outlined" style="font-size:var(--skin-text-xs)">badge</span>
                                 ${this._role || t('profile.role')}
                             </span>
                         </div>
                     </div>
                     <div class="top-actions">
                         <button
-                            class="primary"
+                            class="mb-btn primary"
                             ?disabled=${!this._dirty || this._saving}
                             @click=${() => this._saveAll()}
                         >
                             ${this._saving ? t('profile.saving') : t('profile.saveAll')}
                         </button>
-                        <button class="close ghost" aria-label=${t('common.close')} @click=${() => this._close()}>
+                        <button class="mb-btn ghost close" aria-label=${t('common.close')} @click=${() => this._close()}>
                             <span class="material-symbols-outlined">close</span>
                         </button>
                     </div>
@@ -590,8 +531,9 @@ export class SomaProfileModal extends LitElement {
                                 ${t('profile.account')}
                             </h2>
                             <p class="desc">${t('profile.accountDesc')}</p>
-                            <label for="pf-name">${t('profile.displayName')}</label>
+                            <label class="mb-label" for="pf-name">${t('profile.displayName')}</label>
                             <input
+                                class="mb-input"
                                 id="pf-name"
                                 .value=${this._name}
                                 @input=${(e: Event) => {
@@ -599,11 +541,11 @@ export class SomaProfileModal extends LitElement {
                                     this._dirty = true;
                                 }}
                             />
-                            <label for="pf-email">${t('profile.primaryEmail')}</label>
-                            <input id="pf-email" .value=${this._email} readonly />
-                            <div class="hint">${t('profile.emailLockedHint')}</div>
-                            <label for="pf-role">${t('profile.role')}</label>
-                            <input id="pf-role" .value=${this._role} readonly />
+                            <label class="mb-label" for="pf-email">${t('profile.primaryEmail')}</label>
+                            <input class="mb-input" id="pf-email" .value=${this._email} readonly />
+                            <div class="mb-hint">${t('profile.emailLockedHint')}</div>
+                            <label class="mb-label" for="pf-role">${t('profile.role')}</label>
+                            <input class="mb-input" id="pf-role" .value=${this._role} readonly />
                         </section>
 
                         <!-- Channels -->
@@ -613,7 +555,7 @@ export class SomaProfileModal extends LitElement {
                                 ${t('profile.channels')}
                             </h2>
                             <p class="desc">${t('profile.channelsHint')}</p>
-                            <label>${t('profile.emailAccounts')}</label>
+                            <label class="mb-label">${t('profile.emailAccounts')}</label>
                             ${this._emails.map(
                                 (r) => html`
                                     <div class="row-card">
@@ -627,7 +569,7 @@ export class SomaProfileModal extends LitElement {
                                             </div>
                                         </div>
                                         <button
-                                            class="ghost"
+                                            class="mb-btn ghost"
                                             aria-label=${t('profile.removeChannel', { value: r.value })}
                                             @click=${() => {
                                                 this._emails = this._emails.filter((x) => x.id !== r.id);
@@ -641,6 +583,7 @@ export class SomaProfileModal extends LitElement {
                             )}
                             <div class="chip-add">
                                 <input
+                                    class="mb-input"
                                     placeholder="name@company.com"
                                     .value=${this._newEmail}
                                     @input=${(e: Event) => {
@@ -650,10 +593,10 @@ export class SomaProfileModal extends LitElement {
                                         if (e.key === 'Enter') this._addEmail();
                                     }}
                                 />
-                                <button @click=${() => this._addEmail()}>${t('profile.addEmail')}</button>
+                                <button class="mb-btn" @click=${() => this._addEmail()}>${t('profile.addEmail')}</button>
                             </div>
 
-                            <label>${t('profile.whatsapp')}</label>
+                            <label class="mb-label">${t('profile.whatsapp')}</label>
                             ${this._phones.map(
                                 (r) => html`
                                     <div class="row-card">
@@ -663,7 +606,7 @@ export class SomaProfileModal extends LitElement {
                                             <div class="t">${this._channelLabel(r.label)}</div>
                                         </div>
                                         <button
-                                            class="ghost"
+                                            class="mb-btn ghost"
                                             aria-label=${t('profile.removeChannel', { value: r.value })}
                                             @click=${() => {
                                                 this._phones = this._phones.filter((x) => x.id !== r.id);
@@ -677,6 +620,7 @@ export class SomaProfileModal extends LitElement {
                             )}
                             <div class="chip-add">
                                 <input
+                                    class="mb-input"
                                     placeholder="+593 99 000 0000"
                                     .value=${this._newPhone}
                                     @input=${(e: Event) => {
@@ -686,7 +630,7 @@ export class SomaProfileModal extends LitElement {
                                         if (e.key === 'Enter') this._addPhone();
                                     }}
                                 />
-                                <button @click=${() => this._addPhone()}>${t('profile.addWhatsapp')}</button>
+                                <button class="mb-btn" @click=${() => this._addPhone()}>${t('profile.addWhatsapp')}</button>
                             </div>
                         </section>
 
@@ -732,7 +676,7 @@ export class SomaProfileModal extends LitElement {
 
                         ${this._statusKey
                             ? html`<div class="card wide">
-                                  <div class="status ${this._statusError ? 'error' : ''}" role="status">
+                                  <div class="mb-status ${this._statusError ? 'error' : ''}" role="status">
                                       ${t(this._statusKey)}
                                   </div>
                               </div>`
@@ -741,11 +685,11 @@ export class SomaProfileModal extends LitElement {
                 </div>
 
                 <footer class="footer-bar">
-                    <button class="danger" @click=${() => this._logout()}>${t('profile.signOut')}</button>
-                    <div style="display:flex;gap:8px">
-                        <button @click=${() => this._close()}>${t('common.close')}</button>
+                    <button class="mb-btn danger" @click=${() => this._logout()}>${t('profile.signOut')}</button>
+                    <div class="footer-actions">
+                        <button class="mb-btn" @click=${() => this._close()}>${t('common.close')}</button>
                         <button
-                            class="primary"
+                            class="mb-btn primary"
                             ?disabled=${!this._dirty || this._saving}
                             @click=${() => this._saveAll()}
                         >
