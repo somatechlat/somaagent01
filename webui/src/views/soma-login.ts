@@ -176,18 +176,15 @@ export class SomaLogin extends LitElement {
         .brand-icon {
             width: 40px;
             height: 40px;
-            background: #1a1a1a;
-            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        .brand-icon svg {
-            width: 20px;
-            height: 20px;
-            stroke: white;
-            fill: none;
+        .brand-icon img {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
         }
 
         .brand-name {
@@ -649,12 +646,13 @@ export class SomaLogin extends LitElement {
                     <!-- Brand -->
                     <div class="brand">
                         <div class="brand-icon">
-                            <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="3" width="7" height="7" rx="1"/>
-                                <rect x="14" y="3" width="7" height="7" rx="1"/>
-                                <rect x="14" y="14" width="7" height="7" rx="1"/>
-                                <rect x="3" y="14" width="7" height="7" rx="1"/>
-                            </svg>
+                            <img
+                                src="/brand/1x/yachaq-logo-1x.png"
+                                srcset="/brand/1x/yachaq-logo-1x.png 1x, /brand/2x/yachaq-logo-2x.png 2x, /brand/3x/yachaq-logo-3x.png 3x"
+                                alt="YACHAQ"
+                                width="40"
+                                height="40"
+                            />
                         </div>
                         <span class="brand-name">SomaAgent Soma</span>
                     </div>

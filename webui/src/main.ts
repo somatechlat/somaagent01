@@ -262,6 +262,13 @@ if (app) {
             return;
         }
 
+        // Notifications Center (soma-notification-center exists)
+        if (path === '/notifications') {
+            await import('./components/soma-notification-center.js');
+            app.appendChild(document.createElement('soma-notification-center'));
+            return;
+        }
+
         // Audit Log Dashboard
         if (path === '/platform/audit' || path === '/soma/audit') {
             await import('./views/soma-audit-dashboard.js');

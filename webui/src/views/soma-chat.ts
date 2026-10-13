@@ -169,19 +169,19 @@ export class SomaChat extends LitElement {
         .brand-icon {
             width: 32px;
             height: 32px;
-            background: var(--platform-accent, #3B82F6);
             border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            overflow: hidden;
         }
 
-        .brand-icon svg {
-            width: 16px;
-            height: 16px;
-            stroke: var(--platform-bg-void, #f5f5f5);
-            fill: none;
+        .brand-icon img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            display: block;
         }
 
         .brand-name {
@@ -641,7 +641,7 @@ export class SomaChat extends LitElement {
             flex-direction: column;
             gap: 16px;
             padding: 22px 22px 14px;
-            scroll-behavior: smooth;
+            scroll-behavior: auto;
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -2953,14 +2953,15 @@ export class SomaChat extends LitElement {
                 <div class="sidebar-header">
                     <div class="brand">
                         <div class="brand-icon">
-                            <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <rect x="3" y="3" width="7" height="7" rx="1"/>
-                                <rect x="14" y="3" width="7" height="7" rx="1"/>
-                                <rect x="14" y="14" width="7" height="7" rx="1"/>
-                                <rect x="3" y="14" width="7" height="7" rx="1"/>
-                            </svg>
+                            <img
+                                src="/brand/1x/yachaq-logo-1x.png"
+                                srcset="/brand/1x/yachaq-logo-1x.png 1x, /brand/2x/yachaq-logo-2x.png 2x, /brand/3x/yachaq-logo-3x.png 3x"
+                                alt="YACHAQ"
+                                width="32"
+                                height="32"
+                            />
                         </div>
-                        <span class="brand-name">SomaAgent</span>
+                        <span class="brand-name">YACHAQ</span>
                     </div>
                 </div>
 
