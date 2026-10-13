@@ -254,22 +254,20 @@ export class SomaLogin extends LitElement {
         }
         .form-input:focus { outline: none; border-color: var(--skin-color-accent); }
 
-        /* Kill browser autofill green/yellow wash — paint with skin tokens. */
+        /* Browser autofill green/yellow is painted by the engine — force skin. */
         .form-input:-webkit-autofill,
         .form-input:-webkit-autofill:hover,
         .form-input:-webkit-autofill:focus,
-        .form-input:-webkit-autofill:active {
-            -webkit-box-shadow: 0 0 0 1000px var(--skin-color-bg-base) inset;
-            -webkit-text-fill-color: var(--skin-color-text-primary);
-            caret-color: var(--skin-color-text-primary);
+        .form-input:-webkit-autofill:active,
+        .form-input:autofill {
+            background-color: var(--skin-color-bg-base) !important;
+            background-image: none !important;
+            color: var(--skin-color-text-primary) !important;
+            -webkit-text-fill-color: var(--skin-color-text-primary) !important;
+            caret-color: var(--skin-color-text-primary) !important;
+            box-shadow: 0 0 0 1000px var(--skin-color-bg-base) inset !important;
+            -webkit-box-shadow: 0 0 0 1000px var(--skin-color-bg-base) inset !important;
             transition: background-color 5000s ease-in-out 0s;
-        }
-        .form-input:autofill,
-        .form-input:autofill:hover,
-        .form-input:autofill:focus {
-            box-shadow: 0 0 0 1000px var(--skin-color-bg-base) inset;
-            -webkit-text-fill-color: var(--skin-color-text-primary);
-            caret-color: var(--skin-color-text-primary);
         }
         .password-wrapper { position: relative; display: flex; align-items: center; }
         .password-wrapper .form-input { padding-right: calc(var(--skin-space-xl) + var(--skin-space-sm) + var(--skin-space-xs)); }

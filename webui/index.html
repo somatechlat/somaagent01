@@ -25,7 +25,8 @@
     </style>
 
     <style id="soma-brand">
-      /* SomaTech LAT / Yachaq.AI brand — SOMA-UI-SPEC-001 §1.1 */
+      /* YACHAQ.AI brand marks only. Design tokens stay in tokens.css
+         (SOMA-STD-UIUX-001 — one token authority; do not override --platform-*). */
       :root {
         --soma-black: #050505;
         --soma-dark: #0A0A0A;
@@ -35,46 +36,15 @@
         --soma-orange-soft: #FF7A3D;
         --soma-orange-deep: #E64500;
         --soma-gradient: linear-gradient(135deg, #FF4D00 0%, #FF7A3D 100%);
-        --soma-success: #10B981;
         --soma-text: #F8FAFC;
         --soma-text-dim: #94A3B8;
         --soma-font: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
         --soma-font-display: "Sora", "Inter", system-ui, sans-serif;
         --soma-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
-
-        /* Soma Platform aliases used by Lit components */
-        --platform-bg-void: #050505;
-        --platform-bg-card: #121212;
-        --platform-bg-sidebar: #0A0A0A;
-        --platform-bg-hover: #1F1F1F;
-        --platform-bg-active: #2A2A2A;
-        --platform-border-color: #2A2A2A;
-        --platform-border-light: rgba(255,255,255,0.06);
-        --platform-border-medium: rgba(255,255,255,0.12);
-        --platform-accent: #FF4D00;
-        --platform-accent-hover: #E64500;
-        --platform-info: #FF4D00;
-        --platform-success: #10B981;
-        --platform-warning: #F59E0B;
-        --platform-danger: #EF4444;
-        --platform-text-main: #E5E5E5;
-        --platform-text-primary: #FFFFFF;
-        --platform-text-bright: #FFFFFF;
-        --platform-text-secondary: #94A3B8;
-        --platform-text-dim: #64748B;
-        --platform-text-muted: #94A3B8;
-        --platform-text-inverse: #F8FAFC;
-        --platform-font-sans: var(--soma-font);
-        --platform-font-mono: var(--soma-font-mono);
-        --platform-radius-sm: 6px;
-        --platform-radius-md: 10px;
-        --platform-radius-lg: 16px;
-        --platform-radius-xl: 20px;
-        --platform-radius-full: 9999px;
       }
       body, html {
-        background: #0A0A0A;
-        color: #F8FAFC;
+        background: var(--platform-bg-void, #f5f5f5);
+        color: var(--platform-text-main, #1a1a1a);
         font-family: var(--soma-font);
       }
     </style>
