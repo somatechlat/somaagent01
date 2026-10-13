@@ -309,28 +309,39 @@ def delete_file(request, file_id: str):
 def get_download_url(request, file_id: str):
     authorize_sync(request, action="resource:file_read", resource="files")
 
-    import boto3  # type: ignore[import]
-    from botocore.config import Config  # type: ignore[import]
-
     from admin.filesv2.models import File
 
     try:
         f = File.objects.get(id=file_id, deleted_at__isnull=True)
 
-        s3_client = boto3.client(
-            "s3",
-            config=Config(signature_version="s3v4"),
-            region_name=require_setting("AWS_REGION"),
-        )
-
-        bucket = require_setting("AWS_S3_BUCKET")
         expires_in = 3600
 
-        download_url = s3_client.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": bucket, "Key": f.storage_key},
-            ExpiresIn=expires_in,
-        )
+        # S3 presign when the bucket is configured; otherwise this deployment
+        # streams bytes from default_storage (local /upload-local).
+        bucket = ""
+        try:
+            from admin.core.helpers.settings_model import SettingsModel
+
+            bucket = (SettingsModel.get("AWS_S3_BUCKET", "") or "").strip()
+        except Exception:
+            bucket = ""
+
+        if bucket:
+            import boto3  # type: ignore[import]
+            from botocore.config import Config  # type: ignore[import]
+
+            s3_client = boto3.client(
+                "s3",
+                config=Config(signature_version="s3v4"),
+                region_name=require_setting("AWS_REGION"),
+            )
+            download_url = s3_client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": bucket, "Key": f.storage_key},
+                ExpiresIn=expires_in,
+            )
+        else:
+            download_url = f"/api/v2/filesv2/{f.id}/content"
 
         return {
             "download_url": download_url,
@@ -341,5 +352,30 @@ def get_download_url(request, file_id: str):
     except File.DoesNotExist:
         return {"error": get_message(ErrorCode.NOT_FOUND)}, 404
     except Exception as e:
-        logger.exception("S3 download URL error: %s", e)
+        logger.exception("download URL error: %s", e)
         return {"error": get_message(ErrorCode.INTERNAL_ERROR)}, 500
+
+
+@router.get("/{file_id}/content", auth=AuthBearer())
+def download_content(request, file_id: str):
+    """Stream local file bytes (Soma Platform-in-a-box / no S3)."""
+    authorize_sync(request, action="resource:file_read", resource="files")
+
+    from django.http import FileResponse
+    from django.core.files.storage import default_storage
+
+    from admin.filesv2.models import File
+
+    try:
+        f = File.objects.get(id=file_id, deleted_at__isnull=True)
+        if not default_storage.exists(f.storage_key):
+            return {"error": get_message(ErrorCode.NOT_FOUND)}, 404
+        handle = default_storage.open(f.storage_key, "rb")
+        return FileResponse(
+            handle,
+            as_attachment=False,
+            filename=f.original_name or f.name,
+            content_type=f.mime_type or "application/octet-stream",
+        )
+    except File.DoesNotExist:
+        return {"error": get_message(ErrorCode.NOT_FOUND)}, 404
