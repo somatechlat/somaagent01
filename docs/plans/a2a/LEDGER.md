@@ -455,3 +455,4 @@ Fix: stability window raised to 3000 ms in both `test_memory_human_name.spec.js`
 | ts | agent | action | detail |
 |---|---|---|---|
 | 2026-10-14T23:25:00Z | soma-ui-engineer | commit | File browser repair: list-all pages, preview/download via GET /filesv2/{id}/content, uploadFiles+refresh, drop→upload, honest gates, bootstrap_identity --roles. Live curl + Playwright files-modal 2/2 on :20080. |
+| 2026-10-13T23:40:00Z | soma-ui-engineer | commit | File browser honesty: search-no-match ≠ empty workspace (+Clear search); download/upload/delete failures pushToast; delete 403 names resource:file_delete; i18n duplicate keys removed. tsc clean · vite build · curl list+upload+content 200 · Playwright files-modal 2/2 on :20080. Chat login untouched. |

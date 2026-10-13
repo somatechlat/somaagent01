@@ -25,6 +25,7 @@
 | 1.0.0 | 2026-10-13 | soma-ui-engineer | Full File Manager control map: live UI-X-01 list + planned tree/list/preview/upload/manage controls with real target APIs. |
 | 1.1.0 | 2026-10-13 | soma-ui-engineer | As-built M-024 polish: standardized workroot/inbox tree chrome (honest gate), file-type Material icons in list, move/rename/delete/new-folder UX with named-API gates, upload tray, no emojis. |
 | 1.2.0 | 2026-10-14 | soma-ui-engineer | As-built repair: list pages through GET /filesv2/ until `total`; preview + download primary body is GET /filesv2/{id}/content (local stream) with signed download-url fallback; modal drop zone calls `uploadFiles`; `bootstrap_identity --roles` so a provisioned principal can resolve `resource:file_*`. |
+| 1.3.0 | 2026-10-14 | soma-ui-engineer | Honesty repair: search-no-match is not an empty workspace (Clear search); download/upload/delete failures pushToast (never silent); delete 403 names `resource:file_delete`; duplicate i18n keys removed. Live curl list+upload+content + Playwright files-modal 2/2 on :20080. |
 
 ---
 
@@ -170,12 +171,14 @@ Target APIs are real endpoints named in the frontend master / module catalog. Mi
 1. No tree is invented when the API returns a flat list.
 2. No upload/delete chrome while those endpoints are not wired (live UI-X-01 stays thin).
 3. A failed load is an error state — never an empty workspace.
-4. `size_bytes` is formatted only for display; the number is the server’s.
-5. Editor Save stays disabled until `PUT /api/v2/filesv2/{id}/content` exists (real gate, not a stub handler).
-6. **No emojis in the File Manager** — tree nodes, row actions, chips, and labels use Material Symbols only (`folder`, `inbox`, `download`, `visibility`, `edit`, `drive_file_move`, `delete`, `attach_file`, `create_new_folder`, `upload`, `refresh`).
-7. File-type glyphs come from `utils/file-icons.ts` `attachmentIcon(name, type)` — shared with composer chips and message attachment cards.
-8. Move/rename/new-folder keep their named missing-API reasons visible in the modal or `title` — never a silent no-op.
-9. Standard tree chrome is `workroot` + `inbox` only. Child nodes are not invented when the typed tree API is absent.
+4. A filtered-empty list is **not** an empty workspace: “No files match your search.” + Clear search. Only a truly empty loaded set says “No files in the working set.”
+5. `size_bytes` is formatted only for display; the number is the server’s.
+6. Editor Save stays disabled until `PUT /api/v2/filesv2/{id}/content` exists (real gate, not a stub handler).
+7. **No emojis in the File Manager** — tree nodes, row actions, chips, and labels use Material Symbols only (`folder`, `inbox`, `download`, `visibility`, `edit`, `drive_file_move`, `delete`, `attach_file`, `create_new_folder`, `upload`, `refresh`).
+8. File-type glyphs come from `utils/file-icons.ts` `attachmentIcon(name, type)` — shared with composer chips and message attachment cards.
+9. Move/rename/new-folder keep their named missing-API reasons visible in the modal or `title` — never a silent no-op.
+10. Standard tree chrome is `workroot` + `inbox` only. Child nodes are not invented when the typed tree API is absent.
+11. Operation failures (download, upload, delete) always surface — tray row and/or `pushToast` — never a silent no-op. Delete 403 names `resource:file_delete`.
 
 ---
 

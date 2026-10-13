@@ -28,6 +28,7 @@ import { uploadAttachment, type AttachmentMeta } from '../services/file-upload.j
 import { formatBytes } from '../utils/markdown.js';
 import { attachmentIcon } from '../utils/file-icons.js';
 import { t } from '../i18n/index.js';
+import { pushToast } from './soma-toast-stack.js';
 import './soma-file-preview.js';
 import './soma-glass-modal.js';
 import type { SomaGlassModal } from './soma-glass-modal.js';
@@ -715,6 +716,11 @@ export class SomaFileManager extends LitElement {
         });
     }
 
+    /** True when the searchbox is filtering an already-loaded list. */
+    private get _searching(): boolean {
+        return this._query.trim().length > 0 && this._files.length > 0;
+    }
+
     private get _selectionSet(): Set<string> {
         return new Set(this.selection);
     }
@@ -884,6 +890,10 @@ export class SomaFileManager extends LitElement {
                 this._uploads = this._uploads.map(u =>
                     u.key === key ? { ...u, state: 'failed', error: message } : u,
                 );
+                pushToast({
+                    kind: 'error',
+                    message: `Upload failed — ${file.name}: ${message}`,
+                });
                 this.dispatchEvent(
                     new CustomEvent<{ name: string; error: string }>('soma-upload-error', {
                         detail: { name: file.name, error: message },
@@ -965,12 +975,17 @@ export class SomaFileManager extends LitElement {
             }
             saveBlob(await res.blob());
         } catch (err) {
-            this._filesError = `Download unavailable — ${reasonOf(err)}`;
+            const message = `Download unavailable — ${reasonOf(err)}`;
+            this._filesError = message;
+            pushToast({
+                kind: 'error',
+                message: `${name}: ${message}`,
+            });
             this.dispatchEvent(
                 new CustomEvent<{ fileId: string; name: string; error: string }>(
                     'soma-file-download-error',
                     {
-                        detail: { fileId: file.id, name, error: this._filesError },
+                        detail: { fileId: file.id, name, error: message },
                         bubbles: true,
                         composed: true,
                     },
@@ -1110,7 +1125,13 @@ export class SomaFileManager extends LitElement {
             this._deleteTarget = null;
             void this._loadFiles();
         } catch (err) {
-            this._deleteError = `DELETE /api/v2/filesv2/${target.id} — ${reasonOf(err)}`;
+            const reason = reasonOf(err);
+            // 403 is an authz fact, not a mystery: name the missing permission.
+            this._deleteError =
+                err instanceof ApiError && err.status === 403
+                    ? `DELETE /api/v2/filesv2/${target.id} — Permission denied (resource:file_delete). ${reason}`
+                    : `DELETE /api/v2/filesv2/${target.id} — ${reason}`;
+            pushToast({ kind: 'error', message: this._deleteError });
         } finally {
             this._deleteBusy = false;
         }
@@ -1439,6 +1460,27 @@ export class SomaFileManager extends LitElement {
 
         const rows = this._filtered;
         if (rows.length === 0) {
+            // Honest split: a filtered-empty list is not an empty workspace.
+            if (this._searching) {
+                return html`
+                    <div class="status-block">
+                        <span>No files match your search.</span>
+                        <span class="detail">
+                            ${this._files.length} loaded file${this._files.length === 1 ? '' : 's'} —
+                            none matched “${this._query.trim()}”.
+                        </span>
+                        <button
+                            class="btn"
+                            aria-label=${t('files.clearSearch')}
+                            @click=${() => {
+                                this._query = '';
+                            }}
+                        >
+                            ${t('files.clearSearch')}
+                        </button>
+                    </div>
+                `;
+            }
             return html`
                 <div class="status-block">
                     <span>No files in the working set.</span>

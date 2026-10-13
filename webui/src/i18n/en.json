@@ -71,6 +71,8 @@
     "files.newFolderDisabled": "New folder (disabled)",
     "files.searchFiles": "Search files",
     "files.searchPlaceholder": "Search files…",
+    "files.searchLoadedOnly": "Searches the loaded page only",
+    "files.clearSearch": "Clear search",
     "files.refresh": "Refresh",
     "files.download": "Download",
     "files.preview": "Preview",
@@ -133,7 +135,6 @@
     "message.copyMessage": "Copy message text",
     "message.retryBusy": "Still finishing the previous turn — retry not sent",
     "message.editEmpty": "Message text cannot be empty",
-    "files.searchLoadedOnly": "Searches the loaded page only",
     "files.pageStatus": "Page 1 of {total} loaded",
     "files.pagingGated": "Multi-page navigation is not mounted on this deployment."
 }

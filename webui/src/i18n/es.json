@@ -71,6 +71,8 @@
     "files.newFolderDisabled": "Nueva carpeta (desactivada)",
     "files.searchFiles": "Buscar archivos",
     "files.searchPlaceholder": "Buscar archivos…",
+    "files.searchLoadedOnly": "Busca solo en la página cargada",
+    "files.clearSearch": "Borrar búsqueda",
     "files.refresh": "Actualizar",
     "files.download": "Descargar",
     "files.preview": "Vista previa",
@@ -133,7 +135,6 @@
     "message.copyMessage": "Copiar texto del mensaje",
     "message.retryBusy": "Aún se está terminando el turno anterior — no se reenvió",
     "message.editEmpty": "El texto del mensaje no puede estar vacío",
-    "files.searchLoadedOnly": "Busca solo en la página cargada",
     "files.pageStatus": "Página 1 de {total} cargada",
     "files.pagingGated": "La navegación entre páginas no está montada en este despliegue."
 }
