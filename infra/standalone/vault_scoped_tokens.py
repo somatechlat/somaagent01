@@ -18,9 +18,11 @@ Properties this script must have — the same ones ``vault_unseal.py`` and
 * **Never prints a secret value.** Not on success, not on failure, not in an
   exception. Only file names, policy names and HTTP status codes.
 * **Never writes a secret to a repo-adjacent path.** Issued tokens are handed
-  to the runtime over the RAM tmpfs custodian (``T0_DIR``) only — the same
-  non-disk channel ``vault_unseal.py`` uses for the unseal key. There is no
-  host secrets directory and no ``./secrets/`` (SOMA-STD-BOOTSTRAP-001 §2.5).
+  to the T0 custodian (``T0_DIR``) only — the same channel ``vault_unseal.py``
+  uses for the unseal key. There is no host secrets directory and no
+  ``./secrets/`` (SOMA-STD-BOOTSTRAP-001 §2.5). T0 must be tmpfs OR a
+  dedicated named-volume mount (R-SEC-01 exception §2.1a). Root is never
+  written to T0 (R-SEC-01 absolute).
 * **Fails closed.** If policy cannot be written or a token cannot be issued,
   the script exits non-zero and writes nothing partial.
 * **Idempotent.** Re-running re-applies policy and re-issues tokens. It never
@@ -38,9 +40,10 @@ Environment::
 
     VAULT_ADDR              REQUIRED. No default.
     VAULT_TOKEN_TTL_HOURS   REQUIRED. Lease length for issued tokens.
-    T0_DIR                  REQUIRED. RAM tmpfs custodian directory. Issued
-                            tokens are written here (and only here). A path
-                            that is not tmpfs is refused (R-SEC-01).
+    T0_DIR                  REQUIRED. Custodian directory. Issued tokens are
+                            written here (and only here). Must be tmpfs or a
+                            dedicated named-volume mount (R-SEC-01 §2.1a);
+                            any other filesystem is refused.
     VAULT_TOKEN             Optional, one-shot process env only: the root
                             token for THIS process. Otherwise read from the
                             same custodian ``vault_unseal.py`` used (T0_DIR /
@@ -122,40 +125,86 @@ def _keychain_available() -> bool:
     )
 
 
-def _t0_set(account: str, value: str) -> None:
-    """Write one custodian account into the RAM tmpfs T0_DIR.
+def _t0_custodian_allows(account: str, value: str) -> None:
+    """R-SEC-01 — what may be written into T0, and onto which filesystem.
 
-    Refuses a non-tmpfs path. A write that would land on a real filesystem is
-    the exact failure SOMA-STD-BOOTSTRAP-001 exists to prevent (T-1, T-3).
+    ABSOLUTE (no exception): the root token is never written to T0 or any
+    other filesystem. Root is process RAM of a one-shot only (§3.4). The
+    2026-10-13 incident wrote ``vault_root_token`` here — that is the
+    violation this guard exists to make impossible.
+
+    Custodian filesystem — two allowed shapes (SOMA-STD-BOOTSTRAP-001 §2.1a):
+
+    * **tmpfs** — RAM-only, preferred. Never paged to durable storage.
+    * **dedicated named-volume mount** (e.g. ``standalone_t0_agent``) —
+      a *documented local-standalone exception*. Justification: the 1-of-1
+      unseal key must survive container recreate or the store becomes
+      permanently un-unsealable; Linux containers have no OS keychain; the
+      volume is container-native (not the repo, not a host bind). Production
+      replaces this custodian with KMS auto-unseal (§2.3) and the exception
+      disappears.
+
+    Everything else (repo path, host bind, overlay layer, ``/tmp`` on the
+    root fs) is refused.
     """
+    if account == ROOT_ACCOUNT:
+        raise die(
+            f"refusing to write {ROOT_ACCOUNT} to T0 (R-SEC-01 absolute). "
+            f"Root lives only in a one-shot process and is revoked after mint "
+            f"(§3.4). Use vault operator generate-root for break-glass."
+        )
+    if value == "":
+        raise die(f"refusing to write empty value for {account}")
+
     T0_DIR.mkdir(parents=True, exist_ok=True)
-    # Fail closed if this is not a tmpfs mount — same gate as vault_unseal.py.
     try:
         mounts_path = Path("/proc/mounts")
         if mounts_path.exists():
             mounts = mounts_path.read_text()
             resolved = str(T0_DIR.resolve())
-            on_tmpfs = any(
-                "tmpfs" in line and resolved.startswith(line.split()[1])
-                for line in mounts.splitlines()
-                if len(line.split()) >= 3
-            )
-            if not on_tmpfs and not resolved.startswith("/dev/shm"):
-                best = ""
+
+            def _mount_entry(path: str) -> tuple[str, str] | None:
+                """Longest /proc/mounts entry covering `path` → (mountpoint, fstype)."""
+                best: tuple[str, str] | None = None
                 for line in mounts.splitlines():
                     parts = line.split()
-                    if len(parts) >= 3 and parts[2] == "tmpfs":
-                        if resolved.startswith(parts[1]) and len(parts[1]) > len(best):
-                            best = parts[1]
-                if not best:
+                    if len(parts) < 3:
+                        continue
+                    mp, fstype = parts[1], parts[2]
+                    if path == mp or path.startswith(mp.rstrip("/") + "/"):
+                        if best is None or len(mp) > len(best[0]):
+                            best = (mp, fstype)
+                return best
+
+            entry = _mount_entry(resolved)
+            if entry is None:
+                raise die(
+                    f"T0_DIR={T0_DIR} is not a mount point and is not under "
+                    f"one. Tokens must never touch an ordinary directory "
+                    f"(R-SEC-01)."
+                )
+            mp, fstype = entry
+            if fstype in ("tmpfs", "ramfs"):
+                pass  # RAM custodian — preferred
+            elif resolved == mp.rstrip("/") or resolved.startswith(mp.rstrip("/") + "/"):
+                # §2.1a documented exception: a dedicated volume mount (its
+                # own /proc/mounts entry, not the container root overlay).
+                if mp == "/" or fstype == "overlay":
                     raise die(
-                        f"T0_DIR={T0_DIR} is not on tmpfs. Tokens must never "
-                        f"touch the filesystem (R-SEC-01)."
+                        f"T0_DIR={T0_DIR} is on the container root fs "
+                        f"({fstype} at {mp}). R-SEC-01: use tmpfs or a "
+                        f"dedicated named-volume mount."
                     )
+                # Named volume (ext4/xfs/… on its own mountpoint) — allowed
+                # under §2.1a. Root is still refused above.
+            else:
+                raise die(
+                    f"T0_DIR={T0_DIR} is not on tmpfs or a dedicated volume "
+                    f"mount (R-SEC-01)."
+                )
     except OSError:
-        # No /proc (e.g. macOS host-side one-shot): still refuse a path that
-        # is explicitly not under a tmpfs-looking directory name only when we
-        # can prove it — otherwise the operator owns the custodian.
+        # No /proc (e.g. macOS host-side one-shot): the operator owns the
+        # custodian. Root is still refused above.
         pass
 
     path = T0_DIR / account
@@ -257,6 +306,10 @@ def issue_token(policy: str, token: str, account: str, comment: str) -> None:
         {
             "policies": [policy],
             "ttl": TOKEN_TTL,
+            # Orphan: survives revoke of the one-shot root that minted it
+            # (Vault revokes children with their parent). Root is revoked
+            # after ceremony; service leases must outlive it.
+            "no_parent": True,
             # No root escalation, no token that can create other tokens.
             "no_default_policy": True,
             "num_uses": 0,
