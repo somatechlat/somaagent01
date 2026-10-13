@@ -1,23 +1,25 @@
 /**
- * Personal User Profile View
- * User's own profile and preferences.
+ * Personal User Profile View — UI-S-34 · CM-11.
+ * User's own profile and preferences. Self-service only (CM-11 R-1…R-7).
  *
- * Route: /profile
+ * Route: /profile (also /admin/profile, /platform/profile)
+ *
+ * Tabs: Account (AC-*) · Security (SC-*) · Notifications (NT-*) · Sessions (SS-*)
+ * Change-password drawer: UI-M-01 → soma-password-modal (PW-*)
  *
  * VIBE COMPLIANT:
  * - Lit 3.x implementation
  * - Django Ninja API integration
- *
- * PERSONAS APPLIED:
- * - palette UX Consultant: Clean, focused layout
- * - lock Security Auditor: MFA, sessions
+ * - --skin-* tokens only
+ * - Real handlers or GATED with a verbatim reason (no dead CTAs)
  */
 
-import { LitElement, html, css } from 'lit';
+import { LitElement, html, css, nothing } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { apiClient } from '../services/api-client.js';
 
 import '../components/soma-toggle.js';
+import '../components/soma-password-modal.js';
 
 interface UserProfile {
     id: string;
@@ -32,7 +34,8 @@ interface UserProfile {
     tenantId: string;
     tenantName: string;
     phone: string;
-    lastPasswordChange?: string;
+    /** Unbound until ProfileOut exposes last_password_change (CM-11 SC-05). */
+    lastPasswordChange?: string | null;
     activeSessions: number;
     notifications: {
         agentReplies: boolean;
@@ -40,6 +43,14 @@ interface UserProfile {
         productUpdates: boolean;
     };
 }
+
+type ProfileTab = 'account' | 'security' | 'notifications' | 'sessions';
+
+/** Verbatim GATED reasons (CM-11 honesty notes). Never a dead control. */
+const GATED_NO_AVATAR = 'Avatar upload has no API on this deployment.';
+const GATED_NO_PASSWORD_CHANGE = 'Password change API not mounted';
+const GATED_NO_SESSION_LIST =
+    'Session list has no self-service API on this deployment.';
 
 @customElement('soma-personal-profile')
 export class SomaPersonalProfile extends LitElement {
@@ -59,235 +70,352 @@ export class SomaPersonalProfile extends LitElement {
             -webkit-font-feature-settings: 'liga';
             -webkit-font-smoothing: antialiased;
         }
-    :host {
-      display: block;
-      min-height: 100vh;
-      background: var(--soma-bg-page, #f5f5f5);
-      padding: var(--soma-spacing-xl, 32px);
-    }
 
-    .profile-page {
-      max-width: 700px;
-      margin: 0 auto;
-    }
+        :host {
+            display: block;
+            min-height: 100vh;
+            background: var(--skin-color-bg-void, #f5f5f5);
+            padding: var(--skin-space-xl, 32px);
+            color: var(--skin-color-text-primary, #1a1a1a);
+            font-family: var(--skin-font-sans, system-ui, sans-serif);
+        }
 
-    .page-header {
-      margin-bottom: var(--soma-spacing-xl, 32px);
-    }
+        .profile-page {
+            max-width: 700px;
+            margin: 0 auto;
+        }
 
-    .page-title {
-      font-size: var(--soma-text-2xl, 24px);
-      font-weight: 700;
-      color: var(--soma-text-primary, #1a1a1a);
-    }
+        .page-header {
+            margin-bottom: var(--skin-space-lg, 24px);
+        }
 
-    .section {
-      background: var(--soma-bg-card, #ffffff);
-      border: 1px solid var(--soma-border, #e0e0e0);
-      border-radius: var(--soma-radius-lg, 12px);
-      margin-bottom: var(--soma-spacing-lg, 24px);
-    }
+        .page-title {
+            font-size: var(--skin-text-2xl, 24px);
+            font-weight: var(--skin-weight-bold, 700);
+            color: var(--skin-color-text-primary, #1a1a1a);
+            margin: 0;
+        }
 
-    .section-header {
-      padding: var(--soma-spacing-md, 16px) var(--soma-spacing-lg, 24px);
-      border-bottom: 1px solid var(--soma-border, #e0e0e0);
-      font-size: var(--soma-text-md, 16px);
-      font-weight: 600;
-      color: var(--soma-text-primary, #1a1a1a);
-    }
+        /* Tabs (CM-11 sections as tab panes) */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
+            margin-bottom: var(--skin-space-lg, 24px);
+            gap: var(--skin-space-xs, 4px);
+        }
 
-    .section-content {
-      padding: var(--soma-spacing-lg, 24px);
-    }
+        .tab {
+            padding: var(--skin-space-md, 16px) var(--skin-space-lg, 24px);
+            font-size: var(--skin-text-sm, 13px);
+            font-weight: var(--skin-weight-medium, 500);
+            color: var(--skin-color-text-secondary, #666666);
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: color var(--skin-motion-fast, 120ms) var(--skin-motion-ease, ease),
+                border-color var(--skin-motion-fast, 120ms) var(--skin-motion-ease, ease);
+        }
 
-    /* Avatar Section */
-    .avatar-section {
-      display: flex;
-      align-items: center;
-      gap: var(--soma-spacing-lg, 24px);
-      margin-bottom: var(--soma-spacing-lg, 24px);
-    }
+        .tab:hover {
+            color: var(--skin-color-text-primary, #1a1a1a);
+        }
 
-    .avatar {
-      width: 96px;
-      height: 96px;
-      border-radius: var(--soma-radius-full, 9999px);
-      background: var(--soma-bg-surface, #fafafa);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 40px;
-      font-weight: 600;
-      color: var(--soma-text-muted, #999999);
-      overflow: hidden;
-    }
+        .tab:focus-visible {
+            outline: var(--skin-focus-ring-width, 2px) solid var(--skin-focus-ring, #1a1a1a);
+            outline-offset: var(--skin-focus-ring-offset, 2px);
+        }
 
-    .avatar img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+        .tab.active {
+            color: var(--skin-color-accent, #1a1a1a);
+            border-bottom-color: var(--skin-color-accent, #1a1a1a);
+        }
 
-    .avatar-actions {
-      display: flex;
-      flex-direction: column;
-      gap: var(--soma-spacing-sm, 8px);
-    }
+        .section {
+            background: var(--skin-color-bg-card, #ffffff);
+            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
+            border-radius: var(--skin-radius-lg, 12px);
+            margin-bottom: var(--skin-space-lg, 24px);
+        }
 
-    /* Form */
-    .form-group {
-      margin-bottom: var(--soma-spacing-md, 16px);
-    }
+        .section-header {
+            padding: var(--skin-space-md, 16px) var(--skin-space-lg, 24px);
+            border-bottom: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
+            font-size: var(--skin-text-base, 14px);
+            font-weight: var(--skin-weight-semibold, 600);
+            color: var(--skin-color-text-primary, #1a1a1a);
+            display: flex;
+            align-items: center;
+            gap: var(--skin-space-sm, 8px);
+        }
 
-    .form-label {
-      display: block;
-      font-size: var(--soma-text-sm, 13px);
-      font-weight: 500;
-      color: var(--soma-text-primary, #1a1a1a);
-      margin-bottom: 4px;
-    }
+        .section-content {
+            padding: var(--skin-space-lg, 24px);
+        }
 
-    .form-input {
-      width: 100%;
-      padding: 10px 12px;
-      background: var(--soma-bg-input, #ffffff);
-      border: 1px solid var(--soma-border, #e0e0e0);
-      border-radius: var(--soma-radius-md, 8px);
-      font-size: var(--soma-text-base, 14px);
-      color: var(--soma-text-primary, #1a1a1a);
-      box-sizing: border-box;
-    }
+        /* Avatar Section — AC-01 / AC-02 */
+        .avatar-section {
+            display: flex;
+            align-items: center;
+            gap: var(--skin-space-lg, 24px);
+            margin-bottom: var(--skin-space-lg, 24px);
+        }
 
-    .form-input:focus {
-      outline: none;
-      border-color: var(--soma-accent, #2563eb);
-    }
+        .avatar {
+            width: 96px;
+            height: 96px;
+            border-radius: var(--skin-radius-full, 9999px);
+            background: var(--skin-color-bg-base, #ffffff);
+            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            font-weight: var(--skin-weight-semibold, 600);
+            color: var(--skin-color-text-muted, #666666);
+            overflow: hidden;
+            flex-shrink: 0;
+        }
 
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: var(--soma-spacing-md, 16px);
-    }
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
 
-    /* Security Row */
-    .security-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: var(--soma-spacing-md, 16px) 0;
-      border-bottom: 1px solid var(--soma-border, #e0e0e0);
-    }
+        .avatar-actions {
+            display: flex;
+            flex-direction: column;
+            gap: var(--skin-space-sm, 8px);
+        }
 
-    .security-row:last-child {
-      border-bottom: none;
-    }
+        .muted {
+            font-size: var(--skin-text-xs, 11px);
+            color: var(--skin-color-text-muted, #666666);
+        }
 
-    .security-info {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
+        .gated-note {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--skin-space-xs, 4px);
+            padding: 4px 10px;
+            border-radius: var(--skin-radius-md, 8px);
+            border: 1px solid var(--skin-color-warning, #eab308);
+            background: color-mix(in srgb, var(--skin-color-warning, #eab308) 12%, transparent);
+            font-size: var(--skin-text-xs, 11px);
+            color: var(--skin-color-text-primary, #1a1a1a);
+        }
 
-    .security-label {
-      font-size: var(--soma-text-base, 14px);
-      color: var(--soma-text-primary, #1a1a1a);
-    }
+        /* Form */
+        .form-group {
+            margin-bottom: var(--skin-space-md, 16px);
+        }
 
-    .security-value {
-      font-size: var(--soma-text-xs, 11px);
-      color: var(--soma-text-muted, #999999);
-    }
+        .form-label {
+            display: block;
+            font-size: var(--skin-text-sm, 13px);
+            font-weight: var(--skin-weight-medium, 500);
+            color: var(--skin-color-text-primary, #1a1a1a);
+            margin-bottom: 4px;
+        }
 
-    /* Toggle Row */
-    .toggle-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: var(--soma-spacing-sm, 8px) 0;
-    }
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--skin-color-bg-base, #ffffff);
+            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
+            border-radius: var(--skin-radius-md, 8px);
+            font-size: var(--skin-text-base, 14px);
+            color: var(--skin-color-text-primary, #1a1a1a);
+            box-sizing: border-box;
+        }
 
-    .toggle-label {
-      font-size: var(--soma-text-base, 14px);
-      color: var(--soma-text-primary, #1a1a1a);
-    }
+        .form-input:focus {
+            outline: none;
+            border-color: var(--skin-color-accent, #1a1a1a);
+            box-shadow: 0 0 0 var(--skin-focus-ring-width, 2px) var(--skin-focus-ring, #1a1a1a);
+        }
 
-    /* Buttons */
-    .btn {
-      padding: 8px 16px;
-      border-radius: var(--soma-radius-md, 8px);
-      font-size: var(--soma-text-sm, 13px);
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
+        .form-input:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+            background: var(--skin-color-bg-hover, #fafafa);
+        }
 
-    .btn-primary {
-      background: var(--soma-accent, #2563eb);
-      color: white;
-      border: none;
-    }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--skin-space-md, 16px);
+        }
 
-    .btn-primary:hover {
-      background: #1d4ed8;
-    }
+        /* Security Row — SC-01…SC-07 */
+        .security-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--skin-space-md, 16px) 0;
+            border-bottom: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
+            gap: var(--skin-space-md, 16px);
+        }
 
-    .btn-secondary {
-      background: var(--soma-bg-card, #ffffff);
-      color: var(--soma-text-primary, #1a1a1a);
-      border: 1px solid var(--soma-border, #e0e0e0);
-    }
+        .security-row:last-child {
+            border-bottom: none;
+        }
 
-    .btn-secondary:hover {
-      background: var(--soma-bg-surface, #fafafa);
-    }
+        .security-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
 
-    .btn-danger {
-      color: #dc2626;
-      border: 1px solid #dc2626;
-      background: transparent;
-    }
+        .security-label {
+            font-size: var(--skin-text-base, 14px);
+            color: var(--skin-color-text-primary, #1a1a1a);
+        }
 
-    .btn-danger:hover {
-      background: #dc2626;
-      color: white;
-    }
+        .security-value {
+            font-size: var(--skin-text-xs, 11px);
+            color: var(--skin-color-text-muted, #666666);
+        }
 
-    /* Save Bar */
-    .save-bar {
-      display: flex;
-      justify-content: flex-end;
-      padding: var(--soma-spacing-md, 16px) 0;
-    }
+        /* Toggle Row — NT-01…NT-03 */
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--skin-space-sm, 8px) 0;
+        }
 
-    .error-banner {
-      padding: 12px 16px;
-      margin-bottom: var(--soma-spacing-lg, 24px);
-      background: #fee2e2;
-      color: #b91c1c;
-      border: 1px solid #fecaca;
-      border-radius: var(--soma-radius-md, 8px);
-      font-size: var(--soma-text-sm, 13px);
-    }
+        .toggle-label {
+            font-size: var(--skin-text-base, 14px);
+            color: var(--skin-color-text-primary, #1a1a1a);
+        }
 
-    .loading {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: var(--soma-spacing-2xl, 48px);
-      color: var(--soma-text-muted, #999999);
-    }
-  `;
+        /* Sessions — SS-01…SS-07 */
+        .stat-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--skin-space-md, 16px);
+            padding: var(--skin-space-md, 16px) 0;
+        }
+
+        .stat-value {
+            font-size: var(--skin-text-2xl, 24px);
+            font-weight: var(--skin-weight-bold, 700);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .empty-state {
+            padding: var(--skin-space-lg, 24px);
+            text-align: center;
+            color: var(--skin-color-text-muted, #666666);
+            font-size: var(--skin-text-sm, 13px);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 16px;
+            border-radius: var(--skin-radius-md, 8px);
+            font-size: var(--skin-text-sm, 13px);
+            font-weight: var(--skin-weight-medium, 500);
+            cursor: pointer;
+            transition: background var(--skin-motion-fast, 120ms) var(--skin-motion-ease, ease);
+            border: 1px solid transparent;
+            white-space: nowrap;
+        }
+
+        .btn:focus-visible {
+            outline: var(--skin-focus-ring-width, 2px) solid var(--skin-focus-ring, #1a1a1a);
+            outline-offset: var(--skin-focus-ring-offset, 2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--skin-color-accent, #1a1a1a);
+            color: var(--skin-color-accent-text, #ffffff);
+            border: none;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--skin-color-accent-hover, #333333);
+        }
+
+        .btn-secondary {
+            background: var(--skin-color-bg-base, #ffffff);
+            color: var(--skin-color-text-primary, #1a1a1a);
+            border: 1px solid var(--skin-color-border, rgba(0, 0, 0, 0.08));
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--skin-color-bg-hover, #fafafa);
+        }
+
+        .btn-danger {
+            color: var(--skin-color-danger, #ef4444);
+            border: 1px solid var(--skin-color-danger, #ef4444);
+            background: transparent;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: var(--skin-color-danger, #ef4444);
+            color: var(--skin-color-danger-text, #ffffff);
+        }
+
+        /* Save Bar — PG-03 / PG-04 */
+        .save-bar {
+            display: flex;
+            justify-content: flex-end;
+            padding: var(--skin-space-md, 16px) 0;
+        }
+
+        .error-banner {
+            padding: 12px 16px;
+            margin-bottom: var(--skin-space-lg, 24px);
+            background: color-mix(in srgb, var(--skin-color-danger, #ef4444) 12%, transparent);
+            color: var(--skin-color-danger, #ef4444);
+            border: 1px solid var(--skin-color-danger, #ef4444);
+            border-radius: var(--skin-radius-md, 8px);
+            font-size: var(--skin-text-sm, 13px);
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--skin-space-2xl, 48px);
+            color: var(--skin-color-text-muted, #666666);
+        }
+    `;
 
     @state() private profile: UserProfile | null = null;
     @state() private loading = true;
     @state() private saving = false;
     @state() private dirty = false;
     @state() private error = '';
+    @state() private activeTab: ProfileTab = 'account';
+    @state() private passwordModalOpen = false;
 
     connectedCallback() {
         super.connectedCallback();
         this._loadProfile();
+        this.addEventListener('soma-password-changed', this._onPasswordChanged);
     }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        this.removeEventListener('soma-password-changed', this._onPasswordChanged);
+    }
+
+    private _onPasswordChanged = () => {
+        // CM-11: SC-05 last-changed refreshes after success. The field is still
+        // unbound in ProfileOut — reload keeps the honest "unknown" readout.
+        void this._loadProfile();
+    };
 
     private async _loadProfile() {
         this.loading = true;
@@ -315,6 +443,7 @@ export class SomaPersonalProfile extends LitElement {
                     phone?: string;
                     active_sessions?: number;
                     avatar_url?: string | null;
+                    last_password_change?: string | null;
                 }>('/platform/admin/profile'),
             ]);
 
@@ -331,6 +460,9 @@ export class SomaPersonalProfile extends LitElement {
                 tenantId: adminProfile.tenant_id || '',
                 tenantName: adminProfile.tenant_name || '',
                 phone: adminProfile.phone || '',
+                // CM-11 SC-05 / honesty note 2: undefined field is "unknown";
+                // only a present-null value may render "never".
+                lastPasswordChange: adminProfile.last_password_change,
                 activeSessions: adminProfile.active_sessions ?? 0,
                 notifications: prefs.notifications ?? {
                     agentReplies: false,
@@ -382,192 +514,429 @@ export class SomaPersonalProfile extends LitElement {
         }
     }
 
-    private _updateField(field: string, value: any) {
+    private _updateField(field: string, value: unknown) {
         if (!this.profile) return;
-        (this.profile as any)[field] = value;
+        this.profile = {
+            ...this.profile,
+            [field]: value,
+        } as UserProfile;
         this.dirty = true;
-        this.requestUpdate();
     }
 
-    private _updateNotification(key: string, value: boolean) {
+    private _updateNotification(key: keyof UserProfile['notifications'], value: boolean) {
         if (!this.profile) return;
-        (this.profile.notifications as any)[key] = value;
+        this.profile = {
+            ...this.profile,
+            notifications: {
+                ...this.profile.notifications,
+                [key]: value,
+            },
+        };
         this.dirty = true;
-        this.requestUpdate();
     }
 
     private _getInitials(name: string): string {
         return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
     }
 
+    private _setTab(tab: ProfileTab) {
+        this.activeTab = tab;
+    }
+
+    private _openPasswordModal() {
+        this.passwordModalOpen = true;
+    }
+
+    /** SC-05 — never invent a timestamp the API did not send. */
+    private _renderLastPasswordChange(): string {
+        const value = this.profile?.lastPasswordChange;
+        if (value === undefined) return 'unknown';
+        if (value === null) return 'never';
+        return value;
+    }
+
+    private _renderAccountTab() {
+        const p = this.profile!;
+        return html`
+            <div class="section" data-control="AC">
+                <div class="section-header">
+                    <span class="material-symbols-outlined">person</span>
+                    Account
+                </div>
+                <div class="section-content">
+                    <div class="avatar-section">
+                        <div class="avatar">
+                            ${p.avatarUrl
+                                ? html`<img src="${p.avatarUrl}" alt="${p.displayName}">`
+                                : this._getInitials(p.displayName || 'U')}
+                        </div>
+                        <div class="avatar-actions">
+                            <!-- AC-02 GATED notice (verbatim) -->
+                            <span class="gated-note" data-control="AC-02">${GATED_NO_AVATAR}</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="ac-display-name">Display name</label>
+                        <input
+                            id="ac-display-name"
+                            data-control="AC-03"
+                            class="form-input"
+                            type="text"
+                            .value=${p.displayName}
+                            @input=${(e: Event) =>
+                                this._updateField('displayName', (e.target as HTMLInputElement).value)}
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="ac-email">Email</label>
+                        <input
+                            id="ac-email"
+                            data-control="AC-04"
+                            class="form-input"
+                            type="email"
+                            .value=${p.email}
+                            disabled
+                            title="Permanently read-only — email is IdP-owned"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="ac-phone">Phone</label>
+                        <input
+                            id="ac-phone"
+                            data-control="AC-05"
+                            class="form-input"
+                            type="tel"
+                            .value=${p.phone}
+                            @input=${(e: Event) =>
+                                this._updateField('phone', (e.target as HTMLInputElement).value)}
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="ac-tenant">Tenant</label>
+                        <input
+                            id="ac-tenant"
+                            data-control="AC-06"
+                            class="form-input"
+                            type="text"
+                            .value=${p.tenantName || p.tenantId || '—'}
+                            disabled
+                            title="Read-only — tenant assignment is platform admin"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="ac-tenant-id">Tenant ID</label>
+                        <input
+                            id="ac-tenant-id"
+                            data-control="AC-07"
+                            class="form-input"
+                            type="text"
+                            .value=${p.tenantId || '—'}
+                            disabled
+                            title="Read-only — identifier, not editable here"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div class="section" data-control="AC-display-prefs">
+                <div class="section-header">
+                    <span class="material-symbols-outlined">settings</span>
+                    Display preferences
+                </div>
+                <div class="section-content">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="ac-theme">Theme</label>
+                            <select
+                                id="ac-theme"
+                                data-control="AC-08"
+                                class="form-input"
+                                .value=${p.theme}
+                                @change=${(e: Event) =>
+                                    this._updateField('theme', (e.target as HTMLSelectElement).value)}
+                            >
+                                <option value="system">System Default</option>
+                                <option value="light">Light</option>
+                                <option value="dark">Dark</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="ac-language">Language</label>
+                            <select
+                                id="ac-language"
+                                data-control="AC-09"
+                                class="form-input"
+                                .value=${p.language}
+                                @change=${(e: Event) =>
+                                    this._updateField('language', (e.target as HTMLSelectElement).value)}
+                            >
+                                <option value="en">🇺🇸 English</option>
+                                <option value="es">🇪🇸 Español</option>
+                                <option value="fr">🇫🇷 Français</option>
+                                <option value="de">🇩🇪 Deutsch</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="ac-timezone">Timezone</label>
+                        <select
+                            id="ac-timezone"
+                            data-control="AC-10"
+                            class="form-input"
+                            .value=${p.timezone}
+                            @change=${(e: Event) =>
+                                this._updateField('timezone', (e.target as HTMLSelectElement).value)}
+                        >
+                            <option value="America/New_York">America/New_York (EST)</option>
+                            <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
+                            <option value="Europe/London">Europe/London (GMT)</option>
+                            <option value="Europe/Paris">Europe/Paris (CET)</option>
+                            <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    private _renderSecurityTab() {
+        const p = this.profile!;
+        return html`
+            <div class="section" data-control="SC">
+                <div class="section-header">
+                    <span class="material-symbols-outlined">lock</span>
+                    Security
+                </div>
+                <div class="section-content">
+                    <div class="security-row" data-control="SC-01">
+                        <div class="security-info">
+                            <span class="security-label">Multi-Factor Authentication</span>
+                            <span class="security-value" data-control="SC-02">
+                                ${p.mfaEnabled
+                                    ? html`<span class="material-symbols-outlined">check_circle</span>
+                                          Enabled (TOTP)`
+                                    : p.mfaEnrolled
+                                        ? html`<span class="material-symbols-outlined">check_circle</span>
+                                              Enrolled (TOTP not yet active)`
+                                        : html`<span class="material-symbols-outlined">cancel</span>
+                                              Disabled`}
+                            </span>
+                        </div>
+                        <button
+                            class="btn btn-secondary"
+                            data-control="SC-03"
+                            @click=${() =>
+                                window.dispatchEvent(
+                                    new CustomEvent('soma-navigate', {
+                                        detail: { route: '/mfa/setup' },
+                                    })
+                                )}
+                        >
+                            Reconfigure
+                        </button>
+                    </div>
+
+                    <div class="security-row" data-control="SC-04">
+                        <div class="security-info">
+                            <span class="security-label">Password</span>
+                            <span class="security-value" data-control="SC-05">
+                                Last changed ${this._renderLastPasswordChange()}
+                            </span>
+                        </div>
+                        <div class="avatar-actions">
+                            <!-- SC-06 GATED notice -->
+                            <span class="gated-note" data-control="SC-06"
+                                >${GATED_NO_PASSWORD_CHANGE}</span
+                            >
+                            <button
+                                class="btn btn-primary"
+                                data-control="SC-07"
+                                @click=${this._openPasswordModal}
+                                title=${GATED_NO_PASSWORD_CHANGE}
+                            >
+                                Change password
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    private _renderNotificationsTab() {
+        const p = this.profile!;
+        return html`
+            <div class="section" data-control="NT">
+                <div class="section-header">
+                    <span class="material-symbols-outlined">notifications</span>
+                    Notifications
+                </div>
+                <div class="section-content">
+                    <div class="toggle-row" data-control="NT-01">
+                        <span class="toggle-label">Agent replies to my conversations</span>
+                        <soma-toggle
+                            ?checked=${p.notifications.agentReplies}
+                            @soma-change=${(e: CustomEvent<{ checked: boolean }>) =>
+                                this._updateNotification('agentReplies', e.detail.checked)}
+                        ></soma-toggle>
+                    </div>
+
+                    <div class="toggle-row" data-control="NT-02">
+                        <span class="toggle-label">Weekly activity summary</span>
+                        <soma-toggle
+                            ?checked=${p.notifications.activitySummary}
+                            @soma-change=${(e: CustomEvent<{ checked: boolean }>) =>
+                                this._updateNotification('activitySummary', e.detail.checked)}
+                        ></soma-toggle>
+                    </div>
+
+                    <div class="toggle-row" data-control="NT-03">
+                        <span class="toggle-label">Product updates and tips</span>
+                        <soma-toggle
+                            ?checked=${p.notifications.productUpdates}
+                            @soma-change=${(e: CustomEvent<{ checked: boolean }>) =>
+                                this._updateNotification('productUpdates', e.detail.checked)}
+                        ></soma-toggle>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    private _renderSessionsTab() {
+        const p = this.profile!;
+        return html`
+            <div class="section" data-control="SS">
+                <div class="section-header">
+                    <span class="material-symbols-outlined">devices</span>
+                    Sessions
+                </div>
+                <div class="section-content">
+                    <div class="stat-row" data-control="SS-01">
+                        <div class="security-info">
+                            <span class="security-label">Active sessions</span>
+                            <span class="stat-value">${p.activeSessions}</span>
+                        </div>
+                        <button
+                            class="btn btn-danger"
+                            data-control="SS-05"
+                            disabled
+                            title=${GATED_NO_SESSION_LIST}
+                        >
+                            Sign out everywhere
+                        </button>
+                    </div>
+
+                    <!-- SS-02…SS-04 / SS-07: no self session list endpoint.
+                         Refuse to invent device/IP rows (CM-11 honesty note 4). -->
+                    <div class="empty-state" data-control="SS-02">
+                        <span class="gated-note" data-control="SS-07"
+                            >${GATED_NO_SESSION_LIST}</span
+                        >
+                        <p class="muted" style="margin-top: 8px">
+                            Session rows (device · ip · last seen · current) require
+                            GET /api/v2/auth/sessions. Count above is live; rows are not.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     render() {
         if (this.loading) {
-            return html`<div class="loading">Loading profile...</div>`;
+            return html`<div class="loading" role="status">Loading profile...</div>`;
         }
 
         if (!this.profile) {
-            return html`<div class="loading">Failed to load profile</div>`;
+            return html`<div class="loading" role="alert">Failed to load profile</div>`;
         }
 
         return html`
-      <div class="profile-page">
-        <div class="page-header">
-          <h1 class="page-title">My Profile</h1>
-        </div>
+            <div class="profile-page">
+                <div class="page-header">
+                    <h1 class="page-title" data-control="PG-01">Personal profile</h1>
+                </div>
 
-        ${this.error ? html`<div class="error-banner">${this.error}</div>` : ''}
+                ${this.error
+                    ? html`<div class="error-banner" role="alert" data-control="PG-02">
+                          ${this.error}
+                      </div>`
+                    : ''}
 
-        <!-- Display Section -->
-        <div class="section">
-          <div class="section-header"><span class="material-symbols-outlined">edit</span> Display</div>
-          <div class="section-content">
-            <div class="avatar-section">
-              <div class="avatar">
-                ${this.profile.avatarUrl
-                ? html`<img src="${this.profile.avatarUrl}" alt="${this.profile.displayName}">`
-                : this._getInitials(this.profile.displayName || 'U')
-            }
-              </div>
-              <div class="avatar-actions">
-                <span class="muted">Avatar upload has no API on this deployment.</span>
-              </div>
+                <div class="tabs" role="tablist" aria-label="Profile sections">
+                    <button
+                        class="tab ${this.activeTab === 'account' ? 'active' : ''}"
+                        role="tab"
+                        aria-selected=${this.activeTab === 'account'}
+                        @click=${() => this._setTab('account')}
+                    >
+                        Account
+                    </button>
+                    <button
+                        class="tab ${this.activeTab === 'security' ? 'active' : ''}"
+                        role="tab"
+                        aria-selected=${this.activeTab === 'security'}
+                        @click=${() => this._setTab('security')}
+                    >
+                        Security
+                    </button>
+                    <button
+                        class="tab ${this.activeTab === 'notifications' ? 'active' : ''}"
+                        role="tab"
+                        aria-selected=${this.activeTab === 'notifications'}
+                        @click=${() => this._setTab('notifications')}
+                    >
+                        Notifications
+                    </button>
+                    <button
+                        class="tab ${this.activeTab === 'sessions' ? 'active' : ''}"
+                        role="tab"
+                        aria-selected=${this.activeTab === 'sessions'}
+                        @click=${() => this._setTab('sessions')}
+                    >
+                        Sessions
+                    </button>
+                </div>
+
+                <div role="tabpanel">
+                    ${this.activeTab === 'account' ? this._renderAccountTab() : nothing}
+                    ${this.activeTab === 'security' ? this._renderSecurityTab() : nothing}
+                    ${this.activeTab === 'notifications'
+                        ? this._renderNotificationsTab()
+                        : nothing}
+                    ${this.activeTab === 'sessions' ? this._renderSessionsTab() : nothing}
+                </div>
+
+                ${this.dirty
+                    ? html`
+                          <div class="save-bar" data-control="PG-03">
+                              <button
+                                  class="btn btn-primary"
+                                  data-control="PG-04"
+                                  ?disabled=${this.saving}
+                                  @click=${this._saveProfile}
+                              >
+                                  ${this.saving ? 'Saving...' : 'Save Changes'}
+                              </button>
+                          </div>
+                      `
+                    : ''}
             </div>
 
-            <div class="form-group">
-              <label class="form-label">Display Name</label>
-              <input class="form-input" type="text" .value=${this.profile.displayName}
-                     @input=${(e: Event) => this._updateField('displayName', (e.target as HTMLInputElement).value)}>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Email</label>
-              <input class="form-input" type="email" .value=${this.profile.email} disabled>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Phone</label>
-              <input class="form-input" type="tel" .value=${this.profile.phone}
-                     @input=${(e: Event) => this._updateField('phone', (e.target as HTMLInputElement).value)}>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Tenant</label>
-              <input class="form-input" type="text"
-                     .value=${this.profile.tenantName || this.profile.tenantId || '—'} disabled>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Tenant ID</label>
-              <input class="form-input" type="text" .value=${this.profile.tenantId || '—'} disabled>
-            </div>
-          </div>
-        </div>
-
-        <!-- Preferences Section -->
-        <div class="section">
-          <div class="section-header"><span class="material-symbols-outlined">settings</span> Preferences</div>
-          <div class="section-content">
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Theme</label>
-                <select class="form-input" .value=${this.profile.theme}
-                        @change=${(e: Event) => this._updateField('theme', (e.target as HTMLSelectElement).value)}>
-                  <option value="system">System Default</option>
-                  <option value="light">Light</option>
-                  <option value="dark">Dark</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Language</label>
-                <select class="form-input" .value=${this.profile.language}
-                        @change=${(e: Event) => this._updateField('language', (e.target as HTMLSelectElement).value)}>
-                  <option value="en">🇺🇸 English</option>
-                  <option value="es">🇪🇸 Español</option>
-                  <option value="fr">🇫🇷 Français</option>
-                  <option value="de">🇩🇪 Deutsch</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Timezone</label>
-              <select class="form-input" .value=${this.profile.timezone}
-                      @change=${(e: Event) => this._updateField('timezone', (e.target as HTMLSelectElement).value)}>
-                <option value="America/New_York">America/New_York (EST)</option>
-                <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
-                <option value="Europe/London">Europe/London (GMT)</option>
-                <option value="Europe/Paris">Europe/Paris (CET)</option>
-                <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Security Section -->
-        <div class="section">
-          <div class="section-header"><span class="material-symbols-outlined">lock</span> Security</div>
-          <div class="section-content">
-            <div class="security-row">
-              <div class="security-info">
-                <span class="security-label">Multi-Factor Authentication</span>
-                <span class="security-value">${this.profile.mfaEnabled
-                    ? html`<span class='material-symbols-outlined'>check_circle</span> Enabled (TOTP)`
-                    : this.profile.mfaEnrolled
-                        ? html`<span class='material-symbols-outlined'>check_circle</span> Enrolled (TOTP not yet active)`
-                        : html`<span class='material-symbols-outlined'>cancel</span> Disabled`}</span>
-              </div>
-              <button class="btn btn-secondary" @click=${() => window.dispatchEvent(new CustomEvent('soma-navigate', { detail: { route: '/mfa/setup' } }))}>Reconfigure</button>
-            </div>
-
-            <div class="security-row">
-              <div class="security-info">
-                <span class="security-label">Password</span>
-                <span class="security-value">Last changed ${this.profile.lastPasswordChange || 'never'}</span>
-              </div>
-              <span class="muted">Password change has no API on this deployment.</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Notifications Section -->
-        <div class="section">
-          <div class="section-header"><span class="material-symbols-outlined">notifications</span> Notifications</div>
-          <div class="section-content">
-            <div class="toggle-row">
-              <span class="toggle-label">Agent replies to my conversations</span>
-              <soma-toggle
-                ?checked=${this.profile.notifications.agentReplies}
-                @change=${(e: CustomEvent) => this._updateNotification('agentReplies', e.detail.checked)}
-              ></soma-toggle>
-            </div>
-
-            <div class="toggle-row">
-              <span class="toggle-label">Weekly activity summary</span>
-              <soma-toggle
-                ?checked=${this.profile.notifications.activitySummary}
-                @change=${(e: CustomEvent) => this._updateNotification('activitySummary', e.detail.checked)}
-              ></soma-toggle>
-            </div>
-
-            <div class="toggle-row">
-              <span class="toggle-label">Product updates and tips</span>
-              <soma-toggle
-                ?checked=${this.profile.notifications.productUpdates}
-                @change=${(e: CustomEvent) => this._updateNotification('productUpdates', e.detail.checked)}
-              ></soma-toggle>
-            </div>
-          </div>
-        </div>
-
-        ${this.dirty ? html`
-          <div class="save-bar">
-            <button class="btn btn-primary" ?disabled=${this.saving} @click=${this._saveProfile}>
-              ${this.saving ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-        ` : ''}
-      </div>
-    `;
+            <soma-password-modal
+                .open=${this.passwordModalOpen}
+                .userEmail=${this.profile.email}
+                .userName=${this.profile.displayName}
+                @soma-password-modal-close=${() => (this.passwordModalOpen = false)}
+            ></soma-password-modal>
+        `;
     }
 }
 
